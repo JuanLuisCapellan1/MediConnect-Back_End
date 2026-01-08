@@ -1,0 +1,831 @@
+
+// --------------------------------------------------------
+// CONFIGURACIÓN
+// --------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+
+// --------------------------------------------------------
+// MÓDULO DE USUARIOS Y AUTENTICACIÓN
+// --------------------------------------------------------
+
+model Usuario {
+  id              Int      @id @default(autoincrement()) @map("id_usuario")
+  email           String   @unique @db.VarChar(120)
+  password        String   @map("contrasena") @db.VarChar(255)
+  fotoPerfil      String?  @map("foto_perfil") @db.VarChar(255)
+  telefono        String?  @db.VarChar(20)
+  rol             String   @db.VarChar(30) // Idealmente convertir a Enum si los roles son fijos
+  emailVerificado Boolean  @default(false) @map("email_verificado")
+  estado          String   @default("Activo") @db.VarChar(20) // Mapeado a string por flexibilidad inicial
+  
+  creadoEn        DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn   DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  // Relaciones de Perfil (1:1)
+  paciente        Paciente?
+  doctor          Doctor?
+  centroSalud     CentroSalud?
+
+  // Relaciones de Sistema
+  cuentasSociales CuentaSocial[]
+  notificaciones  Notificacion[]
+  
+  // Relaciones de Comunicación
+  mensajesEnviados          Mensaje[]        @relation("RemitenteMensaje")
+  lecturasConversacion      LecturaConversacion[]
+  
+  conversacionesIniciadas   Conversacion[]   @relation("EmisorConversacion")
+  conversacionesRecibidas   Conversacion[]   @relation("ReceptorConversacion")
+
+  // Relaciones de Moderación/Acciones
+  accionesEmitidas          Accion[]         @relation("EmisorAccion")
+  accionesRecibidas         Accion[]         @relation("AfectadoAccion")
+  accionesRevisadas         Accion[]         @relation("RevisorAccion")
+
+  @@map("usuarios")
+}
+
+model CuentaSocial {
+  id           Int      @id @default(autoincrement()) @map("id_cuenta_social")
+  usuarioId    Int      @map("id_usuario")
+  proveedor    String   @db.VarChar(50)
+  uidProveedor String   @map("uid_proveedor") @db.VarChar(255)
+  creadoEn     DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([proveedor, uidProveedor])
+  @@unique([usuarioId, proveedor])
+  @@map("cuentas_sociales")
+}
+
+// --------------------------------------------------------
+// PERFILES DE ACTORES
+// --------------------------------------------------------
+
+model Paciente {
+  usuarioId             Int      @id @map("id_usuario")
+  nombre                String   @db.VarChar(80)
+  apellido              String   @db.VarChar(80)
+  tipoDocIdentificacion String   @map("tipo_documento_identificacion") @db.VarChar(20)
+  docIdentificacion     String   @unique @map("documento_identificacion") @db.VarChar(40)
+  fechaNacimiento       DateTime @map("fecha_nacimiento") @db.Date
+  genero                String   @db.Char(1)
+  altura                Decimal? @db.Decimal(4, 2)
+  peso                  Decimal? @db.Decimal(5, 2)
+  tipoSangre            String?  @map("tipo_sangre") @db.VarChar(5)
+  ubicacionId           Int?     @map("id_ubicacion")
+  estado                String   @default("Activo") @db.VarChar(20)
+  
+  creadoEn              DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn         DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  usuario               Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  ubicacion             Ubicacion? @relation(fields: [ubicacionId], references: [id])
+
+  // Relaciones Médicas
+  citas                 Cita[]
+  historiales           HistorialConsulta[]
+  resenas               Resena[]
+  doctoresFavoritos     DoctorFavorito[]
+  caracteristicas       CaracteristicaEspecial[]
+  seguros               PacienteSeguro[]
+
+  @@map("pacientes")
+}
+
+model Doctor {
+  usuarioId             Int      @id @map("id_usuario")
+  nombre                String   @db.VarChar(80)
+  apellido              String   @db.VarChar(80)
+  tipoDocIdentificacion String   @map("tipo_documento_identificacion") @db.VarChar(20)
+  docIdentificacion     String   @unique @map("documento_identificacion") @db.VarChar(40)
+  fechaNacimiento       DateTime @map("fecha_nacimiento") @db.Date
+  genero                String   @db.Char(1)
+  nacionalidad          String?  @db.VarChar(50)
+  exequatur             String   @unique @db.VarChar(40)
+  biografia             String?
+  anosExperiencia       Int?     @map("anos_experiencia")
+  estadoVerificacion    String   @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
+  calificacionPromedio  Decimal? @default(0.00) @map("calificacion_promedio") @db.Decimal(3, 2)
+  estado                String   @default("Activo") @db.VarChar(20)
+
+  creadoEn              DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn         DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  usuario               Usuario   @relation(fields: [usuarioId], references: [id])
+
+  // Relaciones Profesionales
+  experiencias          ExperienciaLaboral[]
+  formaciones           FormacionAcademica[]
+  horarios              Horario[]
+  servicios             Servicio[]
+  solicitudesAlianza    SolicitudAlianza[]
+  
+  // Relaciones Médicas
+  citas                 Cita[]            @relation("DoctorCita") // Nota: Agregado para acceder desde Doctor
+  resenas               Resena[]
+  favoritosDe           DoctorFavorito[]
+  segurosAceptados      DoctorSeguro[]
+
+  @@map("doctores")
+}
+
+model CentroSalud {
+  usuarioId          Int      @id @map("id_usuario")
+  nombreComercial    String   @map("nombre_comercial") @db.VarChar(120)
+  rnc                String   @unique @db.VarChar(20)
+  tipoCentroId       Int      @map("id_tipo_centro")
+  ubicacionId        Int      @map("id_ubicacion")
+  fotoPerfil         String?  @map("foto_perfil") @db.VarChar(255)
+  estadoVerificacion String   @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
+  estado             String   @default("Activo") @db.VarChar(20)
+
+  creadoEn           DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn      DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  usuario            Usuario         @relation(fields: [usuarioId], references: [id])
+  tipoCentro         TipoCentroSalud @relation(fields: [tipoCentroId], references: [id])
+  ubicacion          Ubicacion       @relation(fields: [ubicacionId], references: [id])
+
+  experienciasStaff  ExperienciaLaboral[]
+  solicitudesAlianza SolicitudAlianza[]
+
+  @@map("centros_salud")
+}
+
+// --------------------------------------------------------
+// GEOGRAFÍA Y UBICACIONES
+// --------------------------------------------------------
+
+model Pais {
+  id            Int           @id @default(autoincrement()) @map("id_pais")
+  nombre        String        @unique @db.VarChar(80)
+  estado        String        @default("Activo") @db.VarChar(20)
+  creadoEn      DateTime      @default(now()) @map("creado_en") @db.Timestamptz(6)
+  
+  universidades Universidad[]
+
+  @@map("paises")
+}
+
+model Provincia {
+  id         Int         @id @default(autoincrement()) @map("id_provincia")
+  nombre     String      @unique @db.VarChar(80)
+  estado     String      @default("Activo") @db.VarChar(20)
+  creadoEn   DateTime    @default(now()) @map("creado_en") @db.Timestamptz(6)
+  
+  municipios Municipio[]
+
+  @@map("provincias")
+}
+
+model Municipio {
+  id                    Int                 @id @default(autoincrement()) @map("id_municipio")
+  provinciaId           Int                 @map("id_provincia")
+  nombre                String              @db.VarChar(80)
+  estado                String              @default("Activo") @db.VarChar(20)
+  creadoEn              DateTime            @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  provincia             Provincia           @relation(fields: [provinciaId], references: [id])
+  distritosMunicipales  DistritoMunicipal[]
+
+  @@unique([provinciaId, nombre])
+  @@map("municipios")
+}
+
+model DistritoMunicipal {
+  id          Int       @id @default(autoincrement()) @map("id_distrito_municipal")
+  municipioId Int       @map("id_municipio")
+  nombre      String    @db.VarChar(80)
+  estado      String    @default("Activo") @db.VarChar(20)
+  creadoEn    DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  municipio   Municipio @relation(fields: [municipioId], references: [id])
+  secciones   Seccion[]
+
+  @@unique([municipioId, nombre])
+  @@map("distritos_municipales")
+}
+
+model Seccion {
+  id                  Int               @id @default(autoincrement()) @map("id_seccion")
+  distritoMunicipalId Int               @map("id_distrito_municipal")
+  nombre              String            @db.VarChar(80)
+  estado              String            @default("Activo") @db.VarChar(20)
+  creadoEn            DateTime          @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  distritoMunicipal   DistritoMunicipal @relation(fields: [distritoMunicipalId], references: [id])
+  barrios             Barrio[]
+
+  @@unique([distritoMunicipalId, nombre])
+  @@map("secciones")
+}
+
+model Barrio {
+  id         Int         @id @default(autoincrement()) @map("id_barrio")
+  seccionId  Int         @map("id_seccion")
+  nombre     String      @db.VarChar(80)
+  estado     String      @default("Activo") @db.VarChar(20)
+  creadoEn   DateTime    @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  seccion    Seccion     @relation(fields: [seccionId], references: [id])
+  subBarrios SubBarrio[]
+  ubicaciones Ubicacion[]
+
+  @@unique([seccionId, nombre])
+  @@map("barrios")
+}
+
+model SubBarrio {
+  id          Int         @id @default(autoincrement()) @map("id_sub_barrio")
+  barrioId    Int         @map("id_barrio")
+  nombre      String      @db.VarChar(80)
+  estado      String      @default("Activo") @db.VarChar(20)
+  creadoEn    DateTime    @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  barrio      Barrio      @relation(fields: [barrioId], references: [id])
+  ubicaciones Ubicacion[]
+
+  @@unique([barrioId, nombre])
+  @@map("sub_barrios")
+}
+
+model Ubicacion {
+  id              Int      @id @default(autoincrement()) @map("id_ubicacion")
+  barrioId        Int      @map("id_barrio")
+  subBarrioId     Int?     @map("id_sub_barrio")
+  direccion       String   @db.VarChar(255)
+  codigoPostal    String?  @map("codigo_postal") @db.VarChar(10)
+  
+  // PostGIS: Prisma no soporta esto nativamente para escritura, solo lectura o raw queries
+  puntoGeografico Unsupported("geography")? @map("punto_geografico")
+  
+  estado          String   @default("Activo") @db.VarChar(20)
+  creadoEn        DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  barrio          Barrio     @relation(fields: [barrioId], references: [id])
+  subBarrio       SubBarrio? @relation(fields: [subBarrioId], references: [id])
+  
+  centrosSalud    CentroSalud[]
+  horarios        Horario[]
+  citas           Cita[]
+  pacientes       Paciente[]
+
+  @@map("ubicaciones")
+}
+
+// --------------------------------------------------------
+// CATÁLOGOS MÉDICOS Y DETALLES
+// --------------------------------------------------------
+
+model Especialidad {
+  id          Int      @id @default(autoincrement()) @map("id_especialidad")
+  nombre      String   @unique @db.VarChar(80)
+  descripcion String?
+  estado      String   @default("Activo") @db.VarChar(20)
+  creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  formaciones FormacionAcademica[]
+  servicios   Servicio[]
+
+  @@map("especialidades")
+}
+
+model Profesion {
+  id          Int      @id @default(autoincrement()) @map("id_profesion")
+  nombre      String   @unique @db.VarChar(80)
+  estado      String   @default("Activo") @db.VarChar(20)
+  creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  experiencias ExperienciaLaboral[]
+  formaciones  FormacionAcademica[]
+
+  @@map("profesiones")
+}
+
+model Universidad {
+  id          Int      @id @default(autoincrement()) @map("id_universidad")
+  paisId      Int      @map("id_pais")
+  nombre      String   @db.VarChar(120)
+  estado      String   @default("Activo") @db.VarChar(20)
+  creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  pais        Pais     @relation(fields: [paisId], references: [id])
+  formaciones FormacionAcademica[]
+
+  @@unique([nombre, paisId])
+  @@map("universidades")
+}
+
+model TipoCentroSalud {
+  id        Int           @id @default(autoincrement()) @map("id_tipo_centro_salud")
+  nombre    String        @unique @db.VarChar(80)
+  estado    String        @default("Activo") @db.VarChar(20)
+  creadoEn  DateTime      @default(now()) @map("creado_en") @db.Timestamptz(6)
+  
+  centros   CentroSalud[]
+
+  @@map("tipos_centros_salud")
+}
+
+model TipoServicio {
+  id          Int        @id @default(autoincrement()) @map("id_tipo_servicio")
+  nombre      String     @unique @db.VarChar(80)
+  descripcion String?
+  estado      String     @default("Activo") @db.VarChar(20)
+  creadoEn    DateTime   @default(now()) @map("creado_en") @db.Timestamptz(6)
+  
+  servicios   Servicio[]
+
+  @@map("tipos_servicios")
+}
+
+model CondicionMedica {
+  id              Int      @id @default(autoincrement()) @map("id_condicion")
+  nombre          String   @unique @db.VarChar(100)
+  descripcion     String?
+  tipo            String   @default("Enfermedad") @db.VarChar(30)
+  estado          String   @default("Activa") @db.VarChar(20)
+  creadoEn        DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  caracteristicas CaracteristicaEspecial[]
+
+  @@map("condiciones_medicas")
+}
+
+model SeguroMedico {
+  id        Int      @id @default(autoincrement()) @map("id_seguro")
+  nombre    String   @unique @db.VarChar(120)
+  urlImage  String?  @map("url_image")
+  estado    String   @default("Activo") @db.VarChar(20)
+  creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  doctores  DoctorSeguro[]
+  pacientes PacienteSeguro[]
+
+  @@map("seguros_medicos")
+}
+
+model TipoSeguro {
+  id          Int      @id @default(autoincrement()) @map("id_tipo_seguro")
+  nombre      String   @unique @db.VarChar(80)
+  descripcion String?
+  estado      String   @default("Activo") @db.VarChar(20)
+  creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  doctores    DoctorSeguro[]
+  pacientes   PacienteSeguro[]
+
+  @@map("tipos_seguros")
+}
+
+// --------------------------------------------------------
+// DETALLES CURRICULARES Y RELACIONES MANY-TO-MANY
+// --------------------------------------------------------
+
+model FormacionAcademica {
+  id              Int      @id @default(autoincrement()) @map("id_formacion")
+  doctorId        Int      @map("id_doctor")
+  universidadId   Int      @map("id_universidad")
+  especialidadId  Int      @map("id_especialidad")
+  profesionId     Int      @map("id_profesion")
+  nota            String?  @db.VarChar(100)
+  fechaObtencion  DateTime @map("fecha_obtencion") @db.Date
+  estado          String   @default("Activo") @db.VarChar(20)
+  creadoEn        DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn   DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  doctor          Doctor       @relation(fields: [doctorId], references: [usuarioId])
+  universidad     Universidad  @relation(fields: [universidadId], references: [id])
+  especialidad    Especialidad @relation(fields: [especialidadId], references: [id])
+  profesion       Profesion    @relation(fields: [profesionId], references: [id])
+
+  @@unique([doctorId, universidadId, especialidadId, profesionId])
+  @@map("formaciones_academicas")
+}
+
+model ExperienciaLaboral {
+  id                 Int       @id @default(autoincrement()) @map("id_experiencia")
+  doctorId           Int       @map("id_doctor")
+  centroSaludId      Int?      @map("id_centro_salud")
+  institucionExterna String?   @map("institucion_externa") @db.VarChar(150)
+  profesionId        Int       @map("id_profesion")
+  descripcionCargo   String    @map("descripcion_cargo") @db.VarChar(200)
+  fechaInicio        DateTime  @map("fecha_inicio") @db.Date
+  fechaFinalizacion  DateTime? @map("fecha_finalizacion") @db.Date
+  trabajaActualmente Boolean   @default(false) @map("trabaja_actualmente")
+  estado             String    @default("Activo") @db.VarChar(20)
+  
+  creadoEn           DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn      DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  doctor             Doctor       @relation(fields: [doctorId], references: [usuarioId])
+  centroSalud        CentroSalud? @relation(fields: [centroSaludId], references: [usuarioId])
+  profesion          Profesion    @relation(fields: [profesionId], references: [id])
+
+  @@map("experiencias_laborales")
+}
+
+model SolicitudAlianza {
+  id            Int      @id @default(autoincrement()) @map("id_solicitud")
+  doctorId      Int      @map("id_doctor")
+  centroSaludId Int      @map("id_centro_salud")
+  mensaje       String?  @db.VarChar(255)
+  estado        String   @default("Pendiente") @db.VarChar(20)
+  motivoRechazo String?  @map("motivo_rechazo")
+  
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  doctor        Doctor      @relation(fields: [doctorId], references: [usuarioId])
+  centroSalud   CentroSalud @relation(fields: [centroSaludId], references: [usuarioId])
+
+  @@unique([doctorId, centroSaludId, estado])
+  @@map("solicitudes_alianza")
+}
+
+model DoctorFavorito {
+  pacienteId Int      @map("id_paciente")
+  doctorId   Int      @map("id_doctor")
+  agregadoEn DateTime @default(now()) @map("agregado_en") @db.Timestamptz(6)
+  estado     String   @default("Activo") @db.VarChar(20)
+
+  paciente   Paciente @relation(fields: [pacienteId], references: [usuarioId])
+  doctor     Doctor   @relation(fields: [doctorId], references: [usuarioId])
+
+  @@id([pacienteId, doctorId])
+  @@map("doctores_favoritos")
+}
+
+model DoctorSeguro {
+  doctorId     Int          @map("id_usuario")
+  seguroId     Int          @map("id_seguro")
+  tipoSeguroId Int          @map("id_tipo_seguro")
+  estado       String       @default("Activo") @db.VarChar(20)
+  
+  creadoEn     DateTime     @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn DateTime?   @map("actualizado_en") @db.Timestamptz(6)
+
+  doctor       Doctor       @relation(fields: [doctorId], references: [usuarioId])
+  seguro       SeguroMedico @relation(fields: [seguroId], references: [id])
+  tipoSeguro   TipoSeguro   @relation(fields: [tipoSeguroId], references: [id])
+
+  @@id([doctorId, seguroId, tipoSeguroId])
+  @@map("doctores_seguros")
+}
+
+model PacienteSeguro {
+  pacienteId   Int          @map("id_usuario")
+  seguroId     Int          @map("id_seguro")
+  tipoSeguroId Int          @map("id_tipo_seguro")
+  estado       String       @default("Activo") @db.VarChar(20)
+  
+  creadoEn     DateTime     @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn DateTime?   @map("actualizado_en") @db.Timestamptz(6)
+
+  paciente     Paciente     @relation(fields: [pacienteId], references: [usuarioId])
+  seguro       SeguroMedico @relation(fields: [seguroId], references: [id])
+  tipoSeguro   TipoSeguro   @relation(fields: [tipoSeguroId], references: [id])
+
+  @@id([pacienteId, seguroId])
+  @@map("pacientes_seguros")
+}
+
+model CaracteristicaEspecial {
+  pacienteId  Int             @map("id_usuario")
+  condicionId Int             @map("id_condicion")
+  notas       String?
+  estado      String          @default("Activo") @db.VarChar(20)
+  
+  registradoEn DateTime       @default(now()) @map("registrado_en") @db.Timestamptz(6)
+  actualizadoEn DateTime?     @map("actualizado_en") @db.Timestamptz(6)
+
+  paciente    Paciente        @relation(fields: [pacienteId], references: [usuarioId])
+  condicion   CondicionMedica @relation(fields: [condicionId], references: [id])
+
+  @@id([pacienteId, condicionId])
+  @@map("caracteristicas_especiales")
+}
+
+// --------------------------------------------------------
+// AGENDA Y SERVICIOS
+// --------------------------------------------------------
+
+model Horario {
+  id          Int      @id @default(autoincrement()) @map("id_horario")
+  doctorId    Int      @map("id_usuario")
+  nombre      String   @db.VarChar(100)
+  diaSemana   Int      @map("dia_semana")
+  horaInicio  DateTime @map("hora_inicio") @db.Time(6)
+  horaFin     DateTime @map("hora_fin") @db.Time(6)
+  ubicacionId Int      @map("id_ubicacion")
+  estado      String   @default("Activo") @db.VarChar(20)
+  
+  creadoEn    DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  doctor      Doctor    @relation(fields: [doctorId], references: [usuarioId])
+  ubicacion   Ubicacion @relation(fields: [ubicacionId], references: [id])
+  
+  servicios   ServicioHorario[]
+
+  @@unique([doctorId, diaSemana, horaInicio], map: "uq_horario_conflicto")
+  @@map("horarios")
+}
+
+model Servicio {
+  id              Int      @id @default(autoincrement()) @map("id_servicio")
+  doctorId        Int      @map("id_doctor")
+  tipoServicioId  Int      @map("id_tipo_servicio")
+  especialidadId  Int      @map("id_especialidad")
+  nombre          String   @db.VarChar(120)
+  descripcion     String?
+  precio          Decimal  @default(0.00) @db.Decimal(10, 2)
+  duracionMinutos Int      @default(30) @map("duracion_minutos")
+  maxPacientesDia Int?     @map("max_pacientes_dia")
+  calificacionPromedio Decimal? @default(0.00) @map("calificacion_promedio") @db.Decimal(3, 2)
+  estado          String   @default("Activo") @db.VarChar(20)
+  
+  creadoEn        DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn   DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  doctor          Doctor       @relation(fields: [doctorId], references: [usuarioId])
+  tipoServicio    TipoServicio @relation(fields: [tipoServicioId], references: [id])
+  especialidad    Especialidad @relation(fields: [especialidadId], references: [id])
+  
+  horarios        ServicioHorario[]
+  citas           Cita[]
+
+  @@map("servicios")
+}
+
+model ServicioHorario {
+  servicioId Int      @map("id_servicio")
+  horarioId  Int      @map("id_horario")
+  estado     String   @default("Activo") @db.VarChar(20)
+  creadoEn   DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  servicio   Servicio @relation(fields: [servicioId], references: [id])
+  horario    Horario  @relation(fields: [horarioId], references: [id])
+
+  @@id([servicioId, horarioId])
+  @@map("servicios_horarios")
+}
+
+// --------------------------------------------------------
+// CITAS, HISTORIA Y RESEÑAS
+// --------------------------------------------------------
+
+model Cita {
+  id             Int      @id @default(autoincrement()) @map("id_cita")
+  servicioId     Int      @map("id_servicio")
+  pacienteId     Int      @map("id_usuario")
+  fechaInicio    DateTime @map("fecha_hora_inicio") @db.Timestamptz(6)
+  fechaFin       DateTime @map("fecha_hora_fin") @db.Timestamptz(6)
+  ubicacionId    Int?     @map("id_ubicacion")
+  totalAPagar    Decimal  @map("total_a_pagar") @db.Decimal(10, 2)
+  motivoConsulta String?  @map("motivo_consulta_paciente") @db.VarChar(200)
+  comentario     String?  @db.VarChar(200)
+  estado         String   @default("Programada") @db.VarChar(20)
+  
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn  DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  servicio       Servicio  @relation(fields: [servicioId], references: [id])
+  paciente       Paciente  @relation(fields: [pacienteId], references: [usuarioId])
+  ubicacion      Ubicacion? @relation(fields: [ubicacionId], references: [id])
+  
+  // Como agregamos 'citas' en Doctor, necesitamos agregar esta relación inversa si la queremos usar
+  // doctor      Doctor    @relation(...) // (Derivado via Servicio, pero opcional agregar directo)
+  doctorIndirecto Doctor   @relation("DoctorCita", fields: [servicioId], references: [usuarioId], map: "fk_citas_servicio_doctor_dummy") // Truco: Prisma infiere relaciones, pero mejor dejarlo simple.
+
+  historial       HistorialConsulta?
+  logTeleconsulta LogTeleconsulta[] // 1 cita puede tener varios intentos de log
+  resena          Resena?
+
+  @@map("citas")
+}
+
+model HistorialConsulta {
+  id          Int      @id @default(autoincrement()) @map("id_historial")
+  citaId      Int      @unique @map("id_cita")
+  pacienteId  Int      @map("id_paciente")
+  resumen     String   @map("resumen_consulta")
+  diagnostico String
+  tratamiento String?  @map("tratamiento_sugerido")
+  observacion String?
+  
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  cita        Cita     @relation(fields: [citaId], references: [id])
+  paciente    Paciente @relation(fields: [pacienteId], references: [usuarioId])
+  
+  adjuntos    AdjuntoHistorial[]
+
+  @@map("historial_consultas")
+}
+
+model Resena {
+  id            Int       @id @default(autoincrement()) @map("id_resena")
+  citaId        Int       @unique @map("id_cita")
+  pacienteId    Int       @map("id_paciente")
+  doctorId      Int       @map("id_doctor")
+  calificacion  Int
+  comentario    String?
+  estado        String    @default("Publicada") @db.VarChar(20)
+  
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  cita          Cita      @relation(fields: [citaId], references: [id])
+  paciente      Paciente  @relation(fields: [pacienteId], references: [usuarioId])
+  doctor        Doctor    @relation(fields: [doctorId], references: [usuarioId])
+
+  @@map("resenas")
+}
+
+// --------------------------------------------------------
+// COMUNICACIÓN Y ARCHIVOS
+// --------------------------------------------------------
+
+model Media {
+  id           Int      @id @default(autoincrement()) @map("id_media")
+  archivo      String
+  nombre       String?  @db.VarChar(255)
+  tipoMime     String?  @map("tipo_mime") @db.VarChar(100)
+  tamanioBytes BigInt?  @map("tamanio_bytes")
+  estado       String   @default("Activo") @db.VarChar(20)
+  fechaSubida  DateTime @default(now()) @map("fecha_subida") @db.Timestamptz(6)
+
+  // Relaciones donde se usa el archivo
+  mensajes          Mensaje[]
+  adjuntosAcciones  AdjuntoAccion[]
+  adjuntosHistorial AdjuntoHistorial[]
+
+  @@map("media")
+}
+
+model Conversacion {
+  id              Int       @id @default(autoincrement()) @map("id_conversacion")
+  emisorId        Int       @map("id_emisor")
+  receptorId      Int       @map("id_receptor")
+  silenciado      Boolean   @default(false)
+  estado          String    @default("Activa") @db.VarChar(20)
+  
+  creadoEn        DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn   DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  emisor          Usuario   @relation("EmisorConversacion", fields: [emisorId], references: [id])
+  receptor        Usuario   @relation("ReceptorConversacion", fields: [receptorId], references: [id])
+  
+  mensajes        Mensaje[]
+  lecturas        LecturaConversacion[]
+  logsTeleconsulta LogTeleconsulta[]
+
+  @@map("conversaciones")
+}
+
+model Mensaje {
+  id             Int      @id @default(autoincrement()) @map("id_mensaje")
+  conversacionId Int      @map("id_conversacion")
+  remitenteId    Int      @map("id_remitente")
+  contenido      String?
+  tipo           String   @default("texto") @map("tipo_mensaje") @db.VarChar(20)
+  mediaId        Int?     @map("id_media")
+  estado         String   @default("Enviado") @db.VarChar(20)
+  enviadoEn      DateTime @default(now()) @map("enviado_en") @db.Timestamptz(6)
+
+  conversacion   Conversacion @relation(fields: [conversacionId], references: [id])
+  remitente      Usuario      @relation("RemitenteMensaje", fields: [remitenteId], references: [id])
+  media          Media?       @relation(fields: [mediaId], references: [id])
+  
+  // Usado para saber hasta dónde leyó un usuario
+  lecturas       LecturaConversacion[]
+
+  @@map("mensajes")
+}
+
+model LecturaConversacion {
+  conversacionId      Int      @map("id_conversacion")
+  usuarioId           Int      @map("id_usuario")
+  ultimoMensajeLeidoId Int?     @map("id_ultimo_mensaje_leido")
+  leidoEn             DateTime @default(now()) @map("leido_en") @db.Timestamptz(6)
+
+  conversacion        Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+  usuario             Usuario      @relation(fields: [usuarioId], references: [id])
+  ultimoMensaje       Mensaje?     @relation(fields: [ultimoMensajeLeidoId], references: [id])
+
+  @@id([conversacionId, usuarioId])
+  @@map("lecturas_conversacion")
+}
+
+model LogTeleconsulta {
+  id             Int       @id @default(autoincrement()) @map("id_log")
+  citaId         Int       @map("id_cita")
+  conversacionId Int       @map("id_conversacion")
+  inicio         DateTime  @map("fecha_hora_inicio") @db.Timestamptz(6)
+  fin            DateTime? @map("fecha_hora_fin") @db.Timestamptz(6)
+  duracionMinutos Int?      @map("duracion_minutos")
+  salaReunion    String?   @map("id_sala_reunion") @db.VarChar(100)
+  estado         String    @default("Iniciada") @db.VarChar(20)
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  cita           Cita         @relation(fields: [citaId], references: [id])
+  conversacion   Conversacion @relation(fields: [conversacionId], references: [id])
+
+  @@map("log_teleconsultas")
+}
+
+model Notificacion {
+  id          Int       @id @default(autoincrement()) @map("id_notificacion")
+  usuarioId   Int       @map("id_usuario")
+  titulo      String    @db.VarChar(100)
+  mensaje     String
+  tipoAlerta  String?   @default("Informacion") @map("tipo_alerta") @db.VarChar(20)
+  tipoEntidad String?   @map("tipo_entidad") @db.VarChar(50)
+  entidadId   Int?      @map("id_entidad")
+  leidaEn     DateTime? @map("leida_en") @db.Timestamptz(6)
+  estado      String    @default("Activo") @db.VarChar(20)
+  creadoEn    DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id])
+
+  @@map("notificaciones")
+}
+
+// --------------------------------------------------------
+// SISTEMA DE ACCIONES (AUDITORÍA/MODERACIÓN)
+// --------------------------------------------------------
+
+model TipoAccion {
+  id        Int      @id @default(autoincrement()) @map("id_tipo_accion")
+  nombre    String   @unique @db.VarChar(80)
+  estado    String   @default("Activo") @db.VarChar(20)
+  creadoEn  DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+  
+  acciones  Accion[]
+
+  @@map("tipos_acciones")
+}
+
+model Accion {
+  id              Int       @id @default(autoincrement()) @map("id_accion")
+  tipoAccionId    Int       @map("id_tipo_accion")
+  emisorId        Int       @map("id_emisor")
+  usuarioAfectadoId Int?    @map("id_usuario_afectado")
+  adminRevisorId  Int?      @map("id_admin_revisor")
+  detalle         String
+  comentarioEmisor String?  @map("comentario_emisor")
+  comentarioAdmin String?   @map("comentario_admin")
+  fechaEmision    DateTime  @default(now()) @map("fecha_emision") @db.Timestamptz(6)
+  fechaVencimiento DateTime? @map("fecha_vencimiento") @db.Timestamptz(6)
+  fechaResolucion DateTime? @map("fecha_resolucion") @db.Timestamptz(6)
+  actualizadoEn   DateTime? @map("actualizado_en") @db.Timestamptz(6)
+  estado          String    @default("Pendiente") @db.VarChar(20)
+
+  tipoAccion      TipoAccion @relation(fields: [tipoAccionId], references: [id])
+  emisor          Usuario    @relation("EmisorAccion", fields: [emisorId], references: [id])
+  usuarioAfectado Usuario?   @relation("AfectadoAccion", fields: [usuarioAfectadoId], references: [id])
+  adminRevisor    Usuario?   @relation("RevisorAccion", fields: [adminRevisorId], references: [id])
+  
+  adjuntos        AdjuntoAccion[]
+
+  @@map("acciones")
+}
+
+model AdjuntoAccion {
+  accionId Int      @map("id_accion")
+  mediaId  Int      @map("id_media")
+  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  accion   Accion   @relation(fields: [accionId], references: [id], onDelete: Cascade)
+  media    Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([accionId, mediaId])
+  @@map("archivos_adjuntos_acciones")
+}
+
+model AdjuntoHistorial {
+  mediaId     Int      @map("id_media")
+  historialId Int      @map("id_historial")
+  agregadoEn  DateTime @default(now()) @map("agregado_en") @db.Timestamptz(6)
+
+  historial   HistorialConsulta @relation(fields: [historialId], references: [id])
+  media       Media             @relation(fields: [mediaId], references: [id])
+
+  @@id([mediaId, historialId])
+  @@map("archivos_adjuntos_historial_clinico")
+}
