@@ -10,7 +10,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 
 import { UsuarioController } from './infrastructure/http/controllers/UsuarioController';
-
+import routes from './infrastructure/http/routes';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,7 +26,7 @@ const usuarioController = new UsuarioController();
 
 // Rutas (Ejemplo de ruta para registrar usuario) mover a una carpeta routes más adelante
 app.post('/api/usuarios', (req, res) => usuarioController.registrar(req, res));
-
+app.use('/api', routes);
 
 // Ruta de prueba (Health Check)
 app.get('/api/health', (req, res) => {
