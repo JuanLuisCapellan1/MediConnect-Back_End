@@ -1,0 +1,33 @@
+services:
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: mediconnect-translator
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Carga solo Español e Inglés. 
+      - LT_LOAD_ONLY=es,en
+      
+      # Descarga los modelos automáticamente al iniciar si faltan
+      - LT_UPDATE_MODELS=true
+      
+      # Opcional: Desactiva el requerimiento de API Key para uso local
+      - LT_API_KEYS=false 
+      
+    volumes:
+      # Persistencia: Guarda los modelos descargados para no bajarlos 
+      # cada vez que reinicies el contenedor.
+      - lt-models:/home/libretranslate/.local
+  redis:
+    image: redis:alpine
+    container_name: mediconnect-redis
+    restart: always
+    ports:
+      - "6379:6379" # Puerto estándar de Redis
+    volumes:
+      - redis_data:/data
+
+volumes:
+  lt-models:
+  redis_data:
