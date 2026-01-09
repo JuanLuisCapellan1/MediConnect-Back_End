@@ -27,7 +27,7 @@ export class TestTraduccionController {
       // Le decimos: "Toma este objeto y traduce solo estos 4 campos al Inglés ('en')"
       const datosTraducidos = await translationHelper.traducirObjeto(
         datosConsulta, 
-        ['motivo_consulta'],// ['motivo_consulta', 'diagnostico_preliminar', 'notas_medicas', 'plan_tratamiento'], 
+        ['motivo_consulta', 'diagnostico_preliminar', 'notas_medicas', 'plan_tratamiento'], 
         'es',
         'en'
       );
