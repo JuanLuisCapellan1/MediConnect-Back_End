@@ -51,24 +51,33 @@ npm minstall
 
 Crea un archivo .env en la raíz del proyecto. Puedes usar el siguiente contenido como plantilla:
 
-# --- Configuración del Servidor ---
+#### --- Configuración del Servidor ---
+```bash
 PORT=3000
 NODE_ENV=development
+```
 
-# --- Base de Datos (Prisma) ---
-# Reemplaza con tus credenciales locales o la URL de tu proveedor cloud (ej. Neon)
+#### --- Base de Datos (Prisma) ---
+##### Reemplaza con tus credenciales locales o la URL de tu proveedor cloud (ej. Neon)
+```bash
 DATABASE_URL="postgresql://postgres:contraseña@localhost:5432/nombredb"
+```
 
-# --- Seguridad ---
+#### --- Seguridad ---
+```bash
 JWT_SECRET="cambiar_esto_por_un_secreto_seguro"
+```
 
-# --- Servicios Docker (Infraestructura Local) ---
-# URL interna para conectar con el contenedor de traducción
+#### --- Servicios Docker (Infraestructura Local) ---
+##### URL interna para conectar con el contenedor de traducción
+```bash
 TRANSLATION_API_URL="http://localhost:5000"
+```
 
-# URL de conexión para Redis Cache
+##### URL de conexión para Redis Cache
+```bash
 REDIS_URL="redis://localhost:6379"
-
+```
 
 ---
 
