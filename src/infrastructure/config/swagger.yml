@@ -1,0 +1,56 @@
+openapi: 3.0.0
+info:
+  title: MediConnect API
+  version: 1.0.0
+  description: Documentación oficial del API de MediConnect.
+  contact:
+    name: Equipo de Desarrollo MediConnect
+servers:
+  - url: http://localhost:3000/api
+    description: Servidor de Desarrollo Local
+
+tags:
+  - name: Pruebas
+    description: Endpoints de prueba del sistema
+
+# --- RUTAS (ENDPOINTS) ---
+paths:
+  /test-traduccion:
+    get:
+      summary: Prueba el sistema de traducción y caché
+      tags: 
+        - Pruebas
+      description: Retorna un objeto médico simulado en su versión original (Español) y traducida (Inglés) usando LibreTranslate y Redis.
+      responses:
+        '200':
+          description: Traducción exitosa
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  original:
+                    $ref: '#/components/schemas/DatosMedicos'
+                  traducido:
+                    $ref: '#/components/schemas/DatosMedicos'
+        '500':
+          description: Error en el servidor de traducción
+
+# --- COMPONENTES (MODELOS REUTILIZABLES) ---
+components:
+  schemas:
+    DatosMedicos:
+      type: object
+      properties:
+        id_paciente:
+          type: integer
+          example: 504
+        nombre_paciente:
+          type: string
+          example: "Juan Luis Capellán"
+        motivo_consulta:
+          type: string
+          example: "Dolor abdominal..."
+        diagnostico_preliminar:
+          type: string
+          example: "Posible apendicitis..."
