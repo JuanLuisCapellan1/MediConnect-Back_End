@@ -4,7 +4,6 @@ import { injectable } from 'tsyringe';
 @injectable()
 export class RedisCacheService {
   private client: RedisClientType;
-  private isConnected = false;
 
   constructor() {
     // Conecta a localhost:6379 (gracias a Docker)
@@ -13,21 +12,30 @@ export class RedisCacheService {
     });
 
     this.client.on('error', (err) => console.error('Redis Client Error', err));
-
-    // Conectamos una sola vez al iniciar
-    this.conectar();
   }
 
   private async conectar() {
-    if (!this.isConnected) {
+    if (this.client.isOpen) {
+      return;
+    }
+
+    try {
+      // Intentamos conectar
       await this.client.connect();
-      this.isConnected = true;
       console.log('✅ Conectado a Redis');
+    } catch (error: any) {
+      // Si el error es "Socket already opened", lo ignoramos (significa que otra petición ganó la carrera)
+      if (error.message === 'Socket already opened') {
+        return; 
+      }
+      // Si es otro error, lo lanzamos
+      throw error;
     }
   }
 
   // Método para GUARDAR datos
   async set(key: string, value: string, duracionSegundos: number = 3600): Promise<void> {
+    await this.conectar();
     // Guardamos el valor y le ponemos expiración (TTL)
     await this.client.set(key, value, {
       EX: duracionSegundos
@@ -36,6 +44,7 @@ export class RedisCacheService {
 
   // Método para OBTENER datos
   async get(key: string): Promise<string | null> {
+    await this.conectar();
     return await this.client.get(key);
   }
 }

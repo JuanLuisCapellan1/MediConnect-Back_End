@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { TestTraduccionController } from '../controllers/TestTraduccionController';
+import { TraduccionController } from '../controllers/TraduccionController';
 
 const router = Router();
-const testController = new TestTraduccionController();
+const traduccionController = new TraduccionController();
 
-router.get('/test-traduccion', (req, res) => testController.runTest(req, res));
+router.post('/traduccion', (req, res) => traduccionController.traslate(req, res));
 
 export default router;
