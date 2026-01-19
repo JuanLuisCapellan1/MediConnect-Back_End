@@ -10,17 +10,45 @@ servers:
     description: Servidor de Desarrollo Local
 
 tags:
-  - name: Pruebas
-    description: Endpoints de prueba del sistema
+  - name: Traductor
+    description: Endpoints de traducción del sistema
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
-  /test-traduccion:
-    get:
-      summary: Prueba el sistema de traducción y caché
+  /traduccion:
+    post:
+      summary: Traducción dinámica de objetos JSON
       tags: 
-        - Pruebas
-      description: Retorna un objeto médico simulado en su versión original (Español) y traducida (Inglés) usando LibreTranslate y Redis.
+        - Traductor
+      description: Recibe un objeto JSON arbitrario y una lista de campos, y retorna el objeto con esos campos traducidos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                translate_fields:
+                  type: array
+                  items:
+                    type: string
+                  example: ["motivo", "diagnostico"]
+                source:
+                  type: string
+                  example: "es"
+                target:
+                  type: string
+                  example: "en"
+                # Campos dinámicos de ejemplo
+                id_paciente:
+                  type: integer
+                  example: 504
+                motivo:
+                  type: string
+                  example: "Dolor de cabeza intenso"
+                diagnostico:
+                  type: string
+                  example: "Migraña severa"
       responses:
         '200':
           description: Traducción exitosa
@@ -29,28 +57,13 @@ paths:
               schema:
                 type: object
                 properties:
+                  config:
+                    type: object
                   original:
-                    $ref: '#/components/schemas/DatosMedicos'
-                  traducido:
-                    $ref: '#/components/schemas/DatosMedicos'
+                    type: object
+                  result:
+                    type: object
+        '400':
+          description: Faltan parámetros (translate_fields)
         '500':
-          description: Error en el servidor de traducción
-
-# --- COMPONENTES (MODELOS REUTILIZABLES) ---
-components:
-  schemas:
-    DatosMedicos:
-      type: object
-      properties:
-        id_paciente:
-          type: integer
-          example: 504
-        nombre_paciente:
-          type: string
-          example: "Juan Luis Capellán"
-        motivo_consulta:
-          type: string
-          example: "Dolor abdominal..."
-        diagnostico_preliminar:
-          type: string
-          example: "Posible apendicitis..."
+          description: Error en el servidor
