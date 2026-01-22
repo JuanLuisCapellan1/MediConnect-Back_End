@@ -4,12 +4,14 @@ import { PrismaClient } from '@prisma/client';
 // Interfaces
 import { IUsuarioRepository } from '../../domain/repositories/IUsuarioRepository';
 import { IProvinciasRepository } from '../../domain/repositories/IProvinciasRepository';
+import { IMunicipiosRepository } from '../../domain/repositories/IMunicipiosRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
 
 // Implementaciones
 import { PrismaUsuarioRepository } from '../../infrastructure/repositories/PrismaUsuarioRepository';
 import { PrismaProvinciasRepository } from '../../infrastructure/repositories/PrismaProvinciasRepository';
+import { PrismaMunicipiosRepository } from '../../infrastructure/repositories/PrismaMunicipiosRepository';
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
 import { RedisCacheService } from '../../infrastructure/external-services/RedisCacheService';
@@ -17,10 +19,12 @@ import { prisma } from '../../infrastructure/database/prisma/client';
 
 // Validadores
 import { ProvinciaValidator } from '../../domain/validators/Provincias/ProvinciaValidator';
+import { MunicipioValidator } from '../../domain/validators/Municipios/MunicipioValidator';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
 
 // UseCases
 import { GestionarProvinciasUseCase } from '../../application/use-cases/GestionarProvinciasUseCase';
+import { GestionarMunicipiosUseCase } from '../../application/use-cases/GestionarMunicipiosUseCase';
 import { RegistrarUsuarioUseCase } from '../../application/use-cases/RegistrarUsuarioUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
@@ -43,6 +47,14 @@ container.register(ProvinciaValidator, {
   }
 });
 
+container.register(MunicipioValidator, {
+  useFactory: () => {
+    const municipiosRepository = container.resolve<IMunicipiosRepository>('MunicipiosRepository');
+    const provinciasRepository = container.resolve<IProvinciasRepository>('ProvinciasRepository');
+    return new MunicipioValidator(municipiosRepository, provinciasRepository);
+  }
+});
+
 container.register(EstadoValidator, {
   useFactory: () => {
     return new EstadoValidator();
@@ -61,6 +73,17 @@ container.register<IProvinciasRepository>(
   }
 );
 
+container.register<IMunicipiosRepository>(
+  'MunicipiosRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve(RedisCacheService);
+      return new PrismaMunicipiosRepository(prismaClient, redisCache);
+    }
+  }
+);
+
 container.register<IUsuarioRepository>(
   'UsuarioRepository',
   { useClass: PrismaUsuarioRepository }
@@ -73,6 +96,15 @@ container.register(GestionarProvinciasUseCase, {
     const provinciaValidator = container.resolve(ProvinciaValidator);
     const estadoValidator = container.resolve(EstadoValidator);
     return new GestionarProvinciasUseCase(provinciasRepository, provinciaValidator, estadoValidator);
+  }
+});
+
+container.register(GestionarMunicipiosUseCase, {
+  useFactory: () => {
+    const municipiosRepository = container.resolve<IMunicipiosRepository>('MunicipiosRepository');
+    const municipioValidator = container.resolve(MunicipioValidator);
+    const estadoValidator = container.resolve(EstadoValidator);
+    return new GestionarMunicipiosUseCase(municipiosRepository, municipioValidator, estadoValidator);
   }
 });
 

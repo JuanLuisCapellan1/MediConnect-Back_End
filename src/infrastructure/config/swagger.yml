@@ -14,6 +14,8 @@ tags:
     description: Endpoints de traducción del sistema
   - name: Provincias
     description: Endpoints para gestionar provincias
+  - name: Municipios
+    description: Endpoints para gestionar municipios
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -68,7 +70,7 @@ paths:
         '400':
           description: Faltan parámetros (translate_fields)
         '500':
-          description: Error en el servidor
+          description: Error en el servidor durante la traducción
 
   # --- PROVINCIAS ENDPOINTS ---
   /provincias:
@@ -411,6 +413,405 @@ paths:
         '500':
           description: Error interno del servidor
 
+  # --- MUNICIPIOS ENDPOINTS ---
+  /municipios:
+    get:
+      summary: Listar todos los municipios activos
+      tags:
+        - Municipios
+      description: Obtiene una lista de todos los municipios con estado activo o inactivo.
+      responses:
+        '200':
+          description: Municipios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Municipio'
+                  count:
+                    type: integer
+                    example: 156
+                  message:
+                    type: string
+                    example: Municipios obtenidos exitosamente
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear un nuevo municipio
+      tags:
+        - Municipios
+      description: Crea un nuevo municipio en una provincia específica. El nombre debe ser único dentro de la provincia.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provinciaId:
+                  type: integer
+                  example: 1
+                  description: ID de la provincia a la que pertenece el municipio
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Santo Domingo"
+                  description: Nombre del municipio
+              required:
+                - provinciaId
+                - nombre
+      responses:
+        '201':
+          description: Municipio creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Municipio'
+                  message:
+                    type: string
+                    example: Municipio creado exitosamente
+        '400':
+          description: Datos inválidos o provincia no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El municipio ya existe en esa provincia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /municipios/{id}:
+    get:
+      summary: Obtener municipio por ID
+      tags:
+        - Municipios
+      description: Obtiene los detalles de un municipio específico por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del municipio
+      responses:
+        '200':
+          description: Municipio obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Municipio'
+                  message:
+                    type: string
+                    example: Municipio obtenido exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Municipio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar un municipio
+      tags:
+        - Municipios
+      description: Actualiza el nombre, provincia y/o estado de un municipio existente. Al menos uno de los campos debe ser proporcionado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del municipio a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provinciaId:
+                  type: integer
+                  example: 1
+                  description: ID de la provincia (opcional)
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Santo Domingo Actualizado"
+                  description: Nuevo nombre del municipio (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado del municipio (opcional)
+              description: Al menos uno de los campos (provinciaId, nombre o estado) debe ser proporcionado
+      responses:
+        '200':
+          description: Municipio actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Municipio'
+                  message:
+                    type: string
+                    example: Municipio actualizado exitosamente
+        '400':
+          description: Datos inválidos o campos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Municipio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre del municipio ya existe en esa provincia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar un municipio
+      tags:
+        - Municipios
+      description: Elimina (soft delete) un municipio, marcándolo como eliminado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del municipio a eliminar
+      responses:
+        '200':
+          description: Municipio eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Municipio'
+                  message:
+                    type: string
+                    example: Municipio eliminado exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Municipio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /municipios/provincia/{provinciaId}:
+    get:
+      summary: Listar municipios por provincia
+      tags:
+        - Municipios
+      description: Obtiene todos los municipios que pertenecen a una provincia específica.
+      parameters:
+        - name: provinciaId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la provincia
+      responses:
+        '200':
+          description: Municipios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Municipio'
+                  count:
+                    type: integer
+                    example: 5
+                  message:
+                    type: string
+                    example: Municipios de la provincia obtenidos exitosamente
+        '400':
+          description: ID de provincia inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /municipios/nombre/{nombre}/{provinciaId}/{estado}:
+    get:
+      summary: Buscar municipios por nombre en una provincia
+      tags:
+        - Municipios
+      description: Busca municipios por nombre dentro de una provincia específica (búsqueda insensible a mayúsculas).
+      parameters:
+        - name: nombre
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "Santo Domingo"
+          description: Nombre del municipio a buscar (búsqueda parcial)
+        - name: provinciaId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la provincia
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los municipios a buscar
+      responses:
+        '200':
+          description: Municipios encontrados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Municipio'
+                  count:
+                    type: integer
+                    example: 1
+                  message:
+                    type: string
+                    example: Municipios encontrados exitosamente
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /municipios/estado/{estado}:
+    get:
+      summary: Listar municipios por estado
+      tags:
+        - Municipios
+      description: Obtiene todos los municipios que tienen un estado específico.
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los municipios a buscar
+      responses:
+        '200':
+          description: Municipios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Municipio'
+                  count:
+                    type: integer
+                    example: 45
+                  message:
+                    type: string
+                    example: Municipios obtenidos exitosamente
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
 # --- COMPONENTES (Schemas) ---
 components:
   schemas:
@@ -423,6 +824,27 @@ components:
         nombre:
           type: string
           example: "Buenos Aires"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    Municipio:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        provinciaId:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Santo Domingo"
         estado:
           type: string
           enum: ["Activo", "Inactivo", "Eliminado"]

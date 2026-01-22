@@ -21,7 +21,7 @@ export class PrismaProvinciasRepository implements IProvinciasRepository {
     // 2. Si no hay caché, buscar en DB
     const provinciasOrm = await this.prisma.provincia.findMany({
       where: { estado: { notIn: ['Eliminado', 'Inactivo'] } },
-      orderBy: { nombre: 'desc' }
+      orderBy: { nombre: 'asc' }
     });
 
     // 3. Mapear a Entidad de Dominio
@@ -77,7 +77,7 @@ export class PrismaProvinciasRepository implements IProvinciasRepository {
           mode: 'insensitive'
         }
       },
-      orderBy: { nombre: 'desc' }
+      orderBy: { nombre: 'asc' }
     });
 
     if (!provinciasOrm) return [];
