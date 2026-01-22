@@ -125,6 +125,21 @@ export class PrismaMunicipiosRepository implements IMunicipiosRepository {
       throw new Error(`Municipio con ID ${id} no encontrado`);
     }
 
+    // Validar que la nueva provincia sea válida si se proporciona
+    if (provinciaId !== undefined && provinciaId !== municipioExistente.provinciaId) {
+      const provinciaExistente = await this.prisma.provincia.findUnique({
+        where: { id: provinciaId, estado: 'Activo' }
+      });
+
+      if (!provinciaExistente) {
+        throw new Error(`Provincia con ID ${provinciaId} no encontrada`);
+      }
+
+      if (provinciaExistente.estado !== 'Activo') {
+        throw new Error(`La provincia con ID ${provinciaId} no se encuentra en estado Activo`);
+      }
+    }
+
     // Guardar el provinciaId anterior para invalidar su caché
     const provinciaPreviaId = municipioExistente.provinciaId;
 

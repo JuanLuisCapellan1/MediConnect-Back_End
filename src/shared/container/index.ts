@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import { IUsuarioRepository } from '../../domain/repositories/IUsuarioRepository';
 import { IProvinciasRepository } from '../../domain/repositories/IProvinciasRepository';
 import { IMunicipiosRepository } from '../../domain/repositories/IMunicipiosRepository';
+import { IDistritosMunicipalesRepository } from '../../domain/repositories/IDistritosMunicipalesRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
 
@@ -12,6 +13,7 @@ import { ITranslationService } from '../../application/interfaces/ITranslationSe
 import { PrismaUsuarioRepository } from '../../infrastructure/repositories/PrismaUsuarioRepository';
 import { PrismaProvinciasRepository } from '../../infrastructure/repositories/PrismaProvinciasRepository';
 import { PrismaMunicipiosRepository } from '../../infrastructure/repositories/PrismaMunicipiosRepository';
+import { PrismaDistritosMunicipalesRepository } from '../../infrastructure/repositories/PrismaDistritosMunicipalesRepository';
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
 import { RedisCacheService } from '../../infrastructure/external-services/RedisCacheService';
@@ -20,11 +22,13 @@ import { prisma } from '../../infrastructure/database/prisma/client';
 // Validadores
 import { ProvinciaValidator } from '../../domain/validators/Provincias/ProvinciaValidator';
 import { MunicipioValidator } from '../../domain/validators/Municipios/MunicipioValidator';
+import { DistritoMunicipalValidator } from '../../domain/validators/DistritosMunicipales/DistritoMunicipalValidator';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
 
 // UseCases
 import { GestionarProvinciasUseCase } from '../../application/use-cases/GestionarProvinciasUseCase';
 import { GestionarMunicipiosUseCase } from '../../application/use-cases/GestionarMunicipiosUseCase';
+import { GestionarDistritosMunicipalesUseCase } from '../../application/use-cases/GestionarDistritosMunicipalesUseCase';
 import { RegistrarUsuarioUseCase } from '../../application/use-cases/RegistrarUsuarioUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
@@ -52,6 +56,14 @@ container.register(MunicipioValidator, {
     const municipiosRepository = container.resolve<IMunicipiosRepository>('MunicipiosRepository');
     const provinciasRepository = container.resolve<IProvinciasRepository>('ProvinciasRepository');
     return new MunicipioValidator(municipiosRepository, provinciasRepository);
+  }
+});
+
+container.register(DistritoMunicipalValidator, {
+  useFactory: () => {
+    const distritosRepository = container.resolve<IDistritosMunicipalesRepository>('DistritosMunicipalesRepository');
+    const municipiosRepository = container.resolve<IMunicipiosRepository>('MunicipiosRepository');
+    return new DistritoMunicipalValidator(distritosRepository, municipiosRepository);
   }
 });
 
@@ -84,6 +96,17 @@ container.register<IMunicipiosRepository>(
   }
 );
 
+container.register<IDistritosMunicipalesRepository>(
+  'DistritosMunicipalesRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve(RedisCacheService);
+      return new PrismaDistritosMunicipalesRepository(prismaClient, redisCache);
+    }
+  }
+);
+
 container.register<IUsuarioRepository>(
   'UsuarioRepository',
   { useClass: PrismaUsuarioRepository }
@@ -105,6 +128,15 @@ container.register(GestionarMunicipiosUseCase, {
     const municipioValidator = container.resolve(MunicipioValidator);
     const estadoValidator = container.resolve(EstadoValidator);
     return new GestionarMunicipiosUseCase(municipiosRepository, municipioValidator, estadoValidator);
+  }
+});
+
+container.register(GestionarDistritosMunicipalesUseCase, {
+  useFactory: () => {
+    const distritosRepository = container.resolve<IDistritosMunicipalesRepository>('DistritosMunicipalesRepository');
+    const distritoValidator = container.resolve(DistritoMunicipalValidator);
+    const estadoValidator = container.resolve(EstadoValidator);
+    return new GestionarDistritosMunicipalesUseCase(distritosRepository, distritoValidator, estadoValidator);
   }
 });
 

@@ -16,6 +16,8 @@ tags:
     description: Endpoints para gestionar provincias
   - name: Municipios
     description: Endpoints para gestionar municipios
+  - name: DistritosMunicipales
+    description: Endpoints para gestionar distritos municipales
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -812,6 +814,405 @@ paths:
         '500':
           description: Error interno del servidor
 
+  # --- DISTRITOS MUNICIPALES ENDPOINTS ---
+  /distritos:
+    get:
+      summary: Listar todos los distritos municipales activos
+      tags:
+        - DistritosMunicipales
+      description: Obtiene una lista de todos los distritos municipales con estado activo o inactivo.
+      responses:
+        '200':
+          description: Distritos municipales obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DistritoMunicipal'
+                  count:
+                    type: integer
+                    example: 89
+                  message:
+                    type: string
+                    example: Distritos municipales obtenidos exitosamente
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear un nuevo distrito municipal
+      tags:
+        - DistritosMunicipales
+      description: Crea un nuevo distrito municipal en un municipio específico. El nombre debe ser único dentro del municipio.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                municipioId:
+                  type: integer
+                  example: 1
+                  description: ID del municipio al que pertenece el distrito
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Distrito Central"
+                  description: Nombre del distrito municipal
+              required:
+                - municipioId
+                - nombre
+      responses:
+        '201':
+          description: Distrito municipal creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DistritoMunicipal'
+                  message:
+                    type: string
+                    example: Distrito municipal creado exitosamente
+        '400':
+          description: Datos inválidos o municipio no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El distrito municipal ya existe en ese municipio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /distritos/{id}:
+    get:
+      summary: Obtener distrito municipal por ID
+      tags:
+        - DistritosMunicipales
+      description: Obtiene los detalles de un distrito municipal específico por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del distrito municipal
+      responses:
+        '200':
+          description: Distrito municipal obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DistritoMunicipal'
+                  message:
+                    type: string
+                    example: Distrito municipal obtenido exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Distrito municipal no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar un distrito municipal
+      tags:
+        - DistritosMunicipales
+      description: Actualiza el nombre, municipio y/o estado de un distrito municipal existente. Al menos uno de los campos debe ser proporcionado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del distrito municipal a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                municipioId:
+                  type: integer
+                  example: 1
+                  description: ID del municipio (opcional)
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Distrito Central Actualizado"
+                  description: Nuevo nombre del distrito (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado del distrito (opcional)
+              description: Al menos uno de los campos (municipioId, nombre o estado) debe ser proporcionado
+      responses:
+        '200':
+          description: Distrito municipal actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DistritoMunicipal'
+                  message:
+                    type: string
+                    example: Distrito municipal actualizado exitosamente
+        '400':
+          description: Datos inválidos o campos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Distrito municipal no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre del distrito municipal ya existe en ese municipio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar un distrito municipal
+      tags:
+        - DistritosMunicipales
+      description: Elimina (soft delete) un distrito municipal, marcándolo como eliminado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del distrito municipal a eliminar
+      responses:
+        '200':
+          description: Distrito municipal eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DistritoMunicipal'
+                  message:
+                    type: string
+                    example: Distrito municipal eliminado exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Distrito municipal no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /distritos/municipio/{municipioId}:
+    get:
+      summary: Listar distritos municipales por municipio
+      tags:
+        - DistritosMunicipales
+      description: Obtiene todos los distritos municipales que pertenecen a un municipio específico.
+      parameters:
+        - name: municipioId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del municipio
+      responses:
+        '200':
+          description: Distritos municipales obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DistritoMunicipal'
+                  count:
+                    type: integer
+                    example: 3
+                  message:
+                    type: string
+                    example: Distritos municipales del municipio obtenidos exitosamente
+        '400':
+          description: ID de municipio inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /distritos/nombre/{nombre}/{municipioId}/{estado}:
+    get:
+      summary: Buscar distritos municipales por nombre en un municipio
+      tags:
+        - DistritosMunicipales
+      description: Busca distritos municipales por nombre dentro de un municipio específico (búsqueda insensible a mayúsculas).
+      parameters:
+        - name: nombre
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "Distrito Central"
+          description: Nombre del distrito a buscar (búsqueda parcial)
+        - name: municipioId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del municipio
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los distritos a buscar
+      responses:
+        '200':
+          description: Distritos municipales encontrados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DistritoMunicipal'
+                  count:
+                    type: integer
+                    example: 1
+                  message:
+                    type: string
+                    example: Distritos municipales encontrados exitosamente
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /distritos/estado/{estado}:
+    get:
+      summary: Listar distritos municipales por estado
+      tags:
+        - DistritosMunicipales
+      description: Obtiene todos los distritos municipales que tienen un estado específico.
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los distritos a buscar
+      responses:
+        '200':
+          description: Distritos municipales obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DistritoMunicipal'
+                  count:
+                    type: integer
+                    example: 67
+                  message:
+                    type: string
+                    example: Distritos municipales obtenidos exitosamente
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
 # --- COMPONENTES (Schemas) ---
 components:
   schemas:
@@ -845,6 +1246,27 @@ components:
         nombre:
           type: string
           example: "Santo Domingo"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    DistritoMunicipal:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        municipioId:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Distrito Central"
         estado:
           type: string
           enum: ["Activo", "Inactivo", "Eliminado"]
