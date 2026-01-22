@@ -12,6 +12,8 @@ servers:
 tags:
   - name: Traductor
     description: Endpoints de traducción del sistema
+  - name: Provincias
+    description: Endpoints para gestionar provincias
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -67,3 +69,375 @@ paths:
           description: Faltan parámetros (translate_fields)
         '500':
           description: Error en el servidor
+
+  # --- PROVINCIAS ENDPOINTS ---
+  /provincias:
+    get:
+      summary: Listar todas las provincias activas
+      tags:
+        - Provincias
+      description: Obtiene una lista de todas las provincias con estado activo o inactivo.
+      responses:
+        '200':
+          description: Provincias obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Provincia'
+                  count:
+                    type: integer
+                    example: 24
+                  message:
+                    type: string
+                    example: Provincias obtenidas exitosamente
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear una nueva provincia
+      tags:
+        - Provincias
+      description: Crea una nueva provincia en el sistema. El nombre debe ser único y tener al menos 3 caracteres.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Buenos Aires"
+              required:
+                - nombre
+      responses:
+        '201':
+          description: Provincia creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Provincia'
+                  message:
+                    type: string
+                    example: Provincia creada exitosamente
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: La provincia ya existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /provincias/{id}:
+    get:
+      summary: Obtener provincia por ID
+      tags:
+        - Provincias
+      description: Obtiene los detalles de una provincia específica por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la provincia
+      responses:
+        '200':
+          description: Provincia obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Provincia'
+                  message:
+                    type: string
+                    example: Provincia obtenida exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Provincia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar una provincia
+      tags:
+        - Provincias
+      description: Actualiza el nombre y/o estado de una provincia existente. Al menos uno de los dos campos debe ser proporcionado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la provincia a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Buenos Aires Actualizado"
+                  description: Nuevo nombre de la provincia (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado de la provincia (opcional)
+              description: Al menos uno de los campos (nombre o estado) debe ser proporcionado
+      responses:
+        '200':
+          description: Provincia actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Provincia'
+                  message:
+                    type: string
+                    example: Provincia actualizada exitosamente
+        '400':
+          description: Datos inválidos o campos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Provincia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre de la provincia ya existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar una provincia
+      tags:
+        - Provincias
+      description: Elimina (soft delete) una provincia, marcándola como eliminada.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la provincia a eliminar
+      responses:
+        '200':
+          description: Provincia eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Provincia'
+                  message:
+                    type: string
+                    example: Provincia eliminada exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Provincia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /provincias/nombre/{nombre}/{estado}:
+    get:
+      summary: Buscar provincias por nombre y estado
+      tags:
+        - Provincias
+      description: Busca provincias por nombre y estado específico (búsqueda insensible a mayúsculas).
+      parameters:
+        - name: nombre
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "Buenos Aires"
+          description: Nombre de la provincia a buscar (búsqueda parcial)
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de las provincias a buscar
+      responses:
+        '200':
+          description: Provincias encontradas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Provincia'
+                  message:
+                    type: string
+                    example: Provincia obtenida exitosamente
+        '400':
+          description: Nombre o estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Provincias no encontradas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /provincias/estado/{estado}:
+    get:
+      summary: Listar provincias por estado
+      tags:
+        - Provincias
+      description: Obtiene todas las provincias que tienen un estado específico.
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de las provincias a buscar
+      responses:
+        '200':
+          description: Provincias obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Provincia'
+                  count:
+                    type: integer
+                    example: 10
+                  message:
+                    type: string
+                    example: Provincias con estado "Activo" obtenidas exitosamente
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+# --- COMPONENTES (Schemas) ---
+components:
+  schemas:
+    Provincia:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Buenos Aires"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Error al procesar la solicitud"

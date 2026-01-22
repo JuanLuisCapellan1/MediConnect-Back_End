@@ -47,4 +47,10 @@ export class RedisCacheService {
     await this.conectar();
     return await this.client.get(key);
   }
+
+  // Método para ELIMINAR datos
+  async del(key: string): Promise<void> {
+    await this.conectar();
+    await this.client.del(key);
+  }
 }

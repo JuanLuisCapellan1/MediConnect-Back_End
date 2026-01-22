@@ -84,11 +84,10 @@ COMMENT ON COLUMN distritos_municipales.id_municipio IS 'Referencia al municipio
 
 
 
-
-
 CREATE TABLE secciones (
     id_seccion INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    id_distrito_municipal INTEGER NOT NULL,
+    id_distrito_municipal INTEGER,
+    id_municipio INTEGER,
     nombre VARCHAR(80) NOT NULL,
     estado VARCHAR(20) NOT NULL DEFAULT 'Activo',
     creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -97,6 +96,11 @@ CREATE TABLE secciones (
     CONSTRAINT fk_secciones_distrito_municipal
         FOREIGN KEY (id_distrito_municipal)
         REFERENCES distritos_municipales(id_distrito_municipal)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_secciones_municipio
+        FOREIGN KEY (id_municipio)
+        REFERENCES municipios(id_municipio)
         ON DELETE RESTRICT,
 
     -- Restricciones de Integridad
@@ -172,7 +176,7 @@ CREATE TABLE sub_barrios (
     -- Restricciones de Integridad
     CONSTRAINT chk_sub_barrios_estado CHECK (estado IN ('Activo', 'Inactivo', 'Eliminado')),
     -- Integridad compuesta: Nombre único dentro del mismo barrio
-    CONSTRAINT uq_sub_barrios_barrio_nombre UNIQUE (id_barrio, nombre)
+    CONSTRAINT uq_sub_barrios_barrio_nombre UNIQUE (id_sub_barrio, nombre)
 );
 
 -- Índices de Rendimiento
