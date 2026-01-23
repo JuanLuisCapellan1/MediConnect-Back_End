@@ -18,6 +18,8 @@ tags:
     description: Endpoints para gestionar municipios
   - name: DistritosMunicipales
     description: Endpoints para gestionar distritos municipales
+  - name: Secciones
+    description: Endpoints para gestionar secciones
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -1213,6 +1215,417 @@ paths:
         '500':
           description: Error interno del servidor
 
+  # --- SECCIONES ENDPOINTS ---
+  /secciones:
+    get:
+      summary: Listar todas las secciones activas
+      tags:
+        - Secciones
+      description: Obtiene una lista de todas las secciones. Cada sección está asociada a al menos un distrito municipal o municipio (o ambos).
+      responses:
+        '200':
+          description: Secciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Seccion'
+                  count:
+                    type: integer
+                    example: 156
+                  message:
+                    type: string
+                    example: Secciones obtenidas exitosamente
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear una nueva sección
+      tags:
+        - Secciones
+      description: Crea una nueva sección. Al menos uno de los IDs (distritoMunicipalId o municipioId) debe ser proporcionado. El nombre debe ser único dentro del contexto (distrito o municipio).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                distritoMunicipalId:
+                  type: integer
+                  nullable: true
+                  example: 1
+                  description: ID del distrito municipal al que pertenece la sección (opcional, pero al menos uno de los IDs es requerido)
+                municipioId:
+                  type: integer
+                  nullable: true
+                  example: 1
+                  description: ID del municipio (opcional, pero al menos uno de los IDs es requerido)
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Sección A"
+                  description: Nombre de la sección
+              required:
+                - nombre
+      responses:
+        '201':
+          description: Sección creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Seccion'
+                  message:
+                    type: string
+                    example: Sección creada exitosamente
+        '400':
+          description: Datos inválidos o distrito no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: La sección ya existe en ese distrito
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /secciones/{id}:
+    get:
+      summary: Obtener sección por ID
+      tags:
+        - Secciones
+      description: Obtiene los detalles de una sección específica por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la sección
+      responses:
+        '200':
+          description: Sección obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Seccion'
+                  message:
+                    type: string
+                    example: Sección obtenida exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Sección no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar una sección
+      tags:
+        - Secciones
+      description: Actualiza el nombre, distrito, municipio y/o estado de una sección existente. Al menos uno de los campos debe ser proporcionado. La sección debe mantener al menos uno de los IDs (distritoMunicipalId o municipioId) después de la actualización.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la sección a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                distritoMunicipalId:
+                  type: integer
+                  nullable: true
+                  example: 1
+                  description: ID del distrito municipal (opcional)
+                municipioId:
+                  type: integer
+                  nullable: true
+                  example: 1
+                  description: ID del municipio (opcional)
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Sección A Actualizada"
+                  description: Nuevo nombre de la sección (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado de la sección (opcional)
+              description: Al menos uno de los campos debe ser proporcionado. Se debe mantener al menos uno de los IDs.
+      responses:
+        '200':
+          description: Sección actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Seccion'
+                  message:
+                    type: string
+                    example: Sección actualizada exitosamente
+        '400':
+          description: Datos inválidos o campos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Sección no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre de la sección ya existe en ese contexto o se perdería el vinculo a un distrito/municipio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar una sección
+      tags:
+        - Secciones
+      description: Elimina (soft delete) una sección, marcándola como eliminada.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la sección a eliminar
+      responses:
+        '200':
+          description: Sección eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Seccion'
+                  message:
+                    type: string
+                    example: Sección eliminada exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Sección no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /secciones/por-distrito/{distritoMunicipalId}:
+    get:
+      summary: Listar secciones por distrito municipal
+      tags:
+        - Secciones
+      description: Obtiene todas las secciones que pertenecen a un distrito municipal específico. Una sección puede pertenecer a un distrito y opcionalmente a un municipio.
+      parameters:
+        - name: distritoMunicipalId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del distrito municipal
+      responses:
+        '200':
+          description: Secciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Seccion'
+                  count:
+                    type: integer
+                    example: 5
+                  message:
+                    type: string
+                    example: Secciones del distrito obtenidas exitosamente
+        '400':
+          description: ID de distrito inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /secciones/por-nombre:
+    get:
+      summary: Buscar secciones por nombre en un distrito o municipio
+      tags:
+        - Secciones
+      description: Busca secciones por nombre dentro de un distrito municipal específico (búsqueda insensible a mayúsculas). La sección debe pertenecer a dicho distrito o municipio.
+      parameters:
+        - name: nombre
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "Sección A"
+          description: Nombre de la sección a buscar (búsqueda parcial)
+        - name: distritoMunicipalId
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 1
+          description: ID del distrito municipal (opcional)
+        - name: estado
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de las secciones a buscar (opcional)
+      responses:
+        '200':
+          description: Sección encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Seccion'
+                  message:
+                    type: string
+                    example: Sección encontrada exitosamente
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Sección no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /secciones/por-estado:
+    get:
+      summary: Listar secciones por estado
+      tags:
+        - Secciones
+      description: Obtiene todas las secciones que tienen un estado específico.
+      parameters:
+        - name: estado
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de las secciones a buscar
+      responses:
+        '200':
+          description: Secciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Seccion'
+                  count:
+                    type: integer
+                    example: 67
+                  message:
+                    type: string
+                    example: Secciones obtenidas exitosamente
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
 # --- COMPONENTES (Schemas) ---
 components:
   schemas:
@@ -1267,6 +1680,34 @@ components:
         nombre:
           type: string
           example: "Distrito Central"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    Seccion:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        distritoMunicipalId:
+          type: integer
+          nullable: true
+          example: 1
+          description: ID del distrito municipal (puede ser null)
+        municipioId:
+          type: integer
+          nullable: true
+          example: 1
+          description: ID del municipio (puede ser null)
+        nombre:
+          type: string
+          example: "Sección A"
         estado:
           type: string
           enum: ["Activo", "Inactivo", "Eliminado"]

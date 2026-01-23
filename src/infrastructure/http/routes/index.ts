@@ -3,6 +3,7 @@ import { TraduccionController } from '../controllers/TraduccionController';
 import ProvinciasRoutes from './ProvinciasRoutes';
 import MunicipiosRoutes from './MunicipiosRoutes';
 import DistritosMunicipalesRoutes from './DistritosMunicipalesRoutes';
+import SeccionesRoutes from './SeccionesRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -17,5 +18,8 @@ router.use('/municipios', MunicipiosRoutes);
 
 // Rutas de Distritos Municipales
 router.use('/distritos', DistritosMunicipalesRoutes);
+
+// Rutas de Secciones
+router.use('/secciones', SeccionesRoutes);
 
 export default router;
