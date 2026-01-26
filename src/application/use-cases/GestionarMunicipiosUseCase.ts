@@ -42,6 +42,11 @@ export class GestionarMunicipiosUseCase {
       await this.validator.validarCreacion(dto.nombre, dto.provinciaId);
     }
 
+    // Validar cambio de provincia solo si se proporciona
+    if (dto.provinciaId) {
+      await this.validator.validarActualizacionProvincia(dto.provinciaId, dto.id);
+    }
+
     // Validar estado solo si se proporciona
     if (dto.estado) {
       await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo', 'Eliminado']);

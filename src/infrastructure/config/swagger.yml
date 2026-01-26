@@ -20,6 +20,8 @@ tags:
     description: Endpoints para gestionar distritos municipales
   - name: Secciones
     description: Endpoints para gestionar secciones
+  - name: Barrios
+    description: Endpoints para gestionar barrios
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -1626,6 +1628,403 @@ paths:
         '500':
           description: Error interno del servidor
 
+  # --- BARRIOS ENDPOINTS ---
+  /barrios:
+    get:
+      summary: Listar todos los barrios activos
+      tags:
+        - Barrios
+      description: Obtiene una lista de todos los barrios con estado activo o inactivo.
+      responses:
+        '200':
+          description: Barrios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Barrio'
+                  count:
+                    type: integer
+                    example: 15
+                  message:
+                    type: string
+                    example: Barrios obtenidos exitosamente
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear un nuevo barrio
+      tags:
+        - Barrios
+      description: Crea un nuevo barrio en el sistema. El nombre debe ser único en la sección y la sección debe existir.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                seccionId:
+                  type: integer
+                  example: 5
+                  description: ID de la sección a la que pertenece el barrio
+                nombre:
+                  type: string
+                  example: "Los Prados"
+                  description: Nombre del barrio
+              required:
+                - seccionId
+                - nombre
+      responses:
+        '201':
+          description: Barrio creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Barrio'
+                  message:
+                    type: string
+                    example: Barrio creado exitosamente
+        '400':
+          description: Datos inválidos o campos requeridos faltantes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El barrio ya existe en la sección
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /barrios/{id}:
+    get:
+      summary: Obtener barrio por ID
+      tags:
+        - Barrios
+      description: Obtiene los detalles de un barrio específico por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del barrio
+      responses:
+        '200':
+          description: Barrio obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Barrio'
+                  message:
+                    type: string
+                    example: Barrio obtenido exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Barrio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar un barrio
+      tags:
+        - Barrios
+      description: Actualiza el nombre, sección y/o estado de un barrio existente. Al menos uno de los campos debe ser proporcionado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del barrio a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                seccionId:
+                  type: integer
+                  example: 5
+                  description: Nuevo ID de la sección (opcional)
+                nombre:
+                  type: string
+                  example: "Los Prados Actualizados"
+                  description: Nuevo nombre del barrio (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado del barrio (opcional)
+              description: Al menos uno de los campos (seccionId, nombre o estado) debe ser proporcionado
+      responses:
+        '200':
+          description: Barrio actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Barrio'
+                  message:
+                    type: string
+                    example: Barrio actualizado exitosamente
+        '400':
+          description: Datos inválidos o campos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Barrio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre del barrio ya existe en la sección
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar un barrio
+      tags:
+        - Barrios
+      description: Elimina (soft delete) un barrio, marcándolo como eliminado. No se puede eliminar si tiene sub-barrios u ubicaciones asociadas.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del barrio a eliminar
+      responses:
+        '200':
+          description: Barrio eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Barrio'
+                  message:
+                    type: string
+                    example: Barrio eliminado exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Barrio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor o el barrio tiene dependencias
+
+  /barrios/seccion/{seccionId}:
+    get:
+      summary: Listar barrios de una sección
+      tags:
+        - Barrios
+      description: Obtiene todos los barrios que pertenecen a una sección específica.
+      parameters:
+        - name: seccionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 5
+          description: ID de la sección
+      responses:
+        '200':
+          description: Barrios de la sección obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Barrio'
+                  count:
+                    type: integer
+                    example: 8
+                  message:
+                    type: string
+                    example: Barrios de la sección obtenidos exitosamente
+        '400':
+          description: ID de sección inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /barrios/nombre/{nombre}/{seccionId}/{estado}:
+    get:
+      summary: Buscar barrios por nombre en una sección
+      tags:
+        - Barrios
+      description: Busca barrios por nombre dentro de una sección específica (búsqueda insensible a mayúsculas).
+      parameters:
+        - name: nombre
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "Prados"
+          description: Nombre del barrio a buscar (búsqueda parcial)
+        - name: seccionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 5
+          description: ID de la sección
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los barrios a buscar
+      responses:
+        '200':
+          description: Barrios encontrados exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Barrio'
+                  count:
+                    type: integer
+                    example: 2
+                  message:
+                    type: string
+                    example: Barrios encontrados exitosamente
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /barrios/estado/{estado}:
+    get:
+      summary: Listar barrios por estado
+      tags:
+        - Barrios
+      description: Obtiene todos los barrios que tienen un estado específico.
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los barrios a buscar
+      responses:
+        '200':
+          description: Barrios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Barrio'
+                  count:
+                    type: integer
+                    example: 45
+                  message:
+                    type: string
+                    example: Barrios obtenidos exitosamente
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
 # --- COMPONENTES (Schemas) ---
 components:
   schemas:
@@ -1708,6 +2107,28 @@ components:
         nombre:
           type: string
           example: "Sección A"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    Barrio:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        seccionId:
+          type: integer
+          example: 5
+          description: ID de la sección a la que pertenece el barrio
+        nombre:
+          type: string
+          example: "Los Prados"
         estado:
           type: string
           enum: ["Activo", "Inactivo", "Eliminado"]

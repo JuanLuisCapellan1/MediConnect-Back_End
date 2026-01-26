@@ -42,6 +42,11 @@ export class GestionarDistritosMunicipalesUseCase {
       await this.validator.validarCreacion(dto.nombre, dto.municipioId);
     }
 
+     // Validar cambio de sección solo si se proporciona
+    if (dto.municipioId) {
+      await this.validator.validarActualizacionMunicipio(dto.municipioId, dto.id);
+    }
+
     // Validar estado solo si se proporciona
     if (dto.estado) {
       await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo', 'Eliminado']);

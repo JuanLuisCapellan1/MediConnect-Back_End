@@ -72,10 +72,7 @@ export class GestionarSeccionesUseCase {
   }
 
   async actualizar(id: number, dto: ActualizarSeccionDto) {
-    if (
-      dto.nombre !== undefined ||
-      dto.distritoMunicipalId !== undefined
-    ) {
+    if ( dto.nombre !== undefined || dto.distritoMunicipalId !== undefined) {
       const seccionExistente = await this.obtenerPorId(id);
 
       const distritoFinal = dto.distritoMunicipalId !== undefined ? dto.distritoMunicipalId : seccionExistente.distritoMunicipalId;
@@ -84,6 +81,10 @@ export class GestionarSeccionesUseCase {
         dto.nombre || seccionExistente.nombre,
         distritoFinal
       );
+    }
+
+    if (dto.distritoMunicipalId !== undefined) {
+      await this.validator.validarActualizacionDistrito(dto.distritoMunicipalId, id);
     }
 
      // Validar estado solo si se proporciona

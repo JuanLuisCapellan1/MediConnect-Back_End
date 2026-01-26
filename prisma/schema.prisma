@@ -200,7 +200,6 @@ model Municipio {
 
   provincia             Provincia           @relation(fields: [provinciaId], references: [id])
   distritosMunicipales  DistritoMunicipal[]
-  secciones             Seccion[]
 
   @@unique([provinciaId, nombre])
   @@map("municipios")
@@ -223,13 +222,11 @@ model DistritoMunicipal {
 model Seccion {
   id                  Int               @id @default(autoincrement()) @map("id_seccion")
   distritoMunicipalId Int?              @map("id_distrito_municipal")
-  municipioId         Int?              @map("id_municipio")
   nombre              String            @db.VarChar(80)
   estado              String            @default("Activo") @db.VarChar(20)
   creadoEn            DateTime          @default(now()) @map("creado_en") @db.Timestamptz(6)
 
   distritoMunicipal   DistritoMunicipal? @relation(fields: [distritoMunicipalId], references: [id])
-  municipio           Municipio?        @relation(fields: [municipioId], references: [id])
   barrios             Barrio[]
 
   @@unique([distritoMunicipalId, nombre])
