@@ -8,6 +8,7 @@ import { IMunicipiosRepository } from '../../domain/repositories/IMunicipiosRepo
 import { IDistritosMunicipalesRepository } from '../../domain/repositories/IDistritosMunicipalesRepository';
 import { ISeccionesRepository } from '../../domain/repositories/ISeccionesRepository';
 import { IBarriosRepository } from '../../domain/repositories/IBarriosRepository';
+import { ISubBarriosRepository } from '../../domain/repositories/ISubBarriosRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
 
@@ -18,6 +19,7 @@ import { PrismaMunicipiosRepository } from '../../infrastructure/repositories/Pr
 import { PrismaDistritosMunicipalesRepository } from '../../infrastructure/repositories/PrismaDistritosMunicipalesRepository';
 import { PrismaSeccionesRepository } from '../../infrastructure/repositories/PrismaSeccionesRepository';
 import { PrismaBarriosRepository } from '../../infrastructure/repositories/PrismaBarriosRepository';
+import { PrismaSubBarriosRepository } from '../../infrastructure/repositories/PrismaSubBarriosRepository';
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
 import { RedisCacheService } from '../../infrastructure/external-services/RedisCacheService';
@@ -29,6 +31,7 @@ import { MunicipioValidator } from '../../domain/validators/Municipios/Municipio
 import { DistritoMunicipalValidator } from '../../domain/validators/DistritosMunicipales/DistritoMunicipalValidator';
 import { SeccionValidator } from '../../domain/validators/Secciones/SeccionValidator';
 import { BarrioValidator } from '../../domain/validators/Barrios/BarrioValidator';
+import { SubBarrioValidator } from '../../domain/validators/SubBarrios/SubBarrioValidator';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
 
 // UseCases
@@ -36,6 +39,7 @@ import { GestionarProvinciasUseCase } from '../../application/use-cases/Gestiona
 import { GestionarMunicipiosUseCase } from '../../application/use-cases/GestionarMunicipiosUseCase';
 import { GestionarDistritosMunicipalesUseCase } from '../../application/use-cases/GestionarDistritosMunicipalesUseCase';
 import { GestionarBarriosUseCase } from '../../application/use-cases/GestionarBarriosUseCase';
+import { GestionarSubBarriosUseCase } from '../../application/use-cases/GestionarSubBarriosUseCase';
 import { GestionarSeccionesUseCase } from '../../application/use-cases/GestionarSeccionesUseCase';
 import { RegistrarUsuarioUseCase } from '../../application/use-cases/RegistrarUsuarioUseCase';
 
@@ -89,6 +93,14 @@ container.register(BarrioValidator, {
     const barriosRepository = container.resolve<IBarriosRepository>('BarriosRepository');
     const seccionesRepository = container.resolve<ISeccionesRepository>('SeccionesRepository');
     return new BarrioValidator(barriosRepository, seccionesRepository);
+  }
+});
+
+container.register(SubBarrioValidator, {
+  useFactory: () => {
+    const subBarriosRepository = container.resolve<ISubBarriosRepository>('SubBarriosRepository');
+    const barriosRepository = container.resolve<IBarriosRepository>('BarriosRepository');
+    return new SubBarrioValidator(subBarriosRepository, barriosRepository);
   }
 });
 
@@ -154,6 +166,17 @@ container.register<IBarriosRepository>(
   }
 );
 
+container.register<ISubBarriosRepository>(
+  'SubBarriosRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve(RedisCacheService);
+      return new PrismaSubBarriosRepository(prismaClient, redisCache);
+    }
+  }
+);
+
 container.register<IUsuarioRepository>(
   'UsuarioRepository',
   { useClass: PrismaUsuarioRepository }
@@ -202,6 +225,15 @@ container.register(GestionarBarriosUseCase, {
     const barrioValidator = container.resolve(BarrioValidator);
     const estadoValidator = container.resolve(EstadoValidator);
     return new GestionarBarriosUseCase(barriosRepository, barrioValidator, estadoValidator);
+  }
+});
+
+container.register(GestionarSubBarriosUseCase, {
+  useFactory: () => {
+    const subBarriosRepository = container.resolve<ISubBarriosRepository>('SubBarriosRepository');
+    const subBarrioValidator = container.resolve(SubBarrioValidator);
+    const estadoValidator = container.resolve(EstadoValidator);
+    return new GestionarSubBarriosUseCase(subBarriosRepository, subBarrioValidator, estadoValidator);
   }
 });
 
