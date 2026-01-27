@@ -2117,3 +2117,51 @@ CREATE TABLE archivos_adjuntos_historial_clinico (
 -- ÍNDICE
 -- "Dame todos los archivos del historial #12001"
 CREATE INDEX idx_adjuntos_historial ON archivos_adjuntos_historial_clinico(id_historial);
+
+
+
+CREATE TABLE limites_operativos (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(50), -- 'Distrito Nacional' o 'Provincia Santo Domingo'
+    geom GEOMETRY(MultiPolygon, 4326)
+);
+
+-- Crear un índice espacial para que las consultas sean rápidas
+CREATE INDEX idx_limites_geom ON limites_operativos USING GIST (geom);
+
+
+CREATE OR REPLACE FUNCTION validar_zona_operativa()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_punto_geometry GEOMETRY;
+    v_count INTEGER;
+BEGIN
+    -- Permitir valores nulos (el repositorio inserta primero y actualiza después)
+    IF NEW.punto_geografico IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    -- Cast directo de geography a geometry (más eficiente)
+    v_punto_geometry := NEW.punto_geografico::geometry;
+    
+    -- Contar cuántos polígonos contienen el punto
+    SELECT COUNT(*) INTO v_count
+    FROM limites_operativos 
+    WHERE ST_Contains(geom, v_punto_geometry);
+    
+    -- Si no existe ningún polígono que contenga el punto, lanzar error
+    IF v_count = 0 THEN
+        RAISE EXCEPTION 'Ubicación fuera de rango: El punto no se encuentra dentro de ninguna de las zonas operativas permitidas.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Reemplazar el trigger anterior
+DROP TRIGGER IF EXISTS trg_verificar_zona ON ubicaciones;
+
+CREATE TRIGGER trg_verificar_zona
+BEFORE INSERT OR UPDATE ON ubicaciones
+FOR EACH ROW
+EXECUTE FUNCTION validar_zona_operativa();

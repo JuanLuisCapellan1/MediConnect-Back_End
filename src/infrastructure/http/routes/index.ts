@@ -6,6 +6,7 @@ import DistritosMunicipalesRoutes from './DistritosMunicipalesRoutes';
 import SeccionesRoutes from './SeccionesRoutes';
 import BarriosRoutes from './BarriosRoutes';
 import SubBarriosRoutes from './SubBarriosRoutes';
+import UbicacionesRoutes from './UbicacionesRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -29,5 +30,8 @@ router.use('/barrios', BarriosRoutes);
 
 // Rutas de Sub Barrios
 router.use('/subBarrios', SubBarriosRoutes);
+
+// Rutas de Ubicaciones
+router.use('/ubicaciones', UbicacionesRoutes);
 
 export default router;

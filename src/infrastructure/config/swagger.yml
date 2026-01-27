@@ -24,6 +24,8 @@ tags:
     description: Endpoints para gestionar barrios
   - name: SubBarrios
     description: Endpoints para gestionar SubBarrios
+  - name: Ubicaciones
+    description: Endpoints para gestionar ubicaciones
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -2327,6 +2329,374 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
+
+  # --- UBICACIONES ENDPOINTS ---
+  /ubicaciones:
+    post:
+      summary: Crear una nueva Ubicacion
+      tags:
+        - Ubicaciones
+      description: Crea una nueva ubicación asociada a un barrio y opcionalmente a un subbarrio.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                barrioId:
+                  type: integer
+                  example: 1
+                  description: ID del barrio
+                direccion:
+                  type: string
+                  example: "Calle Principal 123"
+                  description: Dirección de la ubicación
+                subBarrioId:
+                  type: integer
+                  nullable: true
+                  example: 1
+                  description: ID del subbarrio (opcional)
+                codigoPostal:
+                  type: string
+                  nullable: true
+                  example: "28001"
+                  description: Código postal (opcional, máximo 10 caracteres)
+                puntoGeografico:
+                  type: string
+                  nullable: true
+                  example: '{"type": "Point", "coordinates": [-70.1234, 18.5678]}'
+                  description: Coordenadas geográficas en formato GeoJSON Point (opcional)
+              required:
+                - barrioId
+                - direccion
+      responses:
+        '201':
+          description: Ubicación creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: Error en los parámetros de entrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    get:
+      summary: Listar todas las ubicaciones
+      tags:
+        - Ubicaciones
+      description: Obtiene una lista de todas las ubicaciones activas.
+      responses:
+        '200':
+          description: Ubicaciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/{id}:
+    get:
+      summary: Buscar una Ubicacion por ID
+      tags:
+        - Ubicaciones
+      description: Obtiene los detalles de una ubicación específica.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la ubicación
+      responses:
+        '200':
+          description: Ubicación encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ubicacion'
+        '404':
+          description: Ubicación no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar una Ubicacion
+      tags:
+        - Ubicaciones
+      description: Actualiza los datos de una ubicación existente.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la ubicación
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                barrioId:
+                  type: integer
+                  example: 2
+                  description: ID del barrio (opcional)
+                subBarrioId:
+                  type: integer
+                  nullable: true
+                  example: 2
+                  description: ID del subbarrio (opcional)
+                direccion:
+                  type: string
+                  example: "Calle Nueva 456"
+                  description: Nueva dirección (opcional)
+                codigoPostal:
+                  type: string
+                  nullable: true
+                  example: "28002"
+                  description: Nuevo código postal (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado (opcional)
+                puntoGeografico:
+                  type: string
+                  nullable: true
+                  example: '{"type": "Point", "coordinates": [-70.5678, 18.9012]}'
+                  description: Nuevas coordenadas geográficas en formato GeoJSON Point (opcional)
+      responses:
+        '200':
+          description: Ubicación actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: Error en los parámetros de entrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ubicación no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar una Ubicacion
+      tags:
+        - Ubicaciones
+      description: Elimina una ubicación (eliminación lógica). No se puede eliminar si tiene centros de salud, horarios, citas o pacientes asociados.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la ubicación
+      responses:
+        '200':
+          description: Ubicación eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Ubicación eliminada correctamente"
+                  ubicacion:
+                    $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: No se puede eliminar la ubicación (tiene dependencias)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ubicación no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/barrio/{barrioId}:
+    get:
+      summary: Listar ubicaciones de un barrio
+      tags:
+        - Ubicaciones
+      description: Obtiene todas las ubicaciones que pertenecen a un barrio específico.
+      parameters:
+        - name: barrioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del barrio
+      responses:
+        '200':
+          description: Ubicaciones del barrio obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: ID de barrio inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/subbarrio/{subBarrioId}:
+    get:
+      summary: Listar ubicaciones de un subbarrio
+      tags:
+        - Ubicaciones
+      description: Obtiene todas las ubicaciones que pertenecen a un subbarrio específico.
+      parameters:
+        - name: subBarrioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del subbarrio
+      responses:
+        '200':
+          description: Ubicaciones del subbarrio obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: ID de subbarrio inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/buscar/direccion/{direccion}:
+    get:
+      summary: Buscar ubicaciones por dirección
+      tags:
+        - Ubicaciones
+      description: Realiza una búsqueda parcial (case-insensitive) de ubicaciones por dirección.
+      parameters:
+        - name: direccion
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Parte de la dirección a buscar
+      responses:
+        '200':
+          description: Ubicaciones encontradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: Parámetro dirección inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/buscar/codigopostal/{codigoPostal}:
+    get:
+      summary: Buscar ubicaciones por código postal
+      tags:
+        - Ubicaciones
+      description: Busca ubicaciones que tengan un código postal específico.
+      parameters:
+        - name: codigoPostal
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Código postal a buscar
+      responses:
+        '200':
+          description: Ubicaciones encontradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: Parámetro código postal inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/buscar/estado/{estado}:
+    get:
+      summary: Buscar ubicaciones por estado
+      tags:
+        - Ubicaciones
+      description: Obtiene todas las ubicaciones que tengan un estado específico.
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+          description: Estado a buscar
+      responses:
+        '200':
+          description: Ubicaciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
 components:
   schemas:
     Provincia:
@@ -2456,6 +2826,44 @@ components:
           type: string
           enum: ["Activo", "Inactivo", "Eliminado"]
           example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    Ubicacion:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        barrioId:
+          type: integer
+          example: 2
+          description: ID del barrio al que pertenece la ubicación
+        subBarrioId:
+          type: integer
+          nullable: true
+          example: 1
+          description: ID del subbarrio al que pertenece la ubicación (puede ser null)
+        direccion:
+          type: string
+          example: "Calle Principal 123"
+          description: Dirección de la ubicación
+        codigoPostal:
+          type: string
+          nullable: true
+          example: "28001"
+          description: Código postal (puede ser null)
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        puntoGeografico:
+          type: string
+          nullable: true
+          example: '{"type": "Point", "coordinates": [-70.1234, 18.5678]}'
+          description: Coordenadas geográficas en formato GeoJSON Point (opcional). Formato - latitude entre -90 y 90, longitude entre -180 y 180.
         creadoEn:
           type: string
           format: date-time
