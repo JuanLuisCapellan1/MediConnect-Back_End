@@ -221,12 +221,12 @@ model DistritoMunicipal {
 
 model Seccion {
   id                  Int               @id @default(autoincrement()) @map("id_seccion")
-  distritoMunicipalId Int               @map("id_distrito_municipal")
+  distritoMunicipalId Int?              @map("id_distrito_municipal")
   nombre              String            @db.VarChar(80)
   estado              String            @default("Activo") @db.VarChar(20)
   creadoEn            DateTime          @default(now()) @map("creado_en") @db.Timestamptz(6)
 
-  distritoMunicipal   DistritoMunicipal @relation(fields: [distritoMunicipalId], references: [id])
+  distritoMunicipal   DistritoMunicipal? @relation(fields: [distritoMunicipalId], references: [id])
   barrios             Barrio[]
 
   @@unique([distritoMunicipalId, nombre])

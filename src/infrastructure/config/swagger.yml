@@ -12,6 +12,20 @@ servers:
 tags:
   - name: Traductor
     description: Endpoints de traducción del sistema
+  - name: Provincias
+    description: Endpoints para gestionar provincias
+  - name: Municipios
+    description: Endpoints para gestionar municipios
+  - name: DistritosMunicipales
+    description: Endpoints para gestionar distritos municipales
+  - name: Secciones
+    description: Endpoints para gestionar secciones
+  - name: Barrios
+    description: Endpoints para gestionar barrios
+  - name: SubBarrios
+    description: Endpoints para gestionar SubBarrios
+  - name: Ubicaciones
+    description: Endpoints para gestionar ubicaciones
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -66,4 +80,2801 @@ paths:
         '400':
           description: Faltan parámetros (translate_fields)
         '500':
-          description: Error en el servidor
+          description: Error en el servidor durante la traducción
+
+  # --- PROVINCIAS ENDPOINTS ---
+  /provincias:
+    get:
+      summary: Listar todas las provincias activas
+      tags:
+        - Provincias
+      description: Obtiene una lista de todas las provincias con estado activo o inactivo.
+      responses:
+        '200':
+          description: Provincias obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Provincia'
+                  count:
+                    type: integer
+                    example: 24
+                  message:
+                    type: string
+                    example: Provincias obtenidas exitosamente
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear una nueva provincia
+      tags:
+        - Provincias
+      description: Crea una nueva provincia en el sistema. El nombre debe ser único y tener al menos 3 caracteres.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Buenos Aires"
+              required:
+                - nombre
+      responses:
+        '201':
+          description: Provincia creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Provincia'
+                  message:
+                    type: string
+                    example: Provincia creada exitosamente
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: La provincia ya existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /provincias/{id}:
+    get:
+      summary: Obtener provincia por ID
+      tags:
+        - Provincias
+      description: Obtiene los detalles de una provincia específica por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la provincia
+      responses:
+        '200':
+          description: Provincia obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Provincia'
+                  message:
+                    type: string
+                    example: Provincia obtenida exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Provincia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar una provincia
+      tags:
+        - Provincias
+      description: Actualiza el nombre y/o estado de una provincia existente. Al menos uno de los dos campos debe ser proporcionado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la provincia a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Buenos Aires Actualizado"
+                  description: Nuevo nombre de la provincia (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado de la provincia (opcional)
+              description: Al menos uno de los campos (nombre o estado) debe ser proporcionado
+      responses:
+        '200':
+          description: Provincia actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Provincia'
+                  message:
+                    type: string
+                    example: Provincia actualizada exitosamente
+        '400':
+          description: Datos inválidos o campos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Provincia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre de la provincia ya existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar una provincia
+      tags:
+        - Provincias
+      description: Elimina (soft delete) una provincia, marcándola como eliminada.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la provincia a eliminar
+      responses:
+        '200':
+          description: Provincia eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Provincia'
+                  message:
+                    type: string
+                    example: Provincia eliminada exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Provincia no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /provincias/nombre/{nombre}/{estado}:
+    get:
+      summary: Buscar provincias por nombre y estado
+      tags:
+        - Provincias
+      description: Busca provincias por nombre y estado específico (búsqueda insensible a mayúsculas).
+      parameters:
+        - name: nombre
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "Buenos Aires"
+          description: Nombre de la provincia a buscar (búsqueda parcial)
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de las provincias a buscar
+      responses:
+        '200':
+          description: Provincias encontradas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Provincia'
+                  message:
+                    type: string
+                    example: Provincia obtenida exitosamente
+        '400':
+          description: Nombre o estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Provincias no encontradas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /provincias/estado/{estado}:
+    get:
+      summary: Listar provincias por estado
+      tags:
+        - Provincias
+      description: Obtiene todas las provincias que tienen un estado específico.
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de las provincias a buscar
+      responses:
+        '200':
+          description: Provincias obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Provincia'
+                  count:
+                    type: integer
+                    example: 10
+                  message:
+                    type: string
+                    example: Provincias con estado "Activo" obtenidas exitosamente
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  # --- MUNICIPIOS ENDPOINTS ---
+  /municipios:
+    get:
+      summary: Listar todos los municipios activos
+      tags:
+        - Municipios
+      description: Obtiene una lista de todos los municipios con estado activo o inactivo.
+      responses:
+        '200':
+          description: Municipios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Municipio'
+                  count:
+                    type: integer
+                    example: 156
+                  message:
+                    type: string
+                    example: Municipios obtenidos exitosamente
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear un nuevo municipio
+      tags:
+        - Municipios
+      description: Crea un nuevo municipio en una provincia específica. El nombre debe ser único dentro de la provincia.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provinciaId:
+                  type: integer
+                  example: 1
+                  description: ID de la provincia a la que pertenece el municipio
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Santo Domingo"
+                  description: Nombre del municipio
+              required:
+                - provinciaId
+                - nombre
+      responses:
+        '201':
+          description: Municipio creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Municipio'
+                  message:
+                    type: string
+                    example: Municipio creado exitosamente
+        '400':
+          description: Datos inválidos o provincia no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El municipio ya existe en esa provincia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /municipios/{id}:
+    get:
+      summary: Obtener municipio por ID
+      tags:
+        - Municipios
+      description: Obtiene los detalles de un municipio específico por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del municipio
+      responses:
+        '200':
+          description: Municipio obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Municipio'
+                  message:
+                    type: string
+                    example: Municipio obtenido exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Municipio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar un municipio
+      tags:
+        - Municipios
+      description: Actualiza el nombre, provincia y/o estado de un municipio existente. Al menos uno de los campos debe ser proporcionado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del municipio a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provinciaId:
+                  type: integer
+                  example: 1
+                  description: ID de la provincia (opcional)
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Santo Domingo Actualizado"
+                  description: Nuevo nombre del municipio (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado del municipio (opcional)
+              description: Al menos uno de los campos (provinciaId, nombre o estado) debe ser proporcionado
+      responses:
+        '200':
+          description: Municipio actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Municipio'
+                  message:
+                    type: string
+                    example: Municipio actualizado exitosamente
+        '400':
+          description: Datos inválidos o campos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Municipio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre del municipio ya existe en esa provincia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar un municipio
+      tags:
+        - Municipios
+      description: Elimina (soft delete) un municipio, marcándolo como eliminado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del municipio a eliminar
+      responses:
+        '200':
+          description: Municipio eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Municipio'
+                  message:
+                    type: string
+                    example: Municipio eliminado exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Municipio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /municipios/provincia/{provinciaId}:
+    get:
+      summary: Listar municipios por provincia
+      tags:
+        - Municipios
+      description: Obtiene todos los municipios que pertenecen a una provincia específica.
+      parameters:
+        - name: provinciaId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la provincia
+      responses:
+        '200':
+          description: Municipios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Municipio'
+                  count:
+                    type: integer
+                    example: 5
+                  message:
+                    type: string
+                    example: Municipios de la provincia obtenidos exitosamente
+        '400':
+          description: ID de provincia inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /municipios/nombre/{nombre}/{provinciaId}/{estado}:
+    get:
+      summary: Buscar municipios por nombre en una provincia
+      tags:
+        - Municipios
+      description: Busca municipios por nombre dentro de una provincia específica (búsqueda insensible a mayúsculas).
+      parameters:
+        - name: nombre
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "Santo Domingo"
+          description: Nombre del municipio a buscar (búsqueda parcial)
+        - name: provinciaId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la provincia
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los municipios a buscar
+      responses:
+        '200':
+          description: Municipios encontrados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Municipio'
+                  count:
+                    type: integer
+                    example: 1
+                  message:
+                    type: string
+                    example: Municipios encontrados exitosamente
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /municipios/estado/{estado}:
+    get:
+      summary: Listar municipios por estado
+      tags:
+        - Municipios
+      description: Obtiene todos los municipios que tienen un estado específico.
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los municipios a buscar
+      responses:
+        '200':
+          description: Municipios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Municipio'
+                  count:
+                    type: integer
+                    example: 45
+                  message:
+                    type: string
+                    example: Municipios obtenidos exitosamente
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  # --- DISTRITOS MUNICIPALES ENDPOINTS ---
+  /distritos:
+    get:
+      summary: Listar todos los distritos municipales activos
+      tags:
+        - DistritosMunicipales
+      description: Obtiene una lista de todos los distritos municipales con estado activo o inactivo.
+      responses:
+        '200':
+          description: Distritos municipales obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DistritoMunicipal'
+                  count:
+                    type: integer
+                    example: 89
+                  message:
+                    type: string
+                    example: Distritos municipales obtenidos exitosamente
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear un nuevo distrito municipal
+      tags:
+        - DistritosMunicipales
+      description: Crea un nuevo distrito municipal en un municipio específico. El nombre debe ser único dentro del municipio.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                municipioId:
+                  type: integer
+                  example: 1
+                  description: ID del municipio al que pertenece el distrito
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Distrito Central"
+                  description: Nombre del distrito municipal
+              required:
+                - municipioId
+                - nombre
+      responses:
+        '201':
+          description: Distrito municipal creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DistritoMunicipal'
+                  message:
+                    type: string
+                    example: Distrito municipal creado exitosamente
+        '400':
+          description: Datos inválidos o municipio no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El distrito municipal ya existe en ese municipio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /distritos/{id}:
+    get:
+      summary: Obtener distrito municipal por ID
+      tags:
+        - DistritosMunicipales
+      description: Obtiene los detalles de un distrito municipal específico por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del distrito municipal
+      responses:
+        '200':
+          description: Distrito municipal obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DistritoMunicipal'
+                  message:
+                    type: string
+                    example: Distrito municipal obtenido exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Distrito municipal no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar un distrito municipal
+      tags:
+        - DistritosMunicipales
+      description: Actualiza el nombre, municipio y/o estado de un distrito municipal existente. Al menos uno de los campos debe ser proporcionado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del distrito municipal a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                municipioId:
+                  type: integer
+                  example: 1
+                  description: ID del municipio (opcional)
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Distrito Central Actualizado"
+                  description: Nuevo nombre del distrito (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado del distrito (opcional)
+              description: Al menos uno de los campos (municipioId, nombre o estado) debe ser proporcionado
+      responses:
+        '200':
+          description: Distrito municipal actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DistritoMunicipal'
+                  message:
+                    type: string
+                    example: Distrito municipal actualizado exitosamente
+        '400':
+          description: Datos inválidos o campos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Distrito municipal no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre del distrito municipal ya existe en ese municipio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar un distrito municipal
+      tags:
+        - DistritosMunicipales
+      description: Elimina (soft delete) un distrito municipal, marcándolo como eliminado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del distrito municipal a eliminar
+      responses:
+        '200':
+          description: Distrito municipal eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/DistritoMunicipal'
+                  message:
+                    type: string
+                    example: Distrito municipal eliminado exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Distrito municipal no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /distritos/municipio/{municipioId}:
+    get:
+      summary: Listar distritos municipales por municipio
+      tags:
+        - DistritosMunicipales
+      description: Obtiene todos los distritos municipales que pertenecen a un municipio específico.
+      parameters:
+        - name: municipioId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del municipio
+      responses:
+        '200':
+          description: Distritos municipales obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DistritoMunicipal'
+                  count:
+                    type: integer
+                    example: 3
+                  message:
+                    type: string
+                    example: Distritos municipales del municipio obtenidos exitosamente
+        '400':
+          description: ID de municipio inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /distritos/nombre/{nombre}/{municipioId}/{estado}:
+    get:
+      summary: Buscar distritos municipales por nombre en un municipio
+      tags:
+        - DistritosMunicipales
+      description: Busca distritos municipales por nombre dentro de un municipio específico (búsqueda insensible a mayúsculas).
+      parameters:
+        - name: nombre
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "Distrito Central"
+          description: Nombre del distrito a buscar (búsqueda parcial)
+        - name: municipioId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del municipio
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los distritos a buscar
+      responses:
+        '200':
+          description: Distritos municipales encontrados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DistritoMunicipal'
+                  count:
+                    type: integer
+                    example: 1
+                  message:
+                    type: string
+                    example: Distritos municipales encontrados exitosamente
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /distritos/estado/{estado}:
+    get:
+      summary: Listar distritos municipales por estado
+      tags:
+        - DistritosMunicipales
+      description: Obtiene todos los distritos municipales que tienen un estado específico.
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los distritos a buscar
+      responses:
+        '200':
+          description: Distritos municipales obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DistritoMunicipal'
+                  count:
+                    type: integer
+                    example: 67
+                  message:
+                    type: string
+                    example: Distritos municipales obtenidos exitosamente
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  # --- SECCIONES ENDPOINTS ---
+  /secciones:
+    get:
+      summary: Listar todas las secciones activas
+      tags:
+        - Secciones
+      description: Obtiene una lista de todas las secciones. Cada sección está asociada a al menos un distrito municipal o municipio (o ambos).
+      responses:
+        '200':
+          description: Secciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Seccion'
+                  count:
+                    type: integer
+                    example: 156
+                  message:
+                    type: string
+                    example: Secciones obtenidas exitosamente
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear una nueva sección
+      tags:
+        - Secciones
+      description: Crea una nueva sección. Al menos uno de los IDs (distritoMunicipalId o municipioId) debe ser proporcionado. El nombre debe ser único dentro del contexto (distrito o municipio).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                distritoMunicipalId:
+                  type: integer
+                  nullable: true
+                  example: 1
+                  description: ID del distrito municipal al que pertenece la sección (opcional, pero al menos uno de los IDs es requerido)
+                municipioId:
+                  type: integer
+                  nullable: true
+                  example: 1
+                  description: ID del municipio (opcional, pero al menos uno de los IDs es requerido)
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Sección A"
+                  description: Nombre de la sección
+              required:
+                - nombre
+      responses:
+        '201':
+          description: Sección creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Seccion'
+                  message:
+                    type: string
+                    example: Sección creada exitosamente
+        '400':
+          description: Datos inválidos o distrito no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: La sección ya existe en ese distrito
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /secciones/{id}:
+    get:
+      summary: Obtener sección por ID
+      tags:
+        - Secciones
+      description: Obtiene los detalles de una sección específica por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la sección
+      responses:
+        '200':
+          description: Sección obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Seccion'
+                  message:
+                    type: string
+                    example: Sección obtenida exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Sección no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar una sección
+      tags:
+        - Secciones
+      description: Actualiza el nombre, distrito, municipio y/o estado de una sección existente. Al menos uno de los campos debe ser proporcionado. La sección debe mantener al menos uno de los IDs (distritoMunicipalId o municipioId) después de la actualización.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la sección a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                distritoMunicipalId:
+                  type: integer
+                  nullable: true
+                  example: 1
+                  description: ID del distrito municipal (opcional)
+                municipioId:
+                  type: integer
+                  nullable: true
+                  example: 1
+                  description: ID del municipio (opcional)
+                nombre:
+                  type: string
+                  minLength: 3
+                  example: "Sección A Actualizada"
+                  description: Nuevo nombre de la sección (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado de la sección (opcional)
+              description: Al menos uno de los campos debe ser proporcionado. Se debe mantener al menos uno de los IDs.
+      responses:
+        '200':
+          description: Sección actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Seccion'
+                  message:
+                    type: string
+                    example: Sección actualizada exitosamente
+        '400':
+          description: Datos inválidos o campos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Sección no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre de la sección ya existe en ese contexto o se perdería el vinculo a un distrito/municipio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar una sección
+      tags:
+        - Secciones
+      description: Elimina (soft delete) una sección, marcándola como eliminada.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID de la sección a eliminar
+      responses:
+        '200':
+          description: Sección eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Seccion'
+                  message:
+                    type: string
+                    example: Sección eliminada exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Sección no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /secciones/por-distrito/{distritoMunicipalId}:
+    get:
+      summary: Listar secciones por distrito municipal
+      tags:
+        - Secciones
+      description: Obtiene todas las secciones que pertenecen a un distrito municipal específico. Una sección puede pertenecer a un distrito y opcionalmente a un municipio.
+      parameters:
+        - name: distritoMunicipalId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del distrito municipal
+      responses:
+        '200':
+          description: Secciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Seccion'
+                  count:
+                    type: integer
+                    example: 5
+                  message:
+                    type: string
+                    example: Secciones del distrito obtenidas exitosamente
+        '400':
+          description: ID de distrito inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /secciones/por-nombre:
+    get:
+      summary: Buscar secciones por nombre en un distrito o municipio
+      tags:
+        - Secciones
+      description: Busca secciones por nombre dentro de un distrito municipal específico (búsqueda insensible a mayúsculas). La sección debe pertenecer a dicho distrito o municipio.
+      parameters:
+        - name: nombre
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "Sección A"
+          description: Nombre de la sección a buscar (búsqueda parcial)
+        - name: distritoMunicipalId
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 1
+          description: ID del distrito municipal (opcional)
+        - name: estado
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de las secciones a buscar (opcional)
+      responses:
+        '200':
+          description: Sección encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Seccion'
+                  message:
+                    type: string
+                    example: Sección encontrada exitosamente
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Sección no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /secciones/por-estado:
+    get:
+      summary: Listar secciones por estado
+      tags:
+        - Secciones
+      description: Obtiene todas las secciones que tienen un estado específico.
+      parameters:
+        - name: estado
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de las secciones a buscar
+      responses:
+        '200':
+          description: Secciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Seccion'
+                  count:
+                    type: integer
+                    example: 67
+                  message:
+                    type: string
+                    example: Secciones obtenidas exitosamente
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  # --- BARRIOS ENDPOINTS ---
+  /barrios:
+    get:
+      summary: Listar todos los barrios activos
+      tags:
+        - Barrios
+      description: Obtiene una lista de todos los barrios con estado activo o inactivo.
+      responses:
+        '200':
+          description: Barrios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Barrio'
+                  count:
+                    type: integer
+                    example: 15
+                  message:
+                    type: string
+                    example: Barrios obtenidos exitosamente
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear un nuevo barrio
+      tags:
+        - Barrios
+      description: Crea un nuevo barrio en el sistema. El nombre debe ser único en la sección y la sección debe existir.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                seccionId:
+                  type: integer
+                  example: 5
+                  description: ID de la sección a la que pertenece el barrio
+                nombre:
+                  type: string
+                  example: "Los Prados"
+                  description: Nombre del barrio
+              required:
+                - seccionId
+                - nombre
+      responses:
+        '201':
+          description: Barrio creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Barrio'
+                  message:
+                    type: string
+                    example: Barrio creado exitosamente
+        '400':
+          description: Datos inválidos o campos requeridos faltantes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El barrio ya existe en la sección
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /barrios/{id}:
+    get:
+      summary: Obtener barrio por ID
+      tags:
+        - Barrios
+      description: Obtiene los detalles de un barrio específico por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del barrio
+      responses:
+        '200':
+          description: Barrio obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Barrio'
+                  message:
+                    type: string
+                    example: Barrio obtenido exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Barrio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar un barrio
+      tags:
+        - Barrios
+      description: Actualiza el nombre, sección y/o estado de un barrio existente. Al menos uno de los campos debe ser proporcionado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del barrio a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                seccionId:
+                  type: integer
+                  example: 5
+                  description: Nuevo ID de la sección (opcional)
+                nombre:
+                  type: string
+                  example: "Los Prados Actualizados"
+                  description: Nuevo nombre del barrio (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado del barrio (opcional)
+              description: Al menos uno de los campos (seccionId, nombre o estado) debe ser proporcionado
+      responses:
+        '200':
+          description: Barrio actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Barrio'
+                  message:
+                    type: string
+                    example: Barrio actualizado exitosamente
+        '400':
+          description: Datos inválidos o campos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Barrio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre del barrio ya existe en la sección
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar un barrio
+      tags:
+        - Barrios
+      description: Elimina (soft delete) un barrio, marcándolo como eliminado. No se puede eliminar si tiene sub-barrios u ubicaciones asociadas.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del barrio a eliminar
+      responses:
+        '200':
+          description: Barrio eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Barrio'
+                  message:
+                    type: string
+                    example: Barrio eliminado exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Barrio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor o el barrio tiene dependencias
+
+  /barrios/seccion/{seccionId}:
+    get:
+      summary: Listar barrios de una sección
+      tags:
+        - Barrios
+      description: Obtiene todos los barrios que pertenecen a una sección específica.
+      parameters:
+        - name: seccionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 5
+          description: ID de la sección
+      responses:
+        '200':
+          description: Barrios de la sección obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Barrio'
+                  count:
+                    type: integer
+                    example: 8
+                  message:
+                    type: string
+                    example: Barrios de la sección obtenidos exitosamente
+        '400':
+          description: ID de sección inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /barrios/nombre/{nombre}/{seccionId}/{estado}:
+    get:
+      summary: Buscar barrios por nombre en una sección
+      tags:
+        - Barrios
+      description: Busca barrios por nombre dentro de una sección específica (búsqueda insensible a mayúsculas).
+      parameters:
+        - name: nombre
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "Prados"
+          description: Nombre del barrio a buscar (búsqueda parcial)
+        - name: seccionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 5
+          description: ID de la sección
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los barrios a buscar
+      responses:
+        '200':
+          description: Barrios encontrados exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Barrio'
+                  count:
+                    type: integer
+                    example: 2
+                  message:
+                    type: string
+                    example: Barrios encontrados exitosamente
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /barrios/estado/{estado}:
+    get:
+      summary: Listar barrios por estado
+      tags:
+        - Barrios
+      description: Obtiene todos los barrios que tienen un estado específico.
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los barrios a buscar
+      responses:
+        '200':
+          description: Barrios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Barrio'
+                  count:
+                    type: integer
+                    example: 45
+                  message:
+                    type: string
+                    example: Barrios obtenidos exitosamente
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /subBarrios:
+    post:
+      summary: Crear un nuevo SubBarrio
+      tags:
+        - SubBarrios
+      description: Crea un nuevo SubBarrio en un barrio específico. El nombre debe ser único dentro del barrio.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - barrioId
+                - nombre
+              properties:
+                barrioId:
+                  type: integer
+                  example: 3
+                  description: ID del barrio al que pertenecerá el SubBarrio
+                nombre:
+                  type: string
+                  example: "Sub Barrio A"
+                  description: Nombre del SubBarrio (máximo 80 caracteres)
+      responses:
+        '201':
+          description: SubBarrio creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubBarrio'
+        '400':
+          description: Datos inválidos o barrioId inexistente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre del SubBarrio ya existe en el barrio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    get:
+      summary: Listar todos los SubBarrios
+      tags:
+        - SubBarrios
+      description: Obtiene una lista de todos los SubBarrios no eliminados.
+      responses:
+        '200':
+          description: SubBarrios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubBarrio'
+        '500':
+          description: Error interno del servidor
+
+  /subBarrios/{id}:
+    get:
+      summary: Obtener un SubBarrio por ID
+      tags:
+        - SubBarrios
+      description: Obtiene un SubBarrio específico por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del SubBarrio
+      responses:
+        '200':
+          description: SubBarrio obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubBarrio'
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: SubBarrio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar un SubBarrio
+      tags:
+        - SubBarrios
+      description: Actualiza un SubBarrio existente. Al menos uno de los campos opcionales debe ser proporcionado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del SubBarrio a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                barrioId:
+                  type: integer
+                  example: 5
+                  description: Nuevo ID de barrio (opcional)
+                nombre:
+                  type: string
+                  example: "Sub Barrio B"
+                  description: Nuevo nombre (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado (opcional)
+              description: Al menos uno de los campos (barrioId, nombre o estado) debe ser proporcionado
+      responses:
+        '200':
+          description: SubBarrio actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubBarrio'
+        '400':
+          description: Datos inválidos o campos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: SubBarrio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre del SubBarrio ya existe en el nuevo barrio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar un SubBarrio
+      tags:
+        - SubBarrios
+      description: Elimina (soft delete) un SubBarrio, marcándolo como eliminado. No se puede eliminar si tiene ubicaciones asociadas.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del SubBarrio a eliminar
+      responses:
+        '200':
+          description: SubBarrio eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubBarrio'
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: SubBarrio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor o el SubBarrio tiene dependencias
+
+  /subBarrios/barrio/{barrioId}:
+    get:
+      summary: Listar SubBarrios de un barrio
+      tags:
+        - SubBarrios
+      description: Obtiene todos los SubBarrios que pertenecen a un barrio específico.
+      parameters:
+        - name: barrioId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 3
+          description: ID del barrio
+      responses:
+        '200':
+          description: SubBarrios del barrio obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubBarrio'
+        '400':
+          description: ID de barrio inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /subBarrios/nombre/{nombre}/{estado}:
+    get:
+      summary: Buscar SubBarrios por nombre y estado
+      tags:
+        - SubBarrios
+      description: Busca SubBarrios por nombre (búsqueda parcial) y opcionalmente filtra por estado.
+      parameters:
+        - name: nombre
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "Sub"
+          description: Nombre del SubBarrio a buscar (búsqueda parcial)
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado", "Todos"]
+            example: "Activo"
+          description: Estado de los SubBarrios a buscar (use "Todos" para obtener todos los estados)
+      responses:
+        '200':
+          description: SubBarrios encontrados exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubBarrio'
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /subBarrios/estado/{estado}:
+    get:
+      summary: Listar SubBarrios por estado
+      tags:
+        - SubBarrios
+      description: Obtiene todos los SubBarrios que tienen un estado específico.
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los SubBarrios a buscar
+      responses:
+        '200':
+          description: SubBarrios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubBarrio'
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  # --- UBICACIONES ENDPOINTS ---
+  /ubicaciones:
+    post:
+      summary: Crear una nueva Ubicacion
+      tags:
+        - Ubicaciones
+      description: Crea una nueva ubicación asociada a un barrio y opcionalmente a un subbarrio.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                barrioId:
+                  type: integer
+                  example: 1
+                  description: ID del barrio
+                direccion:
+                  type: string
+                  example: "Calle Principal 123"
+                  description: Dirección de la ubicación
+                subBarrioId:
+                  type: integer
+                  nullable: true
+                  example: 1
+                  description: ID del subbarrio (opcional)
+                codigoPostal:
+                  type: string
+                  nullable: true
+                  example: "28001"
+                  description: Código postal (opcional, máximo 10 caracteres)
+                puntoGeografico:
+                  type: string
+                  nullable: true
+                  example: '{"type": "Point", "coordinates": [-70.1234, 18.5678]}'
+                  description: Coordenadas geográficas en formato GeoJSON Point (opcional)
+              required:
+                - barrioId
+                - direccion
+      responses:
+        '201':
+          description: Ubicación creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: Error en los parámetros de entrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    get:
+      summary: Listar todas las ubicaciones
+      tags:
+        - Ubicaciones
+      description: Obtiene una lista de todas las ubicaciones activas.
+      responses:
+        '200':
+          description: Ubicaciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/{id}:
+    get:
+      summary: Buscar una Ubicacion por ID
+      tags:
+        - Ubicaciones
+      description: Obtiene los detalles de una ubicación específica.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la ubicación
+      responses:
+        '200':
+          description: Ubicación encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ubicacion'
+        '404':
+          description: Ubicación no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar una Ubicacion
+      tags:
+        - Ubicaciones
+      description: Actualiza los datos de una ubicación existente.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la ubicación
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                barrioId:
+                  type: integer
+                  example: 2
+                  description: ID del barrio (opcional)
+                subBarrioId:
+                  type: integer
+                  nullable: true
+                  example: 2
+                  description: ID del subbarrio (opcional)
+                direccion:
+                  type: string
+                  example: "Calle Nueva 456"
+                  description: Nueva dirección (opcional)
+                codigoPostal:
+                  type: string
+                  nullable: true
+                  example: "28002"
+                  description: Nuevo código postal (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Nuevo estado (opcional)
+                puntoGeografico:
+                  type: string
+                  nullable: true
+                  example: '{"type": "Point", "coordinates": [-70.5678, 18.9012]}'
+                  description: Nuevas coordenadas geográficas en formato GeoJSON Point (opcional)
+      responses:
+        '200':
+          description: Ubicación actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: Error en los parámetros de entrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ubicación no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar una Ubicacion
+      tags:
+        - Ubicaciones
+      description: Elimina una ubicación (eliminación lógica). No se puede eliminar si tiene centros de salud, horarios, citas o pacientes asociados.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la ubicación
+      responses:
+        '200':
+          description: Ubicación eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Ubicación eliminada correctamente"
+                  ubicacion:
+                    $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: No se puede eliminar la ubicación (tiene dependencias)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ubicación no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/barrio/{barrioId}:
+    get:
+      summary: Listar ubicaciones de un barrio
+      tags:
+        - Ubicaciones
+      description: Obtiene todas las ubicaciones que pertenecen a un barrio específico.
+      parameters:
+        - name: barrioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del barrio
+      responses:
+        '200':
+          description: Ubicaciones del barrio obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: ID de barrio inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/subbarrio/{subBarrioId}:
+    get:
+      summary: Listar ubicaciones de un subbarrio
+      tags:
+        - Ubicaciones
+      description: Obtiene todas las ubicaciones que pertenecen a un subbarrio específico.
+      parameters:
+        - name: subBarrioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del subbarrio
+      responses:
+        '200':
+          description: Ubicaciones del subbarrio obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: ID de subbarrio inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/buscar/direccion/{direccion}:
+    get:
+      summary: Buscar ubicaciones por dirección
+      tags:
+        - Ubicaciones
+      description: Realiza una búsqueda parcial (case-insensitive) de ubicaciones por dirección.
+      parameters:
+        - name: direccion
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Parte de la dirección a buscar
+      responses:
+        '200':
+          description: Ubicaciones encontradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: Parámetro dirección inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/buscar/codigopostal/{codigoPostal}:
+    get:
+      summary: Buscar ubicaciones por código postal
+      tags:
+        - Ubicaciones
+      description: Busca ubicaciones que tengan un código postal específico.
+      parameters:
+        - name: codigoPostal
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Código postal a buscar
+      responses:
+        '200':
+          description: Ubicaciones encontradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: Parámetro código postal inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/buscar/estado/{estado}:
+    get:
+      summary: Buscar ubicaciones por estado
+      tags:
+        - Ubicaciones
+      description: Obtiene todas las ubicaciones que tengan un estado específico.
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+          description: Estado a buscar
+      responses:
+        '200':
+          description: Ubicaciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ubicacion'
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+components:
+  schemas:
+    Provincia:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Buenos Aires"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    Municipio:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        provinciaId:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Santo Domingo"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    DistritoMunicipal:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        municipioId:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Distrito Central"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    Seccion:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        distritoMunicipalId:
+          type: integer
+          nullable: true
+          example: 1
+          description: ID del distrito municipal (puede ser null)
+        municipioId:
+          type: integer
+          nullable: true
+          example: 1
+          description: ID del municipio (puede ser null)
+        nombre:
+          type: string
+          example: "Sección A"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    Barrio:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        seccionId:
+          type: integer
+          example: 5
+          description: ID de la sección a la que pertenece el barrio
+        nombre:
+          type: string
+          example: "Los Prados"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    SubBarrio:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        barrioId:
+          type: integer
+          example: 3
+          description: ID del barrio al que pertenece el SubBarrio
+        nombre:
+          type: string
+          example: "Sub Barrio A"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    Ubicacion:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        barrioId:
+          type: integer
+          example: 2
+          description: ID del barrio al que pertenece la ubicación
+        subBarrioId:
+          type: integer
+          nullable: true
+          example: 1
+          description: ID del subbarrio al que pertenece la ubicación (puede ser null)
+        direccion:
+          type: string
+          example: "Calle Principal 123"
+          description: Dirección de la ubicación
+        codigoPostal:
+          type: string
+          nullable: true
+          example: "28001"
+          description: Código postal (puede ser null)
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        puntoGeografico:
+          type: string
+          nullable: true
+          example: '{"type": "Point", "coordinates": [-70.1234, 18.5678]}'
+          description: Coordenadas geográficas en formato GeoJSON Point (opcional). Formato - latitude entre -90 y 90, longitude entre -180 y 180.
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Error al procesar la solicitud"

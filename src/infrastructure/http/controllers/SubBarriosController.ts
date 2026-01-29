@@ -1,0 +1,321 @@
+/**
+ * SubBarriosController.ts
+ * Controlador HTTP para manejar solicitudes relacionadas con SubBarrios
+ * Valida entrada, llama al use case y maneja errores
+ */
+
+import { Request, Response } from 'express';
+import { injectable, inject } from 'tsyringe';
+import { GestionarSubBarriosUseCase } from '../../../application/use-cases/GestionarSubBarriosUseCase';
+import { CrearSubBarrioDto, ActualizarSubBarrioDto } from '../../../application/dtos/SubBarrioDtos';
+import { SubBarrioYaExisteError } from '../../../domain/errors/SubBarrios/SubBarrioYaExisteError';
+
+@injectable()
+export class SubBarriosController {
+  constructor(
+    @inject(GestionarSubBarriosUseCase) private useCase: GestionarSubBarriosUseCase
+  ) {}
+
+  /**
+   * POST /subBarrios
+   * Crea un nuevo SubBarrio
+   */
+  async crear(req: Request, res: Response): Promise<void> {
+    try {
+      const { barrioId, nombre } = req.body;
+
+      // Validación de entrada
+      if (!barrioId || isNaN(barrioId) || barrioId <= 0) {
+        res.status(400).json({ error: 'El ID del barrio es requerido y debe ser un número válido' });
+        return;
+      }
+
+      if (!nombre || nombre.trim().length === 0) {
+        res.status(400).json({ error: 'El nombre del SubBarrio es requerido' });
+        return;
+      }
+
+      const dto: CrearSubBarrioDto = { barrioId, nombre: nombre.trim() };
+      const subBarrio = await this.useCase.crear(dto);
+
+      res.status(201).json({
+        success: true,
+        data: subBarrio,
+        message: 'SubBarrio creado exitosamente'
+      });
+    } catch (error: unknown) {
+      if (error instanceof SubBarrioYaExisteError) {
+        res.status(409).json({ 
+            success: false,
+            error: (error as Error).message });
+      } else {
+        res.status(500).json({ 
+            success: false,
+            error: (error as Error).message });
+      }
+    }
+  }
+
+  /**
+   * GET /subBarrios
+   * Lista todos los SubBarrios
+   */
+  async listar(req: Request, res: Response): Promise<void> {
+    try {
+      const subBarrios = await this.useCase.listar();
+      res.status(200).json({
+        success: true,
+        data: subBarrios,
+        count: subBarrios.length,
+        message: 'SubBarrios obtenidos exitosamente'
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: (error as Error).message });
+    }
+  }
+
+  /**
+   * GET /subBarrios/:id
+   * Obtiene un SubBarrio por ID
+   */
+  async obtenerPorId(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      // Validación de entrada
+      if (!id || isNaN(Number(id)) || Number(id) <= 0) {
+        res.status(400).json({ 
+            success: false,
+            error: 'El ID del SubBarrio es requerido y debe ser un número válido' 
+        });
+        
+        return;
+      }
+
+      const subBarrio = await this.useCase.buscarPorId(Number(id));
+
+      if (!subBarrio) {
+        res.status(404).json({ 
+            success: false,
+            error: 'SubBarrio no encontrado' 
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: subBarrio,
+        message: 'SubBarrio obtenido exitosamente'
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: (error as Error).message });
+    }
+  }
+
+  /**
+   * PUT /subBarrios/:id
+   * Actualiza un SubBarrio
+   */
+  async actualizar(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { barrioId, nombre, estado } = req.body;
+
+      // Validación de entrada
+      if (!id || isNaN(Number(id)) || Number(id) <= 0) {
+        res.status(400).json({ 
+            success: false,
+            error: 'El ID del SubBarrio es requerido y debe ser un número válido',
+        });
+        return;
+      }
+
+      if (barrioId !== undefined && (isNaN(barrioId) || barrioId <= 0)) {
+        res.status(400).json({ 
+            success: false,
+            error: 'El ID del barrio debe ser un número válido' 
+        });
+        return;
+      }
+
+      const dto: ActualizarSubBarrioDto = {
+        id: Number(id),
+        barrioId,
+        nombre: nombre ? nombre.trim() : undefined,
+        estado,
+      };
+
+      const subBarrio = await this.useCase.actualizar(dto);
+      res.status(200).json({
+        success: true,
+        data: subBarrio,
+        message: 'SubBarrio actualizado exitosamente'
+      });
+    } catch (error: unknown) {
+      if (error instanceof SubBarrioYaExisteError) {
+        res.status(409).json({ 
+            success: false,
+            error: (error as Error).message 
+        });
+      } else if ((error as Error).message.includes('no existe')) {
+        res.status(404).json({ 
+            success: false,
+            error: (error as Error).message 
+        });
+      } else {
+        res.status(500).json({ 
+            success: false,
+            error: (error as Error).message 
+        });
+      }
+    }
+  }
+
+  /**
+   * DELETE /subBarrios/:id
+   * Elimina un SubBarrio (eliminación lógica)
+   */
+  async eliminar(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      // Validación de entrada
+      if (!id || isNaN(Number(id)) || Number(id) <= 0) {
+        res.status(400).json({ 
+            success: false,
+            error: 'El ID del SubBarrio es requerido y debe ser un número válido' 
+        });
+        return;
+      }
+
+      const subBarrio = await this.useCase.eliminar(Number(id));
+      res.status(200).json({
+        success: true,
+        data: subBarrio,
+        message: 'SubBarrio eliminado exitosamente'
+      });
+    } catch (error) {
+      if ((error as Error).message.includes('no existe')) {
+        res.status(404).json({ 
+            success: false,
+            error: (error as Error).message 
+        });
+      } else if ((error as Error).message.includes('No se puede eliminar')) {
+        res.status(400).json({ 
+            success: false,
+            error: (error as Error).message 
+        });
+      } else {
+        res.status(500).json({ 
+            success: false,
+            error: (error as Error).message 
+        });
+      }
+    }
+  }
+
+  /**
+   * GET /subBarrios/barrio/:barrioId
+   * Lista todos los SubBarrios de un barrio específico
+   */
+  async listarPorBarrio(req: Request, res: Response): Promise<void> {
+    try {
+      const { barrioId } = req.params;
+
+      // Validación de entrada
+      if (!barrioId || isNaN(Number(barrioId)) || Number(barrioId) <= 0) {
+        res.status(400).json({ 
+            success: false,
+            error: 'El ID del barrio es requerido y debe ser un número válido' 
+        });
+        return;
+      }
+
+      const subBarrios = await this.useCase.listarPorBarrio(Number(barrioId));
+      res.status(200).json({
+        success: true,
+        data: subBarrios,
+        count: subBarrios.length,
+        message: 'SubBarrios obtenidos exitosamente'
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: (error as Error).message 
+      });
+    }
+  }
+
+  /**
+   * GET /subBarrios/nombre/:nombre/:estado
+   * Busca SubBarrios por nombre y estado
+   */
+  async buscarPorNombre(req: Request, res: Response): Promise<void> {
+    try {
+      const nombre = String(req.params.nombre || '');
+      const estado = String(req.params.estado || '');
+
+      if (!nombre || nombre.trim().length === 0) {
+        res.status(400).json({ 
+            success: false,
+            error: 'El nombre es requerido' 
+        });
+        return;
+      }
+
+      const subBarrios = await this.useCase.buscarPorNombre(nombre.trim());
+
+      // Filtrar por estado si se proporciona
+      const resultados =
+        estado && estado !== 'Todos'
+          ? subBarrios.filter((sb: any) => sb.estado === estado)
+          : subBarrios;
+
+      res.status(200).json({
+        success: true,
+        data: resultados,
+        count: resultados.length,
+        message: 'SubBarrios obtenidos exitosamente'
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: (error as Error).message });
+    }
+  }
+
+  /**
+   * GET /subBarrios/estado/:estado
+   * Busca SubBarrios por estado
+   */
+  async buscarPorEstado(req: Request, res: Response): Promise<void> {
+    try {
+      const estado = String(req.params.estado || '');
+
+      if (!estado || estado.trim().length === 0) {
+        res.status(400).json({ 
+            success: false,
+            error: 'El estado es requerido' 
+        });
+        return;
+      }
+
+      const subBarrios = await this.useCase.buscarPorEstado(estado.trim());
+      res.status(200).json({
+        success: true,
+        data: subBarrios,
+        count: subBarrios.length,
+        message: 'SubBarrios obtenidos exitosamente'
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        error: (error as Error).message 
+      });
+    }
+  }
+}
