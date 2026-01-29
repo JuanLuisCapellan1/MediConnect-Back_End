@@ -26,6 +26,8 @@ tags:
     description: Endpoints para gestionar SubBarrios
   - name: Ubicaciones
     description: Endpoints para gestionar ubicaciones
+  - name: Horarios
+    description: Endpoints para gestionar horarios
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -2697,6 +2699,370 @@ paths:
         '500':
           description: Error interno del servidor
 
+  # --- HORARIOS ENDPOINTS ---
+  /horarios:
+    get:
+      summary: Listar todos los horarios
+      tags:
+        - Horarios
+      description: Obtiene una lista de todos los horarios del sistema.
+      responses:
+        '200':
+          description: Horarios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Horario'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear un nuevo horario
+      tags:
+        - Horarios
+      description: Crea un nuevo horario para un doctor en una ubicación específica. El horario especifica un bloque de tiempo en un día de la semana.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                doctorId:
+                  type: integer
+                  example: 1
+                  description: ID del doctor
+                nombre:
+                  type: string
+                  example: "Bloque Matutino"
+                  description: Nombre descriptivo del bloque horario
+                diaSemana:
+                  type: integer
+                  enum: [0, 1, 2, 3, 4, 5, 6]
+                  example: 1
+                  description: Día de la semana (0=Domingo, 1=Lunes, ..., 6=Sábado)
+                horaInicio:
+                  type: string
+                  example: "08:00"
+                  description: Hora de inicio en formato HH:mm o HH:mm:ss
+                horaFin:
+                  type: string
+                  example: "12:00"
+                  description: Hora de fin en formato HH:mm o HH:mm:ss
+                ubicacionId:
+                  type: integer
+                  example: 2
+                  description: ID de la ubicación donde se atiende
+              required:
+                - doctorId
+                - nombre
+                - diaSemana
+                - horaInicio
+                - horaFin
+                - ubicacionId
+      responses:
+        '201':
+          description: Horario creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Horario'
+        '400':
+          description: Datos inválidos o campos requeridos faltantes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflicto de horario (se superpone con otro existente)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /horarios/{id}:
+    get:
+      summary: Obtener horario por ID
+      tags:
+        - Horarios
+      description: Obtiene los detalles de un horario específico por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del horario
+      responses:
+        '200':
+          description: Horario obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Horario'
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Horario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Actualizar un horario
+      tags:
+        - Horarios
+      description: Actualiza los datos de un horario existente. Al menos uno de los campos opcionales debe ser proporcionado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del horario a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                doctorId:
+                  type: integer
+                  example: 1
+                  description: ID del doctor (opcional)
+                nombre:
+                  type: string
+                  example: "Bloque Vespertino"
+                  description: Nombre descriptivo del bloque horario (opcional)
+                diaSemana:
+                  type: integer
+                  enum: [0, 1, 2, 3, 4, 5, 6]
+                  example: 2
+                  description: Día de la semana 0-6 (opcional)
+                horaInicio:
+                  type: string
+                  example: "14:00"
+                  description: Hora de inicio en formato HH:mm o HH:mm:ss (opcional)
+                horaFin:
+                  type: string
+                  example: "18:00"
+                  description: Hora de fin en formato HH:mm o HH:mm:ss (opcional)
+                ubicacionId:
+                  type: integer
+                  example: 3
+                  description: ID de la ubicación (opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Estado del horario (opcional)
+      responses:
+        '200':
+          description: Horario actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Horario'
+        '400':
+          description: Datos inválidos o campos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Horario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflicto de horario (se superpone con otro existente)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Eliminar un horario
+      tags:
+        - Horarios
+      description: Elimina (soft delete) un horario, marcándolo como eliminado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del horario a eliminar
+      responses:
+        '200':
+          description: Horario eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Horario'
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Horario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /horarios/doctor/{doctorId}:
+    get:
+      summary: Listar horarios de un doctor
+      tags:
+        - Horarios
+      description: Obtiene todos los horarios asociados a un doctor específico.
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del doctor
+      responses:
+        '200':
+          description: Horarios del doctor obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Horario'
+        '400':
+          description: ID de doctor inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /horarios/dia/{diaSemana}:
+    get:
+      summary: Listar horarios por día de la semana
+      tags:
+        - Horarios
+      description: Obtiene todos los horarios programados para un día específico de la semana.
+      parameters:
+        - name: diaSemana
+          in: path
+          required: true
+          schema:
+            type: integer
+            enum: [0, 1, 2, 3, 4, 5, 6]
+            example: 1
+          description: Día de la semana (0=Domingo, 1=Lunes, ..., 6=Sábado)
+      responses:
+        '200':
+          description: Horarios del día obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Horario'
+        '400':
+          description: Día de la semana inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /horarios/estado/{estado}:
+    get:
+      summary: Listar horarios por estado
+      tags:
+        - Horarios
+      description: Obtiene todos los horarios que tienen un estado específico (Activo, Inactivo o Eliminado).
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de los horarios a buscar
+      responses:
+        '200':
+          description: Horarios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Horario'
+        '400':
+          description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     Provincia:
@@ -2864,6 +3230,48 @@ components:
           nullable: true
           example: '{"type": "Point", "coordinates": [-70.1234, 18.5678]}'
           description: Coordenadas geográficas en formato GeoJSON Point (opcional). Formato - latitude entre -90 y 90, longitude entre -180 y 180.
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+
+    Horario:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        doctorId:
+          type: integer
+          example: 5
+          description: ID del doctor que tiene este horario
+        nombre:
+          type: string
+          example: "Bloque Matutino"
+          description: Nombre descriptivo del bloque horario
+        diaSemana:
+          type: integer
+          enum: [0, 1, 2, 3, 4, 5, 6]
+          example: 1
+          description: Día de la semana (0=Domingo, 1=Lunes, ..., 6=Sábado)
+        horaInicio:
+          type: string
+          format: date-time
+          example: "2025-01-22T08:00:00Z"
+          description: Hora de inicio del horario en formato ISO 8601
+        horaFin:
+          type: string
+          format: date-time
+          example: "2025-01-22T12:00:00Z"
+          description: Hora de fin del horario en formato ISO 8601
+        ubicacionId:
+          type: integer
+          example: 2
+          description: ID de la ubicación donde se atiende
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
         creadoEn:
           type: string
           format: date-time

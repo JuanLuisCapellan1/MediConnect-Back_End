@@ -221,6 +221,38 @@ export class HorariosController {
     }
   }
 
+  /**
+   * GET /horarios/estado/:estado - Listar horarios por estado
+   */
+  async listarPorEstado(req: Request, res: Response): Promise<void> {
+    try {
+      const estado = String(req.params.estado).trim();
+
+      if (!estado) {
+        res.status(400).json({ success: false, message: 'El estado es requerido' });
+        return;
+      }
+
+      const estadosValidos = ['Activo', 'Inactivo', 'Eliminado'];
+      if (!estadosValidos.includes(estado)) {
+        res.status(400).json({
+          success: false,
+          message: `El estado debe ser uno de: ${estadosValidos.join(', ')}`
+        });
+        return;
+      }
+
+      const horarios = await this.gestionarHorariosUseCase.listarPorEstado(estado);
+      res.status(200).json({
+        success: true,
+        data: horarios,
+        count: horarios.length
+      });
+    } catch (error) {
+      this.manejarError(error, res, 500);
+    }
+  }
+
   private manejarError(error: unknown, res: Response, statusCode: number = 400): void {
     if (error instanceof HorarioConflictoError || error instanceof VerificarValor) {
       res.status(400).json({ success: false, message: error.message });

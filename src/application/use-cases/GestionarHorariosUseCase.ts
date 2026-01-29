@@ -95,6 +95,11 @@ export class GestionarHorariosUseCase {
     return await this.horariosRepository.eliminar(id);
   }
 
+  async listarPorEstado(estado: string): Promise<Horario[]> {
+    await this.estadoValidator.validarEstado(estado, ['Activo', 'Inactivo', 'Eliminado']);
+    return await this.horariosRepository.listarPorEstado(estado);
+  }
+
   private formatearHora(fecha: Date): string {
     const hh = String(fecha.getUTCHours()).padStart(2, '0');
     const mm = String(fecha.getUTCMinutes()).padStart(2, '0');

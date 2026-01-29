@@ -15,6 +15,7 @@ export class PrismaHorariosRepository implements IHorariosRepository {
   private readonly CACHE_KEY = 'horarios:listado';
   private readonly CACHE_KEY_POR_DOCTOR = (doctorId: number) => `horarios:doctor:${doctorId}`;
   private readonly CACHE_KEY_POR_DIA = (diaSemana: number) => `horarios:dia:${diaSemana}`;
+  private readonly CACHE_KEY_POR_ESTADO = (estado: string) => `horarios:estado:${estado}`;
   private readonly CACHE_TTL = 24 * 60 * 60; // 24 horas en segundos
 
   constructor(prisma: PrismaClient, redis: RedisCacheService) {
@@ -265,6 +266,43 @@ export class PrismaHorariosRepository implements IHorariosRepository {
     await this.redis.del(this.CACHE_KEY_POR_DIA(eliminado.diaSemana));
 
     return this.mapToDomain(eliminado);
+  }
+
+  async listarPorEstado(estado: string): Promise<Horario[]> {
+    const cacheKey = this.CACHE_KEY_POR_ESTADO(estado);
+
+    // 1. Intentar obtener de Redis
+    const cached = await this.redis.get(cacheKey);
+    if (cached) {
+      const horariosData = JSON.parse(cached);
+      return horariosData.map((h: any) => 
+        new Horario(
+          h.id,
+          h.doctorId,
+          h.nombre,
+          h.diaSemana,
+          new Date(h.horaInicio),
+          new Date(h.horaFin),
+          h.ubicacionId,
+          h.estado,
+          new Date(h.creadoEn)
+        )
+      );
+    }
+
+    // 2. Si no hay caché, buscar en DB
+    const horariosOrm = await this.prisma.horario.findMany({
+      where: { estado },
+      orderBy: [{ doctorId: 'asc' }, { diaSemana: 'asc' }, { horaInicio: 'asc' }]
+    });
+
+    // 3. Mapear a Entidad de Dominio
+    const horarios = horariosOrm.map(h => this.mapToDomain(h));
+
+    // 4. Guardar en Redis
+    await this.redis.set(cacheKey, JSON.stringify(horariosOrm), this.CACHE_TTL);
+
+    return horarios;
   }
 
   async existeConflicto(

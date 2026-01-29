@@ -36,6 +36,8 @@ export interface IHorariosRepository {
 
   eliminar(id: number): Promise<Horario>;
 
+  listarPorEstado(estado: string): Promise<Horario[]>;
+
   existeConflicto(
     doctorId: number,
     diaSemana: number,

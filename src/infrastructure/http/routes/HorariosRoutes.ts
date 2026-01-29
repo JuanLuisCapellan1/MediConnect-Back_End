@@ -35,6 +35,12 @@ router.get('/doctor/:doctorId', (req, res) => horariosController.listarPorDoctor
 router.get('/dia/:diaSemana', (req, res) => horariosController.listarPorDia(req, res));
 
 /**
+ * @route GET /horarios/estado/:estado
+ * @description Lista horarios por estado
+ */
+router.get('/estado/:estado', (req, res) => horariosController.listarPorEstado(req, res));
+
+/**
  * @route GET /horarios/:id
  * @description Busca un horario por ID
  */
