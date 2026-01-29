@@ -7,6 +7,7 @@ import SeccionesRoutes from './SeccionesRoutes';
 import BarriosRoutes from './BarriosRoutes';
 import SubBarriosRoutes from './SubBarriosRoutes';
 import UbicacionesRoutes from './UbicacionesRoutes';
+import HorariosRoutes from './HorariosRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -33,5 +34,8 @@ router.use('/subBarrios', SubBarriosRoutes);
 
 // Rutas de Ubicaciones
 router.use('/ubicaciones', UbicacionesRoutes);
+
+// Rutas de Horarios
+router.use('/horarios', HorariosRoutes);
 
 export default router;
