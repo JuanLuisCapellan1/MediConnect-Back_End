@@ -10,6 +10,7 @@ import { ISeccionesRepository } from '../../domain/repositories/ISeccionesReposi
 import { IBarriosRepository } from '../../domain/repositories/IBarriosRepository';
 import { ISubBarriosRepository } from '../../domain/repositories/ISubBarriosRepository';
 import { IUbicacionesRepository } from '../../domain/repositories/IUbicacionesRepository';
+import { IHorariosRepository } from '../../domain/repositories/IHorariosRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
 
@@ -22,6 +23,7 @@ import { PrismaSeccionesRepository } from '../../infrastructure/repositories/Pri
 import { PrismaBarriosRepository } from '../../infrastructure/repositories/PrismaBarriosRepository';
 import { PrismaSubBarriosRepository } from '../../infrastructure/repositories/PrismaSubBarriosRepository';
 import { PrismaUbicacionesRepository } from '../../infrastructure/repositories/PrismaUbicacionesRepository';
+import { PrismaHorariosRepository } from '../../infrastructure/repositories/PrismaHorariosRepository';
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
 import { RedisCacheService } from '../../infrastructure/external-services/RedisCacheService';
@@ -35,6 +37,7 @@ import { SeccionValidator } from '../../domain/validators/Secciones/SeccionValid
 import { BarrioValidator } from '../../domain/validators/Barrios/BarrioValidator';
 import { SubBarrioValidator } from '../../domain/validators/SubBarrios/SubBarrioValidator';
 import { UbicacionValidator } from '../../domain/validators/Ubicaciones/UbicacionValidator';
+import { HorarioValidator } from '../../domain/validators/Horarios/HorarioValidator';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
 
 // UseCases
@@ -44,6 +47,7 @@ import { GestionarDistritosMunicipalesUseCase } from '../../application/use-case
 import { GestionarBarriosUseCase } from '../../application/use-cases/GestionarBarriosUseCase';
 import { GestionarSubBarriosUseCase } from '../../application/use-cases/GestionarSubBarriosUseCase';
 import { GestionarUbicacionesUseCase } from '../../application/use-cases/GestionarUbicacionesUseCase';
+import { GestionarHorariosUseCase } from '../../application/use-cases/GestionarHorariosUseCase';
 import { GestionarSeccionesUseCase } from '../../application/use-cases/GestionarSeccionesUseCase';
 import { RegistrarUsuarioUseCase } from '../../application/use-cases/RegistrarUsuarioUseCase';
 
@@ -113,6 +117,15 @@ container.register(UbicacionValidator, {
     const barriosRepository = container.resolve<IBarriosRepository>('BarriosRepository');
     const subBarriosRepository = container.resolve<ISubBarriosRepository>('SubBarriosRepository');
     return new UbicacionValidator(barriosRepository, subBarriosRepository);
+  }
+});
+
+container.register(HorarioValidator, {
+  useFactory: () => {
+    const ubicacionesRepository = container.resolve<IUbicacionesRepository>('UbicacionesRepository');
+    const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    const horariosRepository = container.resolve<IHorariosRepository>('HorariosRepository');
+    return new HorarioValidator(ubicacionesRepository, usuarioRepository, horariosRepository);
   }
 });
 
@@ -200,6 +213,17 @@ container.register<IUbicacionesRepository>(
   }
 );
 
+container.register<IHorariosRepository>(
+  'HorariosRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve(RedisCacheService);
+      return new PrismaHorariosRepository(prismaClient, redisCache);
+    }
+  }
+);
+
 container.register<IUsuarioRepository>(
   'UsuarioRepository',
   { useClass: PrismaUsuarioRepository }
@@ -265,6 +289,15 @@ container.register(GestionarUbicacionesUseCase, {
     const ubicacionesRepository = container.resolve<IUbicacionesRepository>('UbicacionesRepository');
     const ubicacionValidator = container.resolve(UbicacionValidator);
     return new GestionarUbicacionesUseCase(ubicacionValidator, ubicacionesRepository);
+  }
+});
+
+container.register(GestionarHorariosUseCase, {
+  useFactory: () => {
+    const horariosRepository = container.resolve<IHorariosRepository>('HorariosRepository');
+    const horarioValidator = container.resolve(HorarioValidator);
+    const estadoValidator = container.resolve(EstadoValidator);
+    return new GestionarHorariosUseCase(horariosRepository, horarioValidator, estadoValidator);
   }
 });
 
