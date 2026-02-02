@@ -28,6 +28,8 @@ tags:
     description: Endpoints para gestionar ubicaciones
   - name: Horarios
     description: Endpoints para gestionar horarios
+  - name: ServiciosHorarios
+    description: Endpoints para gestionar relaciones entre servicios y horarios
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -3063,6 +3065,454 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  # --- SERVICIOS HORARIOS ENDPOINTS ---
+  /servicios-horarios:
+    post:
+      summary: Crear una nueva relación ServicioHorario
+      tags:
+        - ServiciosHorarios
+      description: Crea una nueva relación entre un servicio y un horario. Especifica que un servicio está disponible en un horario determinado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - servicioId
+                - horarioId
+              properties:
+                servicioId:
+                  type: integer
+                  example: 1
+                  description: ID del servicio
+                horarioId:
+                  type: integer
+                  example: 1
+                  description: ID del horario
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+                  description: Estado de la relación (opcional, por defecto Activo)
+      responses:
+        '201':
+          description: Relación ServicioHorario creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  mensaje:
+                    type: string
+                    example: "ServicioHorario creado exitosamente"
+                  datos:
+                    $ref: '#/components/schemas/ServicioHorario'
+        '400':
+          description: Datos inválidos o servicio/horario no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: La relación ya existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    get:
+      summary: Listar todas las relaciones ServicioHorario
+      tags:
+        - ServiciosHorarios
+      description: Obtiene una lista de todas las relaciones ServicioHorario con soporte para paginación y filtros.
+      parameters:
+        - name: servicioId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID del servicio (opcional)
+        - name: horarioId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID del horario (opcional)
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo"]
+          description: Filtrar por estado (opcional)
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            example: 1
+          description: Número de página (por defecto 1)
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            example: 10
+          description: Registros por página (por defecto 10, máximo 100)
+      responses:
+        '200':
+          description: Relaciones ServicioHorario obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  datos:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServicioHorario'
+                  paginacion:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 50
+                      pagina:
+                        type: integer
+                        example: 1
+                      limite:
+                        type: integer
+                        example: 10
+                      totalPaginas:
+                        type: integer
+                        example: 5
+        '400':
+          description: Parámetros de paginación inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /servicios-horarios/{servicioId}/{horarioId}:
+    get:
+      summary: Obtener una relación ServicioHorario específica
+      tags:
+        - ServiciosHorarios
+      description: Obtiene los detalles de una relación específica entre un servicio y un horario.
+      parameters:
+        - name: servicioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del servicio
+        - name: horarioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del horario
+      responses:
+        '200':
+          description: Relación ServicioHorario obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  datos:
+                    $ref: '#/components/schemas/ServicioHorario'
+        '400':
+          description: IDs inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Relación ServicioHorario no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Actualizar una relación ServicioHorario
+      tags:
+        - ServiciosHorarios
+      description: Actualiza una relación ServicioHorario existente. Puede cambiar la combinación de IDs (servicioId y/o horarioId) o solo el estado. Si se cambia la combinación de IDs, se valida que la nueva combinación no exista y que los nuevos servicio y horario existan en la base de datos.
+      parameters:
+        - name: servicioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del servicio actual (el que se va a reemplazar)
+        - name: horarioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del horario actual (el que se va a reemplazar)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                servicioId:
+                  type: integer
+                  example: 2
+                  description: Nuevo ID del servicio (opcional). Si se proporciona, reemplaza el servicioId actual.
+                horarioId:
+                  type: integer
+                  example: 5
+                  description: Nuevo ID del horario (opcional). Si se proporciona, reemplaza el horarioId actual.
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Inactivo"
+                  description: Nuevo estado de la relación (opcional)
+      responses:
+        '200':
+          description: Relación ServicioHorario actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  mensaje:
+                    type: string
+                    example: "ServicioHorario actualizado exitosamente"
+                  datos:
+                    $ref: '#/components/schemas/ServicioHorario'
+        '400':
+          description: Datos inválidos (IDs fuera de rango, estado inválido, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Relación ServicioHorario no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflicto - La nueva combinación de servicioId/horarioId ya existe (violación de PRIMARY KEY)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar una relación ServicioHorario
+      tags:
+        - ServiciosHorarios
+      description: Elimina una relación ServicioHorario, removiendo la disponibilidad de ese servicio en ese horario.
+      parameters:
+        - name: servicioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del servicio
+        - name: horarioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del horario
+      responses:
+        '200':
+          description: Relación ServicioHorario eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  mensaje:
+                    type: string
+                    example: "ServicioHorario eliminado exitosamente"
+        '400':
+          description: IDs inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Relación ServicioHorario no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /servicios-horarios/servicio/{servicioId}:
+    get:
+      summary: Listar todos los horarios de un servicio
+      tags:
+        - ServiciosHorarios
+      description: Obtiene todos los horarios en los que está disponible un servicio específico.
+      parameters:
+        - name: servicioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del servicio
+      responses:
+        '200':
+          description: Horarios del servicio obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  datos:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServicioHorario'
+        '400':
+          description: ID del servicio inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /servicios-horarios/horario/{horarioId}:
+    get:
+      summary: Listar todos los servicios de un horario
+      tags:
+        - ServiciosHorarios
+      description: Obtiene todos los servicios disponibles en un horario específico.
+      parameters:
+        - name: horarioId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del horario
+      responses:
+        '200':
+          description: Servicios del horario obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  datos:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServicioHorario'
+        '400':
+          description: ID del horario inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /servicios-horarios/estado/{estado}:
+    get:
+      summary: Listar todas las relaciones ServicioHorario por estado
+      tags:
+        - ServiciosHorarios
+      description: Obtiene todas las relaciones ServicioHorario filtradas por estado (Activo, Inactivo, Eliminado) con soporte para paginación.
+      parameters:
+        - name: estado
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+            example: "Activo"
+          description: Estado de las relaciones a buscar
+        - name: pagina
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 1
+          description: Número de página (por defecto 1)
+        - name: limite
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 10
+          description: Registros por página (por defecto 10, máximo 100)
+      responses:
+        '200':
+          description: Relaciones ServicioHorario obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  datos:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServicioHorario'
+                  paginacion:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 25
+                      pagina:
+                        type: integer
+                        example: 1
+                      limite:
+                        type: integer
+                        example: 10
+                      totalPaginas:
+                        type: integer
+                        example: 3
+        '400':
+          description: Estado inválido o parámetros de paginación incorrectos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
 components:
   schemas:
     Provincia:
@@ -3276,6 +3726,29 @@ components:
           type: string
           format: date-time
           example: "2025-01-22T10:30:00Z"
+
+    ServicioHorario:
+      type: object
+      description: Relación entre un servicio médico y un horario disponible
+      properties:
+        servicioId:
+          type: integer
+          example: 1
+          description: ID del servicio médico
+        horarioId:
+          type: integer
+          example: 1
+          description: ID del horario
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo"]
+          example: "Activo"
+          description: Estado de la relación (si está disponible o no)
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-01-22T10:30:00Z"
+          description: Fecha y hora de creación de la relación
 
     ErrorResponse:
       type: object

@@ -11,6 +11,7 @@ import { IBarriosRepository } from '../../domain/repositories/IBarriosRepository
 import { ISubBarriosRepository } from '../../domain/repositories/ISubBarriosRepository';
 import { IUbicacionesRepository } from '../../domain/repositories/IUbicacionesRepository';
 import { IHorariosRepository } from '../../domain/repositories/IHorariosRepository';
+import { IServicioHorarioRepository } from '../../domain/repositories/IServicioHorarioRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
 
@@ -24,6 +25,7 @@ import { PrismaBarriosRepository } from '../../infrastructure/repositories/Prism
 import { PrismaSubBarriosRepository } from '../../infrastructure/repositories/PrismaSubBarriosRepository';
 import { PrismaUbicacionesRepository } from '../../infrastructure/repositories/PrismaUbicacionesRepository';
 import { PrismaHorariosRepository } from '../../infrastructure/repositories/PrismaHorariosRepository';
+import { PrismaServicioHorarioRepository } from '../../infrastructure/repositories/PrismaServicioHorarioRepository';
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
 import { RedisCacheService } from '../../infrastructure/external-services/RedisCacheService';
@@ -39,6 +41,7 @@ import { SubBarrioValidator } from '../../domain/validators/SubBarrios/SubBarrio
 import { UbicacionValidator } from '../../domain/validators/Ubicaciones/UbicacionValidator';
 import { HorarioValidator } from '../../domain/validators/Horarios/HorarioValidator';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
+import { ValidadorServicioHorario } from '../../domain/validators/ServiciosHorarios/ValidadorServicioHorario';
 
 // UseCases
 import { GestionarProvinciasUseCase } from '../../application/use-cases/GestionarProvinciasUseCase';
@@ -50,6 +53,7 @@ import { GestionarUbicacionesUseCase } from '../../application/use-cases/Gestion
 import { GestionarHorariosUseCase } from '../../application/use-cases/GestionarHorariosUseCase';
 import { GestionarSeccionesUseCase } from '../../application/use-cases/GestionarSeccionesUseCase';
 import { RegistrarUsuarioUseCase } from '../../application/use-cases/RegistrarUsuarioUseCase';
+import { GestionarServicioHorariosUseCase } from '../../application/use-cases/GestionarServicioHorariosUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 // Registrar PrismaClient como singleton
@@ -126,6 +130,12 @@ container.register(HorarioValidator, {
     const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
     const horariosRepository = container.resolve<IHorariosRepository>('HorariosRepository');
     return new HorarioValidator(ubicacionesRepository, usuarioRepository, horariosRepository);
+  }
+});
+
+container.register(ValidadorServicioHorario, {
+  useFactory: () => {
+    return new ValidadorServicioHorario();
   }
 });
 
@@ -224,6 +234,16 @@ container.register<IHorariosRepository>(
   }
 );
 
+container.register<IServicioHorarioRepository>(
+  'ServicioHorarioRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      return new PrismaServicioHorarioRepository(prismaClient);
+    }
+  }
+);
+
 container.register<IUsuarioRepository>(
   'UsuarioRepository',
   { useClass: PrismaUsuarioRepository }
@@ -309,6 +329,13 @@ container.register(RegistrarUsuarioUseCase, {
   }
 });
 
+container.register(GestionarServicioHorariosUseCase, {
+  useFactory: () => {
+    const servicioHorarioRepository = container.resolve<IServicioHorarioRepository>('ServicioHorarioRepository');
+    return new GestionarServicioHorariosUseCase(servicioHorarioRepository);
+  }
+});
+
 // ===== REGISTRAR SERVICIOS DE APLICACIÓN =====
 container.register<IPasswordHasher>(
   'PasswordHasher',
@@ -318,3 +345,5 @@ container.register<IPasswordHasher>(
 container.register<ITranslationService>('ITranslationService', {
   useClass: LibreTranslateService
 });
+
+export { container };
