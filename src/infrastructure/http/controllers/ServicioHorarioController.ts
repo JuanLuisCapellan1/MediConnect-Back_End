@@ -11,6 +11,20 @@ export class ServicioHorarioController {
   ) {}
 
   /**
+   * Mapea una entidad ServicioHorario a su representación de respuesta con datos relacionados
+   */
+  private mapearRespuesta(sh: ServicioHorario): any {
+    return {
+      servicioId: sh.servicioId,
+      horarioId: sh.horarioId,
+      estado: sh.estado,
+      creadoEn: sh.creadoEn,
+      servicio: sh.servicio,
+      horario: sh.horario,
+    };
+  }
+
+  /**
    * Crea un nuevo ServicioHorario
    * POST /api/servicios-horarios
    */
@@ -27,12 +41,7 @@ export class ServicioHorarioController {
       res.status(201).json({
         success: true,
         message: 'ServicioHorario creado exitosamente',
-        data: {
-          servicioId: servicioHorario.servicioId,
-          horarioId: servicioHorario.horarioId,
-          estado: servicioHorario.estado,
-          creadoEn: servicioHorario.creadoEn,
-        },
+        data: this.mapearRespuesta(servicioHorario),
       });
     } catch (error: any) {
       this.manejarError(error, res);
@@ -54,12 +63,7 @@ export class ServicioHorarioController {
 
       res.status(200).json({
         success: true,
-        data: {
-          servicioId: servicioHorario.servicioId,
-          horarioId: servicioHorario.horarioId,
-          estado: servicioHorario.estado,
-          creadoEn: servicioHorario.creadoEn,
-        },
+        data: this.mapearRespuesta(servicioHorario),
       });
     } catch (error: any) {
       this.manejarError(error, res);
@@ -89,12 +93,7 @@ export class ServicioHorarioController {
       res.status(200).json({
         success: true,
         message: 'ServicioHorario actualizado exitosamente',
-        data: {
-          servicioId: servicioHorario.servicioId,
-          horarioId: servicioHorario.horarioId,
-          estado: servicioHorario.estado,
-          creadoEn: servicioHorario.creadoEn,
-        },
+        data: this.mapearRespuesta(servicioHorario),
       });
     } catch (error: any) {
       this.manejarError(error, res);
@@ -144,12 +143,7 @@ export class ServicioHorarioController {
 
       res.status(200).json({
         success: true,
-        data: datos.map((sh: ServicioHorario) => ({
-          servicioId: sh.servicioId,
-          horarioId: sh.horarioId,
-          estado: sh.estado,
-          creadoEn: sh.creadoEn,
-        })),
+        data: datos.map((sh: ServicioHorario) => this.mapearRespuesta(sh)),
         paginacion: {
           total,
           pagina: filtros.pagina || 1,
@@ -177,12 +171,7 @@ export class ServicioHorarioController {
 
       res.status(200).json({
         success: true,
-        datos: serviciosHorarios.map((sh: ServicioHorario) => ({
-          servicioId: sh.servicioId,
-          horarioId: sh.horarioId,
-          estado: sh.estado,
-          creadoEn: sh.creadoEn,
-        })),
+        datos: serviciosHorarios.map((sh: ServicioHorario) => this.mapearRespuesta(sh)),
       });
     } catch (error: any) {
       this.manejarError(error, res);
@@ -204,12 +193,7 @@ export class ServicioHorarioController {
 
       res.status(200).json({
         success: true,
-        datos: serviciosHorarios.map((sh: ServicioHorario) => ({
-          servicioId: sh.servicioId,
-          horarioId: sh.horarioId,
-          estado: sh.estado,
-          creadoEn: sh.creadoEn,
-        })),
+        datos: serviciosHorarios.map((sh: ServicioHorario) => this.mapearRespuesta(sh)),
       });
     } catch (error: any) {
       this.manejarError(error, res);
@@ -236,7 +220,6 @@ export class ServicioHorarioController {
         return;
       }
 
-      console.log('Estado recibido:', estado);
       const filtros: FiltroServiciosHorariosDto = {
         estado: estado as string,
         pagina,
@@ -250,12 +233,7 @@ export class ServicioHorarioController {
 
       res.status(200).json({
         success: true,
-        datos: datos.map((sh: ServicioHorario) => ({
-          servicioId: sh.servicioId,
-          horarioId: sh.horarioId,
-          estado: sh.estado,
-          creadoEn: sh.creadoEn,
-        })),
+        datos: datos.map((sh: ServicioHorario) => this.mapearRespuesta(sh)),
         paginacion: {
           total,
           pagina,

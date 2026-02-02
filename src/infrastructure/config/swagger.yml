@@ -3729,7 +3729,7 @@ components:
 
     ServicioHorario:
       type: object
-      description: Relación entre un servicio médico y un horario disponible
+      description: Relación entre un servicio médico y un horario disponible con datos relacionados
       properties:
         servicioId:
           type: integer
@@ -3741,13 +3741,54 @@ components:
           description: ID del horario
         estado:
           type: string
-          enum: ["Activo", "Inactivo"]
+          enum: ["Activo", "Inactivo", "Eliminado"]
           example: "Activo"
           description: Estado de la relación (si está disponible o no)
         creadoEn:
           type: string
           format: date-time
           example: "2025-01-22T10:30:00Z"
+        servicio:
+          type: object
+          nullable: true
+          description: Datos del servicio relacionado
+          properties:
+            id:
+              type: integer
+              example: 1
+            nombre:
+              type: string
+              example: "Consulta General"
+            descripcion:
+              type: string
+              example: "Consulta médica general"
+            estado:
+              type: string
+              example: "Activo"
+        horario:
+          type: object
+          nullable: true
+          description: Datos del horario relacionado
+          properties:
+            id:
+              type: integer
+              example: 1
+            nombre:
+              type: string
+              example: "Turno Mañana"
+            diaSemana:
+              type: integer
+              example: 1
+              description: "Día de la semana (0=Domingo, 1=Lunes, ..., 6=Sábado)"
+            horaInicio:
+              type: string
+              example: "08:00:00"
+            horaFin:
+              type: string
+              example: "12:00:00"
+            estado:
+              type: string
+              example: "Activo"
           description: Fecha y hora de creación de la relación
 
     ErrorResponse:

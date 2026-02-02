@@ -7,17 +7,37 @@ export class ServicioHorario {
   horarioId: number;
   estado: string;
   creadoEn: Date;
+  
+  // Relaciones opcionales (se populan mediante JOINs)
+  servicio?: {
+    id: number;
+    nombre: string;
+    descripcion?: string;
+    estado: string;
+  };
+  horario?: {
+    id: number;
+    nombre: string;
+    diaSemana: number;
+    horaInicio: string;
+    horaFin: string;
+    estado: string;
+  };
 
   constructor(data: {
     servicioId: number;
     horarioId: number;
     estado?: string;
     creadoEn?: Date;
+    servicio?: any;
+    horario?: any;
   }) {
     this.servicioId = data.servicioId;
     this.horarioId = data.horarioId;
     this.estado = data.estado || 'Activo';
     this.creadoEn = data.creadoEn || new Date();
+    this.servicio = data.servicio;
+    this.horario = data.horario;
   }
 
   /**

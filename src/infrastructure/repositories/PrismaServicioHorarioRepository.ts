@@ -17,7 +17,7 @@ export class PrismaServicioHorarioRepository implements IServicioHorarioReposito
   constructor(private prisma: PrismaClient) {}
 
   /**
-   * Mapea los datos de Prisma a la entidad ServicioHorario
+   * Mapea los datos de Prisma a la entidad ServicioHorario con relaciones
    */
   private mapearEntidad(data: any): ServicioHorario {
     return new ServicioHorario({
@@ -25,6 +25,20 @@ export class PrismaServicioHorarioRepository implements IServicioHorarioReposito
       horarioId: data.horarioId,
       estado: data.estado,
       creadoEn: data.creadoEn,
+      servicio: data.servicio ? {
+        id: data.servicio.id,
+        nombre: data.servicio.nombre,
+        descripcion: data.servicio.descripcion,
+        estado: data.servicio.estado,
+      } : undefined,
+      horario: data.horario ? {
+        id: data.horario.id,
+        nombre: data.horario.nombre,
+        diaSemana: data.horario.diaSemana,
+        horaInicio: data.horario.horaInicio,
+        horaFin: data.horario.horaFin,
+        estado: data.horario.estado,
+      } : undefined,
     });
   }
 
@@ -68,6 +82,26 @@ export class PrismaServicioHorarioRepository implements IServicioHorarioReposito
           horarioId,
         },
       },
+      include: {
+        servicio: {
+          select: {
+            id: true,
+            nombre: true,
+            descripcion: true,
+            estado: true,
+          },
+        },
+        horario: {
+          select: {
+            id: true,
+            nombre: true,
+            diaSemana: true,
+            horaInicio: true,
+            horaFin: true,
+            estado: true,
+          },
+        },
+      },
     });
 
     return resultado ? this.mapearEntidad(resultado) : null;
@@ -77,6 +111,26 @@ export class PrismaServicioHorarioRepository implements IServicioHorarioReposito
     const resultados = await this.prisma.servicioHorario.findMany({
       where: {
         servicioId,
+      },
+      include: {
+        servicio: {
+          select: {
+            id: true,
+            nombre: true,
+            descripcion: true,
+            estado: true,
+          },
+        },
+        horario: {
+          select: {
+            id: true,
+            nombre: true,
+            diaSemana: true,
+            horaInicio: true,
+            horaFin: true,
+            estado: true,
+          },
+        },
       },
       orderBy: {
         horarioId: 'asc',
@@ -90,6 +144,26 @@ export class PrismaServicioHorarioRepository implements IServicioHorarioReposito
     const resultados = await this.prisma.servicioHorario.findMany({
       where: {
         horarioId,
+      },
+      include: {
+        servicio: {
+          select: {
+            id: true,
+            nombre: true,
+            descripcion: true,
+            estado: true,
+          },
+        },
+        horario: {
+          select: {
+            id: true,
+            nombre: true,
+            diaSemana: true,
+            horaInicio: true,
+            horaFin: true,
+            estado: true,
+          },
+        },
       },
       orderBy: {
         servicioId: 'asc',
@@ -114,6 +188,26 @@ export class PrismaServicioHorarioRepository implements IServicioHorarioReposito
     const [resultados, total] = await Promise.all([
       this.prisma.servicioHorario.findMany({
         where: whereClause,
+        include: {
+          servicio: {
+            select: {
+              id: true,
+              nombre: true,
+              descripcion: true,
+              estado: true,
+            },
+          },
+          horario: {
+            select: {
+              id: true,
+              nombre: true,
+              diaSemana: true,
+              horaInicio: true,
+              horaFin: true,
+              estado: true,
+            },
+          },
+        },
         skip,
         take: limite,
         orderBy: {
