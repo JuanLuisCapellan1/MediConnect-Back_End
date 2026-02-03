@@ -12,6 +12,7 @@ import { ISubBarriosRepository } from '../../domain/repositories/ISubBarriosRepo
 import { IUbicacionesRepository } from '../../domain/repositories/IUbicacionesRepository';
 import { IHorariosRepository } from '../../domain/repositories/IHorariosRepository';
 import { IServicioHorarioRepository } from '../../domain/repositories/IServicioHorarioRepository';
+import { ITipoServicioRepository } from '../../domain/repositories/ITipoServicioRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
 
@@ -26,6 +27,7 @@ import { PrismaSubBarriosRepository } from '../../infrastructure/repositories/Pr
 import { PrismaUbicacionesRepository } from '../../infrastructure/repositories/PrismaUbicacionesRepository';
 import { PrismaHorariosRepository } from '../../infrastructure/repositories/PrismaHorariosRepository';
 import { PrismaServicioHorarioRepository } from '../../infrastructure/repositories/PrismaServicioHorarioRepository';
+import { PrismaTipoServicioRepository } from '../../infrastructure/repositories/PrismaTipoServicioRepository';
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
 import { RedisCacheService } from '../../infrastructure/external-services/RedisCacheService';
@@ -42,6 +44,7 @@ import { UbicacionValidator } from '../../domain/validators/Ubicaciones/Ubicacio
 import { HorarioValidator } from '../../domain/validators/Horarios/HorarioValidator';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
 import { ValidadorServicioHorario } from '../../domain/validators/ServiciosHorarios/ValidadorServicioHorario';
+import { TipoServicioValidator } from '../../domain/validators/TiposServicios/TipoServicioValidator';
 
 // UseCases
 import { GestionarProvinciasUseCase } from '../../application/use-cases/GestionarProvinciasUseCase';
@@ -53,6 +56,7 @@ import { GestionarUbicacionesUseCase } from '../../application/use-cases/Gestion
 import { GestionarHorariosUseCase } from '../../application/use-cases/GestionarHorariosUseCase';
 import { GestionarSeccionesUseCase } from '../../application/use-cases/GestionarSeccionesUseCase';
 import { RegistrarUsuarioUseCase } from '../../application/use-cases/RegistrarUsuarioUseCase';
+import { GestionarTiposServiciosUseCase } from '../../application/use-cases/GestionarTiposServiciosUseCase';
 import { GestionarServicioHorariosUseCase } from '../../application/use-cases/GestionarServicioHorariosUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
@@ -136,6 +140,13 @@ container.register(HorarioValidator, {
 container.register(ValidadorServicioHorario, {
   useFactory: () => {
     return new ValidadorServicioHorario();
+  }
+});
+
+container.register(TipoServicioValidator, {
+  useFactory: () => {
+    const repo = container.resolve<ITipoServicioRepository>('TipoServicioRepository');
+    return new TipoServicioValidator(repo);
   }
 });
 
@@ -244,6 +255,16 @@ container.register<IServicioHorarioRepository>(
   }
 );
 
+container.register<ITipoServicioRepository>(
+  'TipoServicioRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      return new PrismaTipoServicioRepository(prismaClient);
+    }
+  }
+);
+
 container.register<IUsuarioRepository>(
   'UsuarioRepository',
   { useClass: PrismaUsuarioRepository }
@@ -326,6 +347,15 @@ container.register(RegistrarUsuarioUseCase, {
     const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
     const passwordHasher = container.resolve<IPasswordHasher>('PasswordHasher');
     return new RegistrarUsuarioUseCase(usuarioRepository, passwordHasher);
+  }
+});
+
+container.register(GestionarTiposServiciosUseCase, {
+  useFactory: () => {
+    const repo = container.resolve<ITipoServicioRepository>('TipoServicioRepository');
+    const validator = container.resolve(TipoServicioValidator);
+    const estadoValidator = container.resolve(EstadoValidator);
+    return new GestionarTiposServiciosUseCase(repo, validator, estadoValidator);
   }
 });
 

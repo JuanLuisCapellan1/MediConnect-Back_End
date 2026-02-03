@@ -30,6 +30,8 @@ tags:
     description: Endpoints para gestionar horarios
   - name: ServiciosHorarios
     description: Endpoints para gestionar relaciones entre servicios y horarios
+  - name: TiposServicios
+    description: Endpoints para gestionar tipos de servicios
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -3509,9 +3511,224 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
+          content:
+            application/json:
+              schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  # --- TIPOS SERVICIOS ENDPOINTS ---
+  /tipos-servicios:
+    get:
+      summary: Listar tipos de servicios
+      tags:
+        - TiposServicios
+      description: Obtiene una lista de tipos de servicios con soporte para paginación y filtros.
+      parameters:
+        - name: nombre
+          in: query
+          description: Filtrar por nombre (búsqueda parcial)
+          schema:
+            type: string
+        - name: estado
+          in: query
+          description: Filtrar por estado (Activo, Inactivo, etc.)
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Tipos de servicios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TipoServicio'
+                  paginacion:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      pagina:
+                        type: integer
+                      limite:
+                        type: integer
+                      totalPaginas:
+                        type: integer
         '500':
           description: Error interno del servidor
+          content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear un nuevo tipo de servicio
+      tags:
+        - TiposServicios
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nombre
+              properties:
+                nombre:
+                  type: string
+                descripcion:
+                  type: string
+                estado:
+                  type: string
+      responses:
+        '201':
+          description: Tipo de servicio creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/TipoServicio'
+        '400':
+          description: Datos inválidos
+        '409':
+          description: El tipo de servicio ya existe
+        '500':
+          description: Error interno del servidor
+          content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/ErrorResponse'
+
+  /tipos-servicios/{id}:
+    get:
+      summary: Obtener tipo de servicio por ID
+      tags:
+        - TiposServicios
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tipo de servicio obtenido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/TipoServicio'
+        '404':
+          description: Tipo de servicio no encontrado
+        '500':
+          description: Error interno del servidor
+          content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Actualizar tipo de servicio
+      tags:
+        - TiposServicios
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                descripcion:
+                  type: string
+                estado:
+                  type: string
+      responses:
+        '200':
+          description: Tipo de servicio actualizado
+          content:
+            application/json:
+              schema:
+                 type: object
+                 properties:
+                    success: 
+                      type: boolean
+                    message: 
+                      type: string
+                    data:
+                      $ref: '#/components/schemas/TipoServicio'
+        '404':
+          description: Tipo de servicio no encontrado
+        '500':
+          description: Error interno del servidor
+          content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Eliminar tipo de servicio
+      tags:
+        - TiposServicios
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tipo de servicio eliminado
+          content:
+            application/json:
+              schema:
+                 type: object
+                 properties:
+                    success: 
+                      type: boolean
+                    message: 
+                      type: string
+        '404':
+          description: Tipo de servicio no encontrado
+        '500':
+          description: Error interno del servidor
+          content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/ErrorResponse'
 
 components:
   schemas:
@@ -3790,6 +4007,28 @@ components:
               type: string
               example: "Activo"
           description: Fecha y hora de creación de la relación
+
+    TipoServicio:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Consulta Médica"
+        descripcion:
+          type: string
+          nullable: true
+          example: "Servicio de consulta general"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-02-02T12:00:00Z"
 
     ErrorResponse:
       type: object
