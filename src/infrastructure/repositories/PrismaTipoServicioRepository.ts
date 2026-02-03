@@ -52,9 +52,6 @@ export class PrismaTipoServicioRepository implements ITipoServicioRepository {
     if (filtros.estado) {
       where.estado = filtros.estado;
     } else {
-        // Por defecto no mostrar eliminados si no se especifica?
-        // Usualmente se maneja asi, pero IServicioHorario no lo hacía explícito en la lógica leída. 
-        // Agrego where not Eliminado por consistencia general si no se pida.
         where.estado = { not: 'Eliminado' };
     }
 
@@ -97,12 +94,8 @@ export class PrismaTipoServicioRepository implements ITipoServicioRepository {
   async existeNombre(nombre: string, excluirId?: number): Promise<boolean> {
     const where: any = {
       nombre: { equals: nombre, mode: 'insensitive' },
-      estado: { not: 'Eliminado' } // Solo considerar activos/inactivos para colisión de nombres? O eliminados también?
-      // Usualmente unique constraint en BD manda. Schema dice UNIQUE. 
-      // Si hay uno eliminado con ese nombre, Prisma fallará al intentar crear otro igual.
-      // Asi que debo buscar incluso eliminados.
+      estado: { not: 'Eliminado' },
     };
-    if (where.estado) delete where.estado; // Remover filtro de estado
 
     if (excluirId) {
       where.id = { not: excluirId };

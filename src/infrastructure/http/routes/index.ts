@@ -10,6 +10,7 @@ import UbicacionesRoutes from './UbicacionesRoutes';
 import HorariosRoutes from './HorariosRoutes';
 import ServicioHorarioRoutes from './ServiciosHorariosRoutes';
 import TiposServiciosRoutes from './TiposServiciosRoutes';
+import TiposCentrosSaludRoutes from './TiposCentrosSaludRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -45,5 +46,8 @@ router.use('/servicios-horarios', ServicioHorarioRoutes);
 
 // Rutas de Tipos de Servicios
 router.use('/tipos-servicios', TiposServiciosRoutes);
+
+// Rutas de Tipos de Centros de Salud
+router.use('/tipos-centros-salud', TiposCentrosSaludRoutes);
 
 export default router;

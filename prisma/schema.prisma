@@ -292,7 +292,7 @@ model Ubicacion {
 
 model Especialidad {
   id          Int      @id @default(autoincrement()) @map("id_especialidad")
-  nombre      String   @unique @db.VarChar(80)
+  nombre      String   @db.VarChar(80)
   descripcion String?
   estado      String   @default("Activo") @db.VarChar(20)
   creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
@@ -305,7 +305,7 @@ model Especialidad {
 
 model Profesion {
   id          Int      @id @default(autoincrement()) @map("id_profesion")
-  nombre      String   @unique @db.VarChar(80)
+  nombre      String   @db.VarChar(80)
   estado      String   @default("Activo") @db.VarChar(20)
   creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
 
@@ -331,7 +331,7 @@ model Universidad {
 
 model TipoCentroSalud {
   id        Int           @id @default(autoincrement()) @map("id_tipo_centro_salud")
-  nombre    String        @unique @db.VarChar(80)
+  nombre    String        @db.VarChar(80)
   estado    String        @default("Activo") @db.VarChar(20)
   creadoEn  DateTime      @default(now()) @map("creado_en") @db.Timestamptz(6)
   
@@ -342,7 +342,7 @@ model TipoCentroSalud {
 
 model TipoServicio {
   id          Int        @id @default(autoincrement()) @map("id_tipo_servicio")
-  nombre      String     @unique @db.VarChar(80)
+  nombre      String     @db.VarChar(80)
   descripcion String?
   estado      String     @default("Activo") @db.VarChar(20)
   creadoEn    DateTime   @default(now()) @map("creado_en") @db.Timestamptz(6)
