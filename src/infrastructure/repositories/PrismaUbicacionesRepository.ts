@@ -1,8 +1,3 @@
-/**
- * PrismaUbicacionesRepository.ts
- * Implementación del repositorio para Ubicaciones usando Prisma ORM y Redis para caching
- */
-
 import { PrismaClient } from '@prisma/client';
 import { RedisCacheService } from '../external-services/RedisCacheService';
 import { Ubicacion } from '../../domain/entities/Ubicacion';

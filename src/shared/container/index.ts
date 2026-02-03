@@ -13,6 +13,7 @@ import { IUbicacionesRepository } from '../../domain/repositories/IUbicacionesRe
 import { IHorariosRepository } from '../../domain/repositories/IHorariosRepository';
 import { IServicioHorarioRepository } from '../../domain/repositories/IServicioHorarioRepository';
 import { ITipoServicioRepository } from '../../domain/repositories/ITipoServicioRepository';
+import { ITipoCentroSaludRepository } from '../../domain/repositories/ITipoCentroSaludRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
 
@@ -28,6 +29,7 @@ import { PrismaUbicacionesRepository } from '../../infrastructure/repositories/P
 import { PrismaHorariosRepository } from '../../infrastructure/repositories/PrismaHorariosRepository';
 import { PrismaServicioHorarioRepository } from '../../infrastructure/repositories/PrismaServicioHorarioRepository';
 import { PrismaTipoServicioRepository } from '../../infrastructure/repositories/PrismaTipoServicioRepository';
+import { PrismaTipoCentroSaludRepository } from '../../infrastructure/repositories/PrismaTipoCentroSaludRepository';
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
 import { RedisCacheService } from '../../infrastructure/external-services/RedisCacheService';
@@ -45,6 +47,7 @@ import { HorarioValidator } from '../../domain/validators/Horarios/HorarioValida
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
 import { ValidadorServicioHorario } from '../../domain/validators/ServiciosHorarios/ValidadorServicioHorario';
 import { TipoServicioValidator } from '../../domain/validators/TiposServicios/TipoServicioValidator';
+import { TipoCentroSaludValidator } from '../../domain/validators/TiposCentrosSalud/TipoCentroSaludValidator';
 
 // UseCases
 import { GestionarProvinciasUseCase } from '../../application/use-cases/GestionarProvinciasUseCase';
@@ -57,6 +60,7 @@ import { GestionarHorariosUseCase } from '../../application/use-cases/GestionarH
 import { GestionarSeccionesUseCase } from '../../application/use-cases/GestionarSeccionesUseCase';
 import { RegistrarUsuarioUseCase } from '../../application/use-cases/RegistrarUsuarioUseCase';
 import { GestionarTiposServiciosUseCase } from '../../application/use-cases/GestionarTiposServiciosUseCase';
+import { GestionarTiposCentrosSaludUseCase } from '../../application/use-cases/GestionarTiposCentrosSaludUseCase';
 import { GestionarServicioHorariosUseCase } from '../../application/use-cases/GestionarServicioHorariosUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
@@ -147,6 +151,13 @@ container.register(TipoServicioValidator, {
   useFactory: () => {
     const repo = container.resolve<ITipoServicioRepository>('TipoServicioRepository');
     return new TipoServicioValidator(repo);
+  }
+});
+
+container.register(TipoCentroSaludValidator, {
+  useFactory: () => {
+    const repo = container.resolve<ITipoCentroSaludRepository>('TipoCentroSaludRepository');
+    return new TipoCentroSaludValidator(repo);
   }
 });
 
@@ -265,6 +276,17 @@ container.register<ITipoServicioRepository>(
   }
 );
 
+container.register<ITipoCentroSaludRepository>(
+  'TipoCentroSaludRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve(RedisCacheService);
+      return new PrismaTipoCentroSaludRepository(prismaClient, redisCache);
+    }
+  }
+);
+
 container.register<IUsuarioRepository>(
   'UsuarioRepository',
   { useClass: PrismaUsuarioRepository }
@@ -356,6 +378,15 @@ container.register(GestionarTiposServiciosUseCase, {
     const validator = container.resolve(TipoServicioValidator);
     const estadoValidator = container.resolve(EstadoValidator);
     return new GestionarTiposServiciosUseCase(repo, validator, estadoValidator);
+  }
+});
+
+container.register(GestionarTiposCentrosSaludUseCase, {
+  useFactory: () => {
+    const repo = container.resolve<ITipoCentroSaludRepository>('TipoCentroSaludRepository');
+    const validator = container.resolve(TipoCentroSaludValidator);
+    const estadoValidator = container.resolve(EstadoValidator);
+    return new GestionarTiposCentrosSaludUseCase(repo, validator, estadoValidator);
   }
 });
 
