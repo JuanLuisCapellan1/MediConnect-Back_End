@@ -34,6 +34,8 @@ tags:
     description: Endpoints para gestionar tipos de servicios
   - name: TiposCentrosSalud
     description: Endpoints para gestionar tipos de centros de salud
+  - name: Profesiones
+    description: Endpoints para gestionar profesiones
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -3944,6 +3946,240 @@ paths:
                schema:
                  $ref: '#/components/schemas/ErrorResponse'
 
+  /profesiones:
+    post:
+      summary: Crear una nueva profesión
+      tags:
+        - Profesiones
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nombre
+              properties:
+                nombre:
+                  type: string
+                  example: "Medicina General"
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+      responses:
+        '201':
+          description: Profesión creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profesion'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: La profesión ya existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Obtener todas las profesiones
+      tags:
+        - Profesiones
+      parameters:
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+          description: Filtrar por estado
+        - name: busqueda
+          in: query
+          schema:
+            type: string
+          description: Buscar por nombre
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Número de página
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Cantidad de resultados por página
+      responses:
+        '200':
+          description: Lista de profesiones
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profesiones:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Profesion'
+                  total:
+                    type: integer
+                    example: 50
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /profesiones/{id}:
+    get:
+      summary: Obtener una profesión por ID
+      tags:
+        - Profesiones
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la profesión
+      responses:
+        '200':
+          description: Profesión encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profesion'
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Profesión no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Actualizar una profesión
+      tags:
+        - Profesiones
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la profesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  example: "Cardiología"
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+      responses:
+        '200':
+          description: Profesión actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profesion'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Profesión no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Ya existe otra profesión con ese nombre
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Eliminar profesión (soft delete)
+      tags:
+        - Profesiones
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la profesión
+      responses:
+        '200':
+          description: Profesión eliminada exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Profesión no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     Provincia:
@@ -4253,6 +4489,24 @@ components:
         nombre:
           type: string
           example: "Hospital"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2025-02-02T12:00:00Z"
+
+    Profesion:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Medicina General"
         estado:
           type: string
           enum: ["Activo", "Inactivo", "Eliminado"]

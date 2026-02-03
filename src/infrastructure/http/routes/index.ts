@@ -11,6 +11,7 @@ import HorariosRoutes from './HorariosRoutes';
 import ServicioHorarioRoutes from './ServiciosHorariosRoutes';
 import TiposServiciosRoutes from './TiposServiciosRoutes';
 import TiposCentrosSaludRoutes from './TiposCentrosSaludRoutes';
+import ProfesionesRoutes from './ProfesionesRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -49,5 +50,8 @@ router.use('/tipos-servicios', TiposServiciosRoutes);
 
 // Rutas de Tipos de Centros de Salud
 router.use('/tipos-centros-salud', TiposCentrosSaludRoutes);
+
+// Rutas de Profesiones
+router.use('/profesiones', ProfesionesRoutes);
 
 export default router;
