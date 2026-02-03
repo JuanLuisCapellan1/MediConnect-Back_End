@@ -82,7 +82,7 @@ export class PrismaHorariosRepository implements IHorariosRepository {
 
     // 2. Si no hay caché, buscar en DB
     const horariosOrm = await this.prisma.horario.findMany({
-      where: { estado: { not: 'Eliminado' } },
+      where: { estado: { equals: 'Activo' } },
       orderBy: [{ doctorId: 'asc' }, { diaSemana: 'asc' }, { horaInicio: 'asc' }]
     });
 
@@ -121,7 +121,7 @@ export class PrismaHorariosRepository implements IHorariosRepository {
     const horariosOrm = await this.prisma.horario.findMany({
       where: {
         doctorId,
-        estado: { not: 'Eliminado' }
+        estado: { equals: 'Activo' }
       },
       orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }]
     });
@@ -161,7 +161,7 @@ export class PrismaHorariosRepository implements IHorariosRepository {
     const horariosOrm = await this.prisma.horario.findMany({
       where: {
         diaSemana,
-        estado: { not: 'Eliminado' }
+        estado: { equals: 'Activo' }
       },
       orderBy: [{ doctorId: 'asc' }, { horaInicio: 'asc' }]
     });
