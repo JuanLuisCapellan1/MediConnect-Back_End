@@ -110,7 +110,7 @@ model Doctor {
   nombre                String   @db.VarChar(80)
   apellido              String   @db.VarChar(80)
   tipoDocIdentificacion String   @map("tipo_documento_identificacion") @db.VarChar(20)
-  docIdentificacion     String   @unique @map("documento_identificacion") @db.VarChar(40)
+  numeroDocumentoIdentificacion     String   @unique @map("numero_documento_identificacion") @db.VarChar(20)
   fechaNacimiento       DateTime @map("fecha_nacimiento") @db.Date
   genero                String   @db.Char(1)
   nacionalidad          String?  @db.VarChar(50)

@@ -12,6 +12,8 @@ servers:
 tags:
   - name: Traductor
     description: Endpoints de traducción del sistema
+  - name: Utilidades de Traducción
+    description: Endpoints para gestionar y monitorear el sistema de traducción automática
   - name: Provincias
     description: Endpoints para gestionar provincias
   - name: Municipios
@@ -36,6 +38,8 @@ tags:
     description: Endpoints para gestionar tipos de centros de salud
   - name: Profesiones
     description: Endpoints para gestionar profesiones
+  - name: ExperienciasLaborales
+    description: Endpoints para gestionar experiencias laborales de doctores
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -92,13 +96,304 @@ paths:
         '500':
           description: Error en el servidor durante la traducción
 
+  /translation/languages:
+    get:
+      summary: Obtener lista de idiomas soportados
+      tags:
+        - Utilidades de Traducción
+      description: Retorna la lista completa de idiomas soportados por el sistema de traducción (más de 100 idiomas).
+      responses:
+        '200':
+          description: Lista de idiomas obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    example: 100
+                  languages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                          example: "es"
+                        name:
+                          type: string
+                          example: "Español"
+        '500':
+          description: Error obteniendo idiomas
+
+  /translation/health:
+    get:
+      summary: Health check del sistema de traducción
+      tags:
+        - Utilidades de Traducción
+      description: Verifica el estado de todos los componentes del sistema de traducción (caché, rate limiter, idiomas).
+      responses:
+        '200':
+          description: Sistema saludable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+                  components:
+                    type: object
+                    properties:
+                      cache:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: "operational"
+                          size:
+                            type: integer
+                            example: 145
+                          utilization:
+                            type: string
+                            example: "14.50%"
+                      rateLimiter:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: "operational"
+                          trackedIPs:
+                            type: integer
+                            example: 12
+                      languages:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: "operational"
+                          supported:
+                            type: integer
+                            example: 100
+        '500':
+          description: Sistema no saludable
+
+  /translation/cache/stats:
+    get:
+      summary: Obtener estadísticas del caché de traducciones
+      tags:
+        - Utilidades de Traducción
+      description: Retorna estadísticas detalladas sobre el uso del caché de traducciones.
+      responses:
+        '200':
+          description: Estadísticas del caché obtenidas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cache:
+                    type: object
+                    properties:
+                      size:
+                        type: integer
+                        example: 145
+                      maxSize:
+                        type: integer
+                        example: 1000
+                      utilization:
+                        type: number
+                        example: 14.5
+                      entries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            key:
+                              type: string
+                            hits:
+                              type: integer
+                            age:
+                              type: integer
+                  message:
+                    type: string
+        '500':
+          description: Error obteniendo estadísticas del caché
+
+  /translation/cache:
+    delete:
+      summary: Limpiar el caché de traducciones
+      tags:
+        - Utilidades de Traducción
+      description: Elimina todas las entradas del caché de traducciones. Útil para desarrollo o mantenimiento.
+      responses:
+        '200':
+          description: Caché limpiado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Caché limpiado exitosamente"
+        '500':
+          description: Error limpiando el caché
+
+  /translation/rate-limit/stats:
+    get:
+      summary: Obtener estadísticas del rate limiter
+      tags:
+        - Utilidades de Traducción
+      description: Retorna estadísticas sobre el uso del rate limiter de traducciones.
+      responses:
+        '200':
+          description: Estadísticas del rate limiter obtenidas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rateLimiter:
+                    type: object
+                    properties:
+                      totalIPs:
+                        type: integer
+                        example: 12
+                      topConsumers:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            ip:
+                              type: string
+                              example: "192.168.1.100"
+                            requests:
+                              type: integer
+                              example: 45
+                            resetIn:
+                              type: integer
+                              example: 600
+                  message:
+                    type: string
+        '500':
+          description: Error obteniendo estadísticas del rate limiter
+
+  /translation/rate-limit/reset:
+    post:
+      summary: Resetear rate limit para una IP específica
+      tags:
+        - Utilidades de Traducción
+      description: Resetea el contador de rate limit para una dirección IP específica. Útil para desarrollo o whitelist.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ip:
+                  type: string
+                  example: "192.168.1.100"
+              required:
+                - ip
+      responses:
+        '200':
+          description: Rate limit reseteado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Rate limit reseteado para IP: 192.168.1.100"
+        '400':
+          description: IP no proporcionada
+        '500':
+          description: Error reseteando rate limit
+
+  /translation/validate/{code}:
+    get:
+      summary: Validar si un código de idioma es soportado
+      tags:
+        - Utilidades de Traducción
+      description: Verifica si un código de idioma específico es soportado por el sistema.
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "es"
+          description: Código del idioma a validar
+      responses:
+        '200':
+          description: Validación exitosa
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "es"
+                  supported:
+                    type: boolean
+                    example: true
+                  name:
+                    type: string
+                    example: "Español"
+        '500':
+          description: Error validando idioma
+
   # --- PROVINCIAS ENDPOINTS ---
   /provincias:
     get:
       summary: Listar todas las provincias activas
       tags:
         - Provincias
-      description: Obtiene una lista de todas las provincias con estado activo o inactivo.
+      description: |
+        Obtiene una lista de todas las provincias con estado activo o inactivo.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos. Agrega los siguientes parámetros de query:
+        
+        - `target`: Idioma destino (ej: en, fr, de)
+
+        - `source`: Idioma origen (opcional, default: es)
+
+        - `translate_fields`: Campos a traducir separados por coma (ej: nombre)
+        
+        Ejemplo: `/api/provincias?target=en&translate_fields=nombre`
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir separados por coma (ej nombre,descripcion)
       responses:
         '200':
           description: Provincias obtenidas exitosamente
@@ -2713,7 +3008,35 @@ paths:
       summary: Listar todos los horarios
       tags:
         - Horarios
-      description: Obtiene una lista de todos los horarios del sistema.
+      description: |
+        Obtiene una lista de todos los horarios del sistema. 
+
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/servicios-horarios?target=en&translate_fields=descripcion`
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "descripcion,nombre"
+          description: Campos a traducir separados por comas (ejemplo: "descripcion,nombre")
       responses:
         '200':
           description: Horarios obtenidos exitosamente
@@ -3041,6 +3364,28 @@ paths:
         - Horarios
       description: Obtiene todos los horarios que tienen un estado específico (Activo, Inactivo o Eliminado).
       parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "descripcion"
+          description: Campos a traducir separados por coma
         - name: estado
           in: path
           required: true
@@ -3136,8 +3481,35 @@ paths:
       summary: Listar todas las relaciones ServicioHorario
       tags:
         - ServiciosHorarios
-      description: Obtiene una lista de todas las relaciones ServicioHorario con soporte para paginación y filtros.
+      description: |
+        Obtiene una lista de todas las relaciones ServicioHorario con soporte para paginación y filtros.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/servicios-horarios?target=en&translate_fields=descripcion`
       parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "descripcion"
+          description: Campos a traducir separados por coma
         - name: servicioId
           in: query
           schema:
@@ -3526,8 +3898,35 @@ paths:
       summary: Listar tipos de servicios
       tags:
         - TiposServicios
-      description: Obtiene una lista de tipos de servicios con soporte para paginación y filtros.
+      description: |
+        Obtiene una lista de tipos de servicios con soporte para paginación y filtros.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/tipos-servicios?target=en&translate_fields=nombre,descripcion`
       parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: Campos a traducir separados por coma
         - name: nombre
           in: query
           description: Filtrar por nombre (búsqueda parcial)
@@ -3740,8 +4139,35 @@ paths:
       summary: Listar tipos de centros de salud
       tags:
         - TiposCentrosSalud
-      description: Obtiene una lista de tipos de centros de salud con soporte para paginación y filtros.
+      description: |
+        Obtiene una lista de tipos de centros de salud con soporte para paginación y filtros.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/tipos-centros-salud?target=en&translate_fields=nombre,descripcion`
       parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: Campos a traducir separados por coma
         - name: nombre
           in: query
           description: Filtrar por nombre (búsqueda parcial)
@@ -4000,7 +4426,35 @@ paths:
       summary: Obtener todas las profesiones
       tags:
         - Profesiones
+      description: |
+        Obtiene una lista de profesiones con soporte para filtros y paginación.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/profesiones?target=en&translate_fields=nombre,descripcion`
       parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: Campos a traducir separados por coma
         - name: estado
           in: query
           schema:
@@ -4175,6 +4629,476 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Profesión no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # --- EXPERIENCIAS LABORALES ENDPOINTS ---
+  /experiencias-laborales:
+    post:
+      summary: Crear una nueva experiencia laboral
+      tags:
+        - ExperienciasLaborales
+      description: Crea una nueva experiencia laboral para un doctor. Debe especificar un centro de salud o una institución externa, pero no ambos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - doctorId
+                - profesionId
+                - descripcionCargo
+                - fechaInicio
+              properties:
+                doctorId:
+                  type: integer
+                  example: 1
+                  description: ID del doctor
+                centroSaludId:
+                  type: integer
+                  example: 5
+                  description: ID del centro de salud (opcional si se especifica institucionExterna)
+                institucionExterna:
+                  type: string
+                  example: "Hospital General Regional"
+                  maxLength: 150
+                  description: Nombre de la institución externa (opcional si se especifica centroSaludId)
+                profesionId:
+                  type: integer
+                  example: 2
+                  description: ID de la profesión
+                descripcionCargo:
+                  type: string
+                  example: "Médico General en el área de emergencias"
+                  minLength: 5
+                  maxLength: 200
+                  description: Descripción del cargo desempeñado
+                fechaInicio:
+                  type: string
+                  format: date
+                  example: "2020-01-15"
+                  description: Fecha de inicio (ISO 8601, no puede ser futura)
+                fechaFinalizacion:
+                  type: string
+                  format: date
+                  example: "2023-06-30"
+                  description: Fecha de finalización (ISO 8601, requerida si trabajaActualmente es false)
+                trabajaActualmente:
+                  type: boolean
+                  example: false
+                  default: false
+                  description: Indica si el doctor trabaja actualmente en este puesto
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+                  default: "Activo"
+                  description: Estado de la experiencia laboral
+      responses:
+        '201':
+          description: Experiencia laboral creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Experiencia laboral creada exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ExperienciaLaboral'
+        '400':
+          description: Datos inválidos (fechas inválidas, institución requerida, campos faltantes, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Doctor, profesión o centro de salud no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Obtener todas las experiencias laborales
+      tags:
+        - ExperienciasLaborales
+      description: |
+        Lista todas las experiencias laborales con soporte para filtros y paginación. Los resultados se ordenan por trabajos actuales primero y luego por fecha de inicio descendente.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/experiencias-laborales?target=en&translate_fields=descripcionCargo,institucionExterna`
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "descripcionCargo,institucionExterna"
+          description: Campos a traducir separados por coma
+        - name: doctorId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID del doctor
+        - name: centroSaludId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID del centro de salud
+        - name: profesionId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID de la profesión
+        - name: trabajaActualmente
+          in: query
+          schema:
+            type: boolean
+          description: Filtrar por trabajos actuales (true/false)
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+          description: Filtrar por estado
+        - name: busqueda
+          in: query
+          schema:
+            type: string
+          description: Buscar en descripción del cargo e institución externa
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Número de página
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Cantidad de resultados por página
+      responses:
+        '200':
+          description: Lista de experiencias laborales
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Experiencias laborales obtenidas exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      experiencias:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ExperienciaLaboral'
+                      total:
+                        type: integer
+                        example: 25
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /experiencias-laborales/doctor/{doctorId}:
+    get:
+      summary: Obtener todas las experiencias laborales de un doctor específico
+      tags:
+        - ExperienciasLaborales
+      description: Obtiene el portafolio/línea temporal completo de un doctor. Ideal para mostrar el historial profesional. Los resultados se ordenan por trabajos actuales primero y luego por fecha de inicio descendente.
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del doctor
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Número de página
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Cantidad de resultados por página
+      responses:
+        '200':
+          description: Lista de experiencias laborales del doctor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Experiencias laborales del doctor obtenidas exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      experiencias:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ExperienciaLaboral'
+                      total:
+                        type: integer
+                        example: 5
+        '400':
+          description: ID del doctor inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Doctor no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /experiencias-laborales/{id}:
+    get:
+      summary: Obtener una experiencia laboral por ID
+      tags:
+        - ExperienciasLaborales
+      description: Obtiene los detalles completos de una experiencia laboral específica por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la experiencia laboral
+      responses:
+        '200':
+          description: Experiencia laboral encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Experiencia laboral obtenida exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ExperienciaLaboral'
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Experiencia laboral no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Actualizar una experiencia laboral
+      tags:
+        - ExperienciasLaborales
+      description: Actualiza una experiencia laboral existente. Todos los campos son opcionales, pero al menos uno debe ser proporcionado. Se mantienen las validaciones de negocio (fechas coherentes, institución válida, etc.).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la experiencia laboral
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                centroSaludId:
+                  type: integer
+                  example: 7
+                  description: ID del centro de salud
+                institucionExterna:
+                  type: string
+                  example: "Clínica Moderna"
+                  maxLength: 150
+                  description: Nombre de la institución externa
+                profesionId:
+                  type: integer
+                  example: 3
+                  description: ID de la profesión
+                descripcionCargo:
+                  type: string
+                  example: "Jefe de Emergencias"
+                  minLength: 5
+                  maxLength: 200
+                  description: Descripción del cargo
+                fechaInicio:
+                  type: string
+                  format: date
+                  example: "2020-02-01"
+                  description: Fecha de inicio
+                fechaFinalizacion:
+                  type: string
+                  format: date
+                  example: "2024-01-15"
+                  description: Fecha de finalización
+                trabajaActualmente:
+                  type: boolean
+                  example: false
+                  description: Indica si trabaja actualmente en este puesto
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+                  description: Estado de la experiencia
+      responses:
+        '200':
+          description: Experiencia laboral actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Experiencia laboral actualizada exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ExperienciaLaboral'
+        '400':
+          description: Datos inválidos (fechas inválidas, institución inválida, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Experiencia laboral, profesión o centro de salud no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Eliminar una experiencia laboral (soft delete)
+      tags:
+        - ExperienciasLaborales
+      description: Elimina lógicamente una experiencia laboral marcándola como "Eliminado". No se elimina físicamente del sistema para preservar el historial.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la experiencia laboral
+      responses:
+        '200':
+          description: Experiencia laboral eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Experiencia laboral eliminada exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Experiencia laboral no encontrada
           content:
             application/json:
               schema:
@@ -4521,6 +5445,59 @@ components:
           type: string
           format: date-time
           example: "2025-02-02T12:00:00Z"
+
+    ExperienciaLaboral:
+      type: object
+      description: Experiencia laboral de un doctor en una institución médica
+      properties:
+        id:
+          type: integer
+          example: 1
+        doctorId:
+          type: integer
+          example: 123
+        centroSaludId:
+          type: integer
+          nullable: true
+          example: 5
+          description: ID del centro de salud (nulo si es institución externa)
+        institucionExterna:
+          type: string
+          nullable: true
+          example: "Hospital General Regional"
+          description: Nombre de la institución externa (nulo si es centro de salud)
+        profesionId:
+          type: integer
+          example: 2
+        descripcionCargo:
+          type: string
+          example: "Médico General en el área de emergencias"
+        fechaInicio:
+          type: string
+          format: date
+          example: "2020-01-15"
+        fechaFinalizacion:
+          type: string
+          format: date
+          nullable: true
+          example: "2023-06-30"
+          description: Fecha de finalización (nulo si trabaja actualmente)
+        trabajaActualmente:
+          type: boolean
+          example: false
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        actualizadoEn:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-02-01T14:20:00Z"
 
     ErrorResponse:
       type: object
