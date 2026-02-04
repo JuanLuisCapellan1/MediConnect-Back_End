@@ -53,4 +53,28 @@ export class RedisCacheService {
     await this.conectar();
     await this.client.del(key);
   }
+
+  // Método para ELIMINAR múltiples claves por patrón (ej: "experiencias_laborales:doctor:123:*")
+  async deleteByPattern(pattern: string): Promise<void> {
+    await this.conectar();
+    
+    const keys: string[] = [];
+    let cursor = '0';
+
+    // SCAN es más seguro que KEYS para producción (no bloquea Redis)
+    do {
+      const result = await this.client.scan(cursor, {
+        MATCH: pattern,
+        COUNT: 100
+      });
+      
+      cursor = result.cursor;
+      keys.push(...result.keys);
+    } while (cursor !== '0');
+
+    // Eliminar todas las claves encontradas
+    if (keys.length > 0) {
+      await this.client.del(keys);
+    }
+  }
 }

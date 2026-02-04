@@ -36,6 +36,8 @@ tags:
     description: Endpoints para gestionar tipos de centros de salud
   - name: Profesiones
     description: Endpoints para gestionar profesiones
+  - name: ExperienciasLaborales
+    description: Endpoints para gestionar experiencias laborales de doctores
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -4186,6 +4188,449 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  # --- EXPERIENCIAS LABORALES ENDPOINTS ---
+  /experiencias-laborales:
+    post:
+      summary: Crear una nueva experiencia laboral
+      tags:
+        - ExperienciasLaborales
+      description: Crea una nueva experiencia laboral para un doctor. Debe especificar un centro de salud o una institución externa, pero no ambos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - doctorId
+                - profesionId
+                - descripcionCargo
+                - fechaInicio
+              properties:
+                doctorId:
+                  type: integer
+                  example: 1
+                  description: ID del doctor
+                centroSaludId:
+                  type: integer
+                  example: 5
+                  description: ID del centro de salud (opcional si se especifica institucionExterna)
+                institucionExterna:
+                  type: string
+                  example: "Hospital General Regional"
+                  maxLength: 150
+                  description: Nombre de la institución externa (opcional si se especifica centroSaludId)
+                profesionId:
+                  type: integer
+                  example: 2
+                  description: ID de la profesión
+                descripcionCargo:
+                  type: string
+                  example: "Médico General en el área de emergencias"
+                  minLength: 5
+                  maxLength: 200
+                  description: Descripción del cargo desempeñado
+                fechaInicio:
+                  type: string
+                  format: date
+                  example: "2020-01-15"
+                  description: Fecha de inicio (ISO 8601, no puede ser futura)
+                fechaFinalizacion:
+                  type: string
+                  format: date
+                  example: "2023-06-30"
+                  description: Fecha de finalización (ISO 8601, requerida si trabajaActualmente es false)
+                trabajaActualmente:
+                  type: boolean
+                  example: false
+                  default: false
+                  description: Indica si el doctor trabaja actualmente en este puesto
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+                  default: "Activo"
+                  description: Estado de la experiencia laboral
+      responses:
+        '201':
+          description: Experiencia laboral creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Experiencia laboral creada exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ExperienciaLaboral'
+        '400':
+          description: Datos inválidos (fechas inválidas, institución requerida, campos faltantes, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Doctor, profesión o centro de salud no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Obtener todas las experiencias laborales
+      tags:
+        - ExperienciasLaborales
+      description: Lista todas las experiencias laborales con soporte para filtros y paginación. Los resultados se ordenan por trabajos actuales primero y luego por fecha de inicio descendente.
+      parameters:
+        - name: doctorId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID del doctor
+        - name: centroSaludId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID del centro de salud
+        - name: profesionId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID de la profesión
+        - name: trabajaActualmente
+          in: query
+          schema:
+            type: boolean
+          description: Filtrar por trabajos actuales (true/false)
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+          description: Filtrar por estado
+        - name: busqueda
+          in: query
+          schema:
+            type: string
+          description: Buscar en descripción del cargo e institución externa
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Número de página
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Cantidad de resultados por página
+      responses:
+        '200':
+          description: Lista de experiencias laborales
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Experiencias laborales obtenidas exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      experiencias:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ExperienciaLaboral'
+                      total:
+                        type: integer
+                        example: 25
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /experiencias-laborales/doctor/{doctorId}:
+    get:
+      summary: Obtener todas las experiencias laborales de un doctor específico
+      tags:
+        - ExperienciasLaborales
+      description: Obtiene el portafolio/línea temporal completo de un doctor. Ideal para mostrar el historial profesional. Los resultados se ordenan por trabajos actuales primero y luego por fecha de inicio descendente.
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del doctor
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Número de página
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Cantidad de resultados por página
+      responses:
+        '200':
+          description: Lista de experiencias laborales del doctor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Experiencias laborales del doctor obtenidas exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      experiencias:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ExperienciaLaboral'
+                      total:
+                        type: integer
+                        example: 5
+        '400':
+          description: ID del doctor inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Doctor no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /experiencias-laborales/{id}:
+    get:
+      summary: Obtener una experiencia laboral por ID
+      tags:
+        - ExperienciasLaborales
+      description: Obtiene los detalles completos de una experiencia laboral específica por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la experiencia laboral
+      responses:
+        '200':
+          description: Experiencia laboral encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Experiencia laboral obtenida exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ExperienciaLaboral'
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Experiencia laboral no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Actualizar una experiencia laboral
+      tags:
+        - ExperienciasLaborales
+      description: Actualiza una experiencia laboral existente. Todos los campos son opcionales, pero al menos uno debe ser proporcionado. Se mantienen las validaciones de negocio (fechas coherentes, institución válida, etc.).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la experiencia laboral
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                centroSaludId:
+                  type: integer
+                  example: 7
+                  description: ID del centro de salud
+                institucionExterna:
+                  type: string
+                  example: "Clínica Moderna"
+                  maxLength: 150
+                  description: Nombre de la institución externa
+                profesionId:
+                  type: integer
+                  example: 3
+                  description: ID de la profesión
+                descripcionCargo:
+                  type: string
+                  example: "Jefe de Emergencias"
+                  minLength: 5
+                  maxLength: 200
+                  description: Descripción del cargo
+                fechaInicio:
+                  type: string
+                  format: date
+                  example: "2020-02-01"
+                  description: Fecha de inicio
+                fechaFinalizacion:
+                  type: string
+                  format: date
+                  example: "2024-01-15"
+                  description: Fecha de finalización
+                trabajaActualmente:
+                  type: boolean
+                  example: false
+                  description: Indica si trabaja actualmente en este puesto
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+                  description: Estado de la experiencia
+      responses:
+        '200':
+          description: Experiencia laboral actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Experiencia laboral actualizada exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ExperienciaLaboral'
+        '400':
+          description: Datos inválidos (fechas inválidas, institución inválida, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Experiencia laboral, profesión o centro de salud no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Eliminar una experiencia laboral (soft delete)
+      tags:
+        - ExperienciasLaborales
+      description: Elimina lógicamente una experiencia laboral marcándola como "Eliminado". No se elimina físicamente del sistema para preservar el historial.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la experiencia laboral
+      responses:
+        '200':
+          description: Experiencia laboral eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Experiencia laboral eliminada exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Experiencia laboral no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     Provincia:
@@ -4521,6 +4966,59 @@ components:
           type: string
           format: date-time
           example: "2025-02-02T12:00:00Z"
+
+    ExperienciaLaboral:
+      type: object
+      description: Experiencia laboral de un doctor en una institución médica
+      properties:
+        id:
+          type: integer
+          example: 1
+        doctorId:
+          type: integer
+          example: 123
+        centroSaludId:
+          type: integer
+          nullable: true
+          example: 5
+          description: ID del centro de salud (nulo si es institución externa)
+        institucionExterna:
+          type: string
+          nullable: true
+          example: "Hospital General Regional"
+          description: Nombre de la institución externa (nulo si es centro de salud)
+        profesionId:
+          type: integer
+          example: 2
+        descripcionCargo:
+          type: string
+          example: "Médico General en el área de emergencias"
+        fechaInicio:
+          type: string
+          format: date
+          example: "2020-01-15"
+        fechaFinalizacion:
+          type: string
+          format: date
+          nullable: true
+          example: "2023-06-30"
+          description: Fecha de finalización (nulo si trabaja actualmente)
+        trabajaActualmente:
+          type: boolean
+          example: false
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        actualizadoEn:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-02-01T14:20:00Z"
 
     ErrorResponse:
       type: object
