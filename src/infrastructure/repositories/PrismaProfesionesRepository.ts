@@ -14,11 +14,12 @@ export class PrismaProfesionesRepository implements IProfesionesRepository {
     private redis: RedisCacheService
   ) {}
 
-  async crear(nombre: string, estado: string): Promise<Profesion> {
+  async crear(nombre: string, estado: string, descripcion?: string): Promise<Profesion> {
     const nuevaProfesion = await this.prisma.profesion.create({
       data: {
         nombre,
         estado,
+        descripcion,
       },
     });
 
@@ -105,7 +106,7 @@ export class PrismaProfesionesRepository implements IProfesionesRepository {
     return resultado;
   }
 
-  async actualizar(id: number, nombre?: string, estado?: string): Promise<Profesion> {
+  async actualizar(id: number, nombre?: string, estado?: string, descripcion?: string): Promise<Profesion> {
     const data: any = {};
 
     if (nombre !== undefined) {
@@ -114,6 +115,10 @@ export class PrismaProfesionesRepository implements IProfesionesRepository {
 
     if (estado !== undefined) {
       data.estado = estado;
+    }
+
+    if (descripcion !== undefined) {
+      data.descripcion = descripcion;
     }
 
     const actualizada = await this.prisma.profesion.update({
@@ -164,7 +169,8 @@ export class PrismaProfesionesRepository implements IProfesionesRepository {
       profesion.id,
       profesion.nombre,
       profesion.estado,
-      profesion.creadoEn
+      profesion.creadoEn,
+      profesion.descripcion
     );
   }
 }

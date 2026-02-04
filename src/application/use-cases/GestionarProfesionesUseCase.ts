@@ -32,8 +32,11 @@ export class GestionarProfesionesUseCase {
     // Validar estado
     this.profesionValidator.validarEstadoValido(estado);
 
+    //Normalizar descripción
+    const descripcion = dto.descripcion ? dto.descripcion.trim() : undefined;
+
     // Crear profesión
-    return await this.profesionesRepository.crear(nombreNormalizado, estado);
+    return await this.profesionesRepository.crear(nombreNormalizado, estado, descripcion);
   }
 
   async obtenerPorId(id: number): Promise<Profesion> {
@@ -87,7 +90,13 @@ export class GestionarProfesionesUseCase {
       this.profesionValidator.validarEstadoValido(estadoNormalizado);
     }
 
-    return await this.profesionesRepository.actualizar(id, nombreNormalizado, estadoNormalizado);
+
+    let descripcionNormalizada: string | undefined;
+    if (dto.descripcion !== undefined) {
+      descripcionNormalizada = dto.descripcion.trim();
+    }
+
+    return await this.profesionesRepository.actualizar(id, nombreNormalizado, estadoNormalizado, descripcionNormalizada);
   }
 
   async eliminar(id: number): Promise<void> {

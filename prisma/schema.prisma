@@ -306,6 +306,7 @@ model Especialidad {
 model Profesion {
   id          Int      @id @default(autoincrement()) @map("id_profesion")
   nombre      String   @db.VarChar(80)
+  descripcion String?
   estado      String   @default("Activo") @db.VarChar(20)
   creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
 

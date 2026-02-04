@@ -1,10 +1,12 @@
 export interface CrearProfesionDto {
   nombre: string;
+  descripcion?: string;
   estado?: string;
 }
 
 export interface ActualizarProfesionDto {
   nombre?: string;
+  descripcion?: string;
   estado?: string;
 }
 

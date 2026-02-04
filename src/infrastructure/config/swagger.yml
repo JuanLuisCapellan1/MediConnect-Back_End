@@ -3967,6 +3967,9 @@ paths:
                   type: string
                   enum: ["Activo", "Inactivo"]
                   example: "Activo"
+                descripcion:
+                  type: string
+                  example: "Profesión dedicada al diagnóstico y tratamiento general de enfermedades."
       responses:
         '201':
           description: Profesión creada exitosamente
@@ -4115,6 +4118,9 @@ paths:
                   type: string
                   enum: ["Activo", "Inactivo"]
                   example: "Activo"
+                descripcion:
+                  type: string
+                  example: "Especialidad médica que se ocupa de los trastornos del corazón."
       responses:
         '200':
           description: Profesión actualizada
