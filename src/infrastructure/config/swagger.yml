@@ -40,6 +40,10 @@ tags:
     description: Endpoints para gestionar profesiones
   - name: ExperienciasLaborales
     description: Endpoints para gestionar experiencias laborales de doctores
+  - name: Autenticación
+    description: Endpoints para autenticación y gestión de tokens JWT
+  - name: Notificaciones
+    description: Endpoints para gestión de notificaciones en tiempo real
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -5110,6 +5114,841 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+    # --- AUTENTICACIÓN ENDPOINTS ---
+  
+  /auth/login:
+    post:
+      summary: Login con email y password
+      tags:
+        - Autenticación
+      description: Autentica un usuario con su email y contraseña, retornando un token JWT válido por 24 horas.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "usuario@mediconnect.com"
+                  description: Email del usuario
+                password:
+                  type: string
+                  format: password
+                  example: "123456"
+                  description: Contraseña del usuario
+      responses:
+        '200':
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Login exitoso"
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                        description: Token JWT válido por 24 horas
+                      usuario:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            example: 1
+                          email:
+                            type: string
+                            example: "usuario@mediconnect.com"
+                          rol:
+                            type: string
+                            example: "Paciente"
+                            enum: ["Paciente", "Doctor", "CentroSalud", "Administrador"]
+                          fotoPerfil:
+                            type: string
+                            nullable: true
+                            example: "https://example.com/foto.jpg"
+        '400':
+          description: Email o password no proporcionados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Email y password son requeridos"
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Credenciales inválidas"
+        '403':
+          description: Usuario inactivo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Usuario inactivo. Contacta al administrador"
+        '500':
+          description: Error interno del servidor
+
+  /auth/quick-login:
+    post:
+      summary: Login rápido sin password (solo desarrollo)
+      tags:
+        - Autenticación
+      description: |
+        **⚠️ SOLO PARA DESARROLLO**
+        
+        Genera un token JWT sin verificar contraseña. Este endpoint debe ser deshabilitado en producción.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "usuario@mediconnect.com"
+                  description: Email del usuario
+      responses:
+        '200':
+          description: Quick login exitoso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Quick login exitoso (solo para desarrollo)"
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      usuario:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            example: 1
+                          email:
+                            type: string
+                            example: "usuario@mediconnect.com"
+                          rol:
+                            type: string
+                            example: "Paciente"
+        '400':
+          description: Email no proporcionado
+        '404':
+          description: Usuario no encontrado
+        '500':
+          description: Error interno del servidor
+
+  /auth/generate-token:
+    post:
+      summary: Generar token por ID de usuario (solo desarrollo)
+      tags:
+        - Autenticación
+      description: |
+        **⚠️ SOLO PARA DESARROLLO**
+        
+        Genera un token JWT para un usuario específico por su ID. Útil para pruebas. Este endpoint debe ser deshabilitado en producción.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - usuarioId
+              properties:
+                usuarioId:
+                  type: integer
+                  example: 1
+                  description: ID del usuario
+      responses:
+        '200':
+          description: Token generado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Token generado (solo para desarrollo)"
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      usuarioId:
+                        type: integer
+                        example: 1
+                      email:
+                        type: string
+                        example: "usuario@mediconnect.com"
+                      rol:
+                        type: string
+                        example: "Paciente"
+        '400':
+          description: usuarioId no proporcionado
+        '404':
+          description: Usuario no encontrado
+        '500':
+          description: Error interno del servidor
+
+  /auth/verify:
+    post:
+      summary: Verificar validez de un token
+      tags:
+        - Autenticación
+      description: Verifica si un token JWT es válido y retorna los datos decodificados.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  description: Token JWT a verificar
+      responses:
+        '200':
+          description: Token válido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Token válido"
+                  data:
+                    type: object
+                    properties:
+                      userId:
+                        type: integer
+                        example: 1
+                      email:
+                        type: string
+                        example: "usuario@mediconnect.com"
+                      rol:
+                        type: string
+                        example: "Paciente"
+                      iat:
+                        type: integer
+                        example: 1738713600
+                        description: Timestamp de emisión
+                      exp:
+                        type: integer
+                        example: 1738800000
+                        description: Timestamp de expiración
+        '400':
+          description: Token no proporcionado
+        '401':
+          description: Token inválido o expirado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Token expirado"
+        '500':
+          description: Error interno del servidor
+
+  /auth/me:
+    get:
+      summary: Obtener información del usuario autenticado
+      tags:
+        - Autenticación
+      description: Retorna la información completa del usuario que está autenticado mediante el token JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Usuario obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Usuario autenticado"
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      email:
+                        type: string
+                        example: "usuario@mediconnect.com"
+                      rol:
+                        type: string
+                        example: "Paciente"
+                      foto_perfil:
+                        type: string
+                        nullable: true
+                        example: "https://example.com/foto.jpg"
+                      telefono:
+                        type: string
+                        nullable: true
+                        example: "8091234567"
+                      email_verificado:
+                        type: boolean
+                        example: false
+                      estado:
+                        type: string
+                        example: "Activo"
+                      creado_en:
+                        type: string
+                        format: date-time
+                        example: "2026-02-04T12:00:00.000Z"
+        '401':
+          description: No autenticado o token inválido
+        '404':
+          description: Usuario no encontrado
+        '500':
+          description: Error interno del servidor
+
+  # --- NOTIFICACIONES ENDPOINTS ---
+  /notificaciones:
+    get:
+      summary: Obtener notificaciones del usuario
+      tags:
+        - Notificaciones
+      description: |
+        Obtiene las notificaciones del usuario autenticado con soporte para filtros y paginación.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos. Agrega los siguientes parámetros de query:
+        
+        - `target`: Idioma destino (ej: en, fr, de)
+
+        - `source`: Idioma origen (opcional, default: es)
+
+        - `translate_fields`: Campos a traducir separados por coma (ej: titulo,mensaje)
+        
+        Ejemplo: `/api/notificaciones?target=en&translate_fields=titulo,mensaje`
+        
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: usuarioId
+          in: query
+          schema:
+            type: integer
+          description: ID del usuario (temporal, en producción viene del JWT)
+          example: 1
+        - name: leidas
+          in: query
+          schema:
+            type: boolean
+          description: Filtrar por notificaciones leídas (true) o no leídas (false)
+          example: false
+        - name: tipoAlerta
+          in: query
+          schema:
+            type: string
+            enum: ["Informacion", "Advertencia", "Error", "Exito"]
+          description: Filtrar por tipo de alerta
+          example: "Informacion"
+        - name: tipoEntidad
+          in: query
+          schema:
+            type: string
+            enum: ["Cita", "Mensaje", "Resena", "Usuario", "Sistema"]
+          description: Filtrar por tipo de entidad relacionada
+          example: "Cita"
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+          description: Número máximo de resultados por página
+          example: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Número de resultados a omitir (para paginación)
+          example: 0
+        - name: target
+          in: query
+          schema:
+            type: string
+          description: Idioma destino para traducción automática (activa la traducción)
+          example: "en"
+        - name: source
+          in: query
+          schema:
+            type: string
+            default: "es"
+          description: Idioma origen para traducción automática
+          example: "es"
+        - name: translate_fields
+          in: query
+          schema:
+            type: string
+          description: Campos a traducir separados por coma (ej titulo,mensaje)
+          example: "titulo,mensaje"
+      responses:
+        '200':
+          description: Notificaciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Notificaciones obtenidas exitosamente"
+                  data:
+                    type: object
+                    properties:
+                      notificaciones:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Notificacion'
+                      total:
+                        type: integer
+                        example: 10
+                      noLeidas:
+                        type: integer
+                        example: 3
+        '400':
+          description: Parámetros inválidos
+        '500':
+          description: Error interno del servidor
+
+    post:
+      summary: Crear una nueva notificación
+      tags:
+        - Notificaciones
+      description: Crea una nueva notificación para un usuario. La notificación se enviará automáticamente en tiempo real vía WebSocket si el usuario está conectado.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - usuarioId
+                - titulo
+                - mensaje
+              properties:
+                usuarioId:
+                  type: integer
+                  example: 1
+                  description: ID del usuario destinatario
+                titulo:
+                  type: string
+                  maxLength: 100
+                  example: "Nueva cita programada"
+                  description: Título de la notificación (máximo 100 caracteres)
+                mensaje:
+                  type: string
+                  example: "Tu cita con el Dr. Pérez está confirmada para mañana a las 10:00 AM"
+                  description: Contenido del mensaje
+                tipoAlerta:
+                  type: string
+                  enum: ["Informacion", "Advertencia", "Error", "Exito"]
+                  default: "Informacion"
+                  example: "Exito"
+                  description: Tipo de alerta para el estilo visual
+                tipoEntidad:
+                  type: string
+                  enum: ["Cita", "Mensaje", "Resena", "Usuario", "Sistema"]
+                  nullable: true
+                  example: "Cita"
+                  description: Tipo de entidad relacionada (opcional)
+                entidadId:
+                  type: integer
+                  nullable: true
+                  example: 123
+                  description: ID de la entidad relacionada (opcional)
+      responses:
+        '201':
+          description: Notificación creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Notificación creada exitosamente"
+                  data:
+                    $ref: '#/components/schemas/Notificacion'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "usuarioId, titulo y mensaje son requeridos"
+        '500':
+          description: Error interno del servidor
+
+  /notificaciones/{id}:
+    get:
+      summary: Obtener notificación por ID
+      tags:
+        - Notificaciones
+      description: Obtiene los detalles de una notificación específica. Solo puede acceder el usuario propietario.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la notificación
+          example: 1
+        - name: usuarioId
+          in: query
+          schema:
+            type: integer
+          description: ID del usuario (temporal)
+          example: 1
+      responses:
+        '200':
+          description: Notificación obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Notificación obtenida exitosamente"
+                  data:
+                    $ref: '#/components/schemas/Notificacion'
+        '400':
+          description: ID o usuarioId inválido
+        '403':
+          description: No tienes permiso para acceder a esta notificación
+        '404':
+          description: Notificación no encontrada
+        '500':
+          description: Error interno del servidor
+
+  /notificaciones/{id}/leer:
+    patch:
+      summary: Marcar notificación como leída
+      tags:
+        - Notificaciones
+      description: Marca una notificación específica como leída. Actualiza el contador de no leídas en tiempo real.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la notificación
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - usuarioId
+              properties:
+                usuarioId:
+                  type: integer
+                  example: 1
+                  description: ID del usuario
+      responses:
+        '200':
+          description: Notificación marcada como leída
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Notificación marcada como leída"
+                  data:
+                    $ref: '#/components/schemas/Notificacion'
+        '404':
+          description: Notificación no encontrada o sin permiso
+        '500':
+          description: Error interno del servidor
+
+  /notificaciones/leer-varias:
+    patch:
+      summary: Marcar varias notificaciones como leídas
+      tags:
+        - Notificaciones
+      description: Marca múltiples notificaciones como leídas en una sola operación.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - usuarioId
+                - notificacionesIds
+              properties:
+                usuarioId:
+                  type: integer
+                  example: 1
+                  description: ID del usuario
+                notificacionesIds:
+                  type: array
+                  items:
+                    type: integer
+                  example: [1, 2, 3, 4, 5]
+                  description: Array de IDs de notificaciones a marcar como leídas
+      responses:
+        '200':
+          description: Notificaciones marcadas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "5 notificaciones marcadas como leídas"
+                  data:
+                    type: object
+                    properties:
+                      cantidadMarcadas:
+                        type: integer
+                        example: 5
+        '400':
+          description: Datos inválidos
+        '500':
+          description: Error interno del servidor
+
+  /notificaciones/leer-todas:
+    patch:
+      summary: Marcar todas las notificaciones como leídas
+      tags:
+        - Notificaciones
+      description: Marca todas las notificaciones no leídas del usuario como leídas.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - usuarioId
+              properties:
+                usuarioId:
+                  type: integer
+                  example: 1
+                  description: ID del usuario
+      responses:
+        '200':
+          description: Notificaciones marcadas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "10 notificaciones marcadas como leídas"
+                  data:
+                    type: object
+                    properties:
+                      cantidadMarcadas:
+                        type: integer
+                        example: 10
+        '400':
+          description: usuarioId requerido
+        '500':
+          description: Error interno del servidor
+
+  /notificaciones/no-leidas/contar:
+    get:
+      summary: Contar notificaciones no leídas
+      tags:
+        - Notificaciones
+      description: Obtiene el número de notificaciones no leídas del usuario.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: usuarioId
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: ID del usuario
+          example: 1
+      responses:
+        '200':
+          description: Contador obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Contador obtenido exitosamente"
+                  data:
+                    type: object
+                    properties:
+                      contador:
+                        type: integer
+                        example: 5
+        '400':
+          description: usuarioId requerido
+        '500':
+          description: Error interno del servidor
+
+  /notificaciones/eliminar-varias:
+    delete:
+      summary: Eliminar varias notificaciones
+      tags:
+        - Notificaciones
+      description: Elimina (desactiva) múltiples notificaciones en una sola operación.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - usuarioId
+                - notificacionesIds
+              properties:
+                usuarioId:
+                  type: integer
+                  example: 1
+                notificacionesIds:
+                  type: array
+                  items:
+                    type: integer
+                  example: [1, 2, 3]
+      responses:
+        '200':
+          description: Notificaciones eliminadas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "3 notificaciones eliminadas exitosamente"
+                  data:
+                    type: object
+                    properties:
+                      cantidadEliminadas:
+                        type: integer
+                        example: 3
+        '400':
+          description: Datos inválidos
+        '500':
+          description: Error interno del servidor
+
+  /notificaciones/{id}:
+    delete:
+      summary: Eliminar una notificación
+      tags:
+        - Notificaciones
+      description: Elimina (desactiva) una notificación específica del usuario.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la notificación
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - usuarioId
+              properties:
+                usuarioId:
+                  type: integer
+                  example: 1
+                  description: ID del usuario
+      responses:
+        '200':
+          description: Notificación eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Notificación eliminada exitosamente"
+        '400':
+          description: usuarioId requerido
+        '404':
+          description: Notificación no encontrada o sin permiso
+        '500':
+          description: Error interno del servidor
+
+
 components:
   schemas:
     Provincia:
@@ -5499,12 +6338,69 @@ components:
           nullable: true
           example: "2024-02-01T14:20:00Z"
 
-    ErrorResponse:
+    Notificacion:
       type: object
       properties:
-        success:
+        id:
+          type: integer
+          example: 1
+          description: ID único de la notificación
+        usuarioId:
+          type: integer
+          example: 1
+          description: ID del usuario destinatario
+        titulo:
+          type: string
+          maxLength: 100
+          example: "Nueva cita programada"
+          description: Título de la notificación
+        mensaje:
+          type: string
+          example: "Tu cita con el Dr. Pérez está confirmada para mañana a las 10:00 AM"
+          description: Contenido completo de la notificación
+        tipoAlerta:
+          type: string
+          enum: ["Informacion", "Advertencia", "Error", "Exito"]
+          example: "Exito"
+          description: Tipo de alerta visual
+        tipoEntidad:
+          type: string
+          enum: ["Cita", "Mensaje", "Resena", "Usuario", "Sistema"]
+          nullable: true
+          example: "Cita"
+          description: Tipo de entidad relacionada (opcional)
+        entidadId:
+          type: integer
+          nullable: true
+          example: 123
+          description: ID de la entidad relacionada (opcional)
+        leida:
           type: boolean
           example: false
-        message:
+          description: Estado de lectura de la notificación
+        creadoEn:
           type: string
-          example: "Error al procesar la solicitud"
+          format: date-time
+          example: "2026-02-04T12:00:00.000Z"
+          description: Fecha y hora de creación
+        leidaEn:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+          description: Fecha y hora cuando fue leída (null si no ha sido leída)
+
+    securitySchemes:
+      bearerAuth:
+        type: http
+        scheme: bearer
+        bearerFormat: JWT
+        description: Token JWT obtenido del endpoint /auth/login
+        type: object
+        properties:
+          success:
+            type: boolean
+            example: false
+          message:
+            type: string
+            example: "Error al procesar la solicitud"

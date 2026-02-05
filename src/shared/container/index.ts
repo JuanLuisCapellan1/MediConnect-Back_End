@@ -18,6 +18,7 @@ import { IProfesionesRepository } from '../../domain/repositories/IProfesionesRe
 import { IExperienciasLaboralesRepository } from '../../domain/repositories/IExperienciasLaboralesRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
+import { INotificacionesRepository } from '../../domain/repositories/INotificacionesRepository';
 
 // Implementaciones
 import { PrismaUsuarioRepository } from '../../infrastructure/repositories/PrismaUsuarioRepository';
@@ -34,9 +35,11 @@ import { PrismaTipoServicioRepository } from '../../infrastructure/repositories/
 import { PrismaTipoCentroSaludRepository } from '../../infrastructure/repositories/PrismaTipoCentroSaludRepository';
 import { PrismaProfesionesRepository } from '../../infrastructure/repositories/PrismaProfesionesRepository';
 import { PrismaExperienciasLaboralesRepository } from '../../infrastructure/repositories/PrismaExperienciasLaboralesRepository';
+import { PrismaNotificacionesRepository } from '../../infrastructure/repositories/PrismaNotificacionesRepository';
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
 import { RedisCacheService } from '../../infrastructure/external-services/RedisCacheService';
+import { NotificacionesWebSocketService } from '../../infrastructure/external-services/NotificacionesWebSocketService';
 import { prisma } from '../../infrastructure/database/prisma/client';
 
 // Validadores
@@ -70,6 +73,7 @@ import { GestionarTiposCentrosSaludUseCase } from '../../application/use-cases/G
 import { GestionarProfesionesUseCase } from '../../application/use-cases/GestionarProfesionesUseCase';
 import { GestionarExperienciasLaboralesUseCase } from '../../application/use-cases/GestionarExperienciasLaboralesUseCase';
 import { GestionarServicioHorariosUseCase } from '../../application/use-cases/GestionarServicioHorariosUseCase';
+import { GestionarNotificacionesUseCase } from '../../application/use-cases/GestionarNotificacionesUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 // Registrar PrismaClient como singleton
@@ -82,6 +86,9 @@ const redisCacheService = new RedisCacheService();
 container.register(RedisCacheService, {
   useValue: redisCacheService
 });
+
+// Registrar NotificacionesWebSocketService como singleton
+container.registerSingleton(NotificacionesWebSocketService);
 
 // ===== REGISTRAR VALIDADORES =====
 container.register(ProvinciaValidator, {
@@ -336,6 +343,11 @@ container.register<IUsuarioRepository>(
   { useClass: PrismaUsuarioRepository }
 );
 
+container.register<INotificacionesRepository>(
+  'NotificacionesRepository',
+  { useClass: PrismaNotificacionesRepository }
+);
+
 // ===== REGISTRAR USE CASES =====
 container.register(GestionarProvinciasUseCase, {
   useFactory: () => {
@@ -466,6 +478,13 @@ container.register(GestionarServicioHorariosUseCase, {
   useFactory: () => {
     const servicioHorarioRepository = container.resolve<IServicioHorarioRepository>('ServicioHorarioRepository');
     return new GestionarServicioHorariosUseCase(servicioHorarioRepository);
+  }
+});
+
+container.register(GestionarNotificacionesUseCase, {
+  useFactory: () => {
+    const notificacionesRepository = container.resolve<INotificacionesRepository>('NotificacionesRepository');
+    return new GestionarNotificacionesUseCase(notificacionesRepository);
   }
 });
 
