@@ -17,6 +17,7 @@ import path from 'path';
 
 import routes from './infrastructure/http/routes';
 import { NotificacionesWebSocketService } from './infrastructure/external-services/NotificacionesWebSocketService';
+import { ChatWebSocketService } from './infrastructure/external-services/ChatWebSocketService';
 
 const app = express();
 const httpServer = createServer(app);
@@ -39,6 +40,10 @@ app.use('/api', routes);
 // Inicializar WebSocket
 const wsService = container.resolve(NotificacionesWebSocketService);
 wsService.inicializar(httpServer);
+
+// Inicializar Chat WebSocket
+const chatWsService = container.resolve(ChatWebSocketService);
+chatWsService.inicializar(wsService.obtenerIO()!);
 
 // Iniciar servidor
 httpServer.listen(PORT, () => {

@@ -16,6 +16,8 @@ import ProfesionesRoutes from './ProfesionesRoutes';
 import ExperienciasLaboralesRoutes from './ExperienciasLaboralesRoutes';
 import NotificacionesRoutes from './notificaciones.routes';
 import AuthRoutes from './auth.routes';
+import ConversacionesRoutes from './conversaciones.routes';
+import MensajesRoutes from './mensajes.routes';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 import { translationRateLimitMiddleware } from '../middlewares/TranslationRateLimiter';
 
@@ -83,5 +85,11 @@ router.use('/auth', AuthRoutes);
 
 // Rutas de Notificaciones
 router.use('/notificaciones', NotificacionesRoutes);
+
+// Rutas de Conversaciones (Chat)
+router.use('/conversaciones', ConversacionesRoutes);
+
+// Rutas de Mensajes
+router.use('/conversaciones', MensajesRoutes);
 
 export default router;

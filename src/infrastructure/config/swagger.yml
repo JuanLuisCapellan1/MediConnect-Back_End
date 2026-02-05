@@ -44,6 +44,10 @@ tags:
     description: Endpoints para autenticación y gestión de tokens JWT
   - name: Notificaciones
     description: Endpoints para gestión de notificaciones en tiempo real
+  - name: Conversaciones
+    description: Endpoints para gestión de conversaciones de chat entre usuarios
+  - name: Mensajes
+    description: Endpoints para gestión de mensajes dentro de conversaciones
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -5948,6 +5952,356 @@ paths:
         '500':
           description: Error interno del servidor
 
+  # --- CONVERSACIONES ENDPOINTS ---
+  /conversaciones:
+    get:
+      summary: Obtener conversaciones del usuario
+      tags:
+        - Conversaciones
+      description: |
+        Obtiene todas las conversaciones del usuario autenticado con soporte para filtros y paginación.
+        
+        **WebSocket:** Los cambios se notifican en tiempo real
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: estado
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [Activa, Archivada, Bloqueada]
+        - name: silenciado
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: busqueda
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limite
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Conversaciones obtenidas exitosamente
+        '401':
+          description: No autenticado
+
+    post:
+      summary: Crear una nueva conversación
+      tags:
+        - Conversaciones
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - receptorId
+              properties:
+                receptorId:
+                  type: integer
+                  example: 2
+      responses:
+        '201':
+          description: Conversación creada exitosamente
+        '409':
+          description: Ya existe una conversación con ese usuario
+
+  /conversaciones/obtener-o-crear:
+    post:
+      summary: Obtener o crear conversación
+      tags:
+        - Conversaciones
+      description: Obtiene una conversación existente o crea una nueva si no existe
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - receptorId
+              properties:
+                receptorId:
+                  type: integer
+                  example: 3
+      responses:
+        '200':
+          description: Conversación obtenida o creada
+
+  /conversaciones/{id}:
+    get:
+      summary: Obtener conversación por ID
+      tags:
+        - Conversaciones
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Conversación obtenida exitosamente
+        '403':
+          description: No tienes acceso a esta conversación
+
+    patch:
+      summary: Actualizar conversación (silenciar/archivar/bloquear)
+      tags:
+        - Conversaciones
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                silenciado:
+                  type: boolean
+                estado:
+                  type: string
+                  enum: [Activa, Archivada, Bloqueada]
+      responses:
+        '200':
+          description: Conversación actualizada
+
+    delete:
+      summary: Eliminar conversación
+      tags:
+        - Conversaciones
+      description: Elimina la conversación y todos sus mensajes (irreversible)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Conversación eliminada
+
+  # --- MENSAJES ENDPOINTS ---
+  /conversaciones/{conversacionId}/mensajes:
+    get:
+      summary: Obtener mensajes de una conversación
+      tags:
+        - Mensajes
+      description: Lista mensajes con paginación y filtros
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversacionId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: antesDeId
+          in: query
+          schema:
+            type: integer
+        - name: tipo
+          in: query
+          schema:
+            type: string
+            enum: [Texto, Imagen, Video, Audio, Archivo]
+        - name: busqueda
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Mensajes obtenidos exitosamente
+
+    post:
+      summary: Enviar un nuevo mensaje
+      tags:
+        - Mensajes
+      description: Envía un mensaje de texto o con media adjunto. Notifica en tiempo real vía WebSocket
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversacionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                contenido:
+                  type: string
+                  example: Hola, ¿cómo estás?
+                tipo:
+                  type: string
+                  enum: [Texto, Imagen, Video, Audio, Archivo]
+                  default: Texto
+                mediaId:
+                  type: integer
+      responses:
+        '201':
+          description: Mensaje enviado exitosamente
+
+  /conversaciones/{conversacionId}/marcar-leidos:
+    post:
+      summary: Marcar mensajes como leídos
+      tags:
+        - Mensajes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversacionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ultimoMensajeLeidoId
+              properties:
+                ultimoMensajeLeidoId:
+                  type: integer
+                  example: 45
+      responses:
+        '200':
+          description: Mensajes marcados como leídos
+
+  /conversaciones/{conversacionId}/no-leidos:
+    get:
+      summary: Contar mensajes no leídos
+      tags:
+        - Mensajes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversacionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Contador obtenido exitosamente
+
+  /conversaciones/{conversacionId}/buscar:
+    get:
+      summary: Buscar mensajes en una conversación
+      tags:
+        - Mensajes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversacionId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Texto a buscar
+      responses:
+        '200':
+          description: Búsqueda completada
+
+  /mensajes/{id}:
+    patch:
+      summary: Editar un mensaje
+      tags:
+        - Mensajes
+      description: Solo el remitente puede editar. Solo mensajes de texto
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - contenido
+              properties:
+                contenido:
+                  type: string
+                  example: Mensaje editado
+      responses:
+        '200':
+          description: Mensaje editado exitosamente
+
+    delete:
+      summary: Eliminar un mensaje
+      tags:
+        - Mensajes
+      description: Soft delete - Solo el remitente puede eliminar
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Mensaje eliminado exitosamente
+
 
 components:
   schemas:
@@ -6389,6 +6743,158 @@ components:
           nullable: true
           example: null
           description: Fecha y hora cuando fue leída (null si no ha sido leída)
+
+    ConversacionConUltimoMensaje:
+      type: object
+      description: Conversación con información del último mensaje y el otro usuario
+      properties:
+        id:
+          type: integer
+          example: 1
+        emisorId:
+          type: integer
+          example: 1
+        receptorId:
+          type: integer
+          example: 2
+        silenciado:
+          type: boolean
+          example: false
+        estado:
+          type: string
+          enum: [Activa, Archivada, Bloqueada]
+          example: Activa
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2026-02-05T10:30:00.000Z"
+        actualizadoEn:
+          type: string
+          format: date-time
+          example: "2026-02-05T15:45:00.000Z"
+        ultimoMensaje:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+              example: 45
+            contenido:
+              type: string
+              nullable: true
+              example: "Hola, ¿cómo estás?"
+            tipo:
+              type: string
+              enum: [Texto, Imagen, Video, Audio, Archivo]
+              example: Texto
+            enviadoEn:
+              type: string
+              format: date-time
+              example: "2026-02-05T15:45:00.000Z"
+            remitenteId:
+              type: integer
+              example: 2
+        otroUsuario:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 2
+            nombre:
+              type: string
+              example: "Juan"
+            apellido:
+              type: string
+              example: "Pérez"
+            email:
+              type: string
+              format: email
+              example: "juan@example.com"
+            fotoPerfil:
+              type: string
+              nullable: true
+              example: "https://example.com/fotos/juan.jpg"
+            conectado:
+              type: boolean
+              example: true
+        mensajesNoLeidos:
+          type: integer
+          example: 3
+
+    MensajeConRemitente:
+      type: object
+      description: Mensaje con información del remitente y media adjunto
+      properties:
+        id:
+          type: integer
+          example: 23
+        conversacionId:
+          type: integer
+          example: 1
+        remitenteId:
+          type: integer
+          example: 1
+        contenido:
+          type: string
+          nullable: true
+          example: "Hola, ¿cómo estás?"
+        tipo:
+          type: string
+          enum: [Texto, Imagen, Video, Audio, Archivo]
+          example: Texto
+        mediaId:
+          type: integer
+          nullable: true
+          example: 5
+        estado:
+          type: string
+          enum: [Enviado, Editado, Eliminado]
+          example: Enviado
+        enviadoEn:
+          type: string
+          format: date-time
+          example: "2026-02-05T15:45:00.000Z"
+        remitente:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            nombre:
+              type: string
+              example: "María"
+            apellido:
+              type: string
+              example: "García"
+            fotoPerfil:
+              type: string
+              nullable: true
+              example: "https://example.com/fotos/maria.jpg"
+        media:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+              example: 5
+            archivo:
+              type: string
+              example: "/uploads/images/file123.jpg"
+            nombre:
+              type: string
+              nullable: true
+              example: "foto_rayos_x.jpg"
+            tipoMime:
+              type: string
+              nullable: true
+              example: "image/jpeg"
+            tamanioBytes:
+              type: integer
+              nullable: true
+              example: 245760
+        esPropio:
+          type: boolean
+          example: true
 
     securitySchemes:
       bearerAuth:
