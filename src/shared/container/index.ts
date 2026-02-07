@@ -18,6 +18,11 @@ import { IProfesionesRepository } from '../../domain/repositories/IProfesionesRe
 import { IExperienciasLaboralesRepository } from '../../domain/repositories/IExperienciasLaboralesRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
+import { INotificacionesRepository } from '../../domain/repositories/INotificacionesRepository';
+import { IConversacionesRepository } from '../../domain/repositories/IConversacionesRepository';
+import { IMensajesRepository } from '../../domain/repositories/IMensajesRepository';
+import { ILecturasConversacionRepository } from '../../domain/repositories/ILecturasConversacionRepository';
+import { IMediaRepository } from '../../domain/repositories/IMediaRepository';
 
 // Implementaciones
 import { PrismaUsuarioRepository } from '../../infrastructure/repositories/PrismaUsuarioRepository';
@@ -34,9 +39,16 @@ import { PrismaTipoServicioRepository } from '../../infrastructure/repositories/
 import { PrismaTipoCentroSaludRepository } from '../../infrastructure/repositories/PrismaTipoCentroSaludRepository';
 import { PrismaProfesionesRepository } from '../../infrastructure/repositories/PrismaProfesionesRepository';
 import { PrismaExperienciasLaboralesRepository } from '../../infrastructure/repositories/PrismaExperienciasLaboralesRepository';
+import { PrismaNotificacionesRepository } from '../../infrastructure/repositories/PrismaNotificacionesRepository';
+import { PrismaConversacionesRepository } from '../../infrastructure/repositories/PrismaConversacionesRepository';
+import { PrismaMensajesRepository } from '../../infrastructure/repositories/PrismaMensajesRepository';
+import { PrismaLecturasConversacionRepository } from '../../infrastructure/repositories/PrismaLecturasConversacionRepository';
+import { PrismaMediaRepository } from '../../infrastructure/repositories/PrismaMediaRepository';
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
 import { RedisCacheService } from '../../infrastructure/external-services/RedisCacheService';
+import { NotificacionesWebSocketService } from '../../infrastructure/external-services/NotificacionesWebSocketService';
+import { ChatWebSocketService } from '../../infrastructure/external-services/ChatWebSocketService';
 import { prisma } from '../../infrastructure/database/prisma/client';
 
 // Validadores
@@ -66,10 +78,14 @@ import { GestionarHorariosUseCase } from '../../application/use-cases/GestionarH
 import { GestionarSeccionesUseCase } from '../../application/use-cases/GestionarSeccionesUseCase';
 import { RegistrarUsuarioUseCase } from '../../application/use-cases/RegistrarUsuarioUseCase';
 import { GestionarTiposServiciosUseCase } from '../../application/use-cases/GestionarTiposServiciosUseCase';
+import { GestionarConversacionesUseCase } from '../../application/use-cases/GestionarConversacionesUseCase';
+import { GestionarMensajesUseCase } from '../../application/use-cases/GestionarMensajesUseCase';
+import { GestionarMediaUseCase } from '../../application/use-cases/GestionarMediaUseCase';
 import { GestionarTiposCentrosSaludUseCase } from '../../application/use-cases/GestionarTiposCentrosSaludUseCase';
 import { GestionarProfesionesUseCase } from '../../application/use-cases/GestionarProfesionesUseCase';
 import { GestionarExperienciasLaboralesUseCase } from '../../application/use-cases/GestionarExperienciasLaboralesUseCase';
 import { GestionarServicioHorariosUseCase } from '../../application/use-cases/GestionarServicioHorariosUseCase';
+import { GestionarNotificacionesUseCase } from '../../application/use-cases/GestionarNotificacionesUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 // Registrar PrismaClient como singleton
@@ -82,6 +98,12 @@ const redisCacheService = new RedisCacheService();
 container.register(RedisCacheService, {
   useValue: redisCacheService
 });
+
+// Registrar ChatWebSocketService como singleton
+container.registerSingleton(ChatWebSocketService);
+
+// Registrar NotificacionesWebSocketService como singleton
+container.registerSingleton(NotificacionesWebSocketService);
 
 // ===== REGISTRAR VALIDADORES =====
 container.register(ProvinciaValidator, {
@@ -336,6 +358,32 @@ container.register<IUsuarioRepository>(
   { useClass: PrismaUsuarioRepository }
 );
 
+container.register<INotificacionesRepository>(
+  'NotificacionesRepository',
+  { useClass: PrismaNotificacionesRepository }
+);
+
+// ===== REGISTRAR REPOSITORIOS DE CHAT =====
+container.register<IConversacionesRepository>(
+  'ConversacionesRepository',
+  { useClass: PrismaConversacionesRepository }
+);
+
+container.register<IMensajesRepository>(
+  'MensajesRepository',
+  { useClass: PrismaMensajesRepository }
+);
+
+container.register<ILecturasConversacionRepository>(
+  'LecturasConversacionRepository',
+  { useClass: PrismaLecturasConversacionRepository }
+);
+
+container.register<IMediaRepository>(
+  'MediaRepository',
+  { useClass: PrismaMediaRepository }
+);
+
 // ===== REGISTRAR USE CASES =====
 container.register(GestionarProvinciasUseCase, {
   useFactory: () => {
@@ -466,6 +514,40 @@ container.register(GestionarServicioHorariosUseCase, {
   useFactory: () => {
     const servicioHorarioRepository = container.resolve<IServicioHorarioRepository>('ServicioHorarioRepository');
     return new GestionarServicioHorariosUseCase(servicioHorarioRepository);
+  }
+});
+
+container.register(GestionarNotificacionesUseCase, {
+  useFactory: () => {
+    const notificacionesRepository = container.resolve<INotificacionesRepository>('NotificacionesRepository');
+    return new GestionarNotificacionesUseCase(notificacionesRepository);
+  }
+});
+
+// ===== REGISTRAR USE CASES DE CHAT =====
+container.register(GestionarConversacionesUseCase, {
+  useFactory: () => {
+    const conversacionesRepository = container.resolve<IConversacionesRepository>('ConversacionesRepository');
+    const lecturasRepository = container.resolve<ILecturasConversacionRepository>('LecturasConversacionRepository');
+    const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    return new GestionarConversacionesUseCase(conversacionesRepository, lecturasRepository, usuarioRepository);
+  }
+});
+
+container.register(GestionarMensajesUseCase, {
+  useFactory: () => {
+    const mensajesRepository = container.resolve<IMensajesRepository>('MensajesRepository');
+    const conversacionesRepository = container.resolve<IConversacionesRepository>('ConversacionesRepository');
+    const lecturasRepository = container.resolve<ILecturasConversacionRepository>('LecturasConversacionRepository');
+    const mediaRepository = container.resolve<IMediaRepository>('MediaRepository');
+    return new GestionarMensajesUseCase(mensajesRepository, conversacionesRepository, lecturasRepository, mediaRepository);
+  }
+});
+
+container.register(GestionarMediaUseCase, {
+  useFactory: () => {
+    const mediaRepository = container.resolve<IMediaRepository>('MediaRepository');
+    return new GestionarMediaUseCase(mediaRepository);
   }
 });
 

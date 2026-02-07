@@ -28,6 +28,10 @@ export class Usuario {
     return this.rol === "Paciente";
   }
 
+  public esCentroSalud(): boolean {
+    return this.rol === "Centro de Salud";
+  }
+
   public actualizarEstado(nuevoEstado: string): void {
     this.estado = nuevoEstado;
     this.actualizadoEn = new Date();
