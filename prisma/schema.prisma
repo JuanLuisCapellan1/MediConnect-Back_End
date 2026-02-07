@@ -110,7 +110,7 @@ model Doctor {
   nombre                String   @db.VarChar(80)
   apellido              String   @db.VarChar(80)
   tipoDocIdentificacion String   @map("tipo_documento_identificacion") @db.VarChar(20)
-  docIdentificacion     String   @unique @map("documento_identificacion") @db.VarChar(40)
+  numeroDocumentoIdentificacion     String   @unique @map("numero_documento_identificacion") @db.VarChar(20)
   fechaNacimiento       DateTime @map("fecha_nacimiento") @db.Date
   genero                String   @db.Char(1)
   nacionalidad          String?  @db.VarChar(50)
@@ -221,12 +221,12 @@ model DistritoMunicipal {
 
 model Seccion {
   id                  Int               @id @default(autoincrement()) @map("id_seccion")
-  distritoMunicipalId Int               @map("id_distrito_municipal")
+  distritoMunicipalId Int?              @map("id_distrito_municipal")
   nombre              String            @db.VarChar(80)
   estado              String            @default("Activo") @db.VarChar(20)
   creadoEn            DateTime          @default(now()) @map("creado_en") @db.Timestamptz(6)
 
-  distritoMunicipal   DistritoMunicipal @relation(fields: [distritoMunicipalId], references: [id])
+  distritoMunicipal   DistritoMunicipal? @relation(fields: [distritoMunicipalId], references: [id])
   barrios             Barrio[]
 
   @@unique([distritoMunicipalId, nombre])
@@ -292,7 +292,7 @@ model Ubicacion {
 
 model Especialidad {
   id          Int      @id @default(autoincrement()) @map("id_especialidad")
-  nombre      String   @unique @db.VarChar(80)
+  nombre      String   @db.VarChar(80)
   descripcion String?
   estado      String   @default("Activo") @db.VarChar(20)
   creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
@@ -305,7 +305,8 @@ model Especialidad {
 
 model Profesion {
   id          Int      @id @default(autoincrement()) @map("id_profesion")
-  nombre      String   @unique @db.VarChar(80)
+  nombre      String   @db.VarChar(80)
+  descripcion String?
   estado      String   @default("Activo") @db.VarChar(20)
   creadoEn    DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
 
@@ -331,7 +332,7 @@ model Universidad {
 
 model TipoCentroSalud {
   id        Int           @id @default(autoincrement()) @map("id_tipo_centro_salud")
-  nombre    String        @unique @db.VarChar(80)
+  nombre    String        @db.VarChar(80)
   estado    String        @default("Activo") @db.VarChar(20)
   creadoEn  DateTime      @default(now()) @map("creado_en") @db.Timestamptz(6)
   
@@ -342,7 +343,7 @@ model TipoCentroSalud {
 
 model TipoServicio {
   id          Int        @id @default(autoincrement()) @map("id_tipo_servicio")
-  nombre      String     @unique @db.VarChar(80)
+  nombre      String     @db.VarChar(80)
   descripcion String?
   estado      String     @default("Activo") @db.VarChar(20)
   creadoEn    DateTime   @default(now()) @map("creado_en") @db.Timestamptz(6)
