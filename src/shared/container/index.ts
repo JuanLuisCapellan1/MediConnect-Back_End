@@ -11,6 +11,11 @@ import { IBarriosRepository } from '../../domain/repositories/IBarriosRepository
 import { ISubBarriosRepository } from '../../domain/repositories/ISubBarriosRepository';
 import { IUbicacionesRepository } from '../../domain/repositories/IUbicacionesRepository';
 import { IHorariosRepository } from '../../domain/repositories/IHorariosRepository';
+import { IServicioHorarioRepository } from '../../domain/repositories/IServicioHorarioRepository';
+import { ITipoServicioRepository } from '../../domain/repositories/ITipoServicioRepository';
+import { ITipoCentroSaludRepository } from '../../domain/repositories/ITipoCentroSaludRepository';
+import { IProfesionesRepository } from '../../domain/repositories/IProfesionesRepository';
+import { IExperienciasLaboralesRepository } from '../../domain/repositories/IExperienciasLaboralesRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
 import { IStorageService } from '../../application/interfaces/IStorageService';
@@ -26,6 +31,11 @@ import { PrismaBarriosRepository } from '../../infrastructure/repositories/Prism
 import { PrismaSubBarriosRepository } from '../../infrastructure/repositories/PrismaSubBarriosRepository';
 import { PrismaUbicacionesRepository } from '../../infrastructure/repositories/PrismaUbicacionesRepository';
 import { PrismaHorariosRepository } from '../../infrastructure/repositories/PrismaHorariosRepository';
+import { PrismaServicioHorarioRepository } from '../../infrastructure/repositories/PrismaServicioHorarioRepository';
+import { PrismaTipoServicioRepository } from '../../infrastructure/repositories/PrismaTipoServicioRepository';
+import { PrismaTipoCentroSaludRepository } from '../../infrastructure/repositories/PrismaTipoCentroSaludRepository';
+import { PrismaProfesionesRepository } from '../../infrastructure/repositories/PrismaProfesionesRepository';
+import { PrismaExperienciasLaboralesRepository } from '../../infrastructure/repositories/PrismaExperienciasLaboralesRepository';
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
 import { RedisCacheService } from '../../infrastructure/external-services/RedisCacheService';
@@ -44,6 +54,11 @@ import { SubBarrioValidator } from '../../domain/validators/SubBarrios/SubBarrio
 import { UbicacionValidator } from '../../domain/validators/Ubicaciones/UbicacionValidator';
 import { HorarioValidator } from '../../domain/validators/Horarios/HorarioValidator';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
+import { ValidadorServicioHorario } from '../../domain/validators/ServiciosHorarios/ValidadorServicioHorario';
+import { TipoServicioValidator } from '../../domain/validators/TiposServicios/TipoServicioValidator';
+import { TipoCentroSaludValidator } from '../../domain/validators/TiposCentrosSalud/TipoCentroSaludValidator';
+import { ProfesionValidator } from '../../domain/validators/Profesiones/ProfesionValidator';
+import { ExperienciaLaboralValidator } from '../../domain/validators/ExperienciasLaborales/ExperienciaLaboralValidator';
 
 // UseCases
 import { GestionarProvinciasUseCase } from '../../application/use-cases/GestionarProvinciasUseCase';
@@ -61,6 +76,11 @@ import { RegistrarDoctorUseCase } from '../../application/use-cases/RegistrarDoc
 import { RegistrarPacienteUseCase } from '../../application/use-cases/RegistrarPacienteUseCase';
 import { LoginGoogleUseCase } from '../../application/use-cases/LoginGoogleUseCase';
 import { LoginUseCase } from '../../application/use-cases/LoginUseCase';
+import { GestionarTiposServiciosUseCase } from '../../application/use-cases/GestionarTiposServiciosUseCase';
+import { GestionarTiposCentrosSaludUseCase } from '../../application/use-cases/GestionarTiposCentrosSaludUseCase';
+import { GestionarProfesionesUseCase } from '../../application/use-cases/GestionarProfesionesUseCase';
+import { GestionarExperienciasLaboralesUseCase } from '../../application/use-cases/GestionarExperienciasLaboralesUseCase';
+import { GestionarServicioHorariosUseCase } from '../../application/use-cases/GestionarServicioHorariosUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 // Registrar PrismaClient como singleton
@@ -145,6 +165,40 @@ container.register(HorarioValidator, {
     const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
     const horariosRepository = container.resolve<IHorariosRepository>('HorariosRepository');
     return new HorarioValidator(ubicacionesRepository, usuarioRepository, horariosRepository);
+  }
+});
+
+container.register(ValidadorServicioHorario, {
+  useFactory: () => {
+    return new ValidadorServicioHorario();
+  }
+});
+
+container.register(TipoServicioValidator, {
+  useFactory: () => {
+    const repo = container.resolve<ITipoServicioRepository>('TipoServicioRepository');
+    return new TipoServicioValidator(repo);
+  }
+});
+
+container.register(TipoCentroSaludValidator, {
+  useFactory: () => {
+    const repo = container.resolve<ITipoCentroSaludRepository>('TipoCentroSaludRepository');
+    return new TipoCentroSaludValidator(repo);
+  }
+});
+
+container.register(ProfesionValidator, {
+  useFactory: () => {
+    const repo = container.resolve<IProfesionesRepository>('ProfesionesRepository');
+    return new ProfesionValidator(repo);
+  }
+});
+
+container.register(ExperienciaLaboralValidator, {
+  useFactory: () => {
+    const repo = container.resolve<IExperienciasLaboralesRepository>('IExperienciasLaboralesRepository');
+    return new ExperienciaLaboralValidator(repo);
   }
 });
 
@@ -239,6 +293,59 @@ container.register<IHorariosRepository>(
       const prismaClient = container.resolve<PrismaClient>('PrismaClient');
       const redisCache = container.resolve(RedisCacheService);
       return new PrismaHorariosRepository(prismaClient, redisCache);
+    }
+  }
+);
+
+container.register<IServicioHorarioRepository>(
+  'ServicioHorarioRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      return new PrismaServicioHorarioRepository(prismaClient);
+    }
+  }
+);
+
+container.register<ITipoServicioRepository>(
+  'TipoServicioRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      return new PrismaTipoServicioRepository(prismaClient);
+    }
+  }
+);
+
+container.register<ITipoCentroSaludRepository>(
+  'TipoCentroSaludRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve(RedisCacheService);
+      return new PrismaTipoCentroSaludRepository(prismaClient, redisCache);
+    }
+  }
+);
+
+container.register<IProfesionesRepository>(
+  'ProfesionesRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve(RedisCacheService);
+      return new PrismaProfesionesRepository(prismaClient, redisCache);
+    }
+  }
+);
+
+container.register<IExperienciasLaboralesRepository>(
+  'IExperienciasLaboralesRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve(RedisCacheService);
+      return new PrismaExperienciasLaboralesRepository(prismaClient, redisCache);
     }
   }
 );
@@ -384,6 +491,59 @@ container.register(LoginUseCase, {
   }
 });
 
+container.register(GestionarTiposServiciosUseCase, {
+  useFactory: () => {
+    const repo = container.resolve<ITipoServicioRepository>('TipoServicioRepository');
+    const validator = container.resolve(TipoServicioValidator);
+    const estadoValidator = container.resolve(EstadoValidator);
+    return new GestionarTiposServiciosUseCase(repo, validator, estadoValidator);
+  }
+});
+
+container.register(GestionarTiposCentrosSaludUseCase, {
+  useFactory: () => {
+    const repo = container.resolve<ITipoCentroSaludRepository>('TipoCentroSaludRepository');
+    const validator = container.resolve(TipoCentroSaludValidator);
+    const estadoValidator = container.resolve(EstadoValidator);
+    return new GestionarTiposCentrosSaludUseCase(repo, validator, estadoValidator);
+  }
+});
+
+container.register(GestionarProfesionesUseCase, {
+  useFactory: () => {
+    const repo = container.resolve<IProfesionesRepository>('ProfesionesRepository');
+    const validator = container.resolve(ProfesionValidator);
+    return new GestionarProfesionesUseCase(repo, validator);
+  }
+});
+
+container.register('GestionarProfesionesUseCase', {
+  useFactory: () => {
+    return container.resolve(GestionarProfesionesUseCase);
+  }
+});
+
+container.register(GestionarExperienciasLaboralesUseCase, {
+  useFactory: () => {
+    const repo = container.resolve<IExperienciasLaboralesRepository>('IExperienciasLaboralesRepository');
+    const validator = container.resolve(ExperienciaLaboralValidator);
+    return new GestionarExperienciasLaboralesUseCase(repo, validator);
+  }
+});
+
+container.register('GestionarExperienciasLaboralesUseCase', {
+  useFactory: () => {
+    return container.resolve(GestionarExperienciasLaboralesUseCase);
+  }
+});
+
+container.register(GestionarServicioHorariosUseCase, {
+  useFactory: () => {
+    const servicioHorarioRepository = container.resolve<IServicioHorarioRepository>('ServicioHorarioRepository');
+    return new GestionarServicioHorariosUseCase(servicioHorarioRepository);
+  }
+});
+
 // ===== REGISTRAR SERVICIOS DE APLICACIÓN =====
 container.register<IPasswordHasher>(
   'PasswordHasher',
@@ -396,3 +556,5 @@ container.register<ITranslationService>('ITranslationService', {
 
 // Registro del Storage Service
 container.registerSingleton<IStorageService>('StorageService', SupabaseStorageService);
+
+export { container };

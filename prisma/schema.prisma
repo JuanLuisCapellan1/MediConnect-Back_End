@@ -105,6 +105,7 @@ model Doctor {
   experiencias                    ExperienciaLaboral[]
   formaciones                     FormacionAcademica[]
   horarios                        Horario[]
+  citas                           Cita[]               @relation("DoctorCita")
   resenas                         Resena[]
   servicios                       Servicio[]
   solicitudesAlianza              SolicitudAlianza[]
@@ -254,9 +255,9 @@ model Especialidad {
 model Profesion {
   id           Int                  @id @default(autoincrement()) @map("id_profesion")
   nombre       String               @db.VarChar(80)
+  descripcion  String?
   estado       String               @default("Activo") @db.VarChar(20)
   creadoEn     DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
-  descripcion  String?
   experiencias ExperienciaLaboral[]
 
   @@map("profesiones")
@@ -515,7 +516,7 @@ model Cita {
   historial       HistorialConsulta?
   logTeleconsulta LogTeleconsulta[]
   resena          Resena?
-
+  doctor          Doctor?            @relation("DoctorCita", fields: [doctorUsuarioId], references: [usuarioId])
   @@map("citas")
 }
 
