@@ -10,6 +10,8 @@ servers:
     description: Servidor de Desarrollo Local
 
 tags:
+  - name: Autenticación
+    description: Login (email/contraseña y Google), registro (OTP, token) y completar registro de paciente/doctor
   - name: Traductor
     description: Endpoints de traducción del sistema
   - name: Provincias
@@ -31,6 +33,161 @@ tags:
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
+  /auth/login:
+    post:
+      summary: Login con email y contraseña
+      tags:
+        - Autenticación
+      description: Permite a un usuario (Doctor, Paciente o Admin) iniciar sesión con email y contraseña. Devuelve JWT de sesión y datos del usuario.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: usuario@mediconnect.com
+                  description: Correo electrónico del usuario.
+                password:
+                  type: string
+                  minLength: 6
+                  description: Contraseña (mínimo 6 caracteres).
+      responses:
+        '200':
+          description: Login exitoso. Devuelve JWT y datos del usuario.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    description: JWT de sesión (Authorization Bearer para rutas protegidas).
+                  usuario:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      email:
+                        type: string
+                        format: email
+                      rol:
+                        type: string
+                        example: Paciente
+                        description: Paciente, Doctor o Administrador.
+                      fotoPerfil:
+                        type: string
+                        nullable: true
+        '400':
+          description: Datos inválidos (email/password mal formateados).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Credenciales inválidas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuario inactivo o bloqueado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/google:
+    post:
+      summary: Login con Google (OAuth)
+      tags:
+        - Autenticación
+      description: |
+        Recibe el **idToken** obtenido del frontend (Google Sign-In) y realiza una de tres acciones:
+        1. **Login:** Si el usuario ya tiene su cuenta de Google vinculada, devuelve el JWT de sesión.
+        2. **Vincular:** Si el email ya existe en la BD pero no tiene Google vinculado, vincula la cuenta y devuelve el JWT.
+        3. **Registro rápido:** Si el usuario es nuevo, crea un usuario básico + cuenta social y devuelve el JWT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - idToken
+              properties:
+                idToken:
+                  type: string
+                  description: Token ID de Google (obtenido del cliente con Google Sign-In).
+                id_token:
+                  type: string
+                  description: Alternativa al campo idToken (mismo valor).
+      responses:
+        '200':
+          description: Login/vincular/registro exitoso. Devuelve JWT de sesión y datos del usuario.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    description: JWT de sesión (incluir en Authorization Bearer para rutas protegidas).
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      email:
+                        type: string
+                        format: email
+                        example: usuario@gmail.com
+                      rol:
+                        type: string
+                        example: Paciente
+                      fotoPerfil:
+                        type: string
+                        nullable: true
+                        description: URL de la foto de perfil (p. ej. de Google).
+        '400':
+          description: Falta idToken o solicitud inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token de Google inválido o expirado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error del servidor (p. ej. GOOGLE_CLIENT_ID no configurado).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /traduccion:
     post:
       summary: Traducción dinámica de objetos JSON
@@ -83,6 +240,363 @@ paths:
           description: Faltan parámetros (translate_fields)
         '500':
           description: Error en el servidor durante la traducción
+
+  /auth/registro/solicitar-codigo:
+    post:
+      summary: Solicitar código OTP para registro
+      tags:
+        - Autenticación
+      description: Solicita un código OTP que será enviado al correo electrónico del usuario para validar su identidad antes de completar el registro.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "usuario@mediconnect.com"
+                  description: Correo electrónico del usuario que desea registrarse.
+              required:
+                - email
+      responses:
+        '200':
+          description: Código OTP enviado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Código de registro enviado al correo electrónico.
+        '400':
+          description: Solicitud inválida (por ejemplo, falta el email).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El correo ya está registrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/registro/validar-codigo:
+    post:
+      summary: Validar código OTP y generar token de registro
+      tags:
+        - Autenticación
+      description: Valida el código OTP enviado al correo electrónico del usuario y genera un token de registro temporal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "usuario@mediconnect.com"
+                  description: Correo electrónico del usuario.
+                codigo:
+                  type: string
+                  example: "123456"
+                  description: Código OTP enviado al correo electrónico.
+              required:
+                - email
+                - codigo
+      responses:
+        '200':
+          description: Código validado correctamente y token de registro generado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Código validado correctamente.
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                        description: Token de registro temporal para completar el registro.
+        '400':
+          description: Solicitud inválida (por ejemplo, falta el email o el código).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Código OTP inválido o expirado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/registro/paciente:
+    post:
+      summary: Completar registro de paciente
+      tags:
+        - Autenticación
+      description: Completa el registro de un paciente después de validar el código OTP. Requiere un token de registro válido.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+            example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          description: Token de registro temporal generado después de validar el código OTP.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: "Token de registro JWT (alternativa al header Authorization). Pegar aquí el token si el header no se envía (p. ej. en Swagger con multipart)."
+                nombre:
+                  type: string
+                  example: "Juan"
+                  description: Nombre del paciente.
+                apellido:
+                  type: string
+                  example: "Pérez"
+                  description: Apellido del paciente.
+                numero_documento:
+                  type: string
+                  example: "00123456789"
+                  description: Número de documento de identificación.
+                tipo_documento:
+                  type: string
+                  enum: ["Cédula", "Pasaporte"]
+                  example: "Cédula"
+                  description: Tipo de documento de identificación.
+                password:
+                  type: string
+                  format: password
+                  example: "SecurePass123!"
+                  description: Contraseña del usuario.
+                fecha_nacimiento:
+                  type: string
+                  format: date
+                  example: "1990-01-15"
+                  description: Fecha de nacimiento del paciente (opcional).
+                genero:
+                  type: string
+                  enum: ["M", "F", "O"]
+                  example: "M"
+                  description: Género del paciente (opcional).
+                altura:
+                  type: number
+                  example: 175
+                  description: Altura del paciente en cm (opcional).
+                peso:
+                  type: number
+                  example: 70
+                  description: Peso del paciente en kg (opcional).
+                tipo_sangre:
+                  type: string
+                  enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+                  example: "O+"
+                  description: Tipo de sangre del paciente (opcional).
+                fotoPerfil:
+                  type: string
+                  format: binary
+                  description: Foto de perfil del paciente.
+                fotoDocumento:
+                  type: string
+                  format: binary
+                  description: Foto del documento de identificación del paciente.
+      responses:
+        '201':
+          description: Paciente registrado exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Paciente registrado exitosamente.
+        '400':
+          description: Datos inválidos o token faltante.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token de registro inválido o expirado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/registro/doctor:
+    post:
+      summary: Completar registro de doctor
+      tags:
+        - Autenticación
+      description: Completa el registro de un doctor después de validar el código OTP. Requiere un token de registro válido.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+            example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          description: Token de registro temporal generado después de validar el código OTP.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: "Token de registro JWT (alternativa al header Authorization). Pegar aquí el token si el header no se envía (p. ej. en Swagger con multipart)."
+                nombre:
+                  type: string
+                  example: "Ana"
+                  description: Nombre del doctor.
+                apellido:
+                  type: string
+                  example: "Gómez"
+                  description: Apellido del doctor.
+                genero:
+                  type: string
+                  enum: ["M", "F", "O"]
+                  example: "F"
+                  description: Género del doctor.
+                fecha_nacimiento:
+                  type: string
+                  format: date
+                  example: "1985-06-20"
+                  description: Fecha de nacimiento del doctor.
+                nacionalidad:
+                  type: string
+                  example: "Dominicana"
+                  description: Nacionalidad del doctor.
+                telefono:
+                  type: string
+                  example: "+1-809-555-1234"
+                  description: Teléfono del doctor.
+                tipo_documento:
+                  type: string
+                  enum: ["Cédula", "Pasaporte"]
+                  example: "Cédula"
+                  description: Tipo de documento de identificación.
+                numero_documento:
+                  type: string
+                  example: "00123456789"
+                  description: Número de documento de identificación.
+                password:
+                  type: string
+                  format: password
+                  example: "SecurePass123!"
+                  description: Contraseña del usuario.
+                exequatur:
+                  type: string
+                  example: "123456"
+                  description: Número de exequatur del doctor.
+                biografia:
+                  type: string
+                  example: "Especialista en cardiología con 10 años de experiencia."
+                  description: Biografía del doctor (opcional).
+                ubicacion:
+                  type: string
+                  example: '{"direccion": "Calle Principal 123", "id_barrio": 1, "id_sub_barrio": 2}'
+                  description: Objeto JSON con la ubicación del doctor.
+                formaciones:
+                  type: string
+                  example: '[{"id_especialidad": 1, "id_universidad": 2, "fecha_inicio": "2010-01-01", "fecha_finalizacion": "2014-12-31", "estado": "Finalizado"}]'
+                  description: Array JSON con las formaciones académicas del doctor.
+                fotoPerfil:
+                  type: string
+                  format: binary
+                  description: Foto de perfil del doctor.
+                fotoDocumento:
+                  type: string
+                  format: binary
+                  description: Foto del documento de identificación del doctor.
+                tituloAcademico:
+                  type: string
+                  format: binary
+                  description: Archivo del título académico del doctor.
+                certificaciones:
+                  type: string
+                  format: binary
+                  description: Archivo de certificaciones adicionales del doctor.
+      responses:
+        '201':
+          description: Doctor registrado exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Doctor registrado exitosamente. Su solicitud está en revisión.
+        '400':
+          description: Datos inválidos o token faltante.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token de registro inválido o expirado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   # --- PROVINCIAS ENDPOINTS ---
   /provincias:

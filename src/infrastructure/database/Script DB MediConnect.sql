@@ -84,10 +84,11 @@ COMMENT ON COLUMN distritos_municipales.id_municipio IS 'Referencia al municipio
 
 
 
+
+
 CREATE TABLE secciones (
     id_seccion INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    id_distrito_municipal INTEGER,
-    id_municipio INTEGER,
+    id_distrito_municipal INTEGER NOT NULL,
     nombre VARCHAR(80) NOT NULL,
     estado VARCHAR(20) NOT NULL DEFAULT 'Activo',
     creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -96,11 +97,6 @@ CREATE TABLE secciones (
     CONSTRAINT fk_secciones_distrito_municipal
         FOREIGN KEY (id_distrito_municipal)
         REFERENCES distritos_municipales(id_distrito_municipal)
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_secciones_municipio
-        FOREIGN KEY (id_municipio)
-        REFERENCES municipios(id_municipio)
         ON DELETE RESTRICT,
 
     -- Restricciones de Integridad
@@ -176,7 +172,7 @@ CREATE TABLE sub_barrios (
     -- Restricciones de Integridad
     CONSTRAINT chk_sub_barrios_estado CHECK (estado IN ('Activo', 'Inactivo', 'Eliminado')),
     -- Integridad compuesta: Nombre único dentro del mismo barrio
-    CONSTRAINT uq_sub_barrios_barrio_nombre UNIQUE (id_sub_barrio, nombre)
+    CONSTRAINT uq_sub_barrios_barrio_nombre UNIQUE (id_barrio, nombre)
 );
 
 -- Índices de Rendimiento
@@ -481,37 +477,32 @@ CREATE INDEX idx_tipos_acciones_nombre ON tipos_acciones(nombre);
 COMMENT ON TABLE tipos_acciones IS 'Catálogo maestro de los tipos de eventos auditables en el sistema (Login, Update, Delete, etc.)';
 
 
-
-
-
 CREATE TABLE acciones (
     id_accion INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     
-    -- ¿Qué tipo de solicitud es? (Ej. "Verificación de Identidad", "Reporte de Usuario")
+    -- ¿Qué tipo de solicitud es?
     id_tipo_accion INTEGER NOT NULL,
     
     -- Actores del proceso
-    id_emisor INTEGER NOT NULL,        -- Quién inicia la solicitud (Ej. El Doctor que se registra)
-    id_usuario_afectado INTEGER,       -- A quién se reporta o afecta (Puede ser NULL si es una solicitud propia)
-    id_admin_revisor INTEGER,          -- Quién atiende el caso (NULL al inicio, se llena cuando un admin toma el caso)
+    id_emisor INTEGER NOT NULL,        -- Quién inicia la solicitud
+    id_admin_revisor INTEGER,          -- Quién atiende el caso
     
     -- Detalles y Evidencia
-    detalle TEXT NOT NULL,             -- Título o resumen: "Solicitud de exequátur #999"
-    comentario_emisor TEXT,            -- "Adjunto mis documentos en PDF..."
+    detalle TEXT NOT NULL,
+    comentario_emisor TEXT,
     
-   
     -- Respuesta Administrativa
-    comentario_admin TEXT,             -- Feedback: "La foto del exequátur está borrosa, favor subirla de nuevo."
+    comentario_admin TEXT,
     
     -- Tiempos y Plazos
     fecha_emision TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fecha_vencimiento TIMESTAMPTZ,     -- Útil si la solicitud expira (ej. tienes 7 días para corregir)
-    fecha_resolucion TIMESTAMPTZ,      -- Cuándo se cerró el caso
-    actualizado_en TIMESTAMPTZ,        -- Para el trigger automático
+    fecha_vencimiento TIMESTAMPTZ,
+    fecha_resolucion TIMESTAMPTZ,
+    actualizado_en TIMESTAMPTZ,
     
     estado VARCHAR(20) NOT NULL DEFAULT 'Pendiente',
 
-    -- RELACIONES (Foreign Keys)
+    -- RELACIONES
     CONSTRAINT fk_acciones_tipo
         FOREIGN KEY (id_tipo_accion)
         REFERENCES tipos_acciones(id_tipo_accion)
@@ -522,45 +513,21 @@ CREATE TABLE acciones (
         REFERENCES usuarios(id_usuario)
         ON DELETE RESTRICT,
 
-    CONSTRAINT fk_acciones_afectado
-        FOREIGN KEY (id_usuario_afectado)
-        REFERENCES usuarios(id_usuario)
-        ON DELETE RESTRICT,
-
     CONSTRAINT fk_acciones_admin
         FOREIGN KEY (id_admin_revisor)
         REFERENCES usuarios(id_usuario)
         ON DELETE RESTRICT,
 
-    -- REGLAS DE NEGOCIO (Constraints)
-    
-    -- Estado: Definimos el ciclo de vida de una solicitud
+    -- REGLAS DE NEGOCIO
     CONSTRAINT chk_acciones_estado CHECK (estado IN ('Pendiente', 'En Revision', 'Aprobada', 'Rechazada', 'Vencida')),
-    
-    -- El admin que aprueba NO puede ser el mismo usuario que emite la solicitud.
-    -- Esto previene que un admin malintencionado se "auto-verifique" o se "auto-apruebe" permisos.
     CONSTRAINT chk_acciones_no_auto_revision CHECK (id_emisor <> id_admin_revisor),
-    
-    -- La fecha de vencimiento no puede ser anterior a la de emisión.
     CONSTRAINT chk_acciones_fechas_logicas CHECK (fecha_vencimiento > fecha_emision)
 );
 
--- TRIGGER DE ACTUALIZACIÓN
-CREATE TRIGGER trg_acciones_updated_at
-BEFORE UPDATE ON acciones
-FOR EACH ROW
-EXECUTE FUNCTION update_modified_column();
-
--- ÍNDICES PARA EL DASHBOARD DE ADMINISTRACIÓN
-
--- "Bandeja de Entrada": Para que los admins vean rápido lo que está "Pendiente"
-CREATE INDEX idx_acciones_pendientes ON acciones(estado, fecha_emision) 
-WHERE estado = 'Pendiente';
-
--- Historial por Usuario: "Muéstrame todas las solicitudes de este doctor"
+-- Indices y Trigger se mantienen igual...
+CREATE TRIGGER trg_acciones_updated_at BEFORE UPDATE ON acciones FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+CREATE INDEX idx_acciones_pendientes ON acciones(estado, fecha_emision) WHERE estado = 'Pendiente';
 CREATE INDEX idx_acciones_emisor ON acciones(id_emisor);
-
--- Productividad de Admins: "Cuántos casos ha cerrado el Admin X"
 CREATE INDEX idx_acciones_admin ON acciones(id_admin_revisor);
 
 -- Documentación
@@ -672,8 +639,9 @@ CREATE TABLE pacientes (
     apellido VARCHAR(80) NOT NULL,
     
     -- Identificación Civil
-    tipo_documento_identificacion VARCHAR(20) NOT NULL,
-    documento_identificacion VARCHAR(40) NOT NULL,
+    tipo_documento_identificacion VARCHAR(10) NOT NULL DEFAULT 'Cédula',
+    numero_documento_identificacion VARCHAR(13) NOT NULL,
+    foto_documento VARCHAR(255) NOT NULL,
     
     fecha_nacimiento DATE NOT NULL,
     genero CHAR(1) NOT NULL,
@@ -708,7 +676,7 @@ CREATE TABLE pacientes (
         ON DELETE SET NULL,
 
     -- Unicidad de Documento (Evitar doble registro de la misma persona real)
-    CONSTRAINT uq_pacientes_documento UNIQUE (documento_identificacion),
+    CONSTRAINT uq_pacientes_documento UNIQUE (numero_documento_identificacion),
 
     -- Validaciones de Datos (Check Constraints)
     CONSTRAINT chk_pacientes_tipo_doc CHECK (tipo_documento_identificacion IN ('Cédula', 'Pasaporte')),
@@ -726,7 +694,7 @@ EXECUTE FUNCTION update_modified_column();
 -- ÍNDICES DE RENDIMIENTO
 
 -- Búsqueda por Cédula/Pasaporte 
-CREATE INDEX idx_pacientes_documento ON pacientes(documento_identificacion);
+CREATE INDEX idx_pacientes_documento ON pacientes(foto_documento);
 
 -- Búsqueda por Nombre y Apellido (Para el buscador de doctores)
 -- Usamos un índice compuesto para soportar "Buscar por Apellido, Nombre"
@@ -1018,17 +986,18 @@ CREATE INDEX idx_especialidades_estado ON especialidades(estado);
 
 
 
-
 CREATE TABLE doctores (
-
     id_usuario INTEGER PRIMARY KEY,
-    
+    id_ubicacion INTEGER,
+
     -- DATOS PERSONALES
     nombre VARCHAR(80) NOT NULL,
     apellido VARCHAR(80) NOT NULL,
     
-    tipo_documento_identificacion VARCHAR(20) NOT NULL,
-    documento_identificacion VARCHAR(40) NOT NULL,
+    -- Identificación (Estructura corregida)
+    tipo_documento_identificacion VARCHAR(10) NOT NULL DEFAULT 'Cédula',
+    numero_documento_identificacion VARCHAR(13) NOT NULL,
+    foto_documento VARCHAR(255) NOT NULL,
     
     fecha_nacimiento DATE NOT NULL,
     genero CHAR(1) NOT NULL,
@@ -1039,26 +1008,32 @@ CREATE TABLE doctores (
     biografia TEXT,
     anos_experiencia INTEGER,
     
-    -- GESTIÓN Y ESTADO
-    estado_verificacion VARCHAR(20) NOT NULL DEFAULT 'En revisión', -- Vital para el flujo de aprobación
-    calificacion_promedio DECIMAL(3, 2) DEFAULT 0.00, -- Ej: 4.85
+    -- NUEVOS CAMPOS AGREGADOS
+    titulo_academico VARCHAR(100),
+    certificaciones_adicionales TEXT, -- TEXT es mejor que Varchar(40) para listas
     
+    -- GESTIÓN Y ESTADO
+    estado_verificacion VARCHAR(20) NOT NULL DEFAULT 'En revisión',
+    calificacion_promedio DECIMAL(3, 2) DEFAULT 0.00,
     estado VARCHAR(20) NOT NULL DEFAULT 'Activo',
     
     -- Auditoría
     creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_en TIMESTAMPTZ,
 
-    -- RELACIONES (CONSTRAINTS)
-    
-    -- Vinculación con Usuario (Login)
+    -- RELACIONES
     CONSTRAINT fk_doctores_usuario
         FOREIGN KEY (id_usuario)
         REFERENCES usuarios(id_usuario)
         ON DELETE RESTRICT,
 
+    CONSTRAINT fk_doctores_ubicacion
+        FOREIGN KEY (id_ubicacion)
+        REFERENCES ubicaciones(id_ubicacion)
+        ON DELETE SET NULL,
+
     -- VALIDACIONES
-    CONSTRAINT uq_doctores_documento UNIQUE (documento_identificacion),
+    CONSTRAINT uq_doctores_documento UNIQUE (numero_documento_identificacion),
     CONSTRAINT uq_doctores_exequatur UNIQUE (exequatur),
     
     CONSTRAINT chk_doctores_genero CHECK (genero IN ('M', 'F', 'O')),
@@ -1068,53 +1043,35 @@ CREATE TABLE doctores (
     CONSTRAINT chk_doctores_estado CHECK (estado IN ('Activo', 'Inactivo', 'Suspendido'))
 );
 
--- Trigger de actualización
-CREATE TRIGGER trg_doctores_updated_at
-BEFORE UPDATE ON doctores
-FOR EACH ROW
-EXECUTE FUNCTION update_modified_column();
-
--- ÍNDICES DE RENDIMIENTO
-
--- Búsqueda rápida de doctores por nombre (para el buscador de la app)
+-- Indices y Trigger se mantienen...
+CREATE TRIGGER trg_doctores_updated_at BEFORE UPDATE ON doctores FOR EACH ROW EXECUTE FUNCTION update_modified_column();
 CREATE INDEX idx_doctores_nombre_completo ON doctores(apellido, nombre);
-
--- Filtro rápido: "Solo mostrar doctores VERIFICADOS" (Muy usado en el Home)
-CREATE INDEX idx_doctores_verificados ON doctores(estado_verificacion) 
-WHERE estado_verificacion = 'Verificado';
-
--- Ranking: Ordenar por calificación
+CREATE INDEX idx_doctores_verificados ON doctores(estado_verificacion) WHERE estado_verificacion = 'Verificado';
 CREATE INDEX idx_doctores_ranking ON doctores(calificacion_promedio DESC);
-
+CREATE INDEX idx_doctores_ubicacion ON doctores(id_ubicacion);
 
 
 CREATE TABLE formaciones_academicas (
     id_formacion INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     
-    -- EL DOCTOR (Dueño del currículum)
+    -- EL DOCTOR
     id_doctor INTEGER NOT NULL,
     
-    -- LA INSTITUCIÓN (¿Dónde estudió?)
+    -- LA INSTITUCIÓN
     id_universidad INTEGER NOT NULL,
     
-    -- EL ÁREA (¿Qué estudió?)
+    -- EL ÁREA
     id_especialidad INTEGER NOT NULL,
     
-    -- EL TÍTULO OBTENIDO (¿Qué grado obtuvo? Ej. Médico, Licenciado, Magister)
-    id_profesion INTEGER NOT NULL,
-    
-    -- DETALLES DEL TÍTULO
-    -- Ej: "Doctor en Medicina, Magna Cum Laude"
-    nota VARCHAR(100), 
-    
-    fecha_obtencion DATE NOT NULL, -- Cuándo se graduó
+    -- FECHAS (Modificado)
+    fecha_inicio DATE NOT NULL,
+    fecha_finalizacion DATE, -- Puede ser NULL si sigue estudiando
     
     estado VARCHAR(20) NOT NULL DEFAULT 'Activo',
     creado_en TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_en TIMESTAMPTZ,
 
     -- RELACIONES
-    
     CONSTRAINT fk_formacion_doctor
         FOREIGN KEY (id_doctor)
         REFERENCES doctores(id_usuario)
@@ -1130,38 +1087,18 @@ CREATE TABLE formaciones_academicas (
         REFERENCES especialidades(id_especialidad)
         ON DELETE RESTRICT,
 
-    CONSTRAINT fk_formacion_profesion
-        FOREIGN KEY (id_profesion)
-        REFERENCES profesiones(id_profesion)
-        ON DELETE RESTRICT,
-
     -- RESTRICCIONES LÓGICAS
+    -- Evitar duplicados (Misma especialidad en misma universidad para el mismo doctor)
+    CONSTRAINT uq_formacion_detalle UNIQUE (id_doctor, id_universidad, id_especialidad),
     
-    -- Evitar duplicados exactos: Un doctor no puede registrar 
-    -- el mismo título, de la misma U, en la misma especialidad dos veces.
-    CONSTRAINT uq_formacion_detalle UNIQUE (id_doctor, id_universidad, id_especialidad, id_profesion),
-    
+    CONSTRAINT chk_formacion_fechas CHECK (fecha_finalizacion IS NULL OR fecha_finalizacion >= fecha_inicio),
     CONSTRAINT chk_formacion_estado CHECK (estado IN ('Activo', 'Inactivo', 'Eliminado'))
 );
 
--- TRIGGER DE AUDITORÍA
-CREATE TRIGGER trg_formacion_updated_at
-BEFORE UPDATE ON formaciones_academicas
-FOR EACH ROW
-EXECUTE FUNCTION update_modified_column();
-
--- ÍNDICES PARA EL PERFIL DEL DOCTOR
-
--- "Mostrar el CV del Doctor": Consulta más frecuente
+-- Trigger se mantiene...
+CREATE TRIGGER trg_formacion_updated_at BEFORE UPDATE ON formaciones_academicas FOR EACH ROW EXECUTE FUNCTION update_modified_column();
 CREATE INDEX idx_formacion_doctor ON formaciones_academicas(id_doctor);
-
--- Filtrado por Especialidad: "Ver todos los doctores que estudiaron Cardiología"
 CREATE INDEX idx_formacion_especialidad ON formaciones_academicas(id_especialidad);
-
-
-
-
-
 
 
 CREATE TABLE doctores_seguros (
@@ -2117,51 +2054,3 @@ CREATE TABLE archivos_adjuntos_historial_clinico (
 -- ÍNDICE
 -- "Dame todos los archivos del historial #12001"
 CREATE INDEX idx_adjuntos_historial ON archivos_adjuntos_historial_clinico(id_historial);
-
-
-
-CREATE TABLE limites_operativos (
-    id SERIAL PRIMARY KEY,
-    nombre VARCHAR(50), -- 'Distrito Nacional' o 'Provincia Santo Domingo'
-    geom GEOMETRY(MultiPolygon, 4326)
-);
-
--- Crear un índice espacial para que las consultas sean rápidas
-CREATE INDEX idx_limites_geom ON limites_operativos USING GIST (geom);
-
-
-CREATE OR REPLACE FUNCTION validar_zona_operativa()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_punto_geometry GEOMETRY;
-    v_count INTEGER;
-BEGIN
-    -- Permitir valores nulos (el repositorio inserta primero y actualiza después)
-    IF NEW.punto_geografico IS NULL THEN
-        RETURN NEW;
-    END IF;
-
-    -- Cast directo de geography a geometry (más eficiente)
-    v_punto_geometry := NEW.punto_geografico::geometry;
-    
-    -- Contar cuántos polígonos contienen el punto
-    SELECT COUNT(*) INTO v_count
-    FROM limites_operativos 
-    WHERE ST_Contains(geom, v_punto_geometry);
-    
-    -- Si no existe ningún polígono que contenga el punto, lanzar error
-    IF v_count = 0 THEN
-        RAISE EXCEPTION 'Ubicación fuera de rango: El punto no se encuentra dentro de ninguna de las zonas operativas permitidas.';
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Reemplazar el trigger anterior
-DROP TRIGGER IF EXISTS trg_verificar_zona ON ubicaciones;
-
-CREATE TRIGGER trg_verificar_zona
-BEFORE INSERT OR UPDATE ON ubicaciones
-FOR EACH ROW
-EXECUTE FUNCTION validar_zona_operativa();

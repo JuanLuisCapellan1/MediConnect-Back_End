@@ -13,6 +13,8 @@ import { IUbicacionesRepository } from '../../domain/repositories/IUbicacionesRe
 import { IHorariosRepository } from '../../domain/repositories/IHorariosRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
+import { IStorageService } from '../../application/interfaces/IStorageService';
+import { IEmailService } from '../../application/interfaces/IEmailService';
 
 // Implementaciones
 import { PrismaUsuarioRepository } from '../../infrastructure/repositories/PrismaUsuarioRepository';
@@ -28,6 +30,9 @@ import { BcryptPasswordHasher } from '../../infrastructure/external-services/Bcr
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
 import { RedisCacheService } from '../../infrastructure/external-services/RedisCacheService';
 import { prisma } from '../../infrastructure/database/prisma/client';
+import { SupabaseStorageService } from '../../infrastructure/external-services/SupabaseStorageService';
+import { NodemailerEmailService } from '../../infrastructure/external-services/NodemailerEmailService';
+import { AuthService } from '../../infrastructure/external-services/AuthService';
 
 // Validadores
 import { ProvinciaValidator } from '../../domain/validators/Provincias/ProvinciaValidator';
@@ -50,6 +55,12 @@ import { GestionarUbicacionesUseCase } from '../../application/use-cases/Gestion
 import { GestionarHorariosUseCase } from '../../application/use-cases/GestionarHorariosUseCase';
 import { GestionarSeccionesUseCase } from '../../application/use-cases/GestionarSeccionesUseCase';
 import { RegistrarUsuarioUseCase } from '../../application/use-cases/RegistrarUsuarioUseCase';
+import { SolicitarCodigoRegistroUseCase } from '../../application/use-cases/SolicitarCodigoRegistroUseCase';
+import { ValidarCodigoRegistroUseCase } from '../../application/use-cases/ValidarCodigoRegistroUseCase';
+import { RegistrarDoctorUseCase } from '../../application/use-cases/RegistrarDoctorUseCase';
+import { RegistrarPacienteUseCase } from '../../application/use-cases/RegistrarPacienteUseCase';
+import { LoginGoogleUseCase } from '../../application/use-cases/LoginGoogleUseCase';
+import { LoginUseCase } from '../../application/use-cases/LoginUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 // Registrar PrismaClient como singleton
@@ -61,6 +72,14 @@ container.register<PrismaClient>('PrismaClient', {
 const redisCacheService = new RedisCacheService();
 container.register(RedisCacheService, {
   useValue: redisCacheService
+});
+
+// Registrar AuthService como singleton
+container.registerSingleton(AuthService, AuthService);
+
+// Registrar EmailService
+container.register<IEmailService>('EmailService', {
+  useClass: NodemailerEmailService
 });
 
 // ===== REGISTRAR VALIDADORES =====
@@ -309,6 +328,62 @@ container.register(RegistrarUsuarioUseCase, {
   }
 });
 
+// Registrar Use Cases de Autenticación y Registro
+container.register(SolicitarCodigoRegistroUseCase, {
+  useFactory: () => {
+    const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    const emailService = container.resolve<IEmailService>('EmailService');
+    const redisService = container.resolve(RedisCacheService);
+    return new SolicitarCodigoRegistroUseCase(usuarioRepository, emailService, redisService);
+  }
+});
+
+container.register(ValidarCodigoRegistroUseCase, {
+  useFactory: () => {
+    const redisService = container.resolve(RedisCacheService);
+    const authService = container.resolve(AuthService);
+    return new ValidarCodigoRegistroUseCase(redisService, authService);
+  }
+});
+
+container.register(RegistrarDoctorUseCase, {
+  useFactory: () => {
+    const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    const passwordHasher = container.resolve<IPasswordHasher>('PasswordHasher');
+    const storageService = container.resolve<IStorageService>('StorageService');
+    const authService = container.resolve(AuthService);
+    return new RegistrarDoctorUseCase(usuarioRepository, passwordHasher, storageService, authService);
+  }
+});
+
+container.register(RegistrarPacienteUseCase, {
+  useFactory: () => {
+    const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    const passwordHasher = container.resolve<IPasswordHasher>('PasswordHasher');
+    const storageService = container.resolve<IStorageService>('StorageService');
+    const authService = container.resolve(AuthService);
+    return new RegistrarPacienteUseCase(usuarioRepository, passwordHasher, storageService, authService);
+  }
+});
+
+container.register(LoginGoogleUseCase, {
+  useFactory: () => {
+    const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    const authService = container.resolve(AuthService);
+    const passwordHasher = container.resolve<IPasswordHasher>('PasswordHasher');
+    return new LoginGoogleUseCase(usuarioRepository, authService, passwordHasher);
+  }
+});
+
+container.register(LoginUseCase, {
+  useFactory: () => {
+    const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    const passwordHasher = container.resolve<IPasswordHasher>('PasswordHasher');
+    const authService = container.resolve(AuthService);
+    return new LoginUseCase(usuarioRepository, passwordHasher, authService);
+  }
+});
+
 // ===== REGISTRAR SERVICIOS DE APLICACIÓN =====
 container.register<IPasswordHasher>(
   'PasswordHasher',
@@ -318,3 +393,6 @@ container.register<IPasswordHasher>(
 container.register<ITranslationService>('ITranslationService', {
   useClass: LibreTranslateService
 });
+
+// Registro del Storage Service
+container.registerSingleton<IStorageService>('StorageService', SupabaseStorageService);

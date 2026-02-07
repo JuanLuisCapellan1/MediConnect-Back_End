@@ -1,34 +1,48 @@
 import { createClient, RedisClientType } from 'redis';
 import { injectable } from 'tsyringe';
 
+/** Error cuando Redis no está disponible (no instalado o no en ejecución) */
+export class RedisNoDisponibleError extends Error {
+  constructor(causa?: string) {
+    super(
+      causa
+        ? `Redis no está disponible: ${causa}`
+        : 'Redis no está disponible. Asegúrate de tener Redis en ejecución (puerto 6379) o de definir REDIS_URL.'
+    );
+    this.name = 'RedisNoDisponibleError';
+  }
+}
+
 @injectable()
 export class RedisCacheService {
   private client: RedisClientType;
+  private url: string;
 
   constructor() {
-    // Conecta a localhost:6379 (gracias a Docker)
-    this.client = createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379'
-    });
+    this.url = process.env.REDIS_URL || 'redis://localhost:6379';
+    this.client = createClient({ url: this.url });
 
     this.client.on('error', (err) => console.error('Redis Client Error', err));
   }
 
-  private async conectar() {
+  private async conectar(): Promise<void> {
     if (this.client.isOpen) {
       return;
     }
 
     try {
-      // Intentamos conectar
       await this.client.connect();
       console.log('✅ Conectado a Redis');
-    } catch (error: any) {
-      // Si el error es "Socket already opened", lo ignoramos (significa que otra petición ganó la carrera)
-      if (error.message === 'Socket already opened') {
-        return; 
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'message' in error && (error as Error).message === 'Socket already opened') {
+        return;
       }
-      // Si es otro error, lo lanzamos
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('ECONNREFUSED') || msg.includes('connect')) {
+        throw new RedisNoDisponibleError(
+          `No se pudo conectar a Redis en ${this.url}. ¿Está Redis en ejecución? (ej: redis-server o docker run redis)`
+        );
+      }
       throw error;
     }
   }
