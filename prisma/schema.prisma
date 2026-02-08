@@ -81,34 +81,48 @@ model Doctor {
   usuarioId                       Int                  @id @map("id_usuario")
   nombre                          String               @db.VarChar(80)
   apellido                        String               @db.VarChar(80)
-  numero_documento_identificacion String               @unique(map: "uq_doctores_numero_doc") @db.VarChar(20)
-  foto_documento                  String               @unique(map: "doctores_documento_identificacion_key") @db.VarChar(255)
+  
+  // Fusión de campos de identificación
+  tipoDocIdentificacion           String               @default("Cédula") @map("tipo_documento_identificacion") @db.VarChar(20)
+  numeroDocumentoIdentificacion   String               @unique(map: "uq_doctores_numero_doc") @map("numero_documento_identificacion") @db.VarChar(20)
+  fotoDocumento                   String?              @unique(map: "doctores_documento_identificacion_key") @map("foto_documento") @db.VarChar(255)
+  exequatur                       String               @unique @db.VarChar(40)
+  
+  // Datos personales y perfil
   fechaNacimiento                 DateTime             @map("fecha_nacimiento") @db.Date
   genero                          String               @db.Char(1)
   nacionalidad                    String?              @db.VarChar(50)
-  exequatur                       String               @unique @db.VarChar(40)
   biografia                       String?
+  tituloAcademico                 String?              @map("titulo_academico") @db.VarChar(255)
+  certificacionesAdicionales      String?              @map("certificaciones_adicionales") @db.VarChar(255)
+  
+  // Datos profesionales y estado
   anosExperiencia                 Int?                 @map("anos_experiencia")
-  estadoVerificacion              String               @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
+  tarifas                         Decimal?             @db.Decimal(10, 2)
+  duracionCitaPromedio            Int                  @default(30) @map("duracion_cita_promedio")
   calificacionPromedio            Decimal?             @default(0.00) @map("calificacion_promedio") @db.Decimal(3, 2)
+  estadoVerificacion              String               @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
   estado                          String               @default("Activo") @db.VarChar(20)
+  
+  // Auditoría
   creadoEn                        DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn                   DateTime?            @map("actualizado_en") @db.Timestamptz(6)
-  certificacionesAdicionales      String?              @map("certificaciones_adicionales") @db.VarChar(255)
-  tituloAcademico                 String?              @map("titulo_academico") @db.VarChar(255)
-  tipoDocIdentificacion           String               @default("Cédula") @map("tipo_documento_identificacion") @db.VarChar(20)
+
+  // Relaciones y Ubicación
   ubicacionId                     Int?                 @map("id_ubicacion")
-  usuario                         Usuario              @relation(fields: [usuarioId], references: [id])
   ubicacion                       Ubicacion?           @relation(fields: [ubicacionId], references: [id], onUpdate: NoAction, map: "fk_doctores_ubicacion")
-  favoritosDe                     DoctorFavorito[]
-  segurosAceptados                DoctorSeguro[]
-  experiencias                    ExperienciaLaboral[]
-  formaciones                     FormacionAcademica[]
+  usuario                         Usuario              @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  // Relaciones Fusionadas (Tuyas y de Develop)
+  citas                           Cita[]               @relation("DoctorCita") // ✅ TU RELACIÓN CORRECTA
   horarios                        Horario[]
-  citas                           Cita[]               @relation("DoctorCita")
   resenas                         Resena[]
   servicios                       Servicio[]
+  experiencias                    ExperienciaLaboral[]
+  formaciones                     FormacionAcademica[]
   solicitudesAlianza              SolicitudAlianza[]
+  favoritosDe                     DoctorFavorito[]
+  segurosAceptados                DoctorSeguro[]
 
   @@index([ubicacionId], map: "idx_doctores_ubicacion")
   @@map("doctores")
@@ -242,10 +256,11 @@ model Ubicacion {
 
 model Especialidad {
   id          Int                  @id @default(autoincrement()) @map("id_especialidad")
-  nombre      String               @unique @db.VarChar(80)
+  nombre      String               @unique @db.VarChar(80) // Mantenemos @unique que es mejor
   descripcion String?
   estado      String               @default("Activo") @db.VarChar(20)
   creadoEn    DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
+  
   formaciones FormacionAcademica[]
   servicios   Servicio[]
 
@@ -253,12 +268,13 @@ model Especialidad {
 }
 
 model Profesion {
-  id           Int                  @id @default(autoincrement()) @map("id_profesion")
-  nombre       String               @db.VarChar(80)
-  descripcion  String?
-  estado       String               @default("Activo") @db.VarChar(20)
-  creadoEn     DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
-  experiencias ExperienciaLaboral[]
+  id            Int                  @id @default(autoincrement()) @map("id_profesion")
+  nombre        String               @db.VarChar(80)
+  descripcion   String?
+  estado        String               @default("Activo") @db.VarChar(20)
+  creadoEn      DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
+  
+  experiencias  ExperienciaLaboral[]
 
   @@map("profesiones")
 }
@@ -277,11 +293,12 @@ model Universidad {
 }
 
 model TipoCentroSalud {
-  id       Int           @id @default(autoincrement()) @map("id_tipo_centro_salud")
-  nombre   String        @db.VarChar(80)
-  estado   String        @default("Activo") @db.VarChar(20)
-  creadoEn DateTime      @default(now()) @map("creado_en") @db.Timestamptz(6)
-  centros  CentroSalud[]
+  id        Int           @id @default(autoincrement()) @map("id_tipo_centro_salud")
+  nombre    String        @db.VarChar(80)
+  estado    String        @default("Activo") @db.VarChar(20)
+  creadoEn  DateTime      @default(now()) @map("creado_en") @db.Timestamptz(6)
+  
+  centros   CentroSalud[]
 
   @@map("tipos_centros_salud")
 }
@@ -476,7 +493,7 @@ model Servicio {
   estado               String            @default("Activo") @db.VarChar(20)
   creadoEn             DateTime          @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn        DateTime?         @map("actualizado_en") @db.Timestamptz(6)
-  citas                Cita[]            @relation("DoctorCita")
+  citas                Cita[]            
   doctor               Doctor            @relation(fields: [doctorId], references: [usuarioId])
   especialidad         Especialidad      @relation(fields: [especialidadId], references: [id])
   tipoServicio         TipoServicio      @relation(fields: [tipoServicioId], references: [id])
@@ -498,25 +515,35 @@ model ServicioHorario {
 }
 
 model Cita {
-  id              Int                @id @default(autoincrement()) @map("id_cita")
-  servicioId      Int                @map("id_servicio")
-  pacienteId      Int                @map("id_usuario")
-  fechaInicio     DateTime           @map("fecha_hora_inicio") @db.Timestamptz(6)
-  fechaFin        DateTime           @map("fecha_hora_fin") @db.Timestamptz(6)
-  ubicacionId     Int?               @map("id_ubicacion")
-  totalAPagar     Decimal            @map("total_a_pagar") @db.Decimal(10, 2)
-  motivoConsulta  String?            @map("motivo_consulta_paciente") @db.VarChar(200)
-  comentario      String?            @db.VarChar(200)
-  estado          String             @default("Programada") @db.VarChar(20)
-  creadoEn        DateTime           @default(now()) @map("creado_en") @db.Timestamptz(6)
-  actualizadoEn   DateTime?          @map("actualizado_en") @db.Timestamptz(6)
-  doctorIndirecto Servicio           @relation("DoctorCita", fields: [servicioId], references: [id], map: "fk_citas_servicio_doctor_dummy")
-  ubicacion       Ubicacion?         @relation(fields: [ubicacionId], references: [id])
-  paciente        Paciente           @relation(fields: [pacienteId], references: [usuarioId])
+  id              Int      @id @default(autoincrement()) @map("id_cita")
+  servicioId      Int      @map("id_servicio")
+  pacienteId      Int      @map("id_usuario")
+  
+  // EL CAMPO QUE FALTABA (Esto arregla el error)
+  doctorUsuarioId Int?     @map("id_doctor") 
+
+  fechaInicio     DateTime @map("fecha_hora_inicio") @db.Timestamptz(6)
+  fechaFin        DateTime @map("fecha_hora_fin") @db.Timestamptz(6)
+  ubicacionId     Int?     @map("id_ubicacion")
+  totalAPagar     Decimal  @map("total_a_pagar") @db.Decimal(10, 2)
+  motivoConsulta  String?  @map("motivo_consulta_paciente") @db.VarChar(200)
+  comentario      String?  @db.VarChar(200)
+  estado          String   @default("Programada") @db.VarChar(20)
+  creadoEn        DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn   DateTime? @map("actualizado_en") @db.Timestamptz(6)
+
+  // Relaciones
+  servicio        Servicio @relation(fields: [servicioId], references: [id])
+  ubicacion       Ubicacion? @relation(fields: [ubicacionId], references: [id])
+  paciente        Paciente   @relation(fields: [pacienteId], references: [usuarioId])
+  
+  // RELACIÓN CORREGIDA CON EL NOMBRE CORRECTO
+  doctor          Doctor?  @relation("DoctorCita", fields: [doctorUsuarioId], references: [usuarioId])
+
   historial       HistorialConsulta?
   logTeleconsulta LogTeleconsulta[]
   resena          Resena?
-  doctor          Doctor?            @relation("DoctorCita", fields: [doctorUsuarioId], references: [usuarioId])
+
   @@map("citas")
 }
 

@@ -15,6 +15,10 @@ import TiposCentrosSaludRoutes from './TiposCentrosSaludRoutes';
 import ProfesionesRoutes from './ProfesionesRoutes';
 import ExperienciasLaboralesRoutes from './ExperienciasLaboralesRoutes';
 import AuthRoutes from './AuthRoutes';
+import NotificacionesRoutes from './notificaciones.routes';
+// import AuthRoutes from './auth.routes'; Comente esto porque pensé que lo estabas utilizando para prueba, cualquier cosa lo elimina y me deja saber
+import ConversacionesRoutes from './conversaciones.routes';
+import MensajesRoutes from './mensajes.routes';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 import { translationRateLimitMiddleware } from '../middlewares/TranslationRateLimiter';
 
@@ -67,5 +71,17 @@ router.use('/profesiones', ProfesionesRoutes);
 
 // Rutas de Experiencias Laborales
 router.use('/experiencias-laborales', ExperienciasLaboralesRoutes);
+
+// Rutas de Autenticación
+router.use('/auth', AuthRoutes);
+
+// Rutas de Notificaciones
+router.use('/notificaciones', NotificacionesRoutes);
+
+// Rutas de Conversaciones (Chat)
+router.use('/conversaciones', ConversacionesRoutes);
+
+// Rutas de Mensajes
+router.use('/conversaciones', MensajesRoutes);
 
 export default router;

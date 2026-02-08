@@ -2,18 +2,26 @@ import { Request, Response } from 'express';
 import { container } from 'tsyringe';
 import { plainToInstance } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
+import jwt from 'jsonwebtoken'; // De develop (para utilidades)
+import { PrismaClient } from '@prisma/client'; // De develop (para utilidades)
+
+// Use Cases (Tuyos - Clean Architecture)
 import { RegistrarPacienteUseCase } from '../../../application/use-cases/RegistrarPacienteUseCase';
 import { RegistrarDoctorUseCase } from '../../../application/use-cases/RegistrarDoctorUseCase';
-import { RegistrarPacienteDto } from '../../../application/dtos/RegistrarPacienteDto';
-import { RegistrarDoctorDto } from '../../../application/dtos/RegistrarDoctorDto';
 import { SolicitarCodigoRegistroUseCase } from '../../../application/use-cases/SolicitarCodigoRegistroUseCase';
 import { ValidarCodigoRegistroUseCase } from '../../../application/use-cases/ValidarCodigoRegistroUseCase';
 import { LoginGoogleUseCase } from '../../../application/use-cases/LoginGoogleUseCase';
 import { LoginUseCase } from '../../../application/use-cases/LoginUseCase';
+
+// DTOs (Tuyos)
+import { RegistrarPacienteDto } from '../../../application/dtos/RegistrarPacienteDto';
+import { RegistrarDoctorDto } from '../../../application/dtos/RegistrarDoctorDto';
 import { LoginDto } from '../../../application/dtos/LoginDto';
+
+// Errores y Servicios
 import { RedisNoDisponibleError } from '../../../infrastructure/external-services/RedisCacheService';
 
-/** Recorre recursivamente ValidationError y devuelve todos los mensajes (incl. anidados: ubicacion, formaciones). */
+/** Recorre recursivamente ValidationError y devuelve todos los mensajes */
 function flattenValidationErrors(errors: ValidationError[], prefix = ''): string[] {
   const messages: string[] = [];
   for (const e of errors) {
@@ -29,43 +37,36 @@ function flattenValidationErrors(errors: ValidationError[], prefix = ''): string
 }
 
 export class AuthController {
+  
+  // ===========================================================================
+  // MÉTODOS DE PRODUCCIÓN (Clean Architecture - TUS CAMBIOS)
+  // ===========================================================================
+
   /**
    * POST /auth/registro/paciente
-   * Completa el registro de un paciente
    */
   async completarRegistroPaciente(req: Request, res: Response): Promise<void> {
     try {
-      // 1. Validar token
       const token = this.extraerToken(req);
       if (!token) {
         res.status(401).json({
           success: false,
-          message:
-            'Token de registro no proporcionado. Envía el JWT en el header "Authorization: Bearer <token>" o en el campo del formulario "token". En Swagger con multipart, añade el campo "token" en el Request body y pega el token obtenido de validar-codigo.',
+          message: 'Token de registro no proporcionado.',
         });
         return;
       }
 
-      // 2. Validar archivos requeridos (solo fotoDocumento es obligatorio; fotoPerfil es opcional)
       if (!req.files || typeof req.files !== 'object') {
-        res.status(400).json({
-          success: false,
-          message: 'No se proporcionaron archivos',
-        });
+        res.status(400).json({ success: false, message: 'No se proporcionaron archivos' });
         return;
       }
 
       const files = req.files as Record<string, Express.Multer.File[]>;
-
       if (!files.fotoDocumento || !files.fotoDocumento[0]) {
-        res.status(400).json({
-          success: false,
-          message: 'fotoDocumento es requerido',
-        });
+        res.status(400).json({ success: false, message: 'fotoDocumento es requerido' });
         return;
       }
 
-      // 3. Transformar y validar DTO
       const dto = plainToInstance(RegistrarPacienteDto, req.body);
       const errors = await validate(dto);
 
@@ -74,12 +75,11 @@ export class AuthController {
         res.status(400).json({
           success: false,
           message: 'Validación fallida',
-          errors: messages.length ? messages.join('; ') : 'Errores de validación.',
+          errors: messages.join('; '),
         });
         return;
       }
 
-      // 4. Ejecutar caso de uso
       const useCase = container.resolve(RegistrarPacienteUseCase);
       await useCase.execute(dto, files, token);
 
@@ -94,49 +94,30 @@ export class AuthController {
 
   /**
    * POST /auth/registro/doctor
-   * Completa el registro de un doctor
    */
   async completarRegistroDoctor(req: Request, res: Response): Promise<void> {
     try {
-      // 1. Validar token
       const token = this.extraerToken(req);
       if (!token) {
-        res.status(401).json({
-          success: false,
-          message:
-            'Token de registro no proporcionado. Envía el JWT en el header "Authorization: Bearer <token>" o en el campo del formulario "token". En Swagger con multipart, añade el campo "token" en el Request body y pega el token obtenido de validar-codigo.',
-        });
+        res.status(401).json({ success: false, message: 'Token de registro no proporcionado.' });
         return;
       }
 
-      // 2. Validar archivos requeridos
       if (!req.files || typeof req.files !== 'object') {
-        res.status(400).json({
-          success: false,
-          message: 'No se proporcionaron archivos',
-        });
+        res.status(400).json({ success: false, message: 'No se proporcionaron archivos' });
         return;
       }
 
       const files = req.files as Record<string, Express.Multer.File[]>;
-      const archivosRequeridos = [
-        'fotoPerfil',
-        'fotoDocumento',
-        'tituloAcademico',
-        'certificaciones',
-      ];
+      const archivosRequeridos = ['fotoPerfil', 'fotoDocumento', 'tituloAcademico', 'certificaciones'];
 
       for (const archivo of archivosRequeridos) {
         if (!files[archivo] || !files[archivo][0]) {
-          res.status(400).json({
-            success: false,
-            message: `${archivo} es requerido`,
-          });
+          res.status(400).json({ success: false, message: `${archivo} es requerido` });
           return;
         }
       }
 
-      // 3. Transformar y validar DTO (opciones para convertir tipos en anidados y excluir propiedades no definidas en el DTO)
       const dto = plainToInstance(RegistrarDoctorDto, req.body, {
         enableImplicitConversion: true,
         excludeExtraneousValues: false,
@@ -148,12 +129,11 @@ export class AuthController {
         res.status(400).json({
           success: false,
           message: 'Validación fallida',
-          errors: messages.length ? messages.join('; ') : 'Errores de validación en campos anidados.',
+          errors: messages.join('; '),
         });
         return;
       }
 
-      // 4. Ejecutar caso de uso
       const useCase = container.resolve(RegistrarDoctorUseCase);
       await useCase.execute(dto, files, token);
 
@@ -168,27 +148,19 @@ export class AuthController {
 
   /**
    * POST /auth/registro/solicitar-codigo
-   * Solicita un código OTP para el registro
    */
   async solicitarCodigo(req: Request, res: Response): Promise<void> {
     try {
       const { email } = req.body;
-
       if (!email) {
-        res.status(400).json({
-          success: false,
-          message: 'El correo electrónico es requerido.',
-        });
+        res.status(400).json({ success: false, message: 'El correo electrónico es requerido.' });
         return;
       }
 
       const useCase = container.resolve(SolicitarCodigoRegistroUseCase);
       await useCase.execute(email);
 
-      res.status(200).json({
-        success: true,
-        message: 'Código de registro enviado al correo electrónico.',
-      });
+      res.status(200).json({ success: true, message: 'Código de registro enviado al correo electrónico.' });
     } catch (error) {
       this.manejarError(error, res);
     }
@@ -196,17 +168,12 @@ export class AuthController {
 
   /**
    * POST /auth/registro/validar-codigo
-   * Valida un código OTP y genera un token de registro
    */
   async validarCodigo(req: Request, res: Response): Promise<void> {
     try {
       const { email, codigo } = req.body;
-
       if (!email || !codigo) {
-        res.status(400).json({
-          success: false,
-          message: 'El correo electrónico y el código son requeridos.',
-        });
+        res.status(400).json({ success: false, message: 'Email y código son requeridos.' });
         return;
       }
 
@@ -224,98 +191,18 @@ export class AuthController {
   }
 
   /**
-   * Extrae el token JWT del header Authorization o del body (multipart).
-   * Swagger UI a veces no envía el header Authorization en peticiones multipart/form-data;
-   * por eso se acepta también un campo "token" o "authorization" en req.body.
-   */
-  private extraerToken(req: Request): string | null {
-    // 1. Header (Express normaliza headers a minúsculas)
-    const authHeader = req.headers.authorization ?? req.headers.Authorization;
-    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-      return authHeader.substring(7).trim();
-    }
-
-    // 2. Body (útil cuando Swagger/envíos multipart no incluyen el header)
-    const body = req.body as Record<string, unknown>;
-    if (body && typeof body === 'object') {
-      const fromBody = body.token ?? body.authorization;
-      if (typeof fromBody === 'string') {
-        const value = fromBody.trim();
-        return value.startsWith('Bearer ') ? value.substring(7).trim() : value;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Maneja errores de forma consistente
-   */
-  private manejarError(error: unknown, res: Response): void {
-    console.error('Error en AuthController:', error);
-
-    if (error instanceof RedisNoDisponibleError) {
-      res.status(503).json({
-        success: false,
-        message: 'Servicio de validación temporalmente no disponible. Por favor, intenta más tarde.',
-      });
-      return;
-    }
-
-    if (error instanceof Error) {
-      const message = error.message;
-
-      // Errores específicos
-      if (message.includes('Token')) {
-        res.status(401).json({
-          success: false,
-          message: 'Token inválido o expirado',
-        });
-        return;
-      }
-
-      if (message.includes('Configuración')) {
-        res.status(500).json({
-          success: false,
-          message: 'Error de configuración del servidor',
-        });
-        return;
-      }
-
-      if (message.includes('duplicado') || message.includes('UNIQUE')) {
-        res.status(409).json({
-          success: false,
-          message: 'El usuario ya existe',
-        });
-        return;
-      }
-
-      res.status(400).json({
-        success: false,
-        message,
-      });
-      return;
-    }
-
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-    });
-  }
-
-  /**
    * POST /auth/login
-   * Login con email y contraseña. Devuelve JWT y datos del usuario.
+   * Login oficial usando Casos de Uso
    */
   async login(req: Request, res: Response): Promise<void> {
     try {
       const dto = plainToInstance(LoginDto, req.body);
       const errors = await validate(dto);
       if (errors.length > 0) {
-        const messages = flattenValidationErrors(errors);
         res.status(400).json({
           success: false,
-          message: messages.length > 0 ? messages[0] : 'Datos de login inválidos',
+          message: 'Datos de login inválidos',
+          errors: flattenValidationErrors(errors),
         });
         return;
       }
@@ -329,35 +216,18 @@ export class AuthController {
         usuario: result.usuario,
       });
     } catch (error) {
-      if (error instanceof Error) {
-        const message = error.message;
-        if (message === 'Credenciales inválidas') {
-          res.status(401).json({ success: false, message: 'Credenciales inválidas.' });
-          return;
-        }
-        if (message === 'Usuario inactivo o bloqueado') {
-          res.status(403).json({ success: false, message: 'Usuario inactivo o bloqueado.' });
-          return;
-        }
-        res.status(400).json({ success: false, message });
-        return;
-      }
-      res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+      this.manejarError(error, res);
     }
   }
 
   /**
    * POST /auth/google
-   * Login con Google: recibe idToken, verifica con Google y devuelve JWT (login / vincular / registro rápido).
    */
   async loginGoogle(req: Request, res: Response): Promise<void> {
     try {
       const idToken = req.body?.idToken ?? req.body?.id_token;
       if (!idToken || typeof idToken !== 'string') {
-        res.status(400).json({
-          success: false,
-          message: 'Se requiere el idToken de Google en el body (idToken o id_token).',
-        });
+        res.status(400).json({ success: false, message: 'Se requiere idToken de Google.' });
         return;
       }
 
@@ -370,20 +240,154 @@ export class AuthController {
         user: result.user,
       });
     } catch (error) {
-      if (error instanceof Error) {
-        const message = error.message;
-        if (message.includes('Token') || message.includes('inválido')) {
-          res.status(401).json({ success: false, message: 'Token de Google inválido o expirado.' });
-          return;
+      this.manejarError(error, res);
+    }
+  }
+
+  // ===========================================================================
+  // MÉTODOS DE UTILIDAD / DESARROLLO (De tu compañero)
+  // ===========================================================================
+
+  /**
+   * POST /api/auth/quick-login
+   */
+  async quickLogin(req: Request, res: Response): Promise<Response | void> {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ error: 'Email es requerido' });
+
+      const prisma = container.resolve<PrismaClient>('PrismaClient');
+      const usuario = await prisma.usuario.findUnique({ where: { email } });
+
+      if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+      const secreto = process.env.JWT_SECRET || 'secret-key-temporal';
+      const token = jwt.sign(
+        { userId: usuario.id, email: usuario.email, rol: usuario.rol },
+        secreto,
+        { expiresIn: '24h' }
+      );
+
+      return res.status(200).json({
+        mensaje: 'Quick login exitoso (DEV)',
+        data: { token, usuario: { id: usuario.id, email: usuario.email, rol: usuario.rol, fotoPerfil: usuario.fotoPerfil } },
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'Error interno' });
+    }
+  }
+
+  /**
+   * POST /api/auth/generate-token
+   */
+  async generateToken(req: Request, res: Response): Promise<Response | void> {
+    try {
+      const { usuarioId } = req.body;
+      if (!usuarioId) return res.status(400).json({ error: 'usuarioId requerido' });
+
+      const prisma = container.resolve<PrismaClient>('PrismaClient');
+      const usuario = await prisma.usuario.findUnique({ where: { id: Number(usuarioId) } });
+
+      if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+      const secreto = process.env.JWT_SECRET || 'secret-key-temporal';
+      const token = jwt.sign(
+        { userId: usuario.id, email: usuario.email, rol: usuario.rol },
+        secreto,
+        { expiresIn: '24h' }
+      );
+
+      return res.status(200).json({ mensaje: 'Token generado', data: { token } });
+    } catch (error) {
+      return res.status(500).json({ error: 'Error interno' });
+    }
+  }
+
+  /**
+   * POST /api/auth/verify
+   */
+  async verifyToken(req: Request, res: Response): Promise<Response | void> {
+    try {
+      const { token } = req.body;
+      if (!token) return res.status(400).json({ error: 'Token requerido' });
+
+      const secreto = process.env.JWT_SECRET || 'secret-key-temporal';
+      const decoded = jwt.verify(token, secreto);
+
+      return res.status(200).json({ mensaje: 'Token válido', data: decoded });
+    } catch (error) {
+      return res.status(401).json({ error: 'Token inválido o expirado' });
+    }
+  }
+
+  /**
+   * GET /api/auth/me
+   */
+  async me(req: Request, res: Response): Promise<Response | void> {
+    try {
+      const usuarioId = (req as any).usuarioId;
+      if (!usuarioId) return res.status(401).json({ error: 'No autenticado' });
+
+      const prisma = container.resolve<PrismaClient>('PrismaClient');
+      const usuario = await prisma.usuario.findUnique({
+        where: { id: usuarioId },
+        select: {
+          id: true, email: true, rol: true, fotoPerfil: true,
+          telefono: true, emailVerificado: true, estado: true, creadoEn: true
         }
-        if (message.includes('GOOGLE_CLIENT_ID')) {
-          res.status(500).json({ success: false, message: 'Configuración de Google no disponible.' });
-          return;
-        }
-        res.status(400).json({ success: false, message });
+      });
+
+      if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+      return res.status(200).json({ mensaje: 'Usuario autenticado', data: usuario });
+    } catch (error) {
+      return res.status(500).json({ error: 'Error interno' });
+    }
+  }
+
+  // ===========================================================================
+  // HELPERS PRIVADOS
+  // ===========================================================================
+
+  private extraerToken(req: Request): string | null {
+    const authHeader = req.headers.authorization ?? req.headers.Authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      return authHeader.substring(7).trim();
+    }
+    const body = req.body as Record<string, unknown>;
+    if (body && typeof body === 'object') {
+      const fromBody = body.token ?? body.authorization;
+      if (typeof fromBody === 'string') {
+        const value = fromBody.trim();
+        return value.startsWith('Bearer ') ? value.substring(7).trim() : value;
+      }
+    }
+    return null;
+  }
+
+  private manejarError(error: unknown, res: Response): void {
+    console.error('Error Auth:', error);
+
+    if (error instanceof RedisNoDisponibleError) {
+      res.status(503).json({ success: false, message: 'Servicio de validación no disponible.' });
+      return;
+    }
+
+    if (error instanceof Error) {
+      const msg = error.message;
+      if (msg === 'Credenciales inválidas') {
+        res.status(401).json({ success: false, message: msg });
         return;
       }
-      res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+      if (msg.includes('Token')) {
+        res.status(401).json({ success: false, message: 'Token inválido o expirado' });
+        return;
+      }
+      res.status(400).json({ success: false, message: msg });
+      return;
     }
+
+    res.status(500).json({ success: false, message: 'Error interno del servidor.' });
   }
 }
