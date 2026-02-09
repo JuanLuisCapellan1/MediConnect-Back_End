@@ -42,12 +42,15 @@ export class RegistrarPacienteUseCase {
         );
       }
 
-      const fotoDocumentoPath = await this.storageService.uploadFile(
-        files.fotoDocumento[0].buffer,
-        `patients/${email}/document.jpg`,
-        'secure-documents',
-        files.fotoDocumento[0].mimetype
-      );
+      let fotoDocumentoPath: string | null = null;
+      if (files.fotoDocumento?.[0]) {
+        fotoDocumentoPath = await this.storageService.uploadFile(
+          files.fotoDocumento[0].buffer,
+          `patients/${email}/document.jpg`,
+          'secure-documents',
+          files.fotoDocumento[0].mimetype
+        );
+      }
 
       // Persistir en base de datos
       await this.usuarioRepository.savePaciente({
@@ -59,7 +62,7 @@ export class RegistrarPacienteUseCase {
           apellido: dto.apellido,
           numero_documento_identificacion: dto.numero_documento,
           tipo_documento_identificacion: dto.tipo_documento,
-          foto_documento: fotoDocumentoPath,
+          foto_documento: fotoDocumentoPath ?? null,
           foto_perfil: fotoPerfilUrl ?? undefined,
           fecha_nacimiento: dto.fecha_nacimiento,
           genero: dto.genero,

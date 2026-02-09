@@ -52,7 +52,7 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
           apellido: data.paciente.apellido,
           tipoDocIdentificacion: data.paciente.tipo_documento_identificacion,
           numero_documento_identificacion: data.paciente.numero_documento_identificacion,
-          foto_documento: data.paciente.foto_documento,
+          foto_documento: data.paciente.foto_documento ?? null,
           fechaNacimiento: data.paciente.fecha_nacimiento || new Date(),
           genero: data.paciente.genero || 'O',
           altura: data.paciente.altura || null,
@@ -219,6 +219,27 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
         emailVerificado: true,
         fotoPerfil: datos.foto || '',
         creadoEn: new Date(),
+      },
+    });
+  }
+
+  async buscarPerfilDetalladoPorId(id: number): Promise<any | null> {
+    return await prisma.usuario.findUnique({
+      where: { id },
+      include: {
+        paciente: true,
+        doctor: {
+          include: {
+            ubicacion: true,
+            formaciones: {
+              include: {
+                especialidad: true,
+                universidad: true,
+              },
+            },
+          },
+        },
+        centroSalud: true,
       },
     });
   }

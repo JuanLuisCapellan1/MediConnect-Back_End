@@ -15,6 +15,7 @@ import TiposCentrosSaludRoutes from './TiposCentrosSaludRoutes';
 import ProfesionesRoutes from './ProfesionesRoutes';
 import ExperienciasLaboralesRoutes from './ExperienciasLaboralesRoutes';
 import AuthRoutes from './AuthRoutes';
+import AuthPasswordRoutes from './AuthPasswordRoutes';
 import NotificacionesRoutes from './notificaciones.routes';
 // import AuthRoutes from './auth.routes'; Comente esto porque pensé que lo estabas utilizando para prueba, cualquier cosa lo elimina y me deja saber
 import ConversacionesRoutes from './conversaciones.routes';
@@ -44,6 +45,7 @@ router.get('/translation/health', (req, res) => translationUtilsController.healt
 
 // Rutas de autenticación
 router.use('/auth', AuthRoutes);
+router.use('/auth', AuthPasswordRoutes);
 
 // Rutas de geografía
 router.use('/provincias', ProvinciasRoutes);

@@ -31,9 +31,15 @@ export class SupabaseStorageService implements IStorageService {
         upsert: true // Sobrescribir si existe
       });
 
-    if (error) {
+    if (error || !data) {
       console.error(`Error subiendo a Supabase [${bucket}]:`, error);
       throw new Error('No se pudo subir el archivo al almacenamiento.');
+    }
+
+    // Para assets públicos devolvemos la URL completa, para documentos seguros el path interno
+    if (bucket === 'public-assets') {
+      const { data: publicData } = this.supabase.storage.from(bucket).getPublicUrl(data.path);
+      return publicData.publicUrl;
     }
 
     return data.path;

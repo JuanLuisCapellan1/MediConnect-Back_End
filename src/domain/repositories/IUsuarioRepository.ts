@@ -19,7 +19,7 @@ export interface IUsuarioRepository {
       apellido: string;
       numero_documento_identificacion: string;
       tipo_documento_identificacion: string;
-      foto_documento: string;
+      foto_documento?: string | null;
       foto_perfil?: string | null;
       fecha_nacimiento?: Date;
       genero?: string;
@@ -86,4 +86,10 @@ export interface IUsuarioRepository {
     apellido: string;
     foto: string;
   }): Promise<Usuario>;
+
+  /**
+   * Devuelve el usuario con información asociada (perfil paciente/doctor/centro, etc.).
+   * El tipo concreto dependerá del rol.
+   */
+  buscarPerfilDetalladoPorId(id: number): Promise<any | null>;
 }

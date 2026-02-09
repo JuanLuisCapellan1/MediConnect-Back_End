@@ -5,6 +5,7 @@ interface TokenPayload {
   userId: number;
   email: string;
   rol: string;
+  scope?: string;
 }
 
 /**
@@ -28,6 +29,12 @@ export const autenticarJWT = (req: Request, res: Response, next: NextFunction): 
 
     // Verificar y decodificar el token
     const decoded = jwt.verify(token, secreto) as TokenPayload;
+
+    // Asegurarnos de que sea un access token, no un refresh
+    if (decoded.scope && decoded.scope !== 'access') {
+      res.status(401).json({ error: 'Token de acceso inválido' });
+      return;
+    }
 
     // Agregar la información del usuario al objeto request
     (req as any).usuarioId = decoded.userId;

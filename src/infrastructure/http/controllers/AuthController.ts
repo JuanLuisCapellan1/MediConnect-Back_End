@@ -12,6 +12,10 @@ import { SolicitarCodigoRegistroUseCase } from '../../../application/use-cases/S
 import { ValidarCodigoRegistroUseCase } from '../../../application/use-cases/ValidarCodigoRegistroUseCase';
 import { LoginGoogleUseCase } from '../../../application/use-cases/LoginGoogleUseCase';
 import { LoginUseCase } from '../../../application/use-cases/LoginUseCase';
+import { RefreshTokenUseCase } from '../../../application/use-cases/RefreshTokenUseCase';
+import { SolicitarRecuperacionPasswordUseCase } from '../../../application/use-cases/SolicitarRecuperacionPasswordUseCase';
+import { ValidarCodigoRecuperacionPasswordUseCase } from '../../../application/use-cases/ValidarCodigoRecuperacionPasswordUseCase';
+import { CambiarPasswordConTokenUseCase } from '../../../application/use-cases/CambiarPasswordConTokenUseCase';
 
 // DTOs (Tuyos)
 import { RegistrarPacienteDto } from '../../../application/dtos/RegistrarPacienteDto';
@@ -56,16 +60,7 @@ export class AuthController {
         return;
       }
 
-      if (!req.files || typeof req.files !== 'object') {
-        res.status(400).json({ success: false, message: 'No se proporcionaron archivos' });
-        return;
-      }
-
-      const files = req.files as Record<string, Express.Multer.File[]>;
-      if (!files.fotoDocumento || !files.fotoDocumento[0]) {
-        res.status(400).json({ success: false, message: 'fotoDocumento es requerido' });
-        return;
-      }
+      const files = (req.files as Record<string, Express.Multer.File[]>) ?? {};
 
       const dto = plainToInstance(RegistrarPacienteDto, req.body);
       const errors = await validate(dto);
@@ -212,7 +207,8 @@ export class AuthController {
 
       res.status(200).json({
         success: true,
-        token: result.token,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
         usuario: result.usuario,
       });
     } catch (error) {
@@ -236,8 +232,115 @@ export class AuthController {
 
       res.status(200).json({
         success: true,
-        token: result.token,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
         user: result.user,
+      });
+    } catch (error) {
+      this.manejarError(error, res);
+    }
+  }
+
+  /**
+   * POST /auth/refresh
+   * Recibe un refreshToken y devuelve un nuevo par de tokens
+   */
+  async refreshToken(req: Request, res: Response): Promise<void> {
+    try {
+      const { refreshToken } = req.body as { refreshToken?: string };
+      if (!refreshToken) {
+        res.status(400).json({ success: false, message: 'refreshToken es requerido.' });
+        return;
+      }
+
+      const useCase = container.resolve(RefreshTokenUseCase);
+      const tokens = await useCase.execute(refreshToken);
+
+      res.status(200).json({
+        success: true,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      });
+    } catch (error) {
+      this.manejarError(error, res);
+    }
+  }
+
+  /**
+   * POST /auth/password/solicitar-codigo
+   * Enviar código de recuperación al correo
+   */
+  async solicitarCodigoRecuperacion(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body as { email?: string };
+      if (!email) {
+        res.status(400).json({ success: false, message: 'El correo electrónico es requerido.' });
+        return;
+      }
+
+      const useCase = container.resolve(SolicitarRecuperacionPasswordUseCase);
+      await useCase.execute(email);
+
+      res.status(200).json({
+        success: true,
+        message: 'Se ha enviado un código de recuperación al correo electrónico.',
+      });
+    } catch (error) {
+      this.manejarError(error, res);
+    }
+  }
+
+  /**
+   * POST /auth/password/validar-codigo
+   * Valida el código enviado por correo y devuelve un token para cambio de contraseña
+   */
+  async validarCodigoRecuperacion(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, codigo } = req.body as { email?: string; codigo?: string };
+      if (!email || !codigo) {
+        res.status(400).json({ success: false, message: 'Email y código son requeridos.' });
+        return;
+      }
+
+      const useCase = container.resolve(ValidarCodigoRecuperacionPasswordUseCase);
+      const token = await useCase.execute(email, codigo);
+
+      res.status(200).json({
+        success: true,
+        message: 'Código validado correctamente.',
+        data: { token },
+      });
+    } catch (error) {
+      this.manejarError(error, res);
+    }
+  }
+
+  /**
+   * POST /auth/password/cambiar
+   * Cambia la contraseña usando el token de recuperación
+   */
+  async cambiarPasswordConToken(req: Request, res: Response): Promise<void> {
+    try {
+      const { token, nuevaPassword, confirmarPassword } = req.body as {
+        token?: string;
+        nuevaPassword?: string;
+        confirmarPassword?: string;
+      };
+
+      if (!token || !nuevaPassword || !confirmarPassword) {
+        res.status(400).json({
+          success: false,
+          message: 'Token, nueva contraseña y confirmación son requeridos.',
+        });
+        return;
+      }
+
+      const useCase = container.resolve(CambiarPasswordConTokenUseCase);
+      await useCase.execute(token, nuevaPassword, confirmarPassword);
+
+      res.status(200).json({
+        success: true,
+        message: 'Contraseña actualizada correctamente.',
       });
     } catch (error) {
       this.manejarError(error, res);

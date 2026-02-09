@@ -13,6 +13,13 @@ const controller = new AuthController();
 router.post('/login', (req, res) => controller.login(req, res));
 
 /**
+ * POST /api/auth/refresh
+ * Renovar tokens usando un refreshToken
+ * Body: { refreshToken: string }
+ */
+router.post('/refresh', (req, res) => controller.refreshToken(req, res));
+
+/**
  * POST /api/auth/quick-login
  * Login rápido sin password (solo desarrollo)
  * Body: { email: string }

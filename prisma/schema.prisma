@@ -54,7 +54,7 @@ model Paciente {
   nombre                          String                   @db.VarChar(80)
   apellido                        String                   @db.VarChar(80)
   numero_documento_identificacion String                   @unique(map: "uq_pacientes_numero_doc") @db.VarChar(20)
-  foto_documento                  String                   @unique(map: "pacientes_documento_identificacion_key") @db.VarChar(255)
+  foto_documento                  String?                  @unique(map: "pacientes_documento_identificacion_key") @db.VarChar(255)
   fechaNacimiento                 DateTime                 @map("fecha_nacimiento") @db.Date
   genero                          String                   @db.Char(1)
   altura                          Decimal?                 @db.Decimal(4, 2)

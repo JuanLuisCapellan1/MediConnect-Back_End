@@ -5,12 +5,16 @@ import { IPasswordHasher } from '../interfaces/IPasswordHasher';
 import { LoginDto } from '../dtos/LoginDto';
 
 export interface LoginResult {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
   usuario: {
     id: number;
     email: string;
     rol: string;
     fotoPerfil?: string | null;
+    paciente?: any | null;
+    doctor?: any | null;
+    centroSalud?: any | null;
   };
 }
 
@@ -45,15 +49,28 @@ export class LoginUseCase {
       throw new Error(USUARIO_INACTIVO);
     }
 
-    const token = this.authService.generarTokenSesion(usuario.id, usuario.email, usuario.rol);
-    const fotoPerfil = (usuario as any).fotoPerfil ?? (usuario as any).foto_perfil ?? undefined;
+    // Cargar perfil detallado (paciente/doctor/centro, etc.)
+    const usuarioDetallado = await this.usuarioRepository.buscarPerfilDetalladoPorId(usuario.id);
+    const base = (usuarioDetallado as any) ?? (usuario as any);
+
+    const { accessToken, refreshToken } = this.authService.generarTokensSesion(
+      base.id,
+      base.email,
+      base.rol
+    );
+    const fotoPerfil = base.fotoPerfil ?? base.foto_perfil ?? undefined;
+
     return {
-      token,
+      accessToken,
+      refreshToken,
       usuario: {
-        id: usuario.id,
-        email: usuario.email,
-        rol: usuario.rol,
+        id: base.id,
+        email: base.email,
+        rol: base.rol,
         fotoPerfil: fotoPerfil ?? null,
+        paciente: base.paciente ?? null,
+        doctor: base.doctor ?? null,
+        centroSalud: base.centroSalud ?? null,
       },
     };
   }

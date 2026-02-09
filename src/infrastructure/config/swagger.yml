@@ -58,7 +58,7 @@ paths:
       summary: Login con email y contraseña
       tags:
         - Autenticación
-      description: Permite a un usuario (Doctor, Paciente o Admin) iniciar sesión con email y contraseña. Devuelve JWT de sesión y datos del usuario.
+      description: Permite a un usuario (Doctor, Paciente, Centro de Salud o Admin) iniciar sesión con email y contraseña. Devuelve un par de tokens (access/refresh) y datos detallados del usuario.
       requestBody:
         required: true
         content:
@@ -80,7 +80,7 @@ paths:
                   description: Contraseña (mínimo 6 caracteres).
       responses:
         '200':
-          description: Login exitoso. Devuelve JWT y datos del usuario.
+          description: Login exitoso. Devuelve accessToken, refreshToken y datos del usuario.
           content:
             application/json:
               schema:
@@ -89,25 +89,14 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  token:
+                  accessToken:
                     type: string
-                    description: JWT de sesión (Authorization Bearer para rutas protegidas).
+                    description: JWT de acceso de corta duración (usar en Authorization Bearer).
+                  refreshToken:
+                    type: string
+                    description: JWT de refresco para renovar el accessToken.
                   usuario:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      email:
-                        type: string
-                        format: email
-                      rol:
-                        type: string
-                        example: Paciente
-                        description: Paciente, Doctor o Administrador.
-                      fotoPerfil:
-                        type: string
-                        nullable: true
+                    $ref: '#/components/schemas/UsuarioDetallado'
         '400':
           description: Datos inválidos (email/password mal formateados).
           content:
@@ -160,7 +149,7 @@ paths:
                   description: Alternativa al campo idToken (mismo valor).
       responses:
         '200':
-          description: Login/vincular/registro exitoso. Devuelve JWT de sesión y datos del usuario.
+          description: Login/vincular/registro exitoso. Devuelve tokens y datos del usuario.
           content:
             application/json:
               schema:
@@ -169,26 +158,14 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  token:
+                  accessToken:
                     type: string
-                    description: JWT de sesión (incluir en Authorization Bearer para rutas protegidas).
+                    description: JWT de acceso de corta duración (incluir en Authorization Bearer).
+                  refreshToken:
+                    type: string
+                    description: JWT de refresco.
                   user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      email:
-                        type: string
-                        format: email
-                        example: usuario@gmail.com
-                      rol:
-                        type: string
-                        example: Paciente
-                      fotoPerfil:
-                        type: string
-                        nullable: true
-                        description: URL de la foto de perfil (p. ej. de Google).
+                    $ref: '#/components/schemas/UsuarioDetallado'
         '400':
           description: Falta idToken o solicitud inválida.
           content:
@@ -524,7 +501,7 @@ paths:
                   description: Género del paciente (opcional).
                 altura:
                   type: number
-                  example: 175
+                  example: 1.75
                   description: Altura del paciente en cm (opcional).
                 peso:
                   type: number
@@ -736,6 +713,190 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Token de registro inválido o expirado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/password/solicitar-codigo:
+    post:
+      summary: Solicitar código de recuperación de contraseña
+      tags:
+        - Autenticación
+      description: Envía un código de recuperación al correo electrónico del usuario para restablecer su contraseña.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "usuario@mediconnect.com"
+                  description: Correo electrónico del usuario que desea recuperar su contraseña.
+      responses:
+        '200':
+          description: Código de recuperación enviado exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Se ha enviado un código de recuperación al correo electrónico."
+        '400':
+          description: Datos inválidos (email mal formateado).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Correo electrónico no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/password/validar-codigo:
+    post:
+      summary: Validar código de recuperación de contraseña
+      tags:
+        - Autenticación
+      description: Valida el código de recuperación enviado al correo electrónico y devuelve un token para cambiar la contraseña.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - codigo
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "usuario@mediconnect.com"
+                  description: Correo electrónico del usuario.
+                codigo:
+                  type: string
+                  example: "123456"
+                  description: Código de recuperación enviado al correo electrónico.
+      responses:
+        '200':
+          description: Código validado correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Código validado correctamente."
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                        description: Token para cambiar la contraseña.
+        '400':
+          description: Datos inválidos (email o código faltantes).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Código inválido o expirado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/password/cambiar:
+    post:
+      summary: Cambiar contraseña con token de recuperación
+      tags:
+        - Autenticación
+      description: Cambia la contraseña del usuario utilizando el token obtenido al validar el código de recuperación.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - nuevaPassword
+                - confirmarPassword
+              properties:
+                token:
+                  type: string
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  description: Token de recuperación obtenido al validar el código.
+                nuevaPassword:
+                  type: string
+                  minLength: 6
+                  format: password
+                  example: "NuevaPassword123!"
+                  description: Nueva contraseña (mínimo 6 caracteres).
+                confirmarPassword:
+                  type: string
+                  minLength: 6
+                  format: password
+                  example: "NuevaPassword123!"
+                  description: Confirmación de la nueva contraseña.
+      responses:
+        '200':
+          description: Contraseña actualizada exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Contraseña actualizada correctamente."
+        '400':
+          description: Datos inválidos o contraseñas no coinciden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token inválido o expirado.
           content:
             application/json:
               schema:
@@ -6950,6 +7111,38 @@ components:
           type: string
           format: date-time
           example: "2025-01-22T10:30:00Z"
+
+    UsuarioDetallado:
+      type: object
+      description: Usuario autenticado con información básica y perfil asociado según el rol.
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: "usuario@mediconnect.com"
+        rol:
+          type: string
+          example: "Paciente"
+          description: "Rol del usuario (Paciente, Doctor, Centro de Salud, Administrador)"
+        fotoPerfil:
+          type: string
+          nullable: true
+          example: "https://cdn.supabase.io/.../profile.jpg"
+        paciente:
+          type: object
+          nullable: true
+          description: Información de perfil de paciente (solo si rol = Paciente).
+        doctor:
+          type: object
+          nullable: true
+          description: Información de perfil de doctor (solo si rol = Doctor).
+        centroSalud:
+          type: object
+          nullable: true
+          description: Información de perfil de centro de salud (solo si rol = Centro de Salud).
 
     Ubicacion:
       type: object
