@@ -32,7 +32,7 @@ export class CentrosSaludController {
     ,
     @inject(RegistrarCentroUseCase)
     private registrarCentroUseCase: RegistrarCentroUseCase
-  ) { }
+  ) {}
 
   /**
    * POST /centros-salud/completar-perfil
@@ -56,14 +56,6 @@ export class CentrosSaludController {
    * - fotoPerfil: file (opcional, JPG/PNG)
    */
   async completarPerfil(req: Request, res: Response): Promise<void> {
-    console.log('🏥 Iniciando completarPerfil:', {
-      usuarioId: (req as any).usuarioId,
-      email: (req as any).email,
-      hasFiles: !!req.files,
-      filesCount: req.files ? Object.keys(req.files).length : 0,
-      contentType: req.headers['content-type']
-    });
-
     try {
       // ===================================================================
       // 1. OBTENER USUARIO AUTENTICADO DEL REQUEST
