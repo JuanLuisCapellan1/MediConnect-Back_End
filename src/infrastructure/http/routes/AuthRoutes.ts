@@ -120,4 +120,19 @@ routerAuth.post('/password/cambiar', (req, res) =>
   authController.cambiarPasswordConToken(req, res)
 );
 
+/**
+ * PATCH /auth/foto-perfil
+ * Actualiza la foto de perfil del usuario autenticado
+ * Requiere: JWT token en Authorization header
+ * Body: multipart/form-data con campo 'fotoPerfil'
+ */
+import { autenticarJWT } from '../middlewares/autenticacion';
+
+routerAuth.patch(
+  '/foto-perfil',
+  autenticarJWT,
+  upload.single('fotoPerfil'),
+  (req, res) => authController.actualizarFotoPerfil(req, res)
+);
+
 export default routerAuth;

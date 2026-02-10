@@ -92,4 +92,9 @@ export interface IUsuarioRepository {
    * El tipo concreto dependerá del rol.
    */
   buscarPerfilDetalladoPorId(id: number): Promise<any | null>;
+
+  /**
+   * Actualiza la foto de perfil de un usuario
+   */
+  updateProfilePhoto(usuarioId: number, fotoPerfilUrl: string): Promise<void>;
 }

@@ -27,6 +27,7 @@ import { IConversacionesRepository } from '../../domain/repositories/IConversaci
 import { IMensajesRepository } from '../../domain/repositories/IMensajesRepository';
 import { ILecturasConversacionRepository } from '../../domain/repositories/ILecturasConversacionRepository';
 import { IMediaRepository } from '../../domain/repositories/IMediaRepository';
+import { ICentroSaludRepository } from '../../domain/repositories/ICentroSaludRepository';
 
 // Implementaciones
 import { PrismaUsuarioRepository } from '../../infrastructure/repositories/PrismaUsuarioRepository';
@@ -49,6 +50,7 @@ import { PrismaConversacionesRepository } from '../../infrastructure/repositorie
 import { PrismaMensajesRepository } from '../../infrastructure/repositories/PrismaMensajesRepository';
 import { PrismaLecturasConversacionRepository } from '../../infrastructure/repositories/PrismaLecturasConversacionRepository';
 import { PrismaMediaRepository } from '../../infrastructure/repositories/PrismaMediaRepository';
+import { PrismaCentroSaludRepository } from '../../infrastructure/repositories/PrismaCentroSaludRepository';
 
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
@@ -75,6 +77,7 @@ import { TipoServicioValidator } from '../../domain/validators/TiposServicios/Ti
 import { TipoCentroSaludValidator } from '../../domain/validators/TiposCentrosSalud/TipoCentroSaludValidator';
 import { ProfesionValidator } from '../../domain/validators/Profesiones/ProfesionValidator';
 import { ExperienciaLaboralValidator } from '../../domain/validators/ExperienciasLaborales/ExperienciaLaboralValidator';
+import { CentroSaludValidator } from '../../domain/validators/CentrosSalud/CentroSaludValidator';
 
 // UseCases
 import { GestionarProvinciasUseCase } from '../../application/use-cases/GestionarProvinciasUseCase';
@@ -104,6 +107,10 @@ import { GestionarExperienciasLaboralesUseCase } from '../../application/use-cas
 import { GestionarServicioHorariosUseCase } from '../../application/use-cases/GestionarServicioHorariosUseCase';
 import { GestionarNotificacionesUseCase } from '../../application/use-cases/GestionarNotificacionesUseCase';
 import { RefreshAccessTokenUseCase } from '../../application/use-cases/RefreshAccessTokenUseCase';
+import { CompletarPerfilCentroSaludUseCase } from '../../application/use-cases/CompletarPerfilCentroSaludUseCase';
+import { RegistrarCentroUseCase } from '../../application/use-cases/RegistrarCentroUseCase';
+import { ActualizarFotoPerfilUseCase } from '../../application/use-cases/ActualizarFotoPerfilUseCase';
+import { CentrosSaludController } from '../../infrastructure/http/controllers/CentrosSaludController';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 // Registrar PrismaClient como singleton
@@ -214,6 +221,12 @@ container.register(TipoCentroSaludValidator, {
   useFactory: () => {
     const repo = container.resolve<ITipoCentroSaludRepository>('TipoCentroSaludRepository');
     return new TipoCentroSaludValidator(repo);
+  }
+});
+
+container.register(CentroSaludValidator, {
+  useFactory: () => {
+    return new CentroSaludValidator();
   }
 });
 
@@ -353,6 +366,17 @@ container.register<ITipoCentroSaludRepository>(
       const prismaClient = container.resolve<PrismaClient>('PrismaClient');
       const redisCache = container.resolve(RedisCacheService);
       return new PrismaTipoCentroSaludRepository(prismaClient, redisCache);
+    }
+  }
+);
+
+container.register<ICentroSaludRepository>(
+  'CentroSaludRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve(RedisCacheService);
+      return new PrismaCentroSaludRepository(prismaClient, redisCache);
     }
   }
 );
@@ -646,11 +670,71 @@ container.register<ITranslationService>('ITranslationService', {
 // Registro del Storage Service (Tuyo)
 container.registerSingleton<IStorageService>('StorageService', SupabaseStorageService);
 
+container.register(CompletarPerfilCentroSaludUseCase, {
+  useFactory: () => {
+    const prisma = container.resolve<PrismaClient>('PrismaClient');
+    const centroRepo = container.resolve<ICentroSaludRepository>('CentroSaludRepository');
+    const ubicacionRepo = container.resolve<IUbicacionesRepository>('UbicacionesRepository');
+    const tipoRepo = container.resolve<ITipoCentroSaludRepository>('TipoCentroSaludRepository');
+    const storage = container.resolve<IStorageService>('StorageService');
+    const passwordHasher = container.resolve<IPasswordHasher>('PasswordHasher');
+    const validator = container.resolve(CentroSaludValidator);
+    const ubicValidator = container.resolve(UbicacionValidator);
+
+    return new CompletarPerfilCentroSaludUseCase(
+      prisma,
+      centroRepo,
+      ubicacionRepo,
+      tipoRepo,
+      storage,
+      passwordHasher,
+      validator,
+      ubicValidator
+    );
+  }
+});
+
+container.register(RegistrarCentroUseCase, {
+  useFactory: () => {
+    const prisma = container.resolve<PrismaClient>('PrismaClient');
+    const usuarioRepo = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    const centroRepo = container.resolve<ICentroSaludRepository>('CentroSaludRepository');
+    const passwordHasher = container.resolve<IPasswordHasher>('PasswordHasher');
+    const storage = container.resolve<IStorageService>('StorageService');
+    const authService = container.resolve(AuthService);
+
+    return new RegistrarCentroUseCase(
+      prisma,
+      usuarioRepo,
+      centroRepo,
+      passwordHasher,
+      storage,
+      authService
+    );
+  }
+});
+
+container.register(CentrosSaludController, {
+  useFactory: () => {
+    const completarPerfilUseCase = container.resolve(CompletarPerfilCentroSaludUseCase);
+    const registrarCentroUseCase = container.resolve(RegistrarCentroUseCase);
+    return new CentrosSaludController(completarPerfilUseCase, registrarCentroUseCase);
+  }
+});
+
 container.register(RefreshAccessTokenUseCase, {
   useFactory: () => {
     const authService = container.resolve(AuthService);
     const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
     return new RefreshAccessTokenUseCase(authService, usuarioRepository);
+  }
+});
+
+container.register(ActualizarFotoPerfilUseCase, {
+  useFactory: () => {
+    const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    const storageService = container.resolve(SupabaseStorageService);
+    return new ActualizarFotoPerfilUseCase(usuarioRepository, storageService);
   }
 });
 

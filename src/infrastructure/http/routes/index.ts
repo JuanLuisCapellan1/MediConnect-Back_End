@@ -12,12 +12,12 @@ import HorariosRoutes from './HorariosRoutes';
 import ServicioHorarioRoutes from './ServiciosHorariosRoutes';
 import TiposServiciosRoutes from './TiposServiciosRoutes';
 import TiposCentrosSaludRoutes from './TiposCentrosSaludRoutes';
+import CentrosSaludRoutes from './CentrosSaludRoutes';
 import ProfesionesRoutes from './ProfesionesRoutes';
 import ExperienciasLaboralesRoutes from './ExperienciasLaboralesRoutes';
 import AuthRoutes from './AuthRoutes';
 import AuthPasswordRoutes from './AuthPasswordRoutes';
 import NotificacionesRoutes from './notificaciones.routes';
-// import AuthRoutes from './auth.routes'; Comente esto porque pensé que lo estabas utilizando para prueba, cualquier cosa lo elimina y me deja saber
 import ConversacionesRoutes from './conversaciones.routes';
 import MensajesRoutes from './mensajes.routes';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
@@ -67,6 +67,9 @@ router.use('/tipos-servicios', TiposServiciosRoutes);
 
 // Rutas de Tipos de Centros de Salud
 router.use('/tipos-centros-salud', TiposCentrosSaludRoutes);
+
+// Rutas de Centros de Salud
+router.use('/centros-salud', CentrosSaludRoutes);
 
 // Rutas de Profesiones
 router.use('/profesiones', ProfesionesRoutes);

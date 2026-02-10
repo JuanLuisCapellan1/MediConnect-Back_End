@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const tsyringe_1 = require("tsyringe");
+const TipoServicioController_1 = require("../controllers/TipoServicioController");
+const tiposServiciosRouter = (0, express_1.Router)();
+const controller = tsyringe_1.container.resolve(TipoServicioController_1.TipoServicioController);
+tiposServiciosRouter.get('/', (req, res) => controller.listar(req, res));
+tiposServiciosRouter.get('/:id', (req, res) => controller.obtener(req, res));
+tiposServiciosRouter.post('/', (req, res) => controller.crear(req, res));
+tiposServiciosRouter.put('/:id', (req, res) => controller.actualizar(req, res));
+tiposServiciosRouter.delete('/:id', (req, res) => controller.eliminar(req, res));
+exports.default = tiposServiciosRouter;

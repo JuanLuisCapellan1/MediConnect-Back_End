@@ -38,6 +38,8 @@ tags:
     description: Endpoints para gestionar tipos de servicios
   - name: TiposCentrosSalud
     description: Endpoints para gestionar tipos de centros de salud
+  - name: CentrosSalud
+    description: Endpoints para gestionar centros de salud y completar su perfil
   - name: Profesiones
     description: Endpoints para gestionar profesiones
   - name: ExperienciasLaborales
@@ -411,7 +413,7 @@ paths:
                     example: true
                   message:
                     type: string
-                    example: Código validado correctamente.
+                    example: "Código validado correctamente."
                   data:
                     type: object
                     properties:
@@ -970,6 +972,98 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/foto-perfil:
+    patch:
+      summary: Actualizar foto de perfil del usuario autenticado
+      tags:
+        - Autenticación
+      description: |
+        Permite a un usuario autenticado actualizar su foto de perfil. 
+        
+        **Validaciones**:
+        - Usuario debe estar autenticado (JWT token válido)
+        - Solo se permiten imágenes (JPEG, PNG, WEBP)
+        - Tamaño máximo: 5MB
+        
+        **Comportamiento**:
+        - Sube la nueva foto a Supabase (bucket `public-assets`)
+        - Actualiza el registro en la base de datos
+        - Elimina automáticamente la foto anterior (si existe)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - fotoPerfil
+              properties:
+                fotoPerfil:
+                  type: string
+                  format: binary
+                  description: Archivo de imagen (JPEG, PNG o WEBP, máximo 5MB)
+      responses:
+        '200':
+          description: Foto de perfil actualizada exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Foto de perfil actualizada exitosamente"
+                  data:
+                    type: object
+                    properties:
+                      fotoPerfilUrl:
+                        type: string
+                        example: "https://avjupegentogqimsrxkg.supabase.co/storage/v1/object/public/public-assets/users/123/profile.jpg"
+                        description: URL pública de la nueva foto de perfil en Supabase
+        '400':
+          description: Solicitud inválida (archivo faltante, tipo incorrecto o tamaño excedido).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Solo se permiten imágenes (JPEG, PNG, WEBP)"
+        '401':
+          description: No autorizado. Token JWT inválido, expirado o no proporcionado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "No autorizado. Debe iniciar sesión."
+        '404':
+          description: Usuario no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor (error en Supabase o base de datos).
           content:
             application/json:
               schema:
@@ -3167,7 +3261,7 @@ paths:
                 barrioId:
                   type: integer
                   example: 3
-                  description: ID del barrio al que pertenecerá el SubBarrio
+                  description: ID del barrio al que pertenece el SubBarrio
                 nombre:
                   type: string
                   example: "Sub Barrio A"
@@ -5186,6 +5280,121 @@ paths:
                schema:
                  $ref: '#/components/schemas/ErrorResponse'
 
+  # --- CENTROS SALUD ENDPOINTS ---
+  /centros-salud/completar-perfil:
+    post:
+      summary: Completar perfil de centro de salud
+      tags:
+        - CentrosSalud
+      description: |
+        Completa el perfil de un centro de salud registrado con todos los datos requeridos.
+        
+        **Requisitos:**
+        - Autenticación JWT requerida (Usuario debe ser Centro de Salud)
+        - Archivos requeridos: certificadoSanitario (PDF)
+        - Archivos opcionales: fotoPerfil (JPG/PNG)
+        
+        **Proceso:**
+        1. Sube el certificado sanitario a Supabase (secure-documents)
+        2. Sube la foto de perfil si se proporciona (public-assets)
+        3. Crea/actualiza la ubicación del centro
+        4. Actualiza datos del centro de salud
+        5. Crea una acción de revisión para administrador
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - password
+                - nombreComercial
+                - telefono
+                - tipoCentroId
+                - direccion
+                - barrioId
+                - certificadoSanitario
+              properties:
+                password:
+                  type: string
+                  description: Contraseña para la cuenta del centro de salud (8-100 caracteres, requerida)
+                  example: "ContrasenaSegura123!"
+                nombreComercial:
+                  type: string
+                  description: Nombre comercial del centro de salud (3-120 caracteres)
+                  example: "Clínica del Centro"
+                rnc:
+                  type: string
+                  description: RNC del centro de salud (opcional, 7-20 caracteres)
+                  example: "4-12345-6"
+                telefono:
+                  type: string
+                  description: Teléfono de contacto (10-20 caracteres)
+                  example: "+1-809-123-4567"
+                sitioWeb:
+                  type: string
+                  description: Sitio web del centro (opcional)
+                tipoCentroId:
+                  type: number
+                  description: ID del tipo de centro de salud
+                  example: 1
+                direccion:
+                  type: string
+                  description: Dirección del centro (5-255 caracteres)
+                  example: "Calle Principal 123"
+                barrioId:
+                  type: number
+                  description: ID del barrio
+                  example: 5
+                codigoPostal:
+                  type: string
+                  description: Código postal (opcional)
+                certificadoSanitario:
+                  type: string
+                  format: binary
+                  description: Certificado sanitario en PDF (requerido)
+                fotoPerfil:
+                  type: string
+                  format: binary
+                  description: Foto de perfil del centro (opcional)
+      responses:
+        '200':
+          description: Perfil completado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: number
+                      nombreComercial:
+                        type: string
+                      estado:
+                        type: string
+                      estadoVerificacion:
+                        type: string
+                      message:
+                        type: string
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /profesiones:
     post:
       summary: Crear una nueva profesión
@@ -5384,7 +5593,7 @@ paths:
                   example: "Cardiología"
                 estado:
                   type: string
-                  enum: ["Activo", "Inactivo"]
+                  enum: ["Activo", "Inactivo", "Eliminado"]
                   example: "Activo"
                 descripcion:
                   type: string
@@ -5841,7 +6050,7 @@ paths:
                   description: Indica si trabaja actualmente en este puesto
                 estado:
                   type: string
-                  enum: ["Activo", "Inactivo"]
+                  enum: ["Activo", "Inactivo", "Eliminado"]
                   example: "Activo"
                   description: Estado de la experiencia
       responses:
@@ -6198,11 +6407,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: "usuarioId, titulo y mensaje son requeridos"
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
 
@@ -6243,10 +6448,8 @@ paths:
                     $ref: '#/components/schemas/Notificacion'
         '400':
           description: ID o usuarioId inválido
-        '403':
-          description: No tienes permiso para acceder a esta notificación
         '404':
-          description: Notificación no encontrada
+          description: No tienes permiso para acceder a esta notificación
         '500':
           description: Error interno del servidor
 
@@ -6661,6 +6864,8 @@ paths:
                 estado:
                   type: string
                   enum: [Activa, Archivada, Bloqueada]
+                  example: "Activa"
+                  description: Estado de la conversación
       responses:
         '200':
           description: Conversación actualizada
@@ -7609,6 +7814,71 @@ components:
         esPropio:
           type: boolean
           example: true
+
+    CentroSalud:
+      type: object
+      description: Centro de salud registrado en el sistema
+      properties:
+        id:
+          type: integer
+          description: ID del usuario (centro de salud)
+          example: 42
+        usuarioId:
+          type: integer
+          description: ID del usuario asociado
+          example: 42
+        nombreComercial:
+          type: string
+          description: Nombre comercial del centro
+          example: "Clínica del Centro"
+        rnc:
+          type: string
+          description: RNC del centro de salud
+          example: "4-12345-6"
+        tipoCentroId:
+          type: integer
+          description: ID del tipo de centro de salud
+          example: 1
+        ubicacionId:
+          type: integer
+          description: ID de la ubicación
+          example: 15
+        telefono:
+          type: string
+          description: Teléfono de contacto
+          example: "+1-809-123-4567"
+        sitio_web:
+          type: string
+          nullable: true
+          description: Sitio web del centro
+          example: "https://clinicadelcentro.com"
+        descripcion:
+          type: string
+          nullable: true
+          description: Descripción del centro
+          example: "Centro de salud especializado en medicina general y urgencias"
+        certificacion_sanitaria:
+          type: string
+          description: URL del certificado sanitario en Supabase
+          example: "https://supabase.com/centros-salud/42/certificado-sanitario.pdf"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo"]
+          description: Estado del centro
+          example: "Activo"
+        estadoVerificacion:
+          type: string
+          enum: ["Pendiente", "En revisión", "Aprobado", "Rechazado"]
+          description: Estado de verificación del perfil
+          example: "En revisión"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2026-02-10T10:30:00.000Z"
+        actualizadoEn:
+          type: string
+          format: date-time
+          example: "2026-02-10T15:45:00.000Z"
 
   securitySchemes:
     bearerAuth:

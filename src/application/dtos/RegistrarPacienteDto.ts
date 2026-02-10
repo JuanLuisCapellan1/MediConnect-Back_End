@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsNotEmpty, IsString, IsOptional, IsNumber, IsDate, IsEnum, ValidateNested } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsNumber, IsDate, IsEnum, ValidateNested, Min, Max, MinLength, MaxLength, Matches } from 'class-validator';
 
 /**
  * DTO para registro de pacientes
@@ -16,6 +16,8 @@ export class RegistrarPacienteDto {
 
   @IsNotEmpty({ message: 'El número de documento es requerido' })
   @IsString()
+  @MinLength(4, { message: 'El número de documento debe tener al menos 4 caracteres' })
+  @MaxLength(30, { message: 'El número de documento no puede exceder 30 caracteres' })
   numero_documento!: string;
 
   @IsNotEmpty({ message: 'El tipo de documento es requerido' })
@@ -24,6 +26,8 @@ export class RegistrarPacienteDto {
 
   @IsNotEmpty({ message: 'La contraseña es requerida' })
   @IsString()
+  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
+  @MaxLength(100, { message: 'La contraseña no puede exceder 100 caracteres' })
   password!: string;
 
   // Campos opcionales
@@ -38,13 +42,31 @@ export class RegistrarPacienteDto {
 
   @IsOptional()
   @IsNumber()
-  @Transform(({ value }) => (value ? Number(value) : undefined))
+  @Transform(({ value }) => {
+    if (value == null || value === '') return undefined;
+    const num = Number(value);
+    if (isNaN(num)) return undefined;
+    // Normalizar: si el valor es <= 10 lo consideramos metros (ej. 1.75 -> 175 cm)
+    if (num > 0 && num <= 10) return Math.round(num * 100);
+    // Si valor está en cm ya (ej. 170)
+    return Math.round(num);
+  })
+  @Min(30, { message: 'La altura debe ser al menos 30 cm' })
+  @Max(300, { message: 'La altura no puede exceder 300 cm' })
   altura?: number;
 
   @IsOptional()
   @IsNumber()
+  @Min(1, { message: 'El peso debe ser mayor a 0' })
+  @Max(500, { message: 'El peso no puede exceder 500 kg' })
   @Transform(({ value }) => (value ? Number(value) : undefined))
   peso?: number;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(7, { message: 'El teléfono debe tener al menos 7 caracteres' })
+  @MaxLength(20, { message: 'El teléfono no puede exceder 20 caracteres' })
+  telefono?: string;
 
   @IsOptional()
   @IsEnum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])

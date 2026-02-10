@@ -4,7 +4,7 @@ import { IUsuarioRepository } from '../../domain/repositories/IUsuarioRepository
 
 @injectable()
 export class PrismaUsuarioRepository implements IUsuarioRepository {
-  
+
   async crear(usuario: any): Promise<any> {
     return await prisma.usuario.create({ data: usuario });
   }
@@ -82,7 +82,7 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
    */
   async saveDoctor(data: any): Promise<any> {
     return await prisma.$transaction(async (tx) => {
-      
+
       // 1. CREAR USUARIO
       const usuario = await tx.usuario.create({
         data: {
@@ -250,6 +250,16 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
           },
         },
         centroSalud: true,
+      },
+    });
+  }
+
+  async updateProfilePhoto(usuarioId: number, fotoPerfilUrl: string): Promise<void> {
+    await prisma.usuario.update({
+      where: { id: usuarioId },
+      data: {
+        fotoPerfil: fotoPerfilUrl,
+        actualizadoEn: new Date(),
       },
     });
   }

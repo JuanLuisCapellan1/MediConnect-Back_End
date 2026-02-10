@@ -24,6 +24,13 @@ export class SupabaseStorageService implements IStorageService {
     bucket: 'public-assets' | 'secure-documents',
     mimeType: string
   ): Promise<string> {
+    console.log(`📤 Iniciando upload a Supabase:`, {
+      bucket,
+      fileName,
+      fileSize: `${(fileBuffer.length / 1024).toFixed(2)} KB`,
+      mimeType
+    });
+
     const { data, error } = await this.supabase.storage
       .from(bucket)
       .upload(fileName, fileBuffer, {
@@ -32,9 +39,19 @@ export class SupabaseStorageService implements IStorageService {
       });
 
     if (error || !data) {
-      console.error(`Error subiendo a Supabase [${bucket}]:`, error);
+      console.error(`❌ Error subiendo a Supabase [${bucket}]:`, {
+        error: error?.message,
+        errorDetails: error,
+        fileName,
+        bucket
+      });
       throw new Error('No se pudo subir el archivo al almacenamiento.');
     }
+
+    console.log(`✅ Archivo subido exitosamente:`, {
+      bucket,
+      path: data.path
+    });
 
     // Para assets públicos devolvemos la URL completa
     if (bucket === 'public-assets') {
@@ -78,7 +95,7 @@ export class SupabaseStorageService implements IStorageService {
     try {
       const url = new URL(signedUrl);
       const path = url.pathname.split('/').pop(); // Obtiene el nombre del archivo
-      
+
       if (!path) {
         throw new Error('URL firmada inválida');
       }

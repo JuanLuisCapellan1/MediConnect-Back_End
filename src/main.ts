@@ -1,4 +1,4 @@
-import 'reflect-metadata'; 
+import 'reflect-metadata';
 import dotenv from 'dotenv';
 
 // Cargar variables de entorno
@@ -24,19 +24,21 @@ const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Middlewares Globales
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-})); // Headers de seguridad con configuración personalizada
+app.use(helmet()); // Headers de seguridad
+app.use(cors());   // Permitir peticiones externas
+app.use(express.json()); // Parsear JSON body
 
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Recovery-Token', 'X-Requested-With', 'accept']
-}));   // Permitir peticiones externas
-
-app.use(express.json({ limit: '50mb' })); // Parsear JSON body
-app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Parsear URL encoded
+// Error handler para JSON parsing
+app.use((err: any, req: any, res: any, next: any) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    console.error('❌ JSON Parse Error:', err.message);
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid JSON format in request body'
+    });
+  }
+  next(err);
+});
 
 
 // Controladores (Ejemplo de controlador) mover a una carpeta controllers más adelante

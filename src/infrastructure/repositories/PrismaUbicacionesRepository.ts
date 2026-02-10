@@ -613,7 +613,7 @@ export class PrismaUbicacionesRepository implements IUbicacionesRepository {
     try {
       await this.prisma.$executeRaw`
         UPDATE "ubicaciones" 
-        SET "punto_geografico" = ST_GeomFromGeoJSON(${puntoGeografico}::jsonb)
+        SET "punto_geografico" = ST_SetSRID(ST_GeomFromGeoJSON(${puntoGeografico}::jsonb), 4326)
         WHERE "id_ubicacion" = ${id}
       `;
     } catch (error) {

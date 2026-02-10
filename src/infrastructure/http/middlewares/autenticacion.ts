@@ -1,11 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-interface TokenPayload {
+export interface TokenPayload {
   userId: number;
   email: string;
   rol: string;
   scope?: string;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: TokenPayload;
+    }
+  }
 }
 
 /**
@@ -21,8 +29,8 @@ export const autenticarJWT = (req: Request, res: Response, next: NextFunction): 
     }
 
     // Extraer el token del header "Bearer TOKEN"
-    const token = authHeader.startsWith('Bearer ') 
-      ? authHeader.substring(7) 
+    const token = authHeader.startsWith('Bearer ')
+      ? authHeader.substring(7)
       : authHeader;
 
     const secreto = process.env.JWT_SECRET || 'secret-key-temporal';
@@ -40,6 +48,7 @@ export const autenticarJWT = (req: Request, res: Response, next: NextFunction): 
     (req as any).usuarioId = decoded.userId;
     (req as any).email = decoded.email;
     (req as any).rol = decoded.rol;
+    req.user = decoded; // Soporte para req.user también
 
     next();
   } catch (error) {
@@ -61,18 +70,19 @@ export const autenticarJWTOpcional = (req: Request, res: Response, next: NextFun
       return;
     }
 
-    const token = authHeader.startsWith('Bearer ') 
-      ? authHeader.substring(7) 
+    const token = authHeader.startsWith('Bearer ')
+      ? authHeader.substring(7)
       : authHeader;
 
-    const secreto = process.env.JWT_SECRET || 'secret-key-temporal';
+    const secreto = process.env.JWT_SECRET || 'MediConnectSecretDefault2026';
     const decoded = jwt.verify(token, secreto) as TokenPayload;
 
-    (req as any).usuarioId = decoded.userId;
+    // Manejar tanto tokens estándar como tokens de registro de Google
+    (req as any).usuarioId = decoded.userId || undefined;
     (req as any).email = decoded.email;
-    (req as any).rol = decoded.rol;
-
-    next();
+    (req as any).rol = decoded.rol || undefined;
+    req.user = decoded; // Soporte para req.user también
+    next(); // CRÍTICO: continuar con el siguiente middleware
   } catch (error) {
     // No bloquear, solo continuar sin usuario autenticado
     next();

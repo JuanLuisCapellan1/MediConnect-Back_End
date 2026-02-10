@@ -17,6 +17,7 @@ export interface LoginGoogleResult {
     doctor?: any | null;
     centroSalud?: any | null;
   };
+  email?: string;
   estado?: 'login' | 'registro'; // Indicador del flujo
 }
 
@@ -84,6 +85,7 @@ export class LoginGoogleUseCase {
 
     return {
       registroToken,
+      email: google.email,
       estado: 'registro'
     };
   }

@@ -18,6 +18,7 @@ import { ValidarCodigoRecuperacionPasswordUseCase } from '../../../application/u
 import { CambiarPasswordConTokenUseCase } from '../../../application/use-cases/CambiarPasswordConTokenUseCase';
 import { RefreshAccessTokenUseCase } from '../../../application/use-cases/RefreshAccessTokenUseCase';
 import { AttachPasswordToGoogleAccountUseCase } from '../../../application/use-cases/AttachPasswordToGoogleAccountUseCase';
+import { ActualizarFotoPerfilUseCase } from '../../../application/use-cases/ActualizarFotoPerfilUseCase';
 
 // DTOs (Tuyos)
 import { RegistrarPacienteDto } from '../../../application/dtos/RegistrarPacienteDto';
@@ -46,7 +47,7 @@ function flattenValidationErrors(errors: ValidationError[], prefix = ''): string
 }
 
 export class AuthController {
-  
+
   // ===========================================================================
   // MÉTODOS DE PRODUCCIÓN (Clean Architecture - TUS CAMBIOS)
   // ===========================================================================
@@ -248,12 +249,13 @@ export class AuthController {
         return;
       }
 
-      // Si es registro (usuario nuevo) - devolver token de registro
+      // Si es registro (usuario nuevo) - devolver token de registro + email
       res.status(200).json({
         success: true,
         estado: 'registro',
         message: 'Por favor completa tu registro seleccionando tu tipo de usuario',
         registroToken: result.registroToken,
+        email: result.email,
       });
     } catch (error) {
       this.manejarError(error, res);
@@ -422,28 +424,86 @@ export class AuthController {
     }
   }
 
+  /**
+   * PATCH /auth/foto-perfil
+   * Actualiza la foto de perfil del usuario autenticado
+   */
+  async actualizarFotoPerfil(req: Request, res: Response): Promise<void> {
+    try {
+      // Verificar autenticación
+      const usuarioId = (req as any).usuarioId;
+      if (!usuarioId) {
+        res.status(401).json({
+          success: false,
+          message: 'No autorizado. Debe iniciar sesión.',
+        });
+        return;
+      }
+
+      // Verificar que se envió un archivo
+      if (!req.file) {
+        res.status(400).json({
+          success: false,
+          message: 'Debe proporcionar una foto de perfil',
+        });
+        return;
+      }
+
+      // Validar tipo de archivo
+      const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowedMimes.includes(req.file.mimetype)) {
+        res.status(400).json({
+          success: false,
+          message: 'Solo se permiten imágenes (JPEG, PNG, WEBP)',
+        });
+        return;
+      }
+
+      // Validar tamaño (5MB máximo)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (req.file.size > maxSize) {
+        res.status(400).json({
+          success: false,
+          message: 'La imagen no puede exceder 5MB',
+        });
+        return;
+      }
+
+      const useCase = container.resolve(ActualizarFotoPerfilUseCase);
+      const result = await useCase.execute(usuarioId, req.file);
+
+      res.status(200).json({
+        success: true,
+        message: 'Foto de perfil actualizada exitosamente',
+        data: result,
+      });
+    } catch (error) {
+      this.manejarError(error, res);
+    }
+  }
+
   // ===========================================================================
   // HELPERS PRIVADOS
   // ===========================================================================
 
   private extraerToken(req: Request): string | null {
     // Intentar obtener el header preservado primero (middleware preserveAuthHeaders)
-    let authHeader = (req as any).originalAuthorization || 
-                     req.headers.authorization || 
-                     req.headers.Authorization;
-    
+    let authHeader = (req as any).originalAuthorization ||
+      req.headers.authorization ||
+      req.headers.Authorization;
+
     // Si no viene en los headers estándar, intentar con diferentes casos
     if (!authHeader) {
       // Intentar con headers en minúsculas (algunos clientes los envían así)
-      authHeader = (req.headers as any)['authorization'] ?? 
-                   (req.headers as any)['Authorization'] ??
-                   req.headers['x-authorization'] ??
-                   req.headers['X-Authorization'];
+      authHeader = (req.headers as any)['authorization'] ??
+        (req.headers as any)['Authorization'] ??
+        req.headers['x-authorization'] ??
+        req.headers['X-Authorization'];
     }
-    
+
     if (typeof authHeader === 'string') {
       const trimmedHeader = authHeader.trim();
-      
+
       // Para endpoints de registro, aceptar token puro sin "Bearer"
       if (trimmedHeader.startsWith('Bearer ')) {
         return trimmedHeader.substring(7).trim();
@@ -451,7 +511,7 @@ export class AuthController {
       // Para registro, aceptar token puro
       return trimmedHeader;
     }
-    
+
     return null;
   }
 
@@ -469,6 +529,21 @@ export class AuthController {
     if (error instanceof RedisNoDisponibleError) {
       res.status(503).json({ success: false, message: 'Servicio de validación no disponible.' });
       return;
+    }
+
+    // Manejo en línea de errores de Prisma (sin utilidades externas)
+    const e: any = error as any;
+    if (e && typeof e === 'object') {
+      if (e.code === 'P2002') {
+        const target = e.meta?.target;
+        const fields = Array.isArray(target) ? target.join(', ') : target;
+        res.status(409).json({ success: false, message: `Valor duplicado en campo(s): ${fields}` });
+        return;
+      }
+      if (e.code === 'P2025') {
+        res.status(404).json({ success: false, message: 'Registro no encontrado' });
+        return;
+      }
     }
 
     if (error instanceof Error) {

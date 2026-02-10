@@ -8,16 +8,25 @@ import {
   IsEnum,
   IsDate,
   MinDate,
-  MaxDate
+  MaxDate,
+  MinLength,
+  MaxLength,
+  IsNumber,
+  Min,
+  Max
 } from 'class-validator';
 
 export class UbicacionDto {
   @IsNotEmpty({ message: 'La dirección es requerida' })
   @IsString()
+  @MinLength(5, { message: 'La dirección debe tener al menos 5 caracteres' })
+  @MaxLength(255, { message: 'La dirección no puede exceder 255 caracteres' })
   direccion!: string;
 
   @IsNotEmpty({ message: 'El ID del barrio es requerido' })
   @Transform(({ value }) => Number(value))
+  @IsNumber()
+  @Min(1, { message: 'El ID del barrio debe ser un número positivo' })
   id_barrio!: number;
 
   @IsOptional()
@@ -53,10 +62,14 @@ export class RegistrarDoctorDto {
   // --- DATOS PERSONALES ---
   @IsNotEmpty({ message: 'El nombre es requerido' })
   @IsString()
+  @MinLength(2, { message: 'El nombre debe tener al menos 2 caracteres' })
+  @MaxLength(80, { message: 'El nombre no puede exceder 80 caracteres' })
   nombre!: string;
 
   @IsNotEmpty({ message: 'El apellido es requerido' })
   @IsString()
+  @MinLength(2, { message: 'El apellido debe tener al menos 2 caracteres' })
+  @MaxLength(80, { message: 'El apellido no puede exceder 80 caracteres' })
   apellido!: string;
 
   @IsNotEmpty({ message: 'El género es requerido' })
@@ -70,10 +83,14 @@ export class RegistrarDoctorDto {
 
   @IsNotEmpty({ message: 'La nacionalidad es requerida' })
   @IsString()
+  @MinLength(2, { message: 'La nacionalidad debe tener al menos 2 caracteres' })
+  @MaxLength(80, { message: 'La nacionalidad no puede exceder 80 caracteres' })
   nacionalidad!: string;
 
   @IsNotEmpty({ message: 'El teléfono es requerido' })
   @IsString()
+  @MinLength(7, { message: 'El teléfono debe tener al menos 7 caracteres' })
+  @MaxLength(20, { message: 'El teléfono no puede exceder 20 caracteres' })
   telefono!: string;
 
   @IsNotEmpty({ message: 'El tipo de documento es requerido' })
@@ -82,15 +99,21 @@ export class RegistrarDoctorDto {
 
   @IsNotEmpty({ message: 'El número de documento es requerido' })
   @IsString()
+  @MinLength(4, { message: 'El número de documento debe tener al menos 4 caracteres' })
+  @MaxLength(30, { message: 'El número de documento no puede exceder 30 caracteres' })
   numero_documento!: string;
 
   @IsNotEmpty({ message: 'La contraseña es requerida' })
   @IsString()
+  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
+  @MaxLength(100, { message: 'La contraseña no puede exceder 100 caracteres' })
   password!: string;
 
   // --- DATOS PROFESIONALES ---
   @IsNotEmpty({ message: 'El exequatur es requerido' })
   @IsString()
+  @MinLength(3, { message: 'El exequatur debe tener al menos 3 caracteres' })
+  @MaxLength(60, { message: 'El exequatur no puede exceder 60 caracteres' })
   exequatur!: string;
 
   @IsOptional()
