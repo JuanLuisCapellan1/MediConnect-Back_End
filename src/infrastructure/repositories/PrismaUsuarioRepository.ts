@@ -10,7 +10,17 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
   }
 
   async buscarPorEmail(email: string): Promise<any | null> {
-    return await prisma.usuario.findUnique({ where: { email } });
+    // Buscar email de forma case-insensitive para evitar problemas de coincidencia
+    // Normalizamos el email y usamos una búsqueda insensible a mayúsculas.
+    try {
+      return await prisma.usuario.findFirst({
+        where: { email: { equals: email.trim(), mode: 'insensitive' } },
+      });
+    } catch (error) {
+      // En caso de que el proveedor de la BD no soporte 'mode', caemos
+      // a la búsqueda por email normal (no sensible a mayúsculas).
+      return await prisma.usuario.findUnique({ where: { email: email.trim() } });
+    }
   }
 
   async buscarPorId(id: number): Promise<any | null> {

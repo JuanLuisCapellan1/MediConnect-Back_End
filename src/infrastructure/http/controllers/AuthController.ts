@@ -16,11 +16,16 @@ import { RefreshTokenUseCase } from '../../../application/use-cases/RefreshToken
 import { SolicitarRecuperacionPasswordUseCase } from '../../../application/use-cases/SolicitarRecuperacionPasswordUseCase';
 import { ValidarCodigoRecuperacionPasswordUseCase } from '../../../application/use-cases/ValidarCodigoRecuperacionPasswordUseCase';
 import { CambiarPasswordConTokenUseCase } from '../../../application/use-cases/CambiarPasswordConTokenUseCase';
+import { RefreshAccessTokenUseCase } from '../../../application/use-cases/RefreshAccessTokenUseCase';
+import { AttachPasswordToGoogleAccountUseCase } from '../../../application/use-cases/AttachPasswordToGoogleAccountUseCase';
 
 // DTOs (Tuyos)
 import { RegistrarPacienteDto } from '../../../application/dtos/RegistrarPacienteDto';
 import { RegistrarDoctorDto } from '../../../application/dtos/RegistrarDoctorDto';
 import { LoginDto } from '../../../application/dtos/LoginDto';
+
+// Repositories (para el endpoint me)
+import { IUsuarioRepository } from '../../../domain/repositories/IUsuarioRepository';
 
 // Errores y Servicios
 import { RedisNoDisponibleError } from '../../../infrastructure/external-services/RedisCacheService';
@@ -218,6 +223,7 @@ export class AuthController {
 
   /**
    * POST /auth/google
+   * Actualizado: devuelve token de registro para que el usuario elija su tipo
    */
   async loginGoogle(req: Request, res: Response): Promise<void> {
     try {
@@ -230,12 +236,47 @@ export class AuthController {
       const loginGoogleUseCase = container.resolve(LoginGoogleUseCase);
       const result = await loginGoogleUseCase.execute(idToken);
 
+      // Si es login (usuario existente)
+      if (result.estado === 'login') {
+        res.status(200).json({
+          success: true,
+          estado: 'login',
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          usuario: result.user,
+        });
+        return;
+      }
+
+      // Si es registro (usuario nuevo) - devolver token de registro
       res.status(200).json({
         success: true,
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-        user: result.user,
+        estado: 'registro',
+        message: 'Por favor completa tu registro seleccionando tu tipo de usuario',
+        registroToken: result.registroToken,
       });
+    } catch (error) {
+      this.manejarError(error, res);
+    }
+  }
+
+  /**
+   * POST /auth/google/attach-password
+   * Body: { idToken: string, password: string }
+   * Verifica el id_token de Google y establece una contraseña local para la cuenta asociada.
+   */
+  async attachPasswordGoogle(req: Request, res: Response): Promise<void> {
+    try {
+      const { idToken, password } = req.body as { idToken?: string; password?: string };
+      if (!idToken || !password) {
+        res.status(400).json({ success: false, message: 'idToken y password son requeridos.' });
+        return;
+      }
+
+      const useCase = container.resolve(AttachPasswordToGoogleAccountUseCase);
+      await useCase.execute(idToken, password);
+
+      res.status(200).json({ success: true, message: 'Contraseña asociada correctamente. Ya puedes iniciar sesión con email y contraseña.' });
     } catch (error) {
       this.manejarError(error, res);
     }
@@ -321,8 +362,8 @@ export class AuthController {
    */
   async cambiarPasswordConToken(req: Request, res: Response): Promise<void> {
     try {
-      const { token, nuevaPassword, confirmarPassword } = req.body as {
-        token?: string;
+      const token = this.extraerTokenRecuperacion(req);
+      const { nuevaPassword, confirmarPassword } = req.body as {
         nuevaPassword?: string;
         confirmarPassword?: string;
       };
@@ -330,7 +371,7 @@ export class AuthController {
       if (!token || !nuevaPassword || !confirmarPassword) {
         res.status(400).json({
           success: false,
-          message: 'Token, nueva contraseña y confirmación son requeridos.',
+          message: 'Header X-Recovery-Token, nueva contraseña y confirmación son requeridos.',
         });
         return;
       }
@@ -347,105 +388,37 @@ export class AuthController {
     }
   }
 
-  // ===========================================================================
-  // MÉTODOS DE UTILIDAD / DESARROLLO (De tu compañero)
-  // ===========================================================================
-
   /**
-   * POST /api/auth/quick-login
+   * POST /auth/refresh-access-token
+   * Recibe un refreshToken y devuelve un nuevo accessToken
+   *
+   * Body:
+   * {
+   *   "refreshToken": "eyJhbGc..."
+   * }
    */
-  async quickLogin(req: Request, res: Response): Promise<Response | void> {
+  async refreshAccessToken(req: Request, res: Response): Promise<void> {
     try {
-      const { email } = req.body;
-      if (!email) return res.status(400).json({ error: 'Email es requerido' });
+      const { refreshToken } = req.body as { refreshToken?: string };
 
-      const prisma = container.resolve<PrismaClient>('PrismaClient');
-      const usuario = await prisma.usuario.findUnique({ where: { email } });
+      if (!refreshToken) {
+        res.status(400).json({
+          success: false,
+          message: 'El refreshToken es requerido.',
+        });
+        return;
+      }
 
-      if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+      const useCase = container.resolve(RefreshAccessTokenUseCase);
+      const tokens = await useCase.execute(refreshToken);
 
-      const secreto = process.env.JWT_SECRET || 'secret-key-temporal';
-      const token = jwt.sign(
-        { userId: usuario.id, email: usuario.email, rol: usuario.rol },
-        secreto,
-        { expiresIn: '24h' }
-      );
-
-      return res.status(200).json({
-        mensaje: 'Quick login exitoso (DEV)',
-        data: { token, usuario: { id: usuario.id, email: usuario.email, rol: usuario.rol, fotoPerfil: usuario.fotoPerfil } },
+      res.status(200).json({
+        success: true,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
       });
     } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: 'Error interno' });
-    }
-  }
-
-  /**
-   * POST /api/auth/generate-token
-   */
-  async generateToken(req: Request, res: Response): Promise<Response | void> {
-    try {
-      const { usuarioId } = req.body;
-      if (!usuarioId) return res.status(400).json({ error: 'usuarioId requerido' });
-
-      const prisma = container.resolve<PrismaClient>('PrismaClient');
-      const usuario = await prisma.usuario.findUnique({ where: { id: Number(usuarioId) } });
-
-      if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
-
-      const secreto = process.env.JWT_SECRET || 'secret-key-temporal';
-      const token = jwt.sign(
-        { userId: usuario.id, email: usuario.email, rol: usuario.rol },
-        secreto,
-        { expiresIn: '24h' }
-      );
-
-      return res.status(200).json({ mensaje: 'Token generado', data: { token } });
-    } catch (error) {
-      return res.status(500).json({ error: 'Error interno' });
-    }
-  }
-
-  /**
-   * POST /api/auth/verify
-   */
-  async verifyToken(req: Request, res: Response): Promise<Response | void> {
-    try {
-      const { token } = req.body;
-      if (!token) return res.status(400).json({ error: 'Token requerido' });
-
-      const secreto = process.env.JWT_SECRET || 'secret-key-temporal';
-      const decoded = jwt.verify(token, secreto);
-
-      return res.status(200).json({ mensaje: 'Token válido', data: decoded });
-    } catch (error) {
-      return res.status(401).json({ error: 'Token inválido o expirado' });
-    }
-  }
-
-  /**
-   * GET /api/auth/me
-   */
-  async me(req: Request, res: Response): Promise<Response | void> {
-    try {
-      const usuarioId = (req as any).usuarioId;
-      if (!usuarioId) return res.status(401).json({ error: 'No autenticado' });
-
-      const prisma = container.resolve<PrismaClient>('PrismaClient');
-      const usuario = await prisma.usuario.findUnique({
-        where: { id: usuarioId },
-        select: {
-          id: true, email: true, rol: true, fotoPerfil: true,
-          telefono: true, emailVerificado: true, estado: true, creadoEn: true
-        }
-      });
-
-      if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
-
-      return res.status(200).json({ mensaje: 'Usuario autenticado', data: usuario });
-    } catch (error) {
-      return res.status(500).json({ error: 'Error interno' });
+      this.manejarError(error, res);
     }
   }
 
@@ -454,17 +427,38 @@ export class AuthController {
   // ===========================================================================
 
   private extraerToken(req: Request): string | null {
-    const authHeader = req.headers.authorization ?? req.headers.Authorization;
-    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-      return authHeader.substring(7).trim();
+    // Intentar obtener el header preservado primero (middleware preserveAuthHeaders)
+    let authHeader = (req as any).originalAuthorization || 
+                     req.headers.authorization || 
+                     req.headers.Authorization;
+    
+    // Si no viene en los headers estándar, intentar con diferentes casos
+    if (!authHeader) {
+      // Intentar con headers en minúsculas (algunos clientes los envían así)
+      authHeader = (req.headers as any)['authorization'] ?? 
+                   (req.headers as any)['Authorization'] ??
+                   req.headers['x-authorization'] ??
+                   req.headers['X-Authorization'];
     }
-    const body = req.body as Record<string, unknown>;
-    if (body && typeof body === 'object') {
-      const fromBody = body.token ?? body.authorization;
-      if (typeof fromBody === 'string') {
-        const value = fromBody.trim();
-        return value.startsWith('Bearer ') ? value.substring(7).trim() : value;
+    
+    if (typeof authHeader === 'string') {
+      const trimmedHeader = authHeader.trim();
+      
+      // Para endpoints de registro, aceptar token puro sin "Bearer"
+      if (trimmedHeader.startsWith('Bearer ')) {
+        return trimmedHeader.substring(7).trim();
       }
+      // Para registro, aceptar token puro
+      return trimmedHeader;
+    }
+    
+    return null;
+  }
+
+  private extraerTokenRecuperacion(req: Request): string | null {
+    const recoveryHeader = req.headers['x-recovery-token'] ?? req.headers['X-Recovery-Token'];
+    if (typeof recoveryHeader === 'string') {
+      return recoveryHeader.trim();
     }
     return null;
   }

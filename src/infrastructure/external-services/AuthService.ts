@@ -142,4 +142,63 @@ export class AuthService {
       return null;
     }
   }
+
+  /**
+   * Genera un token temporal para registro desde Google.
+   * Incluye datos adicionales de Google (nombre, apellido, foto, googleId)
+   * para que el usuario pueda elegir su tipo de registro.
+   */
+  generarTokenRegistroGoogle(
+    email: string,
+    googleId: string,
+    nombre: string,
+    apellido: string,
+    foto: string
+  ): string {
+    const payload = {
+      email,
+      googleId,
+      nombre,
+      apellido,
+      foto,
+      scope: 'registro_google'
+    };
+    const options: SignOptions = { expiresIn: '1h' };
+    return jwt.sign(payload, this.jwtSecret, options);
+  }
+
+  /**
+   * Valida un token de registro de Google
+   */
+  validateGoogleRegistrationToken(token: string): {
+    email: string;
+    googleId: string;
+    nombre: string;
+    apellido: string;
+    foto: string;
+  } | null {
+    try {
+      const decoded = jwt.verify(token, this.jwtSecret) as {
+        email: string;
+        googleId: string;
+        nombre: string;
+        apellido: string;
+        foto: string;
+        scope: string;
+      };
+
+      if (decoded.scope === 'registro_google') {
+        return {
+          email: decoded.email,
+          googleId: decoded.googleId,
+          nombre: decoded.nombre,
+          apellido: decoded.apellido,
+          foto: decoded.foto
+        };
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
 }

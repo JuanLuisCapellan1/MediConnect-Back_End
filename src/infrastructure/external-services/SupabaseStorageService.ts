@@ -36,13 +36,23 @@ export class SupabaseStorageService implements IStorageService {
       throw new Error('No se pudo subir el archivo al almacenamiento.');
     }
 
-    // Para assets públicos devolvemos la URL completa, para documentos seguros el path interno
+    // Para assets públicos devolvemos la URL completa
     if (bucket === 'public-assets') {
       const { data: publicData } = this.supabase.storage.from(bucket).getPublicUrl(data.path);
       return publicData.publicUrl;
     }
 
-    return data.path;
+    // Para documentos seguros generamos una URL firmada de larga duración (7 días)
+    const { data: signedData } = await this.supabase.storage
+      .from(bucket)
+      .createSignedUrl(data.path, 7 * 24 * 60 * 60); // 7 días en segundos
+
+    if (signedData) {
+      return signedData.signedUrl;
+    }
+
+    // Fallback: generar URL firmada corta si falla la larga
+    return await this.getSignedUrl(data.path, bucket);
   }
 
   getPublicUrl(path: string, bucket: 'public-assets'): string {
@@ -61,6 +71,22 @@ export class SupabaseStorageService implements IStorageService {
     }
 
     return data.signedUrl;
+  }
+
+  async refreshSignedUrl(signedUrl: string, bucket: 'secure-documents'): Promise<string> {
+    // Extrae el path de una URL firmada existente para generar una nueva
+    try {
+      const url = new URL(signedUrl);
+      const path = url.pathname.split('/').pop(); // Obtiene el nombre del archivo
+      
+      if (!path) {
+        throw new Error('URL firmada inválida');
+      }
+
+      return await this.getSignedUrl(path, bucket);
+    } catch (error) {
+      throw new Error('No se pudo refrescar la URL firmada');
+    }
   }
 
   async deleteFile(path: string, bucket: string): Promise<void> {

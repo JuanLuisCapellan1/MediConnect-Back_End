@@ -24,9 +24,19 @@ const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Middlewares Globales
-app.use(helmet()); // Headers de seguridad
-app.use(cors());   // Permitir peticiones externas
-app.use(express.json()); // Parsear JSON body
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+})); // Headers de seguridad con configuración personalizada
+
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Recovery-Token', 'X-Requested-With', 'accept']
+}));   // Permitir peticiones externas
+
+app.use(express.json({ limit: '50mb' })); // Parsear JSON body
+app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Parsear URL encoded
 
 
 // Controladores (Ejemplo de controlador) mover a una carpeta controllers más adelante

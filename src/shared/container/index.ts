@@ -103,6 +103,7 @@ import { GestionarProfesionesUseCase } from '../../application/use-cases/Gestion
 import { GestionarExperienciasLaboralesUseCase } from '../../application/use-cases/GestionarExperienciasLaboralesUseCase';
 import { GestionarServicioHorariosUseCase } from '../../application/use-cases/GestionarServicioHorariosUseCase';
 import { GestionarNotificacionesUseCase } from '../../application/use-cases/GestionarNotificacionesUseCase';
+import { RefreshAccessTokenUseCase } from '../../application/use-cases/RefreshAccessTokenUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 // Registrar PrismaClient como singleton
@@ -644,5 +645,13 @@ container.register<ITranslationService>('ITranslationService', {
 
 // Registro del Storage Service (Tuyo)
 container.registerSingleton<IStorageService>('StorageService', SupabaseStorageService);
+
+container.register(RefreshAccessTokenUseCase, {
+  useFactory: () => {
+    const authService = container.resolve(AuthService);
+    const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    return new RefreshAccessTokenUseCase(authService, usuarioRepository);
+  }
+});
 
 export { container };

@@ -129,9 +129,10 @@ paths:
         - Autenticación
       description: |
         Recibe el **idToken** obtenido del frontend (Google Sign-In) y realiza una de tres acciones:
-        1. **Login:** Si el usuario ya tiene su cuenta de Google vinculada, devuelve el JWT de sesión.
-        2. **Vincular:** Si el email ya existe en la BD pero no tiene Google vinculado, vincula la cuenta y devuelve el JWT.
-        3. **Registro rápido:** Si el usuario es nuevo, crea un usuario básico + cuenta social y devuelve el JWT.
+        
+        1. **Login:** Si el usuario ya tiene su cuenta de Google vinculada, devuelve `estado: 'login'` con tokens (accessToken y refreshToken).
+        2. **Vincular:** Si el email ya existe en la BD pero no tiene Google vinculado, vincula la cuenta y devuelve `estado: 'login'` con tokens.
+        3. **Registro:** Si el usuario es nuevo, devuelve `estado: 'registro'` con un `registroToken` temporal. El usuario debe usar este token para elegir su tipo de cuenta (Paciente/Doctor).
       requestBody:
         required: true
         content:
@@ -144,28 +145,45 @@ paths:
                 idToken:
                   type: string
                   description: Token ID de Google (obtenido del cliente con Google Sign-In).
-                id_token:
-                  type: string
-                  description: Alternativa al campo idToken (mismo valor).
       responses:
         '200':
-          description: Login/vincular/registro exitoso. Devuelve tokens y datos del usuario.
+          description: Autenticación de Google exitosa. Devuelve diferentes respuestas según el estado.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  accessToken:
-                    type: string
-                    description: JWT de acceso de corta duración (incluir en Authorization Bearer).
-                  refreshToken:
-                    type: string
-                    description: JWT de refresco.
-                  user:
-                    $ref: '#/components/schemas/UsuarioDetallado'
+                oneOf:
+                  - type: object
+                    description: Login/Vincular exitoso (usuario existente)
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      estado:
+                        type: string
+                        example: 'login'
+                      accessToken:
+                        type: string
+                        description: JWT de acceso de corta duración (incluir en Authorization Bearer).
+                      refreshToken:
+                        type: string
+                        description: JWT de refresco para renovar el accessToken.
+                      usuario:
+                        $ref: '#/components/schemas/UsuarioDetallado'
+                  - type: object
+                    description: Registro (usuario nuevo - debe elegir tipo de cuenta)
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      estado:
+                        type: string
+                        example: 'registro'
+                      message:
+                        type: string
+                        example: 'Por favor completa tu registro seleccionando tu tipo de usuario'
+                      registroToken:
+                        type: string
+                        description: Token temporal para completar el registro (válido por 1 hora)
         '400':
           description: Falta idToken o solicitud inválida.
           content:
@@ -180,6 +198,70 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error del servidor (p. ej. GOOGLE_CLIENT_ID no configurado).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/google/attach-password:
+    post:
+      summary: Asociar contraseña local a cuenta verificada por Google
+      tags:
+        - Autenticación
+      description: |
+        Verifica un `idToken` de Google y establece una contraseña local para la cuenta asociada al email del token.
+        Útil cuando el usuario se registró con Google y desea poder iniciar sesión con email/password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - idToken
+                - password
+              properties:
+                idToken:
+                  type: string
+                  description: ID token de Google (obtenido con Google Sign-In).
+                password:
+                  type: string
+                  minLength: 6
+                  description: Nueva contraseña local a asociar.
+      responses:
+        '200':
+          description: Contraseña asociada exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Contraseña asociada correctamente.'
+        '400':
+          description: Parámetros inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: idToken inválido o expirado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor.
           content:
             application/json:
               schema:
@@ -448,15 +530,9 @@ paths:
       summary: Completar registro de paciente
       tags:
         - Autenticación
-      description: Completa el registro de un paciente después de validar el código OTP. Requiere un token de registro válido.
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-            example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-          description: Token de registro temporal generado después de validar el código OTP.
+      description: Completa el registro de un paciente después de validar el código OTP. Requiere un token de registro válido enviado en el header Authorization sin el prefijo "Bearer".
+      security:
+        - ApiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -464,9 +540,6 @@ paths:
             schema:
               type: object
               properties:
-                token:
-                  type: string
-                  description: "Token de registro JWT (alternativa al header Authorization). Pegar aquí el token si el header no se envía (p. ej. en Swagger con multipart)."
                 nombre:
                   type: string
                   example: "Juan"
@@ -600,15 +673,9 @@ paths:
       summary: Completar registro de doctor
       tags:
         - Autenticación
-      description: Completa el registro de un doctor después de validar el código OTP. Requiere un token de registro válido.
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-            example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-          description: Token de registro temporal generado después de validar el código OTP.
+      description: Completa el registro de un doctor después de validar el código OTP. Requiere un token de registro válido enviado en el header Authorization sin el prefijo "Bearer".
+      security:
+        - ApiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -616,9 +683,6 @@ paths:
             schema:
               type: object
               properties:
-                token:
-                  type: string
-                  description: "Token de registro JWT (alternativa al header Authorization). Pegar aquí el token si el header no se envía (p. ej. en Swagger con multipart)."
                 nombre:
                   type: string
                   example: "Ana"
@@ -847,7 +911,15 @@ paths:
       summary: Cambiar contraseña con token de recuperación
       tags:
         - Autenticación
-      description: Cambia la contraseña del usuario utilizando el token obtenido al validar el código de recuperación.
+      description: Cambia la contraseña del usuario utilizando el token obtenido al validar el código de recuperación. El token debe enviarse en el header X-Recovery-Token.
+      parameters:
+        - name: X-Recovery-Token
+          in: header
+          required: true
+          schema:
+            type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          description: Token de recuperación obtenido al validar el código.
       requestBody:
         required: true
         content:
@@ -855,14 +927,9 @@ paths:
             schema:
               type: object
               required:
-                - token
                 - nuevaPassword
                 - confirmarPassword
               properties:
-                token:
-                  type: string
-                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  description: Token de recuperación obtenido al validar el código.
                 nuevaPassword:
                   type: string
                   minLength: 6
@@ -897,6 +964,70 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Token inválido o expirado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh-access-token:
+    post:
+      summary: Renovar Access Token usando Refresh Token
+      tags:
+        - Autenticación
+      description: |
+        Recibe un **refreshToken** (obtenido en el login o en un refresh anterior) y devuelve un nuevo par de tokens (accessToken y refreshToken). 
+        
+        Útil cuando el accessToken ha expirado pero el refreshToken sigue siendo válido.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+                  description: Token de refresco obtenido en el login (válido por 3 días por defecto).
+                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        '200':
+          description: Tokens renovados exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  accessToken:
+                    type: string
+                    description: Nuevo JWT de acceso de corta duración (4 horas por defecto).
+                  refreshToken:
+                    type: string
+                    description: Nuevo JWT de refresco (3 días por defecto).
+        '400':
+          description: RefreshToken no proporcionado o formato inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: RefreshToken inválido, expirado o usuario no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuario no encontrado o inactivo.
           content:
             application/json:
               schema:
@@ -5889,241 +6020,6 @@ paths:
         '500':
           description: Error interno del servidor
 
-  /auth/quick-login:
-    post:
-      summary: Login rápido sin password (solo desarrollo)
-      tags:
-        - Autenticación
-      description: |
-        **⚠️ SOLO PARA DESARROLLO**
-        
-        Genera un token JWT sin verificar contraseña. Este endpoint debe ser deshabilitado en producción.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - email
-              properties:
-                email:
-                  type: string
-                  format: email
-                  example: "usuario@mediconnect.com"
-                  description: Email del usuario
-      responses:
-        '200':
-          description: Quick login exitoso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  mensaje:
-                    type: string
-                    example: "Quick login exitoso (solo para desarrollo)"
-                  data:
-                    type: object
-                    properties:
-                      token:
-                        type: string
-                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                      usuario:
-                        type: object
-                        properties:
-                          id:
-                            type: integer
-                            example: 1
-                          email:
-                            type: string
-                            example: "usuario@mediconnect.com"
-                          rol:
-                            type: string
-                            example: "Paciente"
-        '400':
-          description: Email no proporcionado
-        '404':
-          description: Usuario no encontrado
-        '500':
-          description: Error interno del servidor
-
-  /auth/generate-token:
-    post:
-      summary: Generar token por ID de usuario (solo desarrollo)
-      tags:
-        - Autenticación
-      description: |
-        **⚠️ SOLO PARA DESARROLLO**
-        
-        Genera un token JWT para un usuario específico por su ID. Útil para pruebas. Este endpoint debe ser deshabilitado en producción.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - usuarioId
-              properties:
-                usuarioId:
-                  type: integer
-                  example: 1
-                  description: ID del usuario
-      responses:
-        '200':
-          description: Token generado exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  mensaje:
-                    type: string
-                    example: "Token generado (solo para desarrollo)"
-                  data:
-                    type: object
-                    properties:
-                      token:
-                        type: string
-                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                      usuarioId:
-                        type: integer
-                        example: 1
-                      email:
-                        type: string
-                        example: "usuario@mediconnect.com"
-                      rol:
-                        type: string
-                        example: "Paciente"
-        '400':
-          description: usuarioId no proporcionado
-        '404':
-          description: Usuario no encontrado
-        '500':
-          description: Error interno del servidor
-
-  /auth/verify:
-    post:
-      summary: Verificar validez de un token
-      tags:
-        - Autenticación
-      description: Verifica si un token JWT es válido y retorna los datos decodificados.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - token
-              properties:
-                token:
-                  type: string
-                  example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  description: Token JWT a verificar
-      responses:
-        '200':
-          description: Token válido
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  mensaje:
-                    type: string
-                    example: "Token válido"
-                  data:
-                    type: object
-                    properties:
-                      userId:
-                        type: integer
-                        example: 1
-                      email:
-                        type: string
-                        example: "usuario@mediconnect.com"
-                      rol:
-                        type: string
-                        example: "Paciente"
-                      iat:
-                        type: integer
-                        example: 1738713600
-                        description: Timestamp de emisión
-                      exp:
-                        type: integer
-                        example: 1738800000
-                        description: Timestamp de expiración
-        '400':
-          description: Token no proporcionado
-        '401':
-          description: Token inválido o expirado
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: "Token expirado"
-        '500':
-          description: Error interno del servidor
-
-  /auth/me:
-    get:
-      summary: Obtener información del usuario autenticado
-      tags:
-        - Autenticación
-      description: Retorna la información completa del usuario que está autenticado mediante el token JWT.
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Usuario obtenido exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  mensaje:
-                    type: string
-                    example: "Usuario autenticado"
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                        example: 1
-                      email:
-                        type: string
-                        example: "usuario@mediconnect.com"
-                      rol:
-                        type: string
-                        example: "Paciente"
-                      foto_perfil:
-                        type: string
-                        nullable: true
-                        example: "https://example.com/foto.jpg"
-                      telefono:
-                        type: string
-                        nullable: true
-                        example: "8091234567"
-                      email_verificado:
-                        type: boolean
-                        example: false
-                      estado:
-                        type: string
-                        example: "Activo"
-                      creado_en:
-                        type: string
-                        format: date-time
-                        example: "2026-02-04T12:00:00.000Z"
-        '401':
-          description: No autenticado o token inválido
-        '404':
-          description: Usuario no encontrado
-        '500':
-          description: Error interno del servidor
-
   # --- NOTIFICACIONES ENDPOINTS ---
   /notificaciones:
     get:
@@ -7714,17 +7610,14 @@ components:
           type: boolean
           example: true
 
-    securitySchemes:
-      bearerAuth:
-        type: http
-        scheme: bearer
-        bearerFormat: JWT
-        description: Token JWT obtenido del endpoint /auth/login
-        type: object
-        properties:
-          success:
-            type: boolean
-            example: false
-          message:
-            type: string
-            example: "Error al procesar la solicitud"
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT obtenido del endpoint /auth/login
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token de registro temporal para endpoints de registro (sin prefijo "Bearer")

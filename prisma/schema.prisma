@@ -85,7 +85,7 @@ model Doctor {
   // Fusión de campos de identificación
   tipoDocIdentificacion           String               @default("Cédula") @map("tipo_documento_identificacion") @db.VarChar(20)
   numeroDocumentoIdentificacion   String               @unique(map: "uq_doctores_numero_doc") @map("numero_documento_identificacion") @db.VarChar(20)
-  fotoDocumento                   String?              @unique(map: "doctores_documento_identificacion_key") @map("foto_documento") @db.VarChar(255)
+  fotoDocumento                   String?              @unique(map: "doctores_documento_identificacion_key") @map("foto_documento") @db.VarChar(1000)
   exequatur                       String               @unique @db.VarChar(40)
   
   // Datos personales y perfil
@@ -93,8 +93,8 @@ model Doctor {
   genero                          String               @db.Char(1)
   nacionalidad                    String?              @db.VarChar(50)
   biografia                       String?
-  tituloAcademico                 String?              @map("titulo_academico") @db.VarChar(255)
-  certificacionesAdicionales      String?              @map("certificaciones_adicionales") @db.VarChar(255)
+  tituloAcademico                 String?              @map("titulo_academico") @db.VarChar(1000)
+  certificacionesAdicionales      String?              @map("certificaciones_adicionales") @db.VarChar(1000)
   
   // Datos profesionales y estado
   anosExperiencia                 Int?                 @map("anos_experiencia")

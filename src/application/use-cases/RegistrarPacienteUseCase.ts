@@ -15,8 +15,15 @@ export class RegistrarPacienteUseCase {
   ) {}
 
   async execute(dto: RegistrarPacienteDto, files: any, token: string): Promise<void> {
-    // Validar token y obtener email
-    const email = await this.authService.validateRegistrationToken(token);
+    // Validar token y obtener email. Soportar token de registro estándar y token de registro desde Google
+    let email = await this.authService.validateRegistrationToken(token);
+    if (!email) {
+      const googlePayload = this.authService.validateGoogleRegistrationToken(token);
+      if (googlePayload) {
+        email = googlePayload.email;
+      }
+    }
+
     if (!email) {
       throw new Error('Token inválido o expirado');
     }

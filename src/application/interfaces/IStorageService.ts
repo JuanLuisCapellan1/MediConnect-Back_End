@@ -1,6 +1,6 @@
 export interface IStorageService {
   /**
-   * Sube un archivo y retorna el 'path' relativo (ej: pacientes/123/foto.jpg)
+   * Sube un archivo y retorna la URL accesible (pública para assets, firmada para documentos)
    */
   uploadFile(
     fileBuffer: Buffer,
@@ -18,6 +18,11 @@ export interface IStorageService {
    * Obtiene una URL firmada temporal (para buckets privados)
    */
   getSignedUrl(path: string, bucket: 'secure-documents'): Promise<string>;
+
+  /**
+   * Refresca una URL firmada existente generando una nueva
+   */
+  refreshSignedUrl(signedUrl: string, bucket: 'secure-documents'): Promise<string>;
   
   /**
    * Elimina un archivo
