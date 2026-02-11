@@ -70,6 +70,8 @@ export interface IUsuarioRepository {
       fecha_finalizacion?: Date | null;
       estado: string;
     }>;
+    id_especialidad_principal: number;
+    ids_especialidades_secundarias?: number[];
   }): Promise<Usuario>;
 
   /** Busca un usuario por cuenta social (proveedor + uid). */

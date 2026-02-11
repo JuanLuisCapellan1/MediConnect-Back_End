@@ -39,6 +39,12 @@ let RegistrarDoctorUseCase = class RegistrarDoctorUseCase {
         if (usuarioExistente) {
             throw new Error('El email ya está registrado');
         }
+        // Validación de negocio: la especialidad principal NO debe estar en las secundarias
+        if (dto.ids_especialidades_secundarias && dto.ids_especialidades_secundarias.length > 0) {
+            if (dto.ids_especialidades_secundarias.includes(dto.id_especialidad_principal)) {
+                throw new Error('La especialidad principal no puede estar incluida en las especialidades secundarias');
+            }
+        }
         // Hashear contraseña
         const hashedPassword = await this.passwordHasher.hash(dto.password);
         try {
@@ -71,6 +77,8 @@ let RegistrarDoctorUseCase = class RegistrarDoctorUseCase {
                 },
                 ubicacion: dto.ubicacion,
                 formaciones: dto.formaciones,
+                id_especialidad_principal: dto.id_especialidad_principal,
+                ids_especialidades_secundarias: dto.ids_especialidades_secundarias || [],
             });
         }
         catch (error) {

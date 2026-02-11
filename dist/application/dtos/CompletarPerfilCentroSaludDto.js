@@ -48,6 +48,7 @@ __decorate([
 ], CompletarPerfilCentroSaludDto.prototype, "telefono", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => (value === '' ? undefined : value)),
     (0, class_validator_1.IsUrl)({}, { message: 'El sitio web debe ser una URL válida' }),
     __metadata("design:type", String)
 ], CompletarPerfilCentroSaludDto.prototype, "sitioWeb", void 0);
@@ -87,6 +88,7 @@ __decorate([
 ], CompletarPerfilCentroSaludDto.prototype, "subBarrioId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => (value === '' ? undefined : value)),
     (0, class_validator_1.IsString)({ message: 'El código postal debe ser texto' }),
     (0, class_validator_1.MaxLength)(20, { message: 'El código postal no puede exceder 20 caracteres' }),
     __metadata("design:type", String)

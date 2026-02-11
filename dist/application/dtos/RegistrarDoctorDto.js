@@ -183,3 +183,42 @@ __decorate([
     (0, class_validator_1.IsArray)(),
     __metadata("design:type", Array)
 ], RegistrarDoctorDto.prototype, "formaciones", void 0);
+__decorate([
+    (0, class_validator_1.IsNotEmpty)({ message: 'La especialidad principal es requerida' }),
+    (0, class_transformer_1.Transform)(({ value }) => Number(value)),
+    (0, class_validator_1.IsNumber)({}, { message: 'La especialidad principal debe ser un número' }),
+    (0, class_validator_1.Min)(1, { message: 'El ID de la especialidad principal debe ser mayor a 0' }),
+    __metadata("design:type", Number)
+], RegistrarDoctorDto.prototype, "id_especialidad_principal", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (!value)
+            return [];
+        if (typeof value !== 'string')
+            return Array.isArray(value) ? value : [];
+        // Si ya es un array, devolverlo directamente
+        if (Array.isArray(value))
+            return value.map((id) => Number(id));
+        try {
+            // Intentar parsear como JSON primero (formato: "[2,3,4]" o "[2, 3, 4]")
+            const parsed = JSON.parse(value);
+            const arr = Array.isArray(parsed) ? parsed : [];
+            return arr.map((id) => Number(id));
+        }
+        catch (e) {
+            // Si falla el JSON, intentar como string separado por comas (formato: "2,3,4" o "2, 3, 4")
+            const trimmed = value.trim();
+            if (trimmed === '')
+                return [];
+            const arr = trimmed.split(',').map((id) => id.trim()).filter((id) => id !== '');
+            if (arr.length === 0) {
+                throw new Error('ids_especialidades_secundarias debe ser un JSON válido (array de números) o números separados por comas');
+            }
+            return arr.map((id) => Number(id));
+        }
+    }),
+    (0, class_validator_1.IsArray)({ message: 'Las especialidades secundarias deben ser un array' }),
+    (0, class_validator_1.IsNumber)({}, { each: true, message: 'Cada especialidad secundaria debe ser un número' }),
+    __metadata("design:type", Array)
+], RegistrarDoctorDto.prototype, "ids_especialidades_secundarias", void 0);

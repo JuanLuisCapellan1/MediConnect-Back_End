@@ -24,6 +24,7 @@ const PrismaConversacionesRepository_1 = require("../../infrastructure/repositor
 const PrismaMensajesRepository_1 = require("../../infrastructure/repositories/PrismaMensajesRepository");
 const PrismaLecturasConversacionRepository_1 = require("../../infrastructure/repositories/PrismaLecturasConversacionRepository");
 const PrismaMediaRepository_1 = require("../../infrastructure/repositories/PrismaMediaRepository");
+const PrismaCentroSaludRepository_1 = require("../../infrastructure/repositories/PrismaCentroSaludRepository");
 const BcryptPasswordHasher_1 = require("../../infrastructure/external-services/BcryptPasswordHasher");
 const LibreTranslateService_1 = require("../../infrastructure/external-services/LibreTranslateService");
 const RedisCacheService_1 = require("../../infrastructure/external-services/RedisCacheService");
@@ -78,6 +79,8 @@ const GestionarServicioHorariosUseCase_1 = require("../../application/use-cases/
 const GestionarNotificacionesUseCase_1 = require("../../application/use-cases/GestionarNotificacionesUseCase");
 const RefreshAccessTokenUseCase_1 = require("../../application/use-cases/RefreshAccessTokenUseCase");
 const CompletarPerfilCentroSaludUseCase_1 = require("../../application/use-cases/CompletarPerfilCentroSaludUseCase");
+const RegistrarCentroUseCase_1 = require("../../application/use-cases/RegistrarCentroUseCase");
+const ActualizarFotoPerfilUseCase_1 = require("../../application/use-cases/ActualizarFotoPerfilUseCase");
 const CentrosSaludController_1 = require("../../infrastructure/http/controllers/CentrosSaludController");
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 // Registrar PrismaClient como singleton
@@ -174,6 +177,11 @@ tsyringe_1.container.register(TipoCentroSaludValidator_1.TipoCentroSaludValidato
         return new TipoCentroSaludValidator_1.TipoCentroSaludValidator(repo);
     }
 });
+tsyringe_1.container.register(CentroSaludValidator_1.CentroSaludValidator, {
+    useFactory: () => {
+        return new CentroSaludValidator_1.CentroSaludValidator();
+    }
+});
 tsyringe_1.container.register(ProfesionValidator_1.ProfesionValidator, {
     useFactory: () => {
         const repo = tsyringe_1.container.resolve('ProfesionesRepository');
@@ -265,6 +273,13 @@ tsyringe_1.container.register('TipoCentroSaludRepository', {
         const prismaClient = tsyringe_1.container.resolve('PrismaClient');
         const redisCache = tsyringe_1.container.resolve(RedisCacheService_1.RedisCacheService);
         return new PrismaTipoCentroSaludRepository_1.PrismaTipoCentroSaludRepository(prismaClient, redisCache);
+    }
+});
+tsyringe_1.container.register('CentroSaludRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        const redisCache = tsyringe_1.container.resolve(RedisCacheService_1.RedisCacheService);
+        return new PrismaCentroSaludRepository_1.PrismaCentroSaludRepository(prismaClient, redisCache);
     }
 });
 tsyringe_1.container.register('ProfesionesRepository', {
@@ -505,10 +520,22 @@ tsyringe_1.container.register(CompletarPerfilCentroSaludUseCase_1.CompletarPerfi
         return new CompletarPerfilCentroSaludUseCase_1.CompletarPerfilCentroSaludUseCase(prisma, centroRepo, ubicacionRepo, tipoRepo, storage, passwordHasher, validator, ubicValidator);
     }
 });
+tsyringe_1.container.register(RegistrarCentroUseCase_1.RegistrarCentroUseCase, {
+    useFactory: () => {
+        const prisma = tsyringe_1.container.resolve('PrismaClient');
+        const usuarioRepo = tsyringe_1.container.resolve('UsuarioRepository');
+        const centroRepo = tsyringe_1.container.resolve('CentroSaludRepository');
+        const passwordHasher = tsyringe_1.container.resolve('PasswordHasher');
+        const storage = tsyringe_1.container.resolve('StorageService');
+        const authService = tsyringe_1.container.resolve(AuthService_1.AuthService);
+        return new RegistrarCentroUseCase_1.RegistrarCentroUseCase(prisma, usuarioRepo, centroRepo, passwordHasher, storage, authService);
+    }
+});
 tsyringe_1.container.register(CentrosSaludController_1.CentrosSaludController, {
     useFactory: () => {
-        const useCase = tsyringe_1.container.resolve(CompletarPerfilCentroSaludUseCase_1.CompletarPerfilCentroSaludUseCase);
-        return new CentrosSaludController_1.CentrosSaludController(useCase);
+        const completarPerfilUseCase = tsyringe_1.container.resolve(CompletarPerfilCentroSaludUseCase_1.CompletarPerfilCentroSaludUseCase);
+        const registrarCentroUseCase = tsyringe_1.container.resolve(RegistrarCentroUseCase_1.RegistrarCentroUseCase);
+        return new CentrosSaludController_1.CentrosSaludController(completarPerfilUseCase, registrarCentroUseCase);
     }
 });
 tsyringe_1.container.register(RefreshAccessTokenUseCase_1.RefreshAccessTokenUseCase, {
@@ -516,5 +543,12 @@ tsyringe_1.container.register(RefreshAccessTokenUseCase_1.RefreshAccessTokenUseC
         const authService = tsyringe_1.container.resolve(AuthService_1.AuthService);
         const usuarioRepository = tsyringe_1.container.resolve('UsuarioRepository');
         return new RefreshAccessTokenUseCase_1.RefreshAccessTokenUseCase(authService, usuarioRepository);
+    }
+});
+tsyringe_1.container.register(ActualizarFotoPerfilUseCase_1.ActualizarFotoPerfilUseCase, {
+    useFactory: () => {
+        const usuarioRepository = tsyringe_1.container.resolve('UsuarioRepository');
+        const storageService = tsyringe_1.container.resolve(SupabaseStorageService_1.SupabaseStorageService);
+        return new ActualizarFotoPerfilUseCase_1.ActualizarFotoPerfilUseCase(usuarioRepository, storageService);
     }
 });

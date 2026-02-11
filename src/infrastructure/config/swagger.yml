@@ -741,6 +741,14 @@ paths:
                   type: string
                   example: '[{"id_especialidad": 1, "id_universidad": 2, "fecha_inicio": "2010-01-01", "fecha_finalizacion": "2014-12-31", "estado": "Finalizado"}]'
                   description: Array JSON con las formaciones académicas del doctor.
+                id_especialidad_principal:
+                  type: integer
+                  example: 1
+                  description: ID de la especialidad principal del doctor (obligatorio). Solo puede tener una especialidad principal.
+                ids_especialidades_secundarias:
+                  type: string
+                  example: '[2,3,4]'
+                  description: Array JSON con los IDs de las especialidades secundarias del doctor (opcional). No puede incluir la especialidad principal.
                 fotoPerfil:
                   type: string
                   format: binary

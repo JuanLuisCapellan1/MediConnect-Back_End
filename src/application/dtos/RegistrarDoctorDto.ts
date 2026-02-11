@@ -1,9 +1,9 @@
 import { Transform } from 'class-transformer';
-import { 
-  IsNotEmpty, 
-  IsString, 
-  IsArray, 
-  ValidateNested, 
+import {
+  IsNotEmpty,
+  IsString,
+  IsArray,
+  ValidateNested,
   IsOptional,
   IsEnum,
   IsDate,
@@ -162,4 +162,40 @@ export class RegistrarDoctorDto {
   @ValidateNested({ each: true })
   @IsArray()
   formaciones!: FormacionAcademicaDto[];
+
+  // --- ESPECIALIDADES (Principal y Secundarias) ---
+  @IsNotEmpty({ message: 'La especialidad principal es requerida' })
+  @Transform(({ value }) => Number(value))
+  @IsNumber({}, { message: 'La especialidad principal debe ser un número' })
+  @Min(1, { message: 'El ID de la especialidad principal debe ser mayor a 0' })
+  id_especialidad_principal!: number;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (!value) return [];
+    if (typeof value !== 'string') return Array.isArray(value) ? value : [];
+
+    // Si ya es un array, devolverlo directamente
+    if (Array.isArray(value)) return value.map((id) => Number(id));
+
+    try {
+      // Intentar parsear como JSON primero (formato: "[2,3,4]" o "[2, 3, 4]")
+      const parsed = JSON.parse(value);
+      const arr = Array.isArray(parsed) ? parsed : [];
+      return arr.map((id) => Number(id));
+    } catch (e) {
+      // Si falla el JSON, intentar como string separado por comas (formato: "2,3,4" o "2, 3, 4")
+      const trimmed = value.trim();
+      if (trimmed === '') return [];
+
+      const arr = trimmed.split(',').map((id) => id.trim()).filter((id) => id !== '');
+      if (arr.length === 0) {
+        throw new Error('ids_especialidades_secundarias debe ser un JSON válido (array de números) o números separados por comas');
+      }
+      return arr.map((id) => Number(id));
+    }
+  })
+  @IsArray({ message: 'Las especialidades secundarias deben ser un array' })
+  @IsNumber({}, { each: true, message: 'Cada especialidad secundaria debe ser un número' })
+  ids_especialidades_secundarias?: number[];
 }

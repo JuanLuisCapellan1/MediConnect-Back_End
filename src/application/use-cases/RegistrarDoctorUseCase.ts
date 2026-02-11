@@ -12,7 +12,7 @@ export class RegistrarDoctorUseCase {
     @inject('PasswordHasher') private passwordHasher: IPasswordHasher,
     @inject('StorageService') private storageService: IStorageService,
     @inject(AuthService) private authService: AuthService
-  ) {}
+  ) { }
 
   async execute(dto: RegistrarDoctorDto, files: any, token: string): Promise<void> {
     // Validar token y obtener email. Soportar token de registro estándar y token de registro desde Google
@@ -32,6 +32,13 @@ export class RegistrarDoctorUseCase {
     const usuarioExistente = await this.usuarioRepository.buscarPorEmail(email);
     if (usuarioExistente) {
       throw new Error('El email ya está registrado');
+    }
+
+    // Validación de negocio: la especialidad principal NO debe estar en las secundarias
+    if (dto.ids_especialidades_secundarias && dto.ids_especialidades_secundarias.length > 0) {
+      if (dto.ids_especialidades_secundarias.includes(dto.id_especialidad_principal)) {
+        throw new Error('La especialidad principal no puede estar incluida en las especialidades secundarias');
+      }
     }
 
     // Hashear contraseña
@@ -91,6 +98,8 @@ export class RegistrarDoctorUseCase {
         },
         ubicacion: dto.ubicacion,
         formaciones: dto.formaciones,
+        id_especialidad_principal: dto.id_especialidad_principal,
+        ids_especialidades_secundarias: dto.ids_especialidades_secundarias || [],
       });
     } catch (error) {
       // Aquí podrías implementar limpieza de archivos subidos en caso de error

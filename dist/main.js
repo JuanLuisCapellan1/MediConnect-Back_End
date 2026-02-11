@@ -23,17 +23,20 @@ const app = (0, express_1.default)();
 const httpServer = (0, http_1.createServer)(app);
 const PORT = process.env.PORT || 3000;
 // Middlewares Globales
-app.use((0, helmet_1.default)({
-    crossOriginResourcePolicy: { policy: "cross-origin" }
-})); // Headers de seguridad con configuración personalizada
-app.use((0, cors_1.default)({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Recovery-Token', 'X-Requested-With', 'accept']
-})); // Permitir peticiones externas
-app.use(express_1.default.json({ limit: '50mb' })); // Parsear JSON body
-app.use(express_1.default.urlencoded({ extended: true, limit: '50mb' })); // Parsear URL encoded
+app.use((0, helmet_1.default)()); // Headers de seguridad
+app.use((0, cors_1.default)()); // Permitir peticiones externas
+app.use(express_1.default.json()); // Parsear JSON body
+// Error handler para JSON parsing
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && 'body' in err) {
+        console.error('❌ JSON Parse Error:', err.message);
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid JSON format in request body'
+        });
+    }
+    next(err);
+});
 // Controladores (Ejemplo de controlador) mover a una carpeta controllers más adelante
 const swaggerDocument = yamljs_1.default.load(path_1.default.join(__dirname, './infrastructure/config/swagger.yml'));
 app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swaggerDocument));

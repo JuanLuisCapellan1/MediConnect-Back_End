@@ -18,6 +18,7 @@ const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 const CompletarPerfilCentroSaludUseCase_1 = require("../../../application/use-cases/CompletarPerfilCentroSaludUseCase");
 const CompletarPerfilCentroSaludDto_1 = require("../../../application/dtos/CompletarPerfilCentroSaludDto");
+const RegistrarCentroUseCase_1 = require("../../../application/use-cases/RegistrarCentroUseCase");
 const CentroSaludNoEncontradoError_1 = require("../../../domain/errors/CentrosSalud/CentroSaludNoEncontradoError");
 const TipoCentroSaludNoEncontradoError_1 = require("../../../domain/errors/TiposCentrosSalud/TipoCentroSaludNoEncontradoError");
 /**
@@ -36,8 +37,9 @@ function flattenValidationErrors(errors) {
     return messages;
 }
 let CentrosSaludController = class CentrosSaludController {
-    constructor(completarPerfilUseCase) {
+    constructor(completarPerfilUseCase, registrarCentroUseCase) {
         this.completarPerfilUseCase = completarPerfilUseCase;
+        this.registrarCentroUseCase = registrarCentroUseCase;
     }
     /**
      * POST /centros-salud/completar-perfil
@@ -66,11 +68,43 @@ let CentrosSaludController = class CentrosSaludController {
             // 1. OBTENER USUARIO AUTENTICADO DEL REQUEST
             // ===================================================================
             const usuarioId = req.usuarioId;
+            // Si no hay usuarioId intentamos flujo de registro usando token de registro
             if (!usuarioId) {
-                res.status(401).json({
-                    success: false,
-                    message: 'Usuario no autenticado',
+                // Extraer token del header Authorization (acepta 'Bearer ' o token puro)
+                let authHeader = req.originalAuthorization || req.headers.authorization || req.headers.Authorization;
+                if (!authHeader) {
+                    authHeader = req.headers['authorization'] ?? req.headers['Authorization'] ?? req.headers['x-authorization'] ?? req.headers['X-Authorization'];
+                }
+                let token = null;
+                if (typeof authHeader === 'string') {
+                    const trimmed = authHeader.trim();
+                    token = trimmed.startsWith('Bearer ') ? trimmed.substring(7).trim() : trimmed;
+                }
+                if (!token) {
+                    res.status(401).json({ success: false, message: 'Token de registro no proporcionado' });
+                    return;
+                }
+                // Validaciones de archivos y DTO se comparten con el otro flujo más abajo
+                const files = req.files ?? {};
+                // Validar archivos requeridos
+                if (!files.certificadoSanitario?.[0]) {
+                    res.status(400).json({ success: false, message: 'El certificado sanitario es obligatorio' });
+                    return;
+                }
+                // Validar DTO
+                const dtoReg = (0, class_transformer_1.plainToInstance)(CompletarPerfilCentroSaludDto_1.CompletarPerfilCentroSaludDto, req.body, {
+                    enableImplicitConversion: true,
+                    excludeExtraneousValues: false,
                 });
+                const errorsReg = await (0, class_validator_1.validate)(dtoReg, { forbidNonWhitelisted: false, skipMissingProperties: false });
+                if (errorsReg.length > 0) {
+                    const messages = flattenValidationErrors(errorsReg);
+                    res.status(400).json({ success: false, message: 'Validación fallida', errors: messages });
+                    return;
+                }
+                // Ejecutar use-case de registro para centros con el token de registro
+                await this.registrarCentroUseCase.execute(dtoReg, files, token);
+                res.status(201).json({ success: true, message: 'Centro registrado exitosamente. Su solicitud está en revisión.' });
                 return;
             }
             // ===================================================================
@@ -184,5 +218,7 @@ exports.CentrosSaludController = CentrosSaludController;
 exports.CentrosSaludController = CentrosSaludController = __decorate([
     (0, tsyringe_1.injectable)(),
     __param(0, (0, tsyringe_1.inject)(CompletarPerfilCentroSaludUseCase_1.CompletarPerfilCentroSaludUseCase)),
-    __metadata("design:paramtypes", [CompletarPerfilCentroSaludUseCase_1.CompletarPerfilCentroSaludUseCase])
+    __param(1, (0, tsyringe_1.inject)(RegistrarCentroUseCase_1.RegistrarCentroUseCase)),
+    __metadata("design:paramtypes", [CompletarPerfilCentroSaludUseCase_1.CompletarPerfilCentroSaludUseCase,
+        RegistrarCentroUseCase_1.RegistrarCentroUseCase])
 ], CentrosSaludController);

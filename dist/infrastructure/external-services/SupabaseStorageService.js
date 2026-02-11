@@ -23,6 +23,12 @@ let SupabaseStorageService = class SupabaseStorageService {
         this.supabase = (0, supabase_js_1.createClient)(supabaseUrl, supabaseKey);
     }
     async uploadFile(fileBuffer, fileName, bucket, mimeType) {
+        console.log(`📤 Iniciando upload a Supabase:`, {
+            bucket,
+            fileName,
+            fileSize: `${(fileBuffer.length / 1024).toFixed(2)} KB`,
+            mimeType
+        });
         const { data, error } = await this.supabase.storage
             .from(bucket)
             .upload(fileName, fileBuffer, {
@@ -30,9 +36,18 @@ let SupabaseStorageService = class SupabaseStorageService {
             upsert: true // Sobrescribir si existe
         });
         if (error || !data) {
-            console.error(`Error subiendo a Supabase [${bucket}]:`, error);
+            console.error(`❌ Error subiendo a Supabase [${bucket}]:`, {
+                error: error?.message,
+                errorDetails: error,
+                fileName,
+                bucket
+            });
             throw new Error('No se pudo subir el archivo al almacenamiento.');
         }
+        console.log(`✅ Archivo subido exitosamente:`, {
+            bucket,
+            path: data.path
+        });
         // Para assets públicos devolvemos la URL completa
         if (bucket === 'public-assets') {
             const { data: publicData } = this.supabase.storage.from(bucket).getPublicUrl(data.path);

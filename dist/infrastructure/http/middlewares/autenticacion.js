@@ -54,12 +54,14 @@ const autenticarJWTOpcional = (req, res, next) => {
         const token = authHeader.startsWith('Bearer ')
             ? authHeader.substring(7)
             : authHeader;
-        const secreto = process.env.JWT_SECRET || 'secret-key-temporal';
+        const secreto = process.env.JWT_SECRET || 'MediConnectSecretDefault2026';
         const decoded = jsonwebtoken_1.default.verify(token, secreto);
-        req.usuarioId = decoded.userId;
+        // Manejar tanto tokens estándar como tokens de registro de Google
+        req.usuarioId = decoded.userId || undefined;
         req.email = decoded.email;
-        req.rol = decoded.rol;
+        req.rol = decoded.rol || undefined;
         req.user = decoded; // Soporte para req.user también
+        next(); // CRÍTICO: continuar con el siguiente middleware
     }
     catch (error) {
         // No bloquear, solo continuar sin usuario autenticado

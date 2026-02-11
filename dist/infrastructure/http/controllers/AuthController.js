@@ -17,6 +17,7 @@ const ValidarCodigoRecuperacionPasswordUseCase_1 = require("../../../application
 const CambiarPasswordConTokenUseCase_1 = require("../../../application/use-cases/CambiarPasswordConTokenUseCase");
 const RefreshAccessTokenUseCase_1 = require("../../../application/use-cases/RefreshAccessTokenUseCase");
 const AttachPasswordToGoogleAccountUseCase_1 = require("../../../application/use-cases/AttachPasswordToGoogleAccountUseCase");
+const ActualizarFotoPerfilUseCase_1 = require("../../../application/use-cases/ActualizarFotoPerfilUseCase");
 // DTOs (Tuyos)
 const RegistrarPacienteDto_1 = require("../../../application/dtos/RegistrarPacienteDto");
 const RegistrarDoctorDto_1 = require("../../../application/dtos/RegistrarDoctorDto");
@@ -369,6 +370,59 @@ class AuthController {
                 success: true,
                 accessToken: tokens.accessToken,
                 refreshToken: tokens.refreshToken,
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    /**
+     * PATCH /auth/foto-perfil
+     * Actualiza la foto de perfil del usuario autenticado
+     */
+    async actualizarFotoPerfil(req, res) {
+        try {
+            // Verificar autenticación
+            const usuarioId = req.usuarioId;
+            if (!usuarioId) {
+                res.status(401).json({
+                    success: false,
+                    message: 'No autorizado. Debe iniciar sesión.',
+                });
+                return;
+            }
+            // Verificar que se envió un archivo
+            if (!req.file) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Debe proporcionar una foto de perfil',
+                });
+                return;
+            }
+            // Validar tipo de archivo
+            const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!allowedMimes.includes(req.file.mimetype)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Solo se permiten imágenes (JPEG, PNG, WEBP)',
+                });
+                return;
+            }
+            // Validar tamaño (5MB máximo)
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            if (req.file.size > maxSize) {
+                res.status(400).json({
+                    success: false,
+                    message: 'La imagen no puede exceder 5MB',
+                });
+                return;
+            }
+            const useCase = tsyringe_1.container.resolve(ActualizarFotoPerfilUseCase_1.ActualizarFotoPerfilUseCase);
+            const result = await useCase.execute(usuarioId, req.file);
+            res.status(200).json({
+                success: true,
+                message: 'Foto de perfil actualizada exitosamente',
+                data: result,
             });
         }
         catch (error) {

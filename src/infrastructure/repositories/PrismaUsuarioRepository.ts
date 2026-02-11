@@ -165,6 +165,35 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
         );
       }
 
+      // 4.5. CREAR ESPECIALIDADES DEL DOCTOR
+      // Especialidad Principal (obligatoria)
+      await tx.doctorEspecialidad.create({
+        data: {
+          id_doctor: usuario.id,
+          id_especialidad: data.id_especialidad_principal,
+          es_principal: true,
+          estado: 'Activo',
+          creado_en: new Date(),
+        },
+      });
+
+      // Especialidades Secundarias (opcionales)
+      if (data.ids_especialidades_secundarias && data.ids_especialidades_secundarias.length > 0) {
+        await Promise.all(
+          data.ids_especialidades_secundarias.map((idEspecialidad: number) =>
+            tx.doctorEspecialidad.create({
+              data: {
+                id_doctor: usuario.id,
+                id_especialidad: idEspecialidad,
+                es_principal: false,
+                estado: 'Activo',
+                creado_en: new Date(),
+              },
+            })
+          )
+        );
+      }
+
       // 5. CREAR ACCIÓN DE AUDITORÍA
       const tipoAccion = await tx.tipoAccion.findFirst({
         where: { nombre: 'Solicitud Registro Doctor' },

@@ -78,31 +78,32 @@ model Paciente {
 }
 
 model Doctor {
-  usuarioId                     Int                  @id @map("id_usuario")
-  ubicacionId                   Int?                 @map("id_ubicacion")
-  nombre                        String               @db.VarChar(80)
-  apellido                      String               @db.VarChar(80)
-  tipoDocIdentificacion         String               @default("Cédula") @map("tipo_documento_identificacion") @db.VarChar(20)
-  numeroDocumentoIdentificacion String               @unique(map: "uq_doctores_numero_doc") @map("numero_documento_identificacion") @db.VarChar(20)
-  fotoDocumento                 String?              @unique(map: "doctores_documento_identificacion_key") @map("foto_documento")
-  fechaNacimiento               DateTime             @map("fecha_nacimiento") @db.Date
-  genero                        String               @db.Char(1)
-  nacionalidad                  String?              @db.VarChar(50)
-  exequatur                     String               @unique @db.VarChar(40)
+  usuarioId                     Int                       @id @map("id_usuario")
+  ubicacionId                   Int?                      @map("id_ubicacion")
+  nombre                        String                    @db.VarChar(80)
+  apellido                      String                    @db.VarChar(80)
+  tipoDocIdentificacion         String                    @default("Cédula") @map("tipo_documento_identificacion") @db.VarChar(20)
+  numeroDocumentoIdentificacion String                    @unique(map: "uq_doctores_numero_doc") @map("numero_documento_identificacion") @db.VarChar(20)
+  fotoDocumento                 String?                   @unique(map: "doctores_documento_identificacion_key") @map("foto_documento")
+  fechaNacimiento               DateTime                  @map("fecha_nacimiento") @db.Date
+  genero                        String                    @db.Char(1)
+  nacionalidad                  String?                   @db.VarChar(50)
+  exequatur                     String                    @unique @db.VarChar(40)
   biografia                     String?
-  anosExperiencia               Int?                 @map("anos_experiencia")
-  tituloAcademico               String?              @map("titulo_academico")
-  certificacionesAdicionales    String?              @map("certificaciones_adicionales")
-  estadoVerificacion            String               @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
-  calificacionPromedio          Decimal?             @default(0.00) @map("calificacion_promedio") @db.Decimal(3, 2)
-  estado                        String               @default("Activo") @db.VarChar(20)
-  creadoEn                      DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
-  actualizadoEn                 DateTime?            @map("actualizado_en") @db.Timestamptz(6)
-  duracionCitaPromedio          Int                  @default(30) @map("duracion_cita_promedio")
-  tarifas                       Decimal?             @db.Decimal(10, 2)
-  citas                         Cita[]               @relation("DoctorCita")
-  usuario                       Usuario              @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  ubicacion                     Ubicacion?           @relation(fields: [ubicacionId], references: [id], onUpdate: NoAction, map: "fk_doctores_ubicacion")
+  anosExperiencia               Int?                      @map("anos_experiencia")
+  tituloAcademico               String?                   @map("titulo_academico")
+  certificacionesAdicionales    String?                   @map("certificaciones_adicionales")
+  estadoVerificacion            String                    @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
+  calificacionPromedio          Decimal?                  @default(0.00) @map("calificacion_promedio") @db.Decimal(3, 2)
+  estado                        String                    @default("Activo") @db.VarChar(20)
+  creadoEn                      DateTime                  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn                 DateTime?                 @map("actualizado_en") @db.Timestamptz(6)
+  duracionCitaPromedio          Int                       @default(30) @map("duracion_cita_promedio")
+  tarifas                       Decimal?                  @db.Decimal(10, 2)
+  citas                         Cita[]                    @relation("DoctorCita")
+  usuario                       Usuario                   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  ubicacion                     Ubicacion?                @relation(fields: [ubicacionId], references: [id], onUpdate: NoAction, map: "fk_doctores_ubicacion")
+  especialidades                DoctorEspecialidad[]
   favoritosDe                   DoctorFavorito[]
   segurosAceptados              DoctorSeguro[]
   experiencias                  ExperienciaLaboral[]
@@ -246,13 +247,14 @@ model Ubicacion {
 }
 
 model Especialidad {
-  id          Int                  @id @default(autoincrement()) @map("id_especialidad")
-  nombre      String               @unique @db.VarChar(80)
-  descripcion String?
-  estado      String               @default("Activo") @db.VarChar(20)
-  creadoEn    DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
-  formaciones FormacionAcademica[]
-  servicios   Servicio[]
+  id                      Int                       @id @default(autoincrement()) @map("id_especialidad")
+  nombre                  String                    @unique @db.VarChar(80)
+  descripcion             String?
+  estado                  String                    @default("Activo") @db.VarChar(20)
+  creadoEn                DateTime                  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  doctores                DoctorEspecialidad[]
+  formaciones             FormacionAcademica[]
+  servicios               Servicio[]
 
   @@map("especialidades")
 }
@@ -724,4 +726,21 @@ model spatial_ref_sys {
   auth_srid Int?
   srtext    String? @db.VarChar(2048)
   proj4text String? @db.VarChar(2048)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model DoctorEspecialidad {
+  id_doctor       Int
+  id_especialidad Int
+  es_principal    Boolean      @default(false)
+  estado          String       @default("Activo") @db.VarChar(20)
+  creado_en       DateTime     @default(now()) @db.Timestamptz(6)
+  actualizado_en  DateTime?    @db.Timestamptz(6)
+  doctores        Doctor       @relation(fields: [id_doctor], references: [usuarioId], onDelete: Cascade, onUpdate: NoAction, map: "fk_doctores_especialidades_doctor")
+  especialidades  Especialidad @relation(fields: [id_especialidad], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_doctores_especialidades_especialidad")
+
+  @@id([id_doctor, id_especialidad], map: "pk_doctores_especialidades")
+  @@index([id_doctor], map: "idx_doctores_especialidades_doctor")
+  @@index([id_especialidad], map: "idx_doctores_especialidades_especialidad")
+  @@map("doctores_especialidades")
 }

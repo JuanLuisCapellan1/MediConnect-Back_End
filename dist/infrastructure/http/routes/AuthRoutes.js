@@ -85,4 +85,12 @@ routerAuth.post('/password/validar-codigo', (req, res) => authController.validar
  * Cambia la contraseña usando el token de recuperación (header X-Recovery-Token)
  */
 routerAuth.post('/password/cambiar', (req, res) => authController.cambiarPasswordConToken(req, res));
+/**
+ * PATCH /auth/foto-perfil
+ * Actualiza la foto de perfil del usuario autenticado
+ * Requiere: JWT token en Authorization header
+ * Body: multipart/form-data con campo 'fotoPerfil'
+ */
+const autenticacion_1 = require("../middlewares/autenticacion");
+routerAuth.patch('/foto-perfil', autenticacion_1.autenticarJWT, upload.single('fotoPerfil'), (req, res) => authController.actualizarFotoPerfil(req, res));
 exports.default = routerAuth;
