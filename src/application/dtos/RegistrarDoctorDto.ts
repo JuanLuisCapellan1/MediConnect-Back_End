@@ -140,8 +140,9 @@ export class RegistrarDoctorDto {
   @ValidateNested()
   ubicacion!: UbicacionDto;
 
-  @IsNotEmpty({ message: 'Las formaciones académicas son requeridas' })
+  @IsOptional()
   @Transform(({ value }) => {
+    if (!value || value === '') return [];
     if (typeof value !== 'string') return Array.isArray(value) ? value : [];
     try {
       const parsed = JSON.parse(value) as Record<string, unknown>[];
@@ -161,7 +162,7 @@ export class RegistrarDoctorDto {
   })
   @ValidateNested({ each: true })
   @IsArray()
-  formaciones!: FormacionAcademicaDto[];
+  formaciones?: FormacionAcademicaDto[];
 
   // --- ESPECIALIDADES (Principal y Secundarias) ---
   @IsNotEmpty({ message: 'La especialidad principal es requerida' })
@@ -198,4 +199,47 @@ export class RegistrarDoctorDto {
   @IsArray({ message: 'Las especialidades secundarias deben ser un array' })
   @IsNumber({}, { each: true, message: 'Cada especialidad secundaria debe ser un número' })
   ids_especialidades_secundarias?: number[];
+
+  // --- DESCRIPCIONES OPCIONALES PARA MÚLTIPLES DOCUMENTOS ---
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (!value) return [];
+    if (typeof value !== 'string') return Array.isArray(value) ? value : [];
+    try {
+      return JSON.parse(value);
+    } catch {
+      return [];
+    }
+  })
+  @IsArray()
+  @IsString({ each: true })
+  descripciones_documentos?: string[];
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (!value) return [];
+    if (typeof value !== 'string') return Array.isArray(value) ? value : [];
+    try {
+      return JSON.parse(value);
+    } catch {
+      return [];
+    }
+  })
+  @IsArray()
+  @IsString({ each: true })
+  descripciones_titulos?: string[];
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (!value) return [];
+    if (typeof value !== 'string') return Array.isArray(value) ? value : [];
+    try {
+      return JSON.parse(value);
+    } catch {
+      return [];
+    }
+  })
+  @IsArray()
+  @IsString({ each: true })
+  descripciones_certificaciones?: string[];
 }

@@ -110,14 +110,63 @@ export class AuthController {
       }
 
       const files = req.files as Record<string, Express.Multer.File[]>;
-      const archivosRequeridos = ['fotoPerfil', 'fotoDocumento', 'tituloAcademico', 'certificaciones'];
 
-      for (const archivo of archivosRequeridos) {
-        if (!files[archivo] || !files[archivo][0]) {
-          res.status(400).json({ success: false, message: `${archivo} es requerido` });
-          return;
-        }
+      // Límites de archivos
+      const MAX_FOTO_DOCUMENTO = 2;
+      const MAX_TITULO_ACADEMICO = 10;
+
+      // Validar fotoPerfil (exactamente 1)
+      if (!files.fotoPerfil || files.fotoPerfil.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'La foto de perfil es requerida'
+        });
+        return;
       }
+
+      // Validar fotoDocumento (1-2 archivos)
+      if (!files.fotoDocumento || files.fotoDocumento.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Al menos una foto de documento es requerida'
+        });
+        return;
+      }
+
+      if (files.fotoDocumento.length > MAX_FOTO_DOCUMENTO) {
+        res.status(400).json({
+          success: false,
+          message: `Has subido ${files.fotoDocumento.length} fotos de documento. El máximo permitido es ${MAX_FOTO_DOCUMENTO}. Por favor, selecciona solo las más importantes.`
+        });
+        return;
+      }
+
+      // Validar tituloAcademico (1-10 archivos)
+      if (!files.tituloAcademico || files.tituloAcademico.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Al menos un título académico es requerido'
+        });
+        return;
+      }
+
+      if (files.tituloAcademico.length > MAX_TITULO_ACADEMICO) {
+        res.status(400).json({
+          success: false,
+          message: `Has subido ${files.tituloAcademico.length} títulos académicos. El máximo permitido es ${MAX_TITULO_ACADEMICO}. Por favor, selecciona solo los más relevantes.`
+        });
+        return;
+      }
+
+      // Validar certificaciones (mínimo 1, sin límite superior)
+      if (!files.certificaciones || files.certificaciones.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Al menos una certificación es requerida'
+        });
+        return;
+      }
+
 
       const dto = plainToInstance(RegistrarDoctorDto, req.body, {
         enableImplicitConversion: true,

@@ -46,13 +46,10 @@ export class RegistrarPacienteDto {
     if (value == null || value === '') return undefined;
     const num = Number(value);
     if (isNaN(num)) return undefined;
-    // Normalizar: si el valor es <= 10 lo consideramos metros (ej. 1.75 -> 175 cm)
-    if (num > 0 && num <= 10) return Math.round(num * 100);
-    // Si valor está en cm ya (ej. 170)
-    return Math.round(num);
+    return num;
   })
-  @Min(30, { message: 'La altura debe ser al menos 30 cm' })
-  @Max(300, { message: 'La altura no puede exceder 300 cm' })
+  @Min(0.30, { message: 'La altura debe ser al menos 0.30 metros (30 cm)' })
+  @Max(2.50, { message: 'La altura no puede exceder 2.50 metros (250 cm). Por favor, ingresa la altura en metros (ej: 1.75)' })
   altura?: number;
 
   @IsOptional()

@@ -747,24 +747,57 @@ paths:
                   description: ID de la especialidad principal del doctor (obligatorio). Solo puede tener una especialidad principal.
                 ids_especialidades_secundarias:
                   type: string
-                  example: '[2,3,4]'
+                  example: '[2,3,5]'
                   description: Array JSON con los IDs de las especialidades secundarias del doctor (opcional). No puede incluir la especialidad principal.
                 fotoPerfil:
                   type: string
                   format: binary
-                  description: Foto de perfil del doctor.
+                  description: Foto de perfil del doctor (1 archivo requerido).
                 fotoDocumento:
-                  type: string
-                  format: binary
-                  description: Foto del documento de identificación del doctor.
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: |
+                    Fotos del documento de identificación del doctor.
+                    **Mínimo**: 1 archivo
+                    **Máximo**: 2 archivos
+                    **Formatos**: JPEG, PNG, WEBP, PDF
+                    **Tamaño máximo por archivo**: 5MB
                 tituloAcademico:
-                  type: string
-                  format: binary
-                  description: Archivo del título académico del doctor.
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: |
+                    Archivos de títulos académicos del doctor.
+                    **Mínimo**: 1 archivo
+                    **Máximo**: 10 archivos
+                    **Formatos**: JPEG, PNG, WEBP, PDF
+                    **Tamaño máximo por archivo**: 5MB
                 certificaciones:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: |
+                    Archivos de certificaciones adicionales del doctor.
+                    **Mínimo**: 1 archivo
+                    **Máximo**: Ilimitado
+                    **Formatos**: JPEG, PNG, WEBP, PDF
+                    **Tamaño máximo por archivo**: 5MB
+                descripciones_documentos:
                   type: string
-                  format: binary
-                  description: Archivo de certificaciones adicionales del doctor.
+                  example: '["Cédula frontal", "Cédula reverso"]'
+                  description: Array JSON con descripciones opcionales para cada foto de documento (debe coincidir con el número de archivos subidos).
+                descripciones_titulos:
+                  type: string
+                  example: '["Medicina General", "Cardiología", "Especialización en Cirugía"]'
+                  description: Array JSON con descripciones opcionales para cada título académico (debe coincidir con el número de archivos subidos).
+                descripciones_certificaciones:
+                  type: string
+                  example: '["Certificación BLS", "Certificación ACLS", "Diplomado en Urgencias"]'
+                  description: Array JSON con descripciones opcionales para cada certificación (debe coincidir con el número de archivos subidos).
       responses:
         '201':
           description: Doctor registrado exitosamente.

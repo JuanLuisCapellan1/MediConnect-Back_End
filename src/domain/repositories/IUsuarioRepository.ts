@@ -99,4 +99,69 @@ export interface IUsuarioRepository {
    * Actualiza la foto de perfil de un usuario
    */
   updateProfilePhoto(usuarioId: number, fotoPerfilUrl: string): Promise<void>;
+
+  /**
+   * Verifica si existe un doctor con el número de documento dado
+   */
+  existeDoctorConNumeroDocumento(numeroDocumento: string): Promise<boolean>;
+
+  /**
+   * Verifica si existe un doctor con el exequatur dado
+   */
+  existeDoctorConExequatur(exequatur: string): Promise<boolean>;
+
+  /**
+   * Guarda un Doctor con documentos múltiples (transacción atómica)
+   * - Usuario
+   * - Ubicación
+   * - Perfil Doctor
+   * - Formaciones Académicas
+   * - Especialidades (principal y secundarias)
+   * - Documentos (múltiples por tipo)
+   * - Acción de Auditoría
+   */
+  saveDoctorWithDocuments(data: SaveDoctorWithDocumentsData): Promise<Usuario>;
+}
+
+export interface SaveDoctorWithDocumentsData {
+  email: string;
+  password: string;
+  rol: string;
+  doctor: {
+    nombre: string;
+    apellido: string;
+    genero: string;
+    fecha_nacimiento: Date;
+    nacionalidad: string;
+    telefono: string;
+    tipo_documento_identificacion: string;
+    numero_documento_identificacion: string;
+    foto_perfil: string;
+    exequatur: string;
+    biografia?: string;
+    estado_verificacion: string;
+  };
+  ubicacion: {
+    direccion: string;
+    id_barrio: number;
+    id_sub_barrio?: number | null;
+  };
+  formaciones?: Array<{
+    id_especialidad: number;
+    id_universidad: number;
+    fecha_inicio: Date;
+    fecha_finalizacion?: Date | null;
+    estado: string;
+  }>;
+
+  id_especialidad_principal: number;
+  ids_especialidades_secundarias?: number[];
+  documentos: Array<{
+    tipo_documento: string;
+    url_archivo: string;
+    nombre_original?: string;
+    tipo_mime?: string;
+    tamanio_bytes?: number;
+    descripcion?: string | null;
+  }>;
 }

@@ -84,15 +84,12 @@ model Doctor {
   apellido                      String                    @db.VarChar(80)
   tipoDocIdentificacion         String                    @default("Cédula") @map("tipo_documento_identificacion") @db.VarChar(20)
   numeroDocumentoIdentificacion String                    @unique(map: "uq_doctores_numero_doc") @map("numero_documento_identificacion") @db.VarChar(20)
-  fotoDocumento                 String?                   @unique(map: "doctores_documento_identificacion_key") @map("foto_documento")
   fechaNacimiento               DateTime                  @map("fecha_nacimiento") @db.Date
   genero                        String                    @db.Char(1)
   nacionalidad                  String?                   @db.VarChar(50)
   exequatur                     String                    @unique @db.VarChar(40)
   biografia                     String?
   anosExperiencia               Int?                      @map("anos_experiencia")
-  tituloAcademico               String?                   @map("titulo_academico")
-  certificacionesAdicionales    String?                   @map("certificaciones_adicionales")
   estadoVerificacion            String                    @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
   calificacionPromedio          Decimal?                  @default(0.00) @map("calificacion_promedio") @db.Decimal(3, 2)
   estado                        String                    @default("Activo") @db.VarChar(20)
@@ -112,6 +109,7 @@ model Doctor {
   resenas                       Resena[]
   servicios                     Servicio[]
   solicitudesAlianza            SolicitudAlianza[]
+  documentos                    DocumentoDoctor[]
 
   @@index([ubicacionId], map: "idx_doctores_ubicacion")
   @@map("doctores")
@@ -744,3 +742,23 @@ model DoctorEspecialidad {
   @@index([id_especialidad], map: "idx_doctores_especialidades_especialidad")
   @@map("doctores_especialidades")
 }
+
+/// Tabla para almacenar múltiples documentos por doctor
+model DocumentoDoctor {
+  id                Int       @id @default(autoincrement()) @map("id_documento_doctor")
+  doctorId          Int       @map("id_doctor")
+  tipoDocumento     String    @map("tipo_documento") @db.VarChar(50)
+  urlArchivo        String    @map("url_archivo")
+  nombreOriginal    String?   @map("nombre_original") @db.VarChar(255)
+  tipoMime          String?   @map("tipo_mime") @db.VarChar(100)
+  descripcion       String?
+  estado            String    @default("Activo") @db.VarChar(20)
+  creadoEn          DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn     DateTime? @map("actualizado_en") @db.Timestamptz(6)
+  
+  doctor            Doctor    @relation(fields: [doctorId], references: [usuarioId], onDelete: Cascade)
+
+  @@index([doctorId, tipoDocumento])
+  @@map("documentos_doctores")
+}
+
