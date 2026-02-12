@@ -29,16 +29,65 @@ routerAuth.post('/registro/paciente', preserveAuthHeaders, upload.fields([
     { name: 'fotoPerfil', maxCount: 1 },
     { name: 'fotoDocumento', maxCount: 1 },
 ]), (req, res) => authController.completarRegistroPaciente(req, res));
+// Middleware para manejar errores de Multer con mensajes amigables
+const handleMulterError = (err, req, res, next) => {
+    if (err instanceof multer_1.default.MulterError) {
+        // Errores específicos de Multer
+        if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+            // Determinar qué campo excedió el límite
+            const fieldLimits = {
+                'fotoPerfil': 1,
+                'fotoDocumento': 2,
+                'tituloAcademico': 10,
+                'certificaciones': 100
+            };
+            const fieldName = err.field || 'desconocido';
+            const maxCount = fieldLimits[fieldName] || 'desconocido';
+            let message = '';
+            if (fieldName === 'fotoDocumento') {
+                message = `Has subido demasiadas fotos de documento. El máximo permitido es ${maxCount}. Por favor, selecciona solo las más importantes.`;
+            }
+            else if (fieldName === 'tituloAcademico') {
+                message = `Has subido demasiados títulos académicos. El máximo permitido es ${maxCount}. Por favor, selecciona solo los más relevantes.`;
+            }
+            else if (fieldName === 'fotoPerfil') {
+                message = `Solo puedes subir 1 foto de perfil.`;
+            }
+            else {
+                message = `Has excedido el límite de archivos para el campo "${fieldName}". Máximo permitido: ${maxCount}.`;
+            }
+            return res.status(400).json({
+                success: false,
+                message: message
+            });
+        }
+        else if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+                success: false,
+                message: 'Uno o más archivos exceden el tamaño máximo permitido de 5MB. Por favor, comprime las imágenes o reduce el tamaño de los archivos.'
+            });
+        }
+        else if (err.code === 'LIMIT_FILE_COUNT') {
+            return res.status(400).json({
+                success: false,
+                message: 'Has subido demasiados archivos en total. Por favor, revisa los límites permitidos para cada campo.'
+            });
+        }
+    }
+    // Si no es un error de Multer, pasar al siguiente middleware
+    next(err);
+};
 /**
  * POST /auth/registro/doctor
- * Completar registro de doctor con archivos
+ * Completar registro de doctor con archivos múltiples
  */
 routerAuth.post('/registro/doctor', preserveAuthHeaders, upload.fields([
     { name: 'fotoPerfil', maxCount: 1 },
-    { name: 'fotoDocumento', maxCount: 1 },
-    { name: 'tituloAcademico', maxCount: 1 },
-    { name: 'certificaciones', maxCount: 1 },
-]), (req, res) => authController.completarRegistroDoctor(req, res));
+    { name: 'fotoDocumento', maxCount: 2 }, // Máximo 2 documentos
+    { name: 'tituloAcademico', maxCount: 10 }, // Máximo 10 títulos
+    { name: 'certificaciones', maxCount: 100 }, // Ilimitadas (límite práctico)
+]), handleMulterError, // Agregar middleware de manejo de errores
+(req, res) => authController.completarRegistroDoctor(req, res));
 /**
  * POST /auth/registro/solicitar-codigo
  * Solicita un código OTP para el registro

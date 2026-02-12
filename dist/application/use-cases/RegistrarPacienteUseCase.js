@@ -72,6 +72,19 @@ let RegistrarPacienteUseCase = class RegistrarPacienteUseCase {
             });
         }
         catch (error) {
+            // Manejar errores de overflow de base de datos
+            if (error.message && error.message.includes('numeric field overflow')) {
+                // Detectar qué campo causó el overflow basándose en el mensaje de error
+                if (error.message.includes('precision 4, scale 2')) {
+                    throw new Error('La altura debe estar en metros y no puede exceder 99.99 metros. Por favor, ingresa un valor válido (ejemplo: 1.75 para 1.75 metros).');
+                }
+                else if (error.message.includes('precision 5, scale 2')) {
+                    throw new Error('El peso no puede exceder 999.99 kg. Por favor, ingresa un valor válido.');
+                }
+                else {
+                    throw new Error('Uno de los valores numéricos ingresados excede el límite permitido. Por favor, verifica que la altura esté en metros (ej: 1.75) y el peso en kilogramos (ej: 70).');
+                }
+            }
             // Aquí podrías implementar limpieza de archivos subidos en caso de error
             throw error;
         }

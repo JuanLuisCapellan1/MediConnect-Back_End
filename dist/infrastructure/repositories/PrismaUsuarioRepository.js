@@ -113,15 +113,12 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                     apellido: data.doctor.apellido,
                     tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
                     numeroDocumentoIdentificacion: data.doctor.numero_documento_identificacion,
-                    fotoDocumento: data.doctor.foto_documento,
                     fechaNacimiento: data.doctor.fecha_nacimiento,
                     genero: data.doctor.genero,
                     nacionalidad: data.doctor.nacionalidad,
                     exequatur: data.doctor.exequatur,
                     biografia: data.doctor.biografia || null,
                     anosExperiencia: data.doctor.anos_experiencia || null,
-                    tituloAcademico: data.doctor.titulo_academico || null,
-                    certificacionesAdicionales: data.doctor.certificaciones_adicionales || null,
                     estadoVerificacion: 'En revisión',
                     calificacionPromedio: 0.00,
                     estado: 'Activo',
@@ -248,6 +245,19 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                                 universidad: true,
                             },
                         },
+                        especialidades: {
+                            include: {
+                                especialidades: true,
+                            },
+                        },
+                        documentos: {
+                            where: {
+                                estado: 'Activo',
+                            },
+                            orderBy: {
+                                creadoEn: 'desc',
+                            },
+                        },
                     },
                 },
                 centroSalud: true,
@@ -261,6 +271,161 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                 fotoPerfil: fotoPerfilUrl,
                 actualizadoEn: new Date(),
             },
+        });
+    }
+    async existeDoctorConNumeroDocumento(numeroDocumento) {
+        const doctor = await client_1.prisma.doctor.findFirst({
+            where: {
+                numeroDocumentoIdentificacion: numeroDocumento,
+                estado: { not: 'Eliminado' }
+            }
+        });
+        return doctor !== null;
+    }
+    async existeDoctorConExequatur(exequatur) {
+        const doctor = await client_1.prisma.doctor.findFirst({
+            where: {
+                exequatur: exequatur,
+                estado: { not: 'Eliminado' }
+            }
+        });
+        return doctor !== null;
+    }
+    /**
+     * Guarda un Doctor con documentos múltiples (transacción de 6 pasos)
+     */
+    async saveDoctorWithDocuments(data) {
+        return await client_1.prisma.$transaction(async (tx) => {
+            // 1. CREAR USUARIO
+            const usuario = await tx.usuario.create({
+                data: {
+                    email: data.email,
+                    password: data.password,
+                    rol: 'Doctor',
+                    estado: 'Activo',
+                    emailVerificado: true,
+                    telefono: data.doctor.telefono,
+                    fotoPerfil: data.doctor.foto_perfil,
+                    creadoEn: new Date(),
+                },
+            });
+            // 2. CREAR UBICACIÓN
+            const ubicacion = await tx.ubicacion.create({
+                data: {
+                    direccion: data.ubicacion.direccion,
+                    barrioId: Number(data.ubicacion.id_barrio),
+                    subBarrioId: data.ubicacion.id_sub_barrio ? Number(data.ubicacion.id_sub_barrio) : null,
+                    estado: 'Activo',
+                    creadoEn: new Date(),
+                },
+            });
+            // 3. CREAR PERFIL DOCTOR
+            await tx.doctor.create({
+                data: {
+                    usuarioId: usuario.id,
+                    ubicacionId: ubicacion.id,
+                    nombre: data.doctor.nombre,
+                    apellido: data.doctor.apellido,
+                    tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
+                    numeroDocumentoIdentificacion: data.doctor.numero_documento_identificacion,
+                    fechaNacimiento: data.doctor.fecha_nacimiento,
+                    genero: data.doctor.genero,
+                    nacionalidad: data.doctor.nacionalidad,
+                    exequatur: data.doctor.exequatur,
+                    biografia: data.doctor.biografia || null,
+                    estadoVerificacion: 'En revisión',
+                    calificacionPromedio: 0.00,
+                    estado: 'Activo',
+                    creadoEn: new Date(),
+                },
+            });
+            // 4. CREAR DOCUMENTOS (múltiples por tipo)
+            if (data.documentos && data.documentos.length > 0) {
+                await Promise.all(data.documentos.map((doc) => tx.documentoDoctor.create({
+                    data: {
+                        doctorId: usuario.id,
+                        tipoDocumento: doc.tipo_documento,
+                        urlArchivo: doc.url_archivo,
+                        nombreOriginal: doc.nombre_original || null,
+                        tipoMime: doc.tipo_mime || null,
+                        descripcion: doc.descripcion || null,
+                        estado: 'Activo',
+                        creadoEn: new Date(),
+                    },
+                })));
+            }
+            // 5. CREAR FORMACIONES ACADÉMICAS
+            const mapEstadoFormacion = (estado) => {
+                if (estado === 'Finalizado')
+                    return 'Inactivo';
+                if (estado === 'En curso')
+                    return 'Activo';
+                return estado === 'Inactivo' || estado === 'Eliminado' ? estado : 'Activo';
+            };
+            if (data.formaciones && data.formaciones.length > 0) {
+                await Promise.all(data.formaciones.map((f) => tx.formacionAcademica.create({
+                    data: {
+                        doctor: {
+                            connect: { usuarioId: usuario.id }
+                        },
+                        universidad: {
+                            connect: { id: Number(f.id_universidad) }
+                        },
+                        especialidad: {
+                            connect: { id: Number(f.id_especialidad) }
+                        },
+                        fecha_inicio: new Date(f.fecha_inicio),
+                        fecha_finalizacion: f.fecha_finalizacion ? new Date(f.fecha_finalizacion) : null,
+                        estado: mapEstadoFormacion(f.estado || 'Activo'),
+                        creadoEn: new Date(),
+                    },
+                })));
+            }
+            // 6. CREAR ESPECIALIDADES DEL DOCTOR
+            // Especialidad Principal (obligatoria)
+            await tx.doctorEspecialidad.create({
+                data: {
+                    id_doctor: usuario.id,
+                    id_especialidad: data.id_especialidad_principal,
+                    es_principal: true,
+                    estado: 'Activo',
+                    creado_en: new Date(),
+                },
+            });
+            // Especialidades Secundarias (opcionales)
+            if (data.ids_especialidades_secundarias && data.ids_especialidades_secundarias.length > 0) {
+                await Promise.all(data.ids_especialidades_secundarias.map((idEspecialidad) => tx.doctorEspecialidad.create({
+                    data: {
+                        id_doctor: usuario.id,
+                        id_especialidad: idEspecialidad,
+                        es_principal: false,
+                        estado: 'Activo',
+                        creado_en: new Date(),
+                    },
+                })));
+            }
+            // 7. CREAR ACCIÓN DE AUDITORÍA
+            const tipoAccion = await tx.tipoAccion.findFirst({
+                where: { nombre: 'Solicitud Registro Doctor' },
+            });
+            if (!tipoAccion) {
+                throw new Error('CONFIGURACIÓN ERROR: Tipo de acción "Solicitud Registro Doctor" no existe');
+            }
+            await tx.accion.create({
+                data: {
+                    emisor: {
+                        connect: { id: usuario.id }
+                    },
+                    tipoAccion: {
+                        connect: { id: tipoAccion.id }
+                    },
+                    estado: 'Pendiente',
+                    detalle: `Solicitud de registro: Dr(a). ${data.doctor.nombre} ${data.doctor.apellido} - Exequatur: ${data.doctor.exequatur}`,
+                    fechaEmision: new Date(),
+                    fechaVencimiento: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+                },
+            });
+            return usuario;
         });
     }
 };

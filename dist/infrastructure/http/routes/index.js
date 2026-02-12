@@ -16,6 +16,7 @@ const UbicacionesRoutes_1 = __importDefault(require("./UbicacionesRoutes"));
 const HorariosRoutes_1 = __importDefault(require("./HorariosRoutes"));
 const ServiciosHorariosRoutes_1 = __importDefault(require("./ServiciosHorariosRoutes"));
 const TiposServiciosRoutes_1 = __importDefault(require("./TiposServiciosRoutes"));
+const EspecialidadesRoutes_1 = __importDefault(require("./EspecialidadesRoutes"));
 const TiposCentrosSaludRoutes_1 = __importDefault(require("./TiposCentrosSaludRoutes"));
 const CentrosSaludRoutes_1 = __importDefault(require("./CentrosSaludRoutes"));
 const ProfesionesRoutes_1 = __importDefault(require("./ProfesionesRoutes"));
@@ -60,6 +61,8 @@ router.use('/horarios', HorariosRoutes_1.default);
 router.use('/servicios-horarios', ServiciosHorariosRoutes_1.default);
 // Rutas de Tipos de Servicios
 router.use('/tipos-servicios', TiposServiciosRoutes_1.default);
+// Rutas de Especialidades
+router.use('/especialidades', EspecialidadesRoutes_1.default);
 // Rutas de Tipos de Centros de Salud
 router.use('/tipos-centros-salud', TiposCentrosSaludRoutes_1.default);
 // Rutas de Centros de Salud

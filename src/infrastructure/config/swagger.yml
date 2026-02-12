@@ -36,6 +36,8 @@ tags:
     description: Endpoints para gestionar relaciones entre servicios y horarios
   - name: TiposServicios
     description: Endpoints para gestionar tipos de servicios
+  - name: Especialidades
+    description: Endpoints para gestionar especialidades médicas
   - name: TiposCentrosSalud
     description: Endpoints para gestionar tipos de centros de salud
   - name: CentrosSalud
@@ -5078,7 +5080,363 @@ paths:
         '500':
           description: Error interno del servidor
           content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ErrorResponse'
+
+  # --- ESPECIALIDADES ENDPOINTS ---
+  /especialidades:
+    get:
+      summary: Listar especialidades médicas
+      tags:
+        - Especialidades
+      description: |
+        Obtiene una lista de especialidades médicas con soporte para paginación y filtros.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/especialidades?target=en&translate_fields=nombre,descripcion`
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: Campos a traducir separados por coma
+        - name: nombre
+          in: query
+          description: Filtrar por nombre (búsqueda parcial)
+          schema:
+            type: string
+        - name: estado
+          in: query
+          description: Filtrar por estado (Activo, Inactivo, etc.)
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Especialidades obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Especialidad'
+                  paginacion:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      pagina:
+                        type: integer
+                      limite:
+                        type: integer
+                      totalPaginas:
+                        type: integer
+        '500':
+          description: Error interno del servidor
+          content:
              application/json:
+               schema:
+                 $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear una nueva especialidad médica
+      tags:
+        - Especialidades
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nombre
+              properties:
+                nombre:
+                  type: string
+                  example: "Cardiología"
+                descripcion:
+                  type: string
+                  example: "Especialidad médica que se encarga del estudio, diagnóstico y tratamiento de las enfermedades del corazón"
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  default: "Activo"
+                  example: "Activo"
+      responses:
+        '201':
+          description: Especialidad creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Especialidad creada exitosamente."
+                  data:
+                    $ref: '#/components/schemas/Especialidad'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: La especialidad ya existe
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'Ya existe una especialidad con el nombre: "Cardiología".'
+        '500':
+          description: Error interno del servidor
+          content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/ErrorResponse'
+
+  /especialidades/{id}:
+    get:
+      summary: Obtener especialidad por ID
+      tags:
+        - Especialidades
+      description: |
+        Obtiene una especialidad médica específica por su ID.
+        
+        **Traducción Automática:**
+        Soporta traducción mediante query params: `?target=en&translate_fields=nombre,descripcion`
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+      responses:
+        '200':
+          description: Especialidad obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Especialidad'
+        '404':
+          description: Especialidad no encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'No se encontró la especialidad con ID: 1.'
+        '500':
+          description: Error interno del servidor
+          content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      summary: Actualizar especialidad médica
+      tags:
+        - Especialidades
+      description: Actualiza parcialmente una especialidad médica. Todos los campos son opcionales.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  example: "Cardiología Pediátrica"
+                descripcion:
+                  type: string
+                  example: "Especialidad del corazón en niños"
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+      responses:
+        '200':
+          description: Especialidad actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                 type: object
+                 properties:
+                    success: 
+                      type: boolean
+                      example: true
+                    message: 
+                      type: string
+                      example: "Especialidad actualizada exitosamente."
+                    data:
+                      $ref: '#/components/schemas/Especialidad'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Especialidad no encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'No se encontró la especialidad con ID: 1.'
+        '409':
+          description: El nombre ya existe
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'Ya existe una especialidad con el nombre: "Cardiología".'
+        '500':
+          description: Error interno del servidor
+          content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Eliminar especialidad (lógico)
+      tags:
+        - Especialidades
+      description: |
+        Realiza una eliminación lógica de la especialidad, cambiando su estado a "Eliminado".
+        El registro no se borra físicamente de la base de datos.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Especialidad eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Especialidad eliminada exitosamente."
+        '404':
+          description: Especialidad no encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'No se encontró la especialidad con ID: 1.'
+        '500':
+          description: Error interno del servidor
+          content:
+             application:
                schema:
                  $ref: '#/components/schemas/ErrorResponse'
 
@@ -7916,6 +8274,28 @@ components:
           type: string
           format: date-time
           example: "2026-02-10T10:30:00.000Z"
+
+    Especialidad:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Cardiología"
+        descripcion:
+          type: string
+          nullable: true
+          example: "Especialidad médica que se encarga del estudio, diagnóstico y tratamiento de las enfermedades del corazón"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2026-02-11T22:00:00.000Z"
         actualizadoEn:
           type: string
           format: date-time

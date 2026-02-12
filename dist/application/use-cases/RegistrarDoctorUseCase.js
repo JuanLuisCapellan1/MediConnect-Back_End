@@ -39,22 +39,90 @@ let RegistrarDoctorUseCase = class RegistrarDoctorUseCase {
         if (usuarioExistente) {
             throw new Error('El email ya está registrado');
         }
+        // Validar que no exista doctor con el mismo número de documento
+        const documentoExistente = await this.usuarioRepository.existeDoctorConNumeroDocumento(dto.numero_documento);
+        if (documentoExistente) {
+            throw new Error('Ya existe un doctor registrado con este número de documento. Por favor, verifica tus datos o contacta con soporte si crees que esto es un error.');
+        }
+        // Validar que no exista doctor con el mismo exequatur
+        const exequaturExistente = await this.usuarioRepository.existeDoctorConExequatur(dto.exequatur);
+        if (exequaturExistente) {
+            throw new Error('Ya existe un doctor registrado con este número de exequatur. Por favor, verifica tus datos o contacta con soporte si crees que esto es un error.');
+        }
         // Validación de negocio: la especialidad principal NO debe estar en las secundarias
         if (dto.ids_especialidades_secundarias && dto.ids_especialidades_secundarias.length > 0) {
             if (dto.ids_especialidades_secundarias.includes(dto.id_especialidad_principal)) {
                 throw new Error('La especialidad principal no puede estar incluida en las especialidades secundarias');
             }
         }
+        // VALIDACIONES DE ARCHIVOS MÚLTIPLES
+        const MAX_FOTO_DOCUMENTO = 2;
+        const MAX_TITULO_ACADEMICO = 10;
+        // Validar que existan los archivos requeridos
+        if (!files.fotoPerfil?.[0]) {
+            throw new Error('La foto de perfil es requerida');
+        }
+        if (!files.fotoDocumento || files.fotoDocumento.length === 0) {
+            throw new Error('Al menos una foto de documento es requerida');
+        }
+        if (files.fotoDocumento.length > MAX_FOTO_DOCUMENTO) {
+            throw new Error(`Máximo ${MAX_FOTO_DOCUMENTO} fotos de documento permitidas`);
+        }
+        if (!files.tituloAcademico || files.tituloAcademico.length === 0) {
+            throw new Error('Al menos un título académico es requerido');
+        }
+        if (files.tituloAcademico.length > MAX_TITULO_ACADEMICO) {
+            throw new Error(`Máximo ${MAX_TITULO_ACADEMICO} títulos académicos permitidos`);
+        }
+        if (!files.certificaciones || files.certificaciones.length === 0) {
+            throw new Error('Al menos una certificación es requerida');
+        }
         // Hashear contraseña
         const hashedPassword = await this.passwordHasher.hash(dto.password);
         try {
-            // Subir archivos a Supabase
+            // Subir foto de perfil (solo 1)
             const fotoPerfilUrl = await this.storageService.uploadFile(files.fotoPerfil[0].buffer, `doctors/${email}/profile.jpg`, 'public-assets', files.fotoPerfil[0].mimetype);
-            const fotoDocumentoPath = await this.storageService.uploadFile(files.fotoDocumento[0].buffer, `doctors/${email}/document.jpg`, 'secure-documents', files.fotoDocumento[0].mimetype);
-            const tituloAcademicoPath = await this.storageService.uploadFile(files.tituloAcademico[0].buffer, `doctors/${email}/titulo.pdf`, 'secure-documents', files.tituloAcademico[0].mimetype);
-            const certificacionesPath = await this.storageService.uploadFile(files.certificaciones[0].buffer, `doctors/${email}/certificaciones.pdf`, 'secure-documents', files.certificaciones[0].mimetype);
-            // Persistir en base de datos (transacción atómica). Exequatur es solo el número (texto), no un archivo.
-            await this.usuarioRepository.saveDoctor({
+            // Subir múltiples fotos de documento (en paralelo)
+            const fotosDocumentoPromises = files.fotoDocumento.map((file, index) => this.storageService.uploadFile(file.buffer, `doctors/${email}/documents/document-${index + 1}.${this.getExtension(file.mimetype)}`, 'secure-documents', file.mimetype).then(url => ({
+                tipo_documento: 'foto_documento',
+                url_archivo: url,
+                nombre_original: file.originalname,
+                tipo_mime: file.mimetype,
+                tamanio_bytes: file.size,
+                descripcion: dto.descripciones_documentos?.[index] || null,
+            })));
+            // Subir múltiples títulos académicos (en paralelo)
+            const titulosAcademicosPromises = files.tituloAcademico.map((file, index) => this.storageService.uploadFile(file.buffer, `doctors/${email}/titles/title-${index + 1}.${this.getExtension(file.mimetype)}`, 'secure-documents', file.mimetype).then(url => ({
+                tipo_documento: 'titulo_academico',
+                url_archivo: url,
+                nombre_original: file.originalname,
+                tipo_mime: file.mimetype,
+                tamanio_bytes: file.size,
+                descripcion: dto.descripciones_titulos?.[index] || null,
+            })));
+            // Subir múltiples certificaciones (en paralelo)
+            const certificacionesPromises = files.certificaciones.map((file, index) => this.storageService.uploadFile(file.buffer, `doctors/${email}/certifications/cert-${index + 1}.${this.getExtension(file.mimetype)}`, 'secure-documents', file.mimetype).then(url => ({
+                tipo_documento: 'certificacion',
+                url_archivo: url,
+                nombre_original: file.originalname,
+                tipo_mime: file.mimetype,
+                tamanio_bytes: file.size,
+                descripcion: dto.descripciones_certificaciones?.[index] || null,
+            })));
+            // Esperar a que todos los archivos se suban en paralelo
+            const [fotosDocumento, titulosAcademicos, certificaciones] = await Promise.all([
+                Promise.all(fotosDocumentoPromises),
+                Promise.all(titulosAcademicosPromises),
+                Promise.all(certificacionesPromises),
+            ]);
+            // Combinar todos los documentos
+            const todosLosDocumentos = [
+                ...fotosDocumento,
+                ...titulosAcademicos,
+                ...certificaciones,
+            ];
+            // Persistir en base de datos (transacción atómica)
+            await this.usuarioRepository.saveDoctorWithDocuments({
                 email,
                 password: hashedPassword,
                 rol: 'Doctor',
@@ -67,24 +135,31 @@ let RegistrarDoctorUseCase = class RegistrarDoctorUseCase {
                     telefono: dto.telefono,
                     tipo_documento_identificacion: dto.tipo_documento,
                     numero_documento_identificacion: dto.numero_documento,
-                    foto_documento: fotoDocumentoPath,
                     foto_perfil: fotoPerfilUrl,
                     exequatur: dto.exequatur,
                     biografia: dto.biografia || '',
-                    titulo_academico: tituloAcademicoPath,
-                    certificaciones_adicionales: certificacionesPath,
                     estado_verificacion: 'En revisión',
                 },
                 ubicacion: dto.ubicacion,
-                formaciones: dto.formaciones,
+                formaciones: dto.formaciones || [],
                 id_especialidad_principal: dto.id_especialidad_principal,
                 ids_especialidades_secundarias: dto.ids_especialidades_secundarias || [],
+                documentos: todosLosDocumentos,
             });
         }
         catch (error) {
             // Aquí podrías implementar limpieza de archivos subidos en caso de error
             throw error;
         }
+    }
+    getExtension(mimeType) {
+        const map = {
+            'image/jpeg': 'jpg',
+            'image/png': 'png',
+            'image/webp': 'webp',
+            'application/pdf': 'pdf',
+        };
+        return map[mimeType] || 'bin';
     }
 };
 exports.RegistrarDoctorUseCase = RegistrarDoctorUseCase;

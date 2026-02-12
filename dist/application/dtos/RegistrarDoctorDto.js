@@ -158,8 +158,10 @@ __decorate([
     __metadata("design:type", UbicacionDto)
 ], RegistrarDoctorDto.prototype, "ubicacion", void 0);
 __decorate([
-    (0, class_validator_1.IsNotEmpty)({ message: 'Las formaciones académicas son requeridas' }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Transform)(({ value }) => {
+        if (!value || value === '')
+            return [];
         if (typeof value !== 'string')
             return Array.isArray(value) ? value : [];
         try {
@@ -222,3 +224,57 @@ __decorate([
     (0, class_validator_1.IsNumber)({}, { each: true, message: 'Cada especialidad secundaria debe ser un número' }),
     __metadata("design:type", Array)
 ], RegistrarDoctorDto.prototype, "ids_especialidades_secundarias", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (!value)
+            return [];
+        if (typeof value !== 'string')
+            return Array.isArray(value) ? value : [];
+        try {
+            return JSON.parse(value);
+        }
+        catch {
+            return [];
+        }
+    }),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], RegistrarDoctorDto.prototype, "descripciones_documentos", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (!value)
+            return [];
+        if (typeof value !== 'string')
+            return Array.isArray(value) ? value : [];
+        try {
+            return JSON.parse(value);
+        }
+        catch {
+            return [];
+        }
+    }),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], RegistrarDoctorDto.prototype, "descripciones_titulos", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (!value)
+            return [];
+        if (typeof value !== 'string')
+            return Array.isArray(value) ? value : [];
+        try {
+            return JSON.parse(value);
+        }
+        catch {
+            return [];
+        }
+    }),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.IsString)({ each: true }),
+    __metadata("design:type", Array)
+], RegistrarDoctorDto.prototype, "descripciones_certificaciones", void 0);

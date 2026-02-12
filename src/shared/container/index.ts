@@ -13,6 +13,7 @@ import { IUbicacionesRepository } from '../../domain/repositories/IUbicacionesRe
 import { IHorariosRepository } from '../../domain/repositories/IHorariosRepository';
 import { IServicioHorarioRepository } from '../../domain/repositories/IServicioHorarioRepository';
 import { ITipoServicioRepository } from '../../domain/repositories/ITipoServicioRepository';
+import { IEspecialidadRepository } from '../../domain/repositories/IEspecialidadRepository';
 import { ITipoCentroSaludRepository } from '../../domain/repositories/ITipoCentroSaludRepository';
 import { IProfesionesRepository } from '../../domain/repositories/IProfesionesRepository';
 import { IExperienciasLaboralesRepository } from '../../domain/repositories/IExperienciasLaboralesRepository';
@@ -41,6 +42,7 @@ import { PrismaUbicacionesRepository } from '../../infrastructure/repositories/P
 import { PrismaHorariosRepository } from '../../infrastructure/repositories/PrismaHorariosRepository';
 import { PrismaServicioHorarioRepository } from '../../infrastructure/repositories/PrismaServicioHorarioRepository';
 import { PrismaTipoServicioRepository } from '../../infrastructure/repositories/PrismaTipoServicioRepository';
+import { PrismaEspecialidadRepository } from '../../infrastructure/repositories/PrismaEspecialidadRepository';
 import { PrismaTipoCentroSaludRepository } from '../../infrastructure/repositories/PrismaTipoCentroSaludRepository';
 import { PrismaProfesionesRepository } from '../../infrastructure/repositories/PrismaProfesionesRepository';
 import { PrismaExperienciasLaboralesRepository } from '../../infrastructure/repositories/PrismaExperienciasLaboralesRepository';
@@ -74,6 +76,7 @@ import { HorarioValidator } from '../../domain/validators/Horarios/HorarioValida
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
 import { ValidadorServicioHorario } from '../../domain/validators/ServiciosHorarios/ValidadorServicioHorario';
 import { TipoServicioValidator } from '../../domain/validators/TiposServicios/TipoServicioValidator';
+import { EspecialidadValidator } from '../../domain/validators/Especialidades/EspecialidadValidator';
 import { TipoCentroSaludValidator } from '../../domain/validators/TiposCentrosSalud/TipoCentroSaludValidator';
 import { ProfesionValidator } from '../../domain/validators/Profesiones/ProfesionValidator';
 import { ExperienciaLaboralValidator } from '../../domain/validators/ExperienciasLaborales/ExperienciaLaboralValidator';
@@ -98,6 +101,7 @@ import { LoginGoogleUseCase } from '../../application/use-cases/LoginGoogleUseCa
 import { LoginUseCase } from '../../application/use-cases/LoginUseCase';
 // UseCases de tu compañero
 import { GestionarTiposServiciosUseCase } from '../../application/use-cases/GestionarTiposServiciosUseCase';
+import { GestionarEspecialidadesUseCase } from '../../application/use-cases/GestionarEspecialidadesUseCase';
 import { GestionarConversacionesUseCase } from '../../application/use-cases/GestionarConversacionesUseCase';
 import { GestionarMensajesUseCase } from '../../application/use-cases/GestionarMensajesUseCase';
 import { GestionarMediaUseCase } from '../../application/use-cases/GestionarMediaUseCase';
@@ -214,6 +218,13 @@ container.register(TipoServicioValidator, {
   useFactory: () => {
     const repo = container.resolve<ITipoServicioRepository>('TipoServicioRepository');
     return new TipoServicioValidator(repo);
+  }
+});
+
+container.register(EspecialidadValidator, {
+  useFactory: () => {
+    const repo = container.resolve<IEspecialidadRepository>('EspecialidadRepository');
+    return new EspecialidadValidator(repo);
   }
 });
 
@@ -355,6 +366,16 @@ container.register<ITipoServicioRepository>(
     useFactory: () => {
       const prismaClient = container.resolve<PrismaClient>('PrismaClient');
       return new PrismaTipoServicioRepository(prismaClient);
+    }
+  }
+);
+
+container.register<IEspecialidadRepository>(
+  'EspecialidadRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      return new PrismaEspecialidadRepository(prismaClient);
     }
   }
 );
@@ -576,6 +597,15 @@ container.register(GestionarTiposServiciosUseCase, {
     const validator = container.resolve(TipoServicioValidator);
     const estadoValidator = container.resolve(EstadoValidator);
     return new GestionarTiposServiciosUseCase(repo, validator, estadoValidator);
+  }
+});
+
+container.register(GestionarEspecialidadesUseCase, {
+  useFactory: () => {
+    const repo = container.resolve<IEspecialidadRepository>('EspecialidadRepository');
+    const validator = container.resolve(EspecialidadValidator);
+    const estadoValidator = container.resolve(EstadoValidator);
+    return new GestionarEspecialidadesUseCase(repo, validator, estadoValidator);
   }
 });
 
