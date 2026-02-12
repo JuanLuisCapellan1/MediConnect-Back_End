@@ -343,22 +343,26 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
         },
       });
 
-      // 2. CREAR UBICACIÓN
-      const ubicacion = await tx.ubicacion.create({
-        data: {
-          direccion: data.ubicacion.direccion,
-          barrioId: Number(data.ubicacion.id_barrio),
-          subBarrioId: data.ubicacion.id_sub_barrio ? Number(data.ubicacion.id_sub_barrio) : null,
-          estado: 'Activo',
-          creadoEn: new Date(),
-        },
-      });
+      // 2. CREAR UBICACIÓN (OPCIONAL)
+      let ubicacionId: number | null = null;
+      if (data.ubicacion) {
+        const ubicacion = await tx.ubicacion.create({
+          data: {
+            direccion: data.ubicacion.direccion,
+            barrioId: Number(data.ubicacion.id_barrio),
+            subBarrioId: data.ubicacion.id_sub_barrio ? Number(data.ubicacion.id_sub_barrio) : null,
+            estado: 'Activo',
+            creadoEn: new Date(),
+          },
+        });
+        ubicacionId = ubicacion.id;
+      }
 
       // 3. CREAR PERFIL DOCTOR
       await tx.doctor.create({
         data: {
           usuarioId: usuario.id,
-          ubicacionId: ubicacion.id,
+          ubicacionId: ubicacionId,
           nombre: data.doctor.nombre,
           apellido: data.doctor.apellido,
           tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,

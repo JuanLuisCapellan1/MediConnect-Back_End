@@ -1,0 +1,75 @@
+import { Router } from 'express';
+import { PacienteController } from '../controllers/PacienteController';
+import { autenticarJWT } from '../middlewares/autenticacion';
+import { requireRole } from '../middlewares/roleMiddleware';
+
+const router = Router();
+const pacienteController = new PacienteController();
+
+/**
+ * GET /pacientes
+ * Listar pacientes (solo Admin)
+ */
+router.get(
+    '/',
+    autenticarJWT,
+    requireRole('Admin'),
+    (req, res) => pacienteController.listar(req, res)
+);
+
+/**
+ * GET /pacientes/me
+ * Obtener perfil del paciente autenticado
+ */
+router.get(
+    '/me',
+    autenticarJWT,
+    requireRole('Paciente'),
+    (req, res) => pacienteController.obtenerPerfil(req, res)
+);
+
+/**
+ * GET /pacientes/:id
+ * Obtener paciente por ID (solo Admin)
+ */
+router.get(
+    '/:id',
+    autenticarJWT,
+    requireRole('Admin'),
+    (req, res) => pacienteController.obtenerPorId(req, res)
+);
+
+/**
+ * PATCH /pacientes/me
+ * Actualizar perfil del paciente autenticado
+ */
+router.patch(
+    '/me',
+    autenticarJWT,
+    requireRole('Paciente'),
+    (req, res) => pacienteController.actualizarPerfil(req, res)
+);
+
+/**
+ * PATCH /pacientes/:id
+ * Actualizar paciente por ID (solo Admin)
+ */
+router.patch(
+    '/:id',
+    autenticarJWT,
+    requireRole('Admin'),
+    (req, res) => pacienteController.actualizar(req, res)
+);
+
+/**
+ * DELETE /pacientes/:id
+ * Eliminar paciente (solo Admin)
+ */
+router.delete(
+    '/:id',
+    autenticarJWT,
+    requireRole('Admin'),
+    (req, res) => pacienteController.eliminar(req, res)
+);
+
+export default router;

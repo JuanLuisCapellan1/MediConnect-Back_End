@@ -178,7 +178,6 @@ export class RegistrarDoctorUseCase {
           biografia: dto.biografia || '',
           estado_verificacion: 'En revisión',
         },
-        ubicacion: dto.ubicacion,
         formaciones: dto.formaciones || [],
         id_especialidad_principal: dto.id_especialidad_principal,
         ids_especialidades_secundarias: dto.ids_especialidades_secundarias || [],

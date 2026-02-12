@@ -45,10 +45,7 @@ export const autenticarJWT = (req: Request, res: Response, next: NextFunction): 
     }
 
     // Agregar la información del usuario al objeto request
-    (req as any).usuarioId = decoded.userId;
-    (req as any).email = decoded.email;
-    (req as any).rol = decoded.rol;
-    req.user = decoded; // Soporte para req.user también
+    req.user = decoded;
 
     next();
   } catch (error) {

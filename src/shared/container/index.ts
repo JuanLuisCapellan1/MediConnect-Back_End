@@ -14,6 +14,8 @@ import { IHorariosRepository } from '../../domain/repositories/IHorariosReposito
 import { IServicioHorarioRepository } from '../../domain/repositories/IServicioHorarioRepository';
 import { ITipoServicioRepository } from '../../domain/repositories/ITipoServicioRepository';
 import { IEspecialidadRepository } from '../../domain/repositories/IEspecialidadRepository';
+import { IPacienteRepository } from '../../domain/repositories/IPacienteRepository';
+import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
 import { ITipoCentroSaludRepository } from '../../domain/repositories/ITipoCentroSaludRepository';
 import { IProfesionesRepository } from '../../domain/repositories/IProfesionesRepository';
 import { IExperienciasLaboralesRepository } from '../../domain/repositories/IExperienciasLaboralesRepository';
@@ -43,6 +45,8 @@ import { PrismaHorariosRepository } from '../../infrastructure/repositories/Pris
 import { PrismaServicioHorarioRepository } from '../../infrastructure/repositories/PrismaServicioHorarioRepository';
 import { PrismaTipoServicioRepository } from '../../infrastructure/repositories/PrismaTipoServicioRepository';
 import { PrismaEspecialidadRepository } from '../../infrastructure/repositories/PrismaEspecialidadRepository';
+import { PrismaPacienteRepository } from '../../infrastructure/repositories/PrismaPacienteRepository';
+import { PrismaDoctorRepository } from '../../infrastructure/repositories/PrismaDoctorRepository';
 import { PrismaTipoCentroSaludRepository } from '../../infrastructure/repositories/PrismaTipoCentroSaludRepository';
 import { PrismaProfesionesRepository } from '../../infrastructure/repositories/PrismaProfesionesRepository';
 import { PrismaExperienciasLaboralesRepository } from '../../infrastructure/repositories/PrismaExperienciasLaboralesRepository';
@@ -77,6 +81,8 @@ import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator
 import { ValidadorServicioHorario } from '../../domain/validators/ServiciosHorarios/ValidadorServicioHorario';
 import { TipoServicioValidator } from '../../domain/validators/TiposServicios/TipoServicioValidator';
 import { EspecialidadValidator } from '../../domain/validators/Especialidades/EspecialidadValidator';
+import { PacienteValidator } from '../../domain/validators/Pacientes/PacienteValidator';
+import { DoctorValidator } from '../../domain/validators/Doctores/DoctorValidator';
 import { TipoCentroSaludValidator } from '../../domain/validators/TiposCentrosSalud/TipoCentroSaludValidator';
 import { ProfesionValidator } from '../../domain/validators/Profesiones/ProfesionValidator';
 import { ExperienciaLaboralValidator } from '../../domain/validators/ExperienciasLaborales/ExperienciaLaboralValidator';
@@ -102,6 +108,8 @@ import { LoginUseCase } from '../../application/use-cases/LoginUseCase';
 // UseCases de tu compañero
 import { GestionarTiposServiciosUseCase } from '../../application/use-cases/GestionarTiposServiciosUseCase';
 import { GestionarEspecialidadesUseCase } from '../../application/use-cases/GestionarEspecialidadesUseCase';
+import { GestionarPacientesUseCase } from '../../application/use-cases/GestionarPacientesUseCase';
+import { GestionarDoctoresUseCase } from '../../application/use-cases/GestionarDoctoresUseCase';
 import { GestionarConversacionesUseCase } from '../../application/use-cases/GestionarConversacionesUseCase';
 import { GestionarMensajesUseCase } from '../../application/use-cases/GestionarMensajesUseCase';
 import { GestionarMediaUseCase } from '../../application/use-cases/GestionarMediaUseCase';
@@ -225,6 +233,20 @@ container.register(EspecialidadValidator, {
   useFactory: () => {
     const repo = container.resolve<IEspecialidadRepository>('EspecialidadRepository');
     return new EspecialidadValidator(repo);
+  }
+});
+
+container.register(PacienteValidator, {
+  useFactory: () => {
+    const repo = container.resolve<IPacienteRepository>('PacienteRepository');
+    return new PacienteValidator(repo);
+  }
+});
+
+container.register(DoctorValidator, {
+  useFactory: () => {
+    const repo = container.resolve<IDoctorRepository>('DoctorRepository');
+    return new DoctorValidator(repo);
   }
 });
 
@@ -376,6 +398,26 @@ container.register<IEspecialidadRepository>(
     useFactory: () => {
       const prismaClient = container.resolve<PrismaClient>('PrismaClient');
       return new PrismaEspecialidadRepository(prismaClient);
+    }
+  }
+);
+
+container.register<IPacienteRepository>(
+  'PacienteRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      return new PrismaPacienteRepository(prismaClient);
+    }
+  }
+);
+
+container.register<IDoctorRepository>(
+  'DoctorRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      return new PrismaDoctorRepository(prismaClient);
     }
   }
 );
@@ -606,6 +648,24 @@ container.register(GestionarEspecialidadesUseCase, {
     const validator = container.resolve(EspecialidadValidator);
     const estadoValidator = container.resolve(EstadoValidator);
     return new GestionarEspecialidadesUseCase(repo, validator, estadoValidator);
+  }
+});
+
+container.register(GestionarPacientesUseCase, {
+  useFactory: () => {
+    const repo = container.resolve<IPacienteRepository>('PacienteRepository');
+    const validator = container.resolve(PacienteValidator);
+    const estadoValidator = container.resolve(EstadoValidator);
+    return new GestionarPacientesUseCase(repo, validator, estadoValidator);
+  }
+});
+
+container.register(GestionarDoctoresUseCase, {
+  useFactory: () => {
+    const repo = container.resolve<IDoctorRepository>('DoctorRepository');
+    const validator = container.resolve(DoctorValidator);
+    const estadoValidator = container.resolve(EstadoValidator);
+    return new GestionarDoctoresUseCase(repo, validator, estadoValidator);
   }
 });
 

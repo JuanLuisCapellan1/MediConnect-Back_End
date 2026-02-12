@@ -16,23 +16,6 @@ import {
   Max
 } from 'class-validator';
 
-export class UbicacionDto {
-  @IsNotEmpty({ message: 'La dirección es requerida' })
-  @IsString()
-  @MinLength(5, { message: 'La dirección debe tener al menos 5 caracteres' })
-  @MaxLength(255, { message: 'La dirección no puede exceder 255 caracteres' })
-  direccion!: string;
-
-  @IsNotEmpty({ message: 'El ID del barrio es requerido' })
-  @Transform(({ value }) => Number(value))
-  @IsNumber()
-  @Min(1, { message: 'El ID del barrio debe ser un número positivo' })
-  id_barrio!: number;
-
-  @IsOptional()
-  @Transform(({ value }) => (value ? Number(value) : null))
-  id_sub_barrio?: number | null;
-}
 
 export class FormacionAcademicaDto {
   @IsNotEmpty({ message: 'ID de especialidad requerido' })
@@ -121,24 +104,6 @@ export class RegistrarDoctorDto {
   biografia?: string;
 
   // --- OBJETOS COMPLEJOS (Parseados de JSON strings en FormData) ---
-  // Se construyen instancias explícitas para evitar "unknown value" en class-validator.
-
-  @IsNotEmpty({ message: 'La ubicación es requerida' })
-  @Transform(({ value }) => {
-    if (typeof value !== 'string') return value;
-    try {
-      const raw = JSON.parse(value) as Record<string, unknown>;
-      const u = new UbicacionDto();
-      u.direccion = String(raw.direccion ?? '');
-      u.id_barrio = Number(raw.id_barrio);
-      u.id_sub_barrio = raw.id_sub_barrio != null && raw.id_sub_barrio !== '' ? Number(raw.id_sub_barrio) : null;
-      return u;
-    } catch (e) {
-      throw new Error('ubicacion debe ser un JSON válido');
-    }
-  })
-  @ValidateNested()
-  ubicacion!: UbicacionDto;
 
   @IsOptional()
   @Transform(({ value }) => {

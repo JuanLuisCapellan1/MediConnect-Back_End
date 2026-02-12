@@ -9,31 +9,9 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RegistrarDoctorDto = exports.FormacionAcademicaDto = exports.UbicacionDto = void 0;
+exports.RegistrarDoctorDto = exports.FormacionAcademicaDto = void 0;
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
-class UbicacionDto {
-}
-exports.UbicacionDto = UbicacionDto;
-__decorate([
-    (0, class_validator_1.IsNotEmpty)({ message: 'La dirección es requerida' }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(5, { message: 'La dirección debe tener al menos 5 caracteres' }),
-    (0, class_validator_1.MaxLength)(255, { message: 'La dirección no puede exceder 255 caracteres' }),
-    __metadata("design:type", String)
-], UbicacionDto.prototype, "direccion", void 0);
-__decorate([
-    (0, class_validator_1.IsNotEmpty)({ message: 'El ID del barrio es requerido' }),
-    (0, class_transformer_1.Transform)(({ value }) => Number(value)),
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.Min)(1, { message: 'El ID del barrio debe ser un número positivo' }),
-    __metadata("design:type", Number)
-], UbicacionDto.prototype, "id_barrio", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_transformer_1.Transform)(({ value }) => (value ? Number(value) : null)),
-    __metadata("design:type", Object)
-], UbicacionDto.prototype, "id_sub_barrio", void 0);
 class FormacionAcademicaDto {
 }
 exports.FormacionAcademicaDto = FormacionAcademicaDto;
@@ -137,26 +115,6 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], RegistrarDoctorDto.prototype, "biografia", void 0);
-__decorate([
-    (0, class_validator_1.IsNotEmpty)({ message: 'La ubicación es requerida' }),
-    (0, class_transformer_1.Transform)(({ value }) => {
-        if (typeof value !== 'string')
-            return value;
-        try {
-            const raw = JSON.parse(value);
-            const u = new UbicacionDto();
-            u.direccion = String(raw.direccion ?? '');
-            u.id_barrio = Number(raw.id_barrio);
-            u.id_sub_barrio = raw.id_sub_barrio != null && raw.id_sub_barrio !== '' ? Number(raw.id_sub_barrio) : null;
-            return u;
-        }
-        catch (e) {
-            throw new Error('ubicacion debe ser un JSON válido');
-        }
-    }),
-    (0, class_validator_1.ValidateNested)(),
-    __metadata("design:type", UbicacionDto)
-], RegistrarDoctorDto.prototype, "ubicacion", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Transform)(({ value }) => {

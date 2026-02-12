@@ -141,7 +141,7 @@ export interface SaveDoctorWithDocumentsData {
     biografia?: string;
     estado_verificacion: string;
   };
-  ubicacion: {
+  ubicacion?: {
     direccion: string;
     id_barrio: number;
     id_sub_barrio?: number | null;

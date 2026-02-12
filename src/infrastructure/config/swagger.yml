@@ -38,6 +38,10 @@ tags:
     description: Endpoints para gestionar tipos de servicios
   - name: Especialidades
     description: Endpoints para gestionar especialidades médicas
+  - name: Pacientes
+    description: Endpoints para gestionar pacientes
+  - name: Doctores
+    description: Endpoints para gestionar doctores
   - name: TiposCentrosSalud
     description: Endpoints para gestionar tipos de centros de salud
   - name: CentrosSalud
@@ -735,10 +739,6 @@ paths:
                   type: string
                   example: "Especialista en cardiología con 10 años de experiencia."
                   description: Biografía del doctor (opcional).
-                ubicacion:
-                  type: string
-                  example: '{"direccion": "Calle Principal 123", "id_barrio": 1, "id_sub_barrio": 2}'
-                  description: Objeto JSON con la ubicación del doctor.
                 formaciones:
                   type: string
                   example: '[{"id_especialidad": 1, "id_universidad": 2, "fecha_inicio": "2010-01-01", "fecha_finalizacion": "2014-12-31", "estado": "Finalizado"}]'
@@ -5436,9 +5436,634 @@ paths:
         '500':
           description: Error interno del servidor
           content:
-             application:
+             application/json:
                schema:
                  $ref: '#/components/schemas/ErrorResponse'
+
+  # --- PACIENTES ENDPOINTS ---
+  /pacientes:
+    get:
+      summary: Listar pacientes
+      tags:
+        - Pacientes
+      description: Obtiene una lista de pacientes con soporte para paginación y filtros. Solo accesible por administradores.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: nombre
+          in: query
+          description: Filtrar por nombre (búsqueda parcial)
+          schema:
+            type: string
+        - name: apellido
+          in: query
+          description: Filtrar por apellido (búsqueda parcial)
+          schema:
+            type: string
+        - name: estado
+          in: query
+          description: Filtrar por estado
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+        - name: genero
+          in: query
+          description: Filtrar por género
+          schema:
+            type: string
+        - name: tipoSangre
+          in: query
+          description: Filtrar por tipo de sangre
+          schema:
+            type: string
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Pacientes obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Paciente'
+                  paginacion:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      pagina:
+                        type: integer
+                      limite:
+                        type: integer
+                      totalPaginas:
+                        type: integer
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Admin)
+        '500':
+          description: Error interno del servidor
+
+  /pacientes/me:
+    get:
+      summary: Obtener perfil del paciente autenticado
+      tags:
+        - Pacientes
+      description: Obtiene el perfil del paciente actualmente autenticado.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Paciente'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Paciente)
+        '404':
+          description: Paciente no encontrado
+        '500':
+          description: Error interno del servidor
+
+    patch:
+      summary: Actualizar perfil del paciente autenticado
+      tags:
+        - Pacientes
+      description: Actualiza el perfil del paciente actualmente autenticado.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  example: "Juan"
+                apellido:
+                  type: string
+                  example: "Pérez"
+                telefono:
+                  type: string
+                  example: "+1-809-555-1234"
+                fechaNacimiento:
+                  type: string
+                  format: date
+                  example: "1990-05-15"
+                genero:
+                  type: string
+                  example: "M"
+                altura:
+                  type: number
+                  example: 175
+                peso:
+                  type: number
+                  example: 70
+                tipoSangre:
+                  type: string
+                  example: "O+"
+                ubicacionId:
+                  type: integer
+                  example: 1
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+      responses:
+        '200':
+          description: Perfil actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Perfil actualizado exitosamente."
+                  data:
+                    $ref: '#/components/schemas/Paciente'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado
+        '404':
+          description: Paciente no encontrado
+        '409':
+          description: Documento ya existe
+        '500':
+          description: Error interno del servidor
+
+  /pacientes/{id}:
+    get:
+      summary: Obtener paciente por ID
+      tags:
+        - Pacientes
+      description: Obtiene un paciente específico por su ID. Solo accesible por administradores.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Paciente obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Paciente'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado
+        '404':
+          description: Paciente no encontrado
+        '500':
+          description: Error interno del servidor
+
+    patch:
+      summary: Actualizar paciente por ID
+      tags:
+        - Pacientes
+      description: Actualiza un paciente específico. Solo accesible por administradores.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                apellido:
+                  type: string
+                telefono:
+                  type: string
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+      responses:
+        '200':
+          description: Paciente actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Paciente'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Admin)
+        '404':
+          description: Paciente no encontrado
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar paciente (lógico)
+      tags:
+        - Pacientes
+      description: Realiza una eliminación lógica del paciente. Solo accesible por administradores.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Paciente eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Paciente eliminado exitosamente."
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Admin)
+        '404':
+          description: Paciente no encontrado
+        '500':
+          description: Error interno del servidor
+
+  # --- DOCTORES ENDPOINTS ---
+  /doctores:
+    get:
+      summary: Listar doctores
+      tags:
+        - Doctores
+      description: |
+        Obtiene una lista de doctores con soporte para paginación y filtros.
+        Solo accesible por administradores.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: nombre
+          in: query
+          description: Filtrar por nombre (búsqueda parcial)
+          schema:
+            type: string
+        - name: apellido
+          in: query
+          description: Filtrar por apellido (búsqueda parcial)
+          schema:
+            type: string
+        - name: especialidadId
+          in: query
+          description: Filtrar por ID de especialidad
+          schema:
+            type: integer
+        - name: estado
+          in: query
+          description: Filtrar por estado
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+        - name: estadoVerificacion
+          in: query
+          description: Filtrar por estado de verificación
+          schema:
+            type: string
+            enum: ["Verificado", "En revisión", "Rechazado"]
+        - name: genero
+          in: query
+          description: Filtrar por género
+          schema:
+            type: string
+        - name: nacionalidad
+          in: query
+          description: Filtrar por nacionalidad
+          schema:
+            type: string
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Doctores obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Doctor'
+                  paginacion:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      pagina:
+                        type: integer
+                      limite:
+                        type: integer
+                      totalPaginas:
+                        type: integer
+        '500':
+          description: Error interno del servidor
+
+  /doctores/me:
+    get:
+      summary: Obtener perfil del doctor autenticado
+      tags:
+        - Doctores
+      description: Obtiene el perfil del doctor actualmente autenticado.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Doctor'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '404':
+          description: Doctor no encontrado
+        '500':
+          description: Error interno del servidor
+
+    patch:
+      summary: Actualizar perfil del doctor autenticado
+      tags:
+        - Doctores
+      description: Actualiza el perfil del doctor actualmente autenticado.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  example: "María"
+                apellido:
+                  type: string
+                  example: "González"
+                telefono:
+                  type: string
+                  example: "+1-809-555-5678"
+                biografia:
+                  type: string
+                  example: "Médico especialista con 10 años de experiencia"
+                anosExperiencia:
+                  type: integer
+                  example: 10
+                tarifas:
+                  type: number
+                  example: 1500.00
+                duracionCitaPromedio:
+                  type: integer
+                  example: 30
+                nacionalidad:
+                  type: string
+                  example: "Dominicana"
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+      responses:
+        '200':
+          description: Perfil actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Perfil actualizado exitosamente."
+                  data:
+                    $ref: '#/components/schemas/Doctor'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado
+        '404':
+          description: Doctor no encontrado
+        '409':
+          description: Exequatur o documento ya existe
+        '500':
+          description: Error interno del servidor
+
+  /doctores/{id}:
+    get:
+      summary: Obtener doctor por ID
+      tags:
+        - Doctores
+      description: |
+        Obtiene un doctor específico por su ID.
+        Solo accesible por administradores.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Doctor obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Doctor'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Admin)
+        '404':
+          description: Doctor no encontrado
+        '500':
+          description: Error interno del servidor
+
+    patch:
+      summary: Actualizar doctor por ID
+      tags:
+        - Doctores
+      description: Actualiza un doctor específico. Solo accesible por administradores.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                apellido:
+                  type: string
+                biografia:
+                  type: string
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+      responses:
+        '200':
+          description: Doctor actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Doctor'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Admin)
+        '404':
+          description: Doctor no encontrado
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar doctor (lógico)
+      tags:
+        - Doctores
+      description: Realiza una eliminación lógica del doctor. Solo accesible por administradores.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Doctor eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Doctor eliminado exitosamente."
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Admin)
+        '404':
+          description: Doctor no encontrado
+        '500':
+          description: Error interno del servidor
 
   # --- TIPOS CENTROS SALUD ENDPOINTS ---
   /tipos-centros-salud:
@@ -8300,6 +8925,133 @@ components:
           type: string
           format: date-time
           example: "2026-02-10T15:45:00.000Z"
+
+    Paciente:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        usuarioId:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Juan"
+        apellido:
+          type: string
+          example: "Pérez"
+        tipoDocIdentificacion:
+          type: string
+          example: "Cédula"
+        numeroDocumentoIdentificacion:
+          type: string
+          example: "001-1234567-8"
+        fotoDocumento:
+          type: string
+          nullable: true
+          example: "https://storage.url/documento.jpg"
+        fechaNacimiento:
+          type: string
+          format: date
+          example: "1990-05-15"
+        genero:
+          type: string
+          example: "M"
+        altura:
+          type: number
+          nullable: true
+          example: 175
+        peso:
+          type: number
+          nullable: true
+          example: 70
+        tipoSangre:
+          type: string
+          nullable: true
+          example: "O+"
+        ubicacionId:
+          type: integer
+          nullable: true
+          example: 1
+        estado:
+          type: string
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+        actualizadoEn:
+          type: string
+          format: date-time
+          nullable: true
+
+    Doctor:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        usuarioId:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "María"
+        apellido:
+          type: string
+          example: "González"
+        tipoDocIdentificacion:
+          type: string
+          example: "Cédula"
+        numeroDocumentoIdentificacion:
+          type: string
+          example: "001-9876543-2"
+        fechaNacimiento:
+          type: string
+          format: date
+          example: "1985-03-20"
+        genero:
+          type: string
+          example: "F"
+        nacionalidad:
+          type: string
+          nullable: true
+          example: "Dominicana"
+        exequatur:
+          type: string
+          example: "EXQ-12345"
+        biografia:
+          type: string
+          nullable: true
+          example: "Médico especialista con 10 años de experiencia"
+        anosExperiencia:
+          type: integer
+          nullable: true
+          example: 10
+        estadoVerificacion:
+          type: string
+          example: "Verificado"
+        calificacionPromedio:
+          type: number
+          nullable: true
+          example: 4.5
+        estado:
+          type: string
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+        actualizadoEn:
+          type: string
+          format: date-time
+          nullable: true
+        duracionCitaPromedio:
+          type: integer
+          example: 30
+        tarifas:
+          type: number
+          nullable: true
+          example: 1500.00
 
   securitySchemes:
     bearerAuth:

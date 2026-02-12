@@ -12,6 +12,8 @@ import HorariosRoutes from './HorariosRoutes';
 import ServicioHorarioRoutes from './ServiciosHorariosRoutes';
 import TiposServiciosRoutes from './TiposServiciosRoutes';
 import EspecialidadesRoutes from './EspecialidadesRoutes';
+import PacientesRoutes from './PacientesRoutes';
+import DoctoresRoutes from './DoctoresRoutes';
 import TiposCentrosSaludRoutes from './TiposCentrosSaludRoutes';
 import CentrosSaludRoutes from './CentrosSaludRoutes';
 import ProfesionesRoutes from './ProfesionesRoutes';
@@ -68,6 +70,12 @@ router.use('/tipos-servicios', TiposServiciosRoutes);
 
 // Rutas de Especialidades
 router.use('/especialidades', EspecialidadesRoutes);
+
+// Rutas de Pacientes
+router.use('/pacientes', PacientesRoutes);
+
+// Rutas de Doctores
+router.use('/doctores', DoctoresRoutes);
 
 // Rutas de Tipos de Centros de Salud
 router.use('/tipos-centros-salud', TiposCentrosSaludRoutes);
