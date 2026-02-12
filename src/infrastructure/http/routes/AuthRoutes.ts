@@ -187,4 +187,13 @@ routerAuth.patch(
   (req, res) => authController.actualizarFotoPerfil(req, res)
 );
 
+/**
+ * GET /auth/verificar-documento
+ * Verifica si un número de documento ya está registrado
+ * Query params: numero (string)
+ */
+routerAuth.get('/verificar-documento', (req, res) =>
+  authController.verificarDocumento(req, res)
+);
+
 export default routerAuth;

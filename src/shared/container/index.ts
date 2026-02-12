@@ -102,6 +102,7 @@ import { RegistrarUsuarioUseCase } from '../../application/use-cases/RegistrarUs
 import { SolicitarCodigoRegistroUseCase } from '../../application/use-cases/SolicitarCodigoRegistroUseCase';
 import { ValidarCodigoRegistroUseCase } from '../../application/use-cases/ValidarCodigoRegistroUseCase';
 import { RegistrarDoctorUseCase } from '../../application/use-cases/RegistrarDoctorUseCase';
+import { VerificarDocumentoUseCase } from '../../application/use-cases/VerificarDocumentoUseCase';
 import { RegistrarPacienteUseCase } from '../../application/use-cases/RegistrarPacienteUseCase';
 import { LoginGoogleUseCase } from '../../application/use-cases/LoginGoogleUseCase';
 import { LoginUseCase } from '../../application/use-cases/LoginUseCase';
@@ -603,6 +604,10 @@ container.register(RegistrarDoctorUseCase, {
     const authService = container.resolve(AuthService);
     return new RegistrarDoctorUseCase(usuarioRepository, passwordHasher, storageService, authService);
   }
+});
+
+container.register('VerificarDocumentoUseCase', {
+  useClass: VerificarDocumentoUseCase,
 });
 
 container.register(RegistrarPacienteUseCase, {

@@ -70,6 +70,7 @@ const RegistrarUsuarioUseCase_1 = require("../../application/use-cases/Registrar
 const SolicitarCodigoRegistroUseCase_1 = require("../../application/use-cases/SolicitarCodigoRegistroUseCase");
 const ValidarCodigoRegistroUseCase_1 = require("../../application/use-cases/ValidarCodigoRegistroUseCase");
 const RegistrarDoctorUseCase_1 = require("../../application/use-cases/RegistrarDoctorUseCase");
+const VerificarDocumentoUseCase_1 = require("../../application/use-cases/VerificarDocumentoUseCase");
 const RegistrarPacienteUseCase_1 = require("../../application/use-cases/RegistrarPacienteUseCase");
 const LoginGoogleUseCase_1 = require("../../application/use-cases/LoginGoogleUseCase");
 const LoginUseCase_1 = require("../../application/use-cases/LoginUseCase");
@@ -443,6 +444,9 @@ tsyringe_1.container.register(RegistrarDoctorUseCase_1.RegistrarDoctorUseCase, {
         const authService = tsyringe_1.container.resolve(AuthService_1.AuthService);
         return new RegistrarDoctorUseCase_1.RegistrarDoctorUseCase(usuarioRepository, passwordHasher, storageService, authService);
     }
+});
+tsyringe_1.container.register('VerificarDocumentoUseCase', {
+    useClass: VerificarDocumentoUseCase_1.VerificarDocumentoUseCase,
 });
 tsyringe_1.container.register(RegistrarPacienteUseCase_1.RegistrarPacienteUseCase, {
     useFactory: () => {

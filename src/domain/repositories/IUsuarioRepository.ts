@@ -111,6 +111,15 @@ export interface IUsuarioRepository {
   existeDoctorConExequatur(exequatur: string): Promise<boolean>;
 
   /**
+   * Verifica si un número de documento ya está registrado (en doctores o pacientes)
+   * Retorna si existe y el tipo de usuario
+   */
+  verificarDocumentoExistente(numeroDocumento: string): Promise<{
+    existe: boolean;
+    tipo?: 'Doctor' | 'Paciente';
+  }>;
+
+  /**
    * Guarda un Doctor con documentos múltiples (transacción atómica)
    * - Usuario
    * - Ubicación

@@ -19,6 +19,7 @@ import { CambiarPasswordConTokenUseCase } from '../../../application/use-cases/C
 import { RefreshAccessTokenUseCase } from '../../../application/use-cases/RefreshAccessTokenUseCase';
 import { AttachPasswordToGoogleAccountUseCase } from '../../../application/use-cases/AttachPasswordToGoogleAccountUseCase';
 import { ActualizarFotoPerfilUseCase } from '../../../application/use-cases/ActualizarFotoPerfilUseCase';
+import { VerificarDocumentoUseCase } from '../../../application/use-cases/VerificarDocumentoUseCase';
 
 // DTOs (Tuyos)
 import { RegistrarPacienteDto } from '../../../application/dtos/RegistrarPacienteDto';
@@ -526,6 +527,44 @@ export class AuthController {
         message: 'Foto de perfil actualizada exitosamente',
         data: result,
       });
+    } catch (error) {
+      this.manejarError(error, res);
+    }
+  }
+
+  /**
+   * GET /auth/verificar-documento
+   * Verifica si un número de documento ya está registrado
+   */
+  async verificarDocumento(req: Request, res: Response): Promise<void> {
+    try {
+      const { numero } = req.query;
+
+      if (!numero || typeof numero !== 'string') {
+        res.status(400).json({
+          success: false,
+          message: 'El número de documento es requerido',
+        });
+        return;
+      }
+
+      const useCase = container.resolve<VerificarDocumentoUseCase>('VerificarDocumentoUseCase' as any);
+      const resultado = await useCase.execute(numero);
+
+      if (resultado.disponible) {
+        res.status(200).json({
+          success: true,
+          disponible: true,
+          message: 'El número de documento está disponible',
+        });
+      } else {
+        res.status(200).json({
+          success: true,
+          disponible: false,
+          message: 'Este número de documento ya está registrado',
+          tipoUsuario: resultado.tipoUsuario,
+        });
+      }
     } catch (error) {
       this.manejarError(error, res);
     }

@@ -291,6 +291,29 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
         });
         return doctor !== null;
     }
+    async verificarDocumentoExistente(numeroDocumento) {
+        // Buscar en doctores
+        const doctor = await client_1.prisma.doctor.findFirst({
+            where: {
+                numeroDocumentoIdentificacion: numeroDocumento,
+                estado: { not: 'Eliminado' }
+            }
+        });
+        if (doctor) {
+            return { existe: true, tipo: 'Doctor' };
+        }
+        // Buscar en pacientes
+        const paciente = await client_1.prisma.paciente.findFirst({
+            where: {
+                numero_documento_identificacion: numeroDocumento,
+                estado: { not: 'Eliminado' }
+            }
+        });
+        if (paciente) {
+            return { existe: true, tipo: 'Paciente' };
+        }
+        return { existe: false };
+    }
     /**
      * Guarda un Doctor con documentos múltiples (transacción de 6 pasos)
      */

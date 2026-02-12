@@ -142,4 +142,10 @@ routerAuth.post('/password/cambiar', (req, res) => authController.cambiarPasswor
  */
 const autenticacion_1 = require("../middlewares/autenticacion");
 routerAuth.patch('/foto-perfil', autenticacion_1.autenticarJWT, upload.single('fotoPerfil'), (req, res) => authController.actualizarFotoPerfil(req, res));
+/**
+ * GET /auth/verificar-documento
+ * Verifica si un número de documento ya está registrado
+ * Query params: numero (string)
+ */
+routerAuth.get('/verificar-documento', (req, res) => authController.verificarDocumento(req, res));
 exports.default = routerAuth;

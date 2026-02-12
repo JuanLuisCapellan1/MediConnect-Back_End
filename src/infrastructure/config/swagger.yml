@@ -951,6 +951,60 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /auth/verificar-documento:
+    get:
+      tags:
+        - Autenticación
+      summary: Verificar si un número de documento ya está registrado
+      description: Endpoint público para verificar si un número de documento (cédula) ya está registrado en el sistema
+      parameters:
+        - in: query
+          name: numero
+          required: true
+          schema:
+            type: string
+          description: Número de documento a verificar
+          example: "40200581375"
+      responses:
+        '200':
+          description: Verificación exitosa
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      disponible:
+                        type: boolean
+                        example: true
+                      message:
+                        type: string
+                        example: "El número de documento está disponible"
+                  - type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      disponible:
+                        type: boolean
+                        example: false
+                      message:
+                        type: string
+                        example: "Este número de documento ya está registrado"
+                      tipoUsuario:
+                        type: string
+                        enum: [Doctor, Paciente]
+                        example: "Doctor"
+        '400':
+          description: Número de documento no proporcionado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /auth/password/cambiar:
     post:
       summary: Cambiar contraseña con token de recuperación
