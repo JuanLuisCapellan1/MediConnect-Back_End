@@ -648,7 +648,7 @@ CREATE TABLE pacientes (
     
     -- Datos Médicos Base (Biométricos actuales)
     -- Nota: El peso cambia con el tiempo, estos campos sirven como "último registro conocido"
-    altura DECIMAL(4,2), -- En metros (ej. 1.75)
+    altura INTEGER, -- En centímetros (ej. 175)
     peso DECIMAL(5,2),   -- En Kilogramos (ej. 80.50)
     tipo_sangre VARCHAR(5),
     

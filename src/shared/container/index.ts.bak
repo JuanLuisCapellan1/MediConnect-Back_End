@@ -521,16 +521,6 @@ container.register<IMediaRepository>(
   { useClass: PrismaMediaRepository }
 );
 
-container.register<ISeguroMedicoRepository>(
-  'SeguroMedicoRepository',
-  {
-    useFactory: () => {
-      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
-      return new PrismaSeguroMedicoRepository(prismaClient);
-    }
-  }
-);
-
 // ===== REGISTRAR USE CASES =====
 container.register(GestionarProvinciasUseCase, {
   useFactory: () => {

@@ -42,18 +42,16 @@ export class GestionarPacientesUseCase {
         return await this.pacienteRepository.obtenerTodos(filtros);
     }
 
-    async actualizar(usuarioId: number, dto: ActualizarPacienteDto): Promise<Paciente> {
+    async actualizar(usuarioId: number, dto: any): Promise<Paciente> {
         // Verificar que el paciente existe
         await this.obtenerPorUsuarioId(usuarioId);
 
-        // Normalizar estado si existe
-        if (dto.estado) {
-            dto.estado = this.normalizarEstado(dto.estado);
-        }
 
-        // Validar documento único si se está actualizando
-        // Nota: numero_documento_identificacion NO debería ser editable, pero validamos por seguridad
-        // await this.validator.validarActualizacion(usuarioId); // This line is removed as per instruction
+
+        // Asegurar que fechaNacimiento sea Date si viene como string
+        if (dto.fechaNacimiento && typeof dto.fechaNacimiento === 'string') {
+            dto.fechaNacimiento = new Date(dto.fechaNacimiento);
+        }
 
         return await this.pacienteRepository.actualizar(usuarioId, dto);
     }

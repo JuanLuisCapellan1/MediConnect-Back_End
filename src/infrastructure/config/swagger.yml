@@ -60,6 +60,8 @@ tags:
     description: Endpoints para gestión de mensajes dentro de conversaciones
   - name: CondicionesMedicas
     description: Endpoints para gestionar condiciones médicas (alergias y enfermedades) y su relación con pacientes
+  - name: Seguros
+    description: Endpoints para gestionar seguros médicos (Admin CRUD, Pacientes máx 3, Doctores ilimitados)
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -584,7 +586,7 @@ paths:
                   description: Género del paciente (opcional).
                 altura:
                   type: number
-                  example: 1.75
+                  example: 175
                   description: Altura del paciente en cm (opcional).
                 peso:
                   type: number
@@ -9279,6 +9281,366 @@ paths:
           description: Mensaje eliminado exitosamente
 
 
+  # ==========================================
+  # SEGUROS MÉDICOS
+  # ==========================================
+
+  /seguros:
+    post:
+      tags:
+        - Seguros
+      summary: Crear seguro médico (Admin)
+      description: Permite a un administrador crear un nuevo seguro médico
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nombre
+              properties:
+                nombre:
+                  type: string
+                  example: "Seguro Universal"
+                urlImage:
+                  type: string
+                  example: "https://example.com/logo.png"
+      responses:
+        '201':
+          description: Seguro creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Seguro creado exitosamente"
+                  data:
+                    $ref: '#/components/schemas/SeguroMedico'
+        '400':
+          description: Error de validación
+        '401':
+          description: No autorizado
+        '403':
+          description: No tiene permisos (requiere rol Admin)
+
+    get:
+      tags:
+        - Seguros
+      summary: Listar seguros (Admin)
+      description: |-
+        Obtiene todos los seguros médicos con paginación
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/seguros?target=en&translate_fields=nombre`
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [Activo, Inactivo]
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Código de idioma ISO 639-1 para traducir los resultados (ej: 'en', 'es', 'fr')"
+          example: "en"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Campos a traducir separados por comas (ej: 'nombre')"
+          example: "nombre"
+      responses:
+        '200':
+          description: Seguros obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SeguroMedico'
+                  total:
+                    type: integer
+                  pagina:
+                    type: integer
+                  limite:
+                    type: integer
+
+  /seguros/{id}:
+    patch:
+      tags:
+        - Seguros
+      summary: Actualizar seguro (Admin)
+      description: Actualiza un seguro médico existente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                urlImage:
+                  type: string
+                estado:
+                  type: string
+                  enum: [Activo, Inactivo]
+      responses:
+        '200':
+          description: Seguro actualizado exitosamente
+
+    delete:
+      tags:
+        - Seguros
+      summary: Eliminar seguro (Admin)
+      description: Desactiva un seguro médico
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Seguro eliminado exitosamente
+
+  /seguros/disponibles:
+    get:
+      tags:
+        - Seguros
+      summary: Ver seguros disponibles
+      description: |-
+        Obtiene todos los seguros activos (disponible para Pacientes y Doctores)
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/seguros/disponibles?target=en&translate_fields=nombre`
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Código de idioma ISO 639-1 para traducir los resultados (ej: 'en', 'es', 'fr')"
+          example: "en"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Campos a traducir separados por comas (ej: 'nombre')"
+          example: "nombre"
+      responses:
+        '200':
+          description: Seguros disponibles obtenidos exitosamente
+
+  /seguros/mis-seguros:
+    post:
+      tags:
+        - Seguros
+      summary: Agregar seguro a paciente (máx 3)
+      description: Permite a un paciente agregar un seguro a su perfil (máximo 3 seguros)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - idSeguro
+                - idTipoSeguro
+              properties:
+                idSeguro:
+                  type: integer
+                  example: 1
+                idTipoSeguro:
+                  type: integer
+                  example: 1
+      responses:
+        '201':
+          description: Seguro agregado exitosamente
+        '400':
+          description: Error - Ya tiene 3 seguros o seguro duplicado
+
+    get:
+      tags:
+        - Seguros
+      summary: Obtener mis seguros (Paciente)
+      description: |-
+        Obtiene los seguros del paciente autenticado
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/seguros/mis-seguros?target=en&translate_fields=nombre`
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Código de idioma ISO 639-1 para traducir los resultados (ej: 'en', 'es', 'fr')"
+          example: "en"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Campos a traducir separados por comas (ej: 'nombre')"
+          example: "nombre"
+      responses:
+        '200':
+          description: Seguros obtenidos exitosamente
+
+
+  /seguros/mis-seguros/{id}:
+    delete:
+      tags:
+        - Seguros
+      summary: Eliminar mi seguro (Paciente)
+      description: Elimina un seguro del perfil del paciente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Seguro eliminado exitosamente
+
+  /seguros/seguros-aceptados:
+    post:
+      tags:
+        - Seguros
+      summary: Agregar seguro aceptado (Doctor)
+      description: Permite a un doctor agregar un seguro que acepta (sin límite)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - idSeguro
+                - idTipoSeguro
+              properties:
+                idSeguro:
+                  type: integer
+                  example: 1
+                idTipoSeguro:
+                  type: integer
+                  example: 2
+      responses:
+        '201':
+          description: Seguro agregado exitosamente
+
+    get:
+      tags:
+        - Seguros
+      summary: Obtener seguros aceptados (Doctor)
+      description: |-
+        Obtiene los seguros que el doctor acepta
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/seguros/seguros-aceptados?target=en&translate_fields=nombre`
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Código de idioma ISO 639-1 para traducir los resultados (ej: 'en', 'es', 'fr')"
+          example: "en"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Campos a traducir separados por comas (ej: 'nombre')"
+          example: "nombre"
+      responses:
+        '200':
+          description: Seguros aceptados obtenidos exitosamente
+
+          description: Seguros aceptados obtenidos exitosamente
+
+  /seguros/seguros-aceptados/{seguroId}/{tipoSeguroId}:
+    delete:
+      tags:
+        - Seguros
+      summary: Eliminar seguro aceptado (Doctor)
+      description: Elimina un seguro de los seguros aceptados del doctor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: seguroId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: tipoSeguroId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Seguro eliminado exitosamente
+
 components:
   schemas:
     Provincia:
@@ -10285,6 +10647,75 @@ components:
           $ref: '#/components/schemas/CondicionMedica'
           description: "Información completa de la condición médica (nombre, descripción, tipo)"
 
+    SeguroMedico:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Seguro Universal"
+        urlImage:
+          type: string
+          nullable: true
+          example: "https://example.com/logo.png"
+        estado:
+          type: string
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2026-02-14T08:00:00.000Z"
+
+    TipoSeguro:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Plan Básico"
+        descripcion:
+          type: string
+          nullable: true
+          example: "Cobertura básica"
+        estado:
+          type: string
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+
+    PacienteSeguro:
+      type: object
+      properties:
+        seguro:
+          $ref: '#/components/schemas/SeguroMedico'
+        tipoSeguro:
+          $ref: '#/components/schemas/TipoSeguro'
+        estado:
+          type: string
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+
+    DoctorSeguro:
+      type: object
+      properties:
+        seguro:
+          $ref: '#/components/schemas/SeguroMedico'
+        tipoSeguro:
+          $ref: '#/components/schemas/TipoSeguro'
+        estado:
+          type: string
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -10294,5 +10725,5 @@ components:
     ApiKeyAuth:
       type: apiKey
       in: header
-      name: Authorization
+
       description: Token de registro temporal para endpoints de registro (sin prefijo "Bearer")

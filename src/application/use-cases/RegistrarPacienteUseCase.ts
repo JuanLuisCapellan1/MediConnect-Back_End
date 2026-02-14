@@ -73,7 +73,7 @@ export class RegistrarPacienteUseCase {
           foto_perfil: fotoPerfilUrl ?? undefined,
           fecha_nacimiento: dto.fecha_nacimiento,
           genero: dto.genero,
-          altura: dto.altura,
+          altura: dto.altura, // Guardar directamente en CM
           peso: dto.peso,
           tipo_sangre: dto.tipo_sangre,
         },
@@ -83,11 +83,11 @@ export class RegistrarPacienteUseCase {
       if (error.message && error.message.includes('numeric field overflow')) {
         // Detectar qué campo causó el overflow basándose en el mensaje de error
         if (error.message.includes('precision 4, scale 2')) {
-          throw new Error('La altura debe estar en metros y no puede exceder 99.99 metros. Por favor, ingresa un valor válido (ejemplo: 1.75 para 1.75 metros).');
+          throw new Error('La altura excede el límite permitido.');
         } else if (error.message.includes('precision 5, scale 2')) {
           throw new Error('El peso no puede exceder 999.99 kg. Por favor, ingresa un valor válido.');
         } else {
-          throw new Error('Uno de los valores numéricos ingresados excede el límite permitido. Por favor, verifica que la altura esté en metros (ej: 1.75) y el peso en kilogramos (ej: 70).');
+          throw new Error('Uno de los valores numéricos ingresados excede el límite permitido.');
         }
       }
 

@@ -58,7 +58,7 @@ model Paciente {
   foto_documento                  String?                  @unique(map: "pacientes_documento_identificacion_key")
   fechaNacimiento                 DateTime                 @map("fecha_nacimiento") @db.Date
   genero                          String                   @db.Char(1)
-  altura                          Decimal?                 @db.Decimal(4, 2)
+  altura                          Int?                     @db.Integer
   peso                            Decimal?                 @db.Decimal(5, 2)
   tipoSangre                      String?                  @map("tipo_sangre") @db.VarChar(5)
   ubicacionId                     Int?                     @map("id_ubicacion")

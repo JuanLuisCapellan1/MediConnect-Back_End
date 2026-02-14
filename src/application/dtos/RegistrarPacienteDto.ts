@@ -48,8 +48,8 @@ export class RegistrarPacienteDto {
     if (isNaN(num)) return undefined;
     return num;
   })
-  @Min(0.30, { message: 'La altura debe ser al menos 0.30 metros (30 cm)' })
-  @Max(2.50, { message: 'La altura no puede exceder 2.50 metros (250 cm). Por favor, ingresa la altura en metros (ej: 1.75)' })
+  @Min(30, { message: 'La altura debe ser al menos 30 cm' })
+  @Max(300, { message: 'La altura no puede exceder 300 cm' })
   altura?: number;
 
   @IsOptional()
