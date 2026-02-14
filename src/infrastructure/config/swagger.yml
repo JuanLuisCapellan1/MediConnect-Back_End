@@ -58,6 +58,8 @@ tags:
     description: Endpoints para gestión de conversaciones de chat entre usuarios
   - name: Mensajes
     description: Endpoints para gestión de mensajes dentro de conversaciones
+  - name: CondicionesMedicas
+    description: Endpoints para gestionar condiciones médicas (alergias y enfermedades) y su relación con pacientes
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -5494,6 +5496,1126 @@ paths:
                schema:
                  $ref: '#/components/schemas/ErrorResponse'
 
+
+  # --- CONDICIONES MÉDICAS ENDPOINTS ---
+  /condiciones-medicas:
+    get:
+      summary: Listar condiciones médicas
+      tags:
+        - CondicionesMedicas
+      description: |
+        Obtiene una lista de condiciones médicas (alergias, enfermedades, etc.) con soporte para paginación y filtros.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/condiciones-medicas?target=en&translate_fields=nombre,descripcion`
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: Campos a traducir separados por coma
+        - name: nombre
+          in: query
+          description: Filtrar por nombre (búsqueda parcial)
+          schema:
+            type: string
+        - name: tipo
+          in: query
+          description: Filtrar por tipo de condición
+          schema:
+            type: string
+            enum: ["Alergia", "Enfermedad", "Discapacidad", "Antecedente", "Condición"]
+        - name: estado
+          in: query
+          description: Filtrar por estado
+          schema:
+            type: string
+            enum: ["Activa", "Inactiva", "Eliminada"]
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Condiciones médicas obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CondicionMedica'
+                  paginacion:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 25
+                      pagina:
+                        type: integer
+                        example: 1
+                      limite:
+                        type: integer
+                        example: 10
+                      totalPaginas:
+                        type: integer
+                        example: 3
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear condición médica
+      tags:
+        - CondicionesMedicas
+      description: Crea una nueva condición médica (alergia, enfermedad, etc.)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nombre
+                - tipo
+              properties:
+                nombre:
+                  type: string
+                  example: "Alergia al Polen"
+                descripcion:
+                  type: string
+                  example: "Alergia estacional a polen de árboles"
+                tipo:
+                  type: string
+                  enum: ["Alergia", "Enfermedad", "Discapacidad", "Antecedente", "Condición"]
+                  example: "Alergia"
+      responses:
+        '201':
+          description: Condición médica creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Condición médica creada exitosamente."
+                  data:
+                    $ref: '#/components/schemas/CondicionMedica'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El nombre ya existe
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'La condición médica "Alergia al Polen" ya existe en el sistema.'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /condiciones-medicas/{id}:
+    get:
+      summary: Obtener condición médica por ID
+      tags:
+        - CondicionesMedicas
+      description: Obtiene los detalles de una condición médica específica
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Condición médica obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/CondicionMedica'
+        '404':
+          description: Condición médica no encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'La condición médica con ID 1 no fue encontrada.'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      summary: Actualizar condición médica
+      tags:
+        - CondicionesMedicas
+      description: Actualiza parcialmente una condición médica. Todos los campos son opcionales.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  example: "Alergia al Polen Primaveral"
+                descripcion:
+                  type: string
+                  example: "Alergia estacional severa a polen de árboles"
+                tipo:
+                  type: string
+                  enum: ["Alergia", "Enfermedad", "Discapacidad", "Antecedente", "Condición"]
+                  example: "Alergia"
+                estado:
+                  type: string
+                  enum: ["Activa", "Inactiva", "Eliminada"]
+                  example: "Activa"
+      responses:
+        '200':
+          description: Condición médica actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Condición médica actualizada exitosamente."
+                  data:
+                    $ref: '#/components/schemas/CondicionMedica'
+        '404':
+          description: Condición médica no encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'La condición médica con ID 1 no fue encontrada.'
+        '409':
+          description: El nombre ya existe
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'La condición médica "Alergia al Polen" ya existe en el sistema.'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Eliminar condición médica (lógico)
+      tags:
+        - CondicionesMedicas
+      description: |
+        Realiza una eliminación lógica de la condición médica, cambiando su estado a "Eliminada".
+        El registro no se borra físicamente de la base de datos.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Condición médica eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Condición médica eliminada exitosamente."
+        '404':
+          description: Condición médica no encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: 'La condición médica con ID 1 no fue encontrada.'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /condiciones-medicas/{condicionId}/pacientes/{pacienteId}:
+    post:
+      summary: Asignar condición médica a paciente
+      tags:
+        - CondicionesMedicas
+      description: Asigna una condición médica existente a un paciente con notas opcionales
+      parameters:
+        - name: condicionId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+        - name: pacienteId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notas:
+                  type: string
+                  example: "Diagnosticado en enero 2024"
+      responses:
+        '201':
+          description: Condición asignada al paciente exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Condición asignada al paciente exitosamente."
+                  data:
+                    $ref: '#/components/schemas/CaracteristicaEspecial'
+        '400':
+          description: Condición ya asignada o datos inválidos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Esta condición ya está asignada al paciente."
+        '404':
+          description: Condición médica no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /condiciones-medicas/pacientes/{pacienteId}:
+    get:
+      summary: Obtener condiciones médicas de un paciente
+      tags:
+        - CondicionesMedicas
+      description: Obtiene todas las condiciones médicas asignadas a un paciente con filtros opcionales
+      parameters:
+        - name: pacienteId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+        - name: tipo
+          in: query
+          description: Filtrar por tipo de condición
+          schema:
+            type: string
+            enum: ["Alergia", "Enfermedad", "Discapacidad", "Antecedente", "Condición"]
+        - name: estado
+          in: query
+          description: Filtrar por estado
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo"]
+      responses:
+        '200':
+          description: Condiciones del paciente obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CaracteristicaEspecial'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /condiciones-medicas/pacientes/{pacienteId}/condiciones/{condicionId}:
+    patch:
+      summary: Actualizar condición médica de un paciente
+      tags:
+        - CondicionesMedicas
+      description: Actualiza las notas o estado de una condición médica asignada a un paciente
+      parameters:
+        - name: pacienteId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+        - name: condicionId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notas:
+                  type: string
+                  example: "Notas actualizadas - mejora significativa"
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+      responses:
+        '200':
+          description: Condición del paciente actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Condición del paciente actualizada exitosamente."
+                  data:
+                    $ref: '#/components/schemas/CaracteristicaEspecial'
+        '400':
+          description: La condición no está asignada a este paciente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "La condición no está asignada a este paciente."
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Remover condición médica de un paciente
+      tags:
+        - CondicionesMedicas
+      description: |
+        Remueve una condición médica de un paciente (eliminación lógica).
+        Cambia el estado a "Inactivo" en lugar de borrar el registro.
+      parameters:
+        - name: pacienteId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+        - name: condicionId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Condición removida del paciente exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Condición removida del paciente exitosamente."
+        '400':
+          description: La condición no está asignada a este paciente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "La condición no está asignada a este paciente."
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # --- PATIENT SELF-MANAGEMENT ENDPOINTS ---
+  /condiciones-medicas/alergias/disponibles:
+    get:
+      summary: Listar alergias disponibles en el catálogo
+      tags:
+        - CondicionesMedicas - Pacientes
+      description: |-
+        Obtiene todas las alergias disponibles en el catálogo para que el paciente pueda agregarlas a su perfil.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/condiciones-medicas/alergias/disponibles?target=en&translate_fields=nombre,descripcion`
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: Campos a traducir separados por coma
+      responses:
+        '200':
+          description: Lista de alergias disponibles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CondicionMedica'
+        '401':
+          description: No autorizado
+        '403':
+          description: Acceso denegado - Solo pacientes
+
+  /condiciones-medicas/alergias/buscar:
+    get:
+      summary: Buscar alergias por nombre
+      tags:
+        - CondicionesMedicas - Pacientes
+      description: Busca alergias en el catálogo por nombre para facilitar la selección
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "polen"
+          description: Término de búsqueda
+        - name: limite
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+          example: 10
+          description: Límite de resultados
+        - name: source
+          in: query
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción"
+        - name: translate_fields
+          in: query
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: "Campos a traducir separados por coma"
+      responses:
+        '200':
+          description: Resultados de búsqueda
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CondicionMedica'
+        '400':
+          description: Parámetros inválidos
+        '401':
+          description: No autorizado
+
+  /condiciones-medicas/mis-alergias:
+    post:
+      summary: Agregar una alergia del catálogo al perfil del paciente
+      tags:
+        - CondicionesMedicas - Pacientes
+      description: Permite al paciente agregar una alergia existente del catálogo a su perfil médico
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - condicionId
+              properties:
+                condicionId:
+                  type: integer
+                  example: 5
+                  description: ID de la alergia del catálogo
+                notas:
+                  type: string
+                  example: "Reacción severa en primavera, necesito antihistamínicos"
+                  description: Notas personales sobre la alergia (opcional)
+      responses:
+        '201':
+          description: Alergia agregada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Alergia agregada exitosamente."
+                  data:
+                    type: object
+                    description: Alergia del catálogo con las notas del paciente incluidas
+                    properties:
+                      id:
+                        type: integer
+                        example: 5
+                      nombre:
+                        type: string
+                        example: "Alergia al polen"
+                      descripcion:
+                        type: string
+                        example: "Alergia común en primavera"
+                      tipo:
+                        type: string
+                        example: "Alergia"
+                      notas:
+                        type: string
+                        example: "Reacción severa en primavera, necesito antihistamínicos"
+                        description: Notas personales del paciente sobre esta alergia
+        '400':
+          description: Error de validación (alergia ya registrada, no es una alergia, etc.)
+        '401':
+          description: No autorizado
+
+  /condiciones-medicas/mis-alergias/{id}:
+    patch:
+      summary: Actualizar notas de una alergia del paciente
+      tags:
+        - CondicionesMedicas - Pacientes
+      description: |
+        Permite al paciente actualizar las notas personales y estado de una alergia en su perfil.
+        
+        **¿Qué se actualiza?**
+        - Las notas personales del paciente en `caracteristicas_especiales`
+        - El estado de la relación paciente-alergia (Activo/Inactivo)
+        
+        **Importante:**
+        - Solo se actualizan las notas del paciente, NO la descripción del catálogo de alergias
+        - Solo funciona para alergias (tipo='Alergia'), no para condiciones personales
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 5
+          description: ID de la alergia a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notas:
+                  type: string
+                  example: "Actualización: ahora solo me afecta en primavera, he mejorado con el tratamiento"
+                  description: Nuevas notas personales sobre la alergia
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+                  description: Nuevo estado de la alergia en el perfil del paciente
+      responses:
+        '200':
+          description: Alergia actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Alergia actualizada exitosamente."
+                  data:
+                    $ref: '#/components/schemas/CondicionMedica'
+        '400':
+          description: Error de validación (no es una alergia, no existe en tu perfil, etc.)
+        '401':
+          description: No autorizado
+
+    delete:
+      summary: Eliminar una alergia del perfil del paciente
+      tags:
+        - CondicionesMedicas - Pacientes
+      description: |
+        Permite al paciente eliminar una alergia de su perfil médico.
+        
+        **Funcionamiento:**
+        - Marca la alergia como "Inactivo" en `caracteristicas_especiales`
+        - NO elimina la alergia del catálogo, solo la remueve del perfil del paciente
+        - Solo funciona para alergias (tipo='Alergia'), no para condiciones personales
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 5
+          description: ID de la alergia a eliminar
+      responses:
+        '200':
+          description: Alergia eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Alergia eliminada exitosamente de tu perfil."
+        '400':
+          description: Error de validación (no es una alergia, no existe en tu perfil, etc.)
+        '401':
+          description: No autorizado
+
+
+  /condiciones-medicas/mis-condiciones:
+    post:
+      summary: Crear una condición médica personal
+      tags:
+        - CondicionesMedicas - Pacientes
+      description: |
+        Permite al paciente crear una condición médica personalizada que no está en el catálogo.
+        
+        **Funcionamiento:**
+        - Se crea una entrada única en `condiciones_medicas` con un nombre generado automáticamente
+        - Se vincula al paciente mediante `caracteristicas_especiales`
+        - La descripción proporcionada se guarda en las notas del paciente
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - notas
+              properties:
+                notas:
+                  type: string
+                  example: "Tengo migrañas frecuentes los fines de semana, especialmente cuando hay mucho sol"
+                  description: Descripción/notas de la condición personal
+      responses:
+        '201':
+          description: Condición creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Condición creada exitosamente."
+                  data:
+                    type: object
+                    description: Condición personal creada con las notas del paciente incluidas
+                    properties:
+                      id:
+                        type: integer
+                        example: 123
+                      nombre:
+                        type: string
+                        example: "Condición Personal"
+                      descripcion:
+                        type: string
+                        example: "Condición personal del paciente"
+                      tipo:
+                        type: string
+                        example: "Condición"
+                      notas:
+                        type: string
+                        example: "Tengo migrañas frecuentes los fines de semana, especialmente cuando hay mucho sol"
+                        description: Notas personales del paciente sobre esta condición
+        '400':
+          description: Error de validación
+        '401':
+          description: No autorizado
+
+    get:
+      summary: Obtener condiciones médicas del paciente
+      tags:
+        - CondicionesMedicas - Pacientes
+      description: |
+        Retorna todas las condiciones médicas (alergias y condiciones personales) del paciente autenticado.
+        
+        **Filtros disponibles:**
+        - Por tipo: `Alergia` o `Condición`
+        - Por estado: `Activa` o `Inactiva`
+        
+        **Traducción automática:**
+        - Agrega `?target=en&translate_fields=nombre,descripcion` para traducir los campos
+        - Idiomas soportados: es, en, fr, de, it, pt, etc.
+        - Ejemplo: `/mis-condiciones?target=en&translate_fields=nombre,descripcion`
+        
+        **Respuesta:**
+        - Lista de condiciones con información completa de cada una
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tipo
+          in: query
+          schema:
+            type: string
+            enum: ["Alergia", "Condición"]
+          example: "Alergia"
+          description: Filtrar por tipo de condición
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: ["Activa", "Inactiva"]
+          example: "Activa"
+          description: Filtrar por estado
+        - name: source
+          in: query
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción (activa la traducción)"
+        - name: translate_fields
+          in: query
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: "Campos a traducir separados por coma (requerido si se usa traducción)"
+      responses:
+        '200':
+          description: Lista de condiciones obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Condiciones obtenidas exitosamente."
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CondicionMedica'
+        '401':
+          description: No autorizado
+        '500':
+          description: Error interno del servidor
+
+  /condiciones-medicas/mis-condiciones/{id}:
+    patch:
+      summary: Actualizar notas de una condición personal del paciente
+      tags:
+        - CondicionesMedicas - Pacientes
+      description: |
+        Permite al paciente actualizar las notas personales y estado de una condición personal.
+        
+        **¿Qué se actualiza?**
+        - Las notas personales del paciente en `caracteristicas_especiales`
+        - El estado de la relación paciente-condición (Activo/Inactivo)
+        
+        **Importante:**
+        - Solo funciona para condiciones personales (tipo='Condición'), no para alergias
+        - Para actualizar alergias, usa `PATCH /mis-alergias/:id`
+        - Solo se actualizan las notas del paciente
+        
+        **Respuesta:**
+        - Retorna la condición sin modificar (las notas se almacenan por separado)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+          description: ID de la condición a actualizar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notas:
+                  type: string
+                  example: "Actualización: las migrañas han mejorado desde que uso gafas de sol"
+                  description: Nuevas notas personales sobre la condición
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+                  description: Nuevo estado de la relación paciente-condición
+      responses:
+        '200':
+          description: Condición actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Condición actualizada exitosamente."
+                  data:
+                    $ref: '#/components/schemas/CondicionMedica'
+        '400':
+          description: Error de validación (condición no existe en tu perfil)
+        '401':
+          description: No autorizado
+
+    delete:
+      summary: Eliminar una condición personal del paciente
+      tags:
+        - CondicionesMedicas - Pacientes
+      description: |
+        Permite al paciente eliminar una condición personal de su perfil médico.
+        
+        **Funcionamiento:**
+        - Marca la condición como "Inactivo" en `caracteristicas_especiales`
+        - Solo funciona para condiciones personales (tipo='Condición'), no para alergias
+        - Para eliminar alergias, usa `DELETE /mis-alergias/:id`
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+          description: ID de la condición personal a eliminar
+      responses:
+        '200':
+          description: Condición eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Condición eliminada exitosamente de tu perfil."
+        '400':
+          description: Error de validación (condición no existe en tu perfil)
+        '401':
+          description: No autorizado
+
   # --- PACIENTES ENDPOINTS ---
   /pacientes:
     get:
@@ -9106,6 +10228,62 @@ components:
           type: number
           nullable: true
           example: 1500.00
+
+    CondicionMedica:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Alergia al Polen"
+        descripcion:
+          type: string
+          nullable: true
+          example: "Alergia estacional a polen de árboles"
+        tipo:
+          type: string
+          enum: ["Alergia", "Enfermedad", "Discapacidad", "Antecedente", "Condición"]
+          example: "Alergia"
+        estado:
+          type: string
+          enum: ["Activa", "Inactiva", "Eliminada"]
+          example: "Activa"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    CaracteristicaEspecial:
+      type: object
+      properties:
+        pacienteId:
+          type: integer
+          example: 1
+        condicionId:
+          type: integer
+          example: 1
+        notas:
+          type: string
+          nullable: true
+          example: "Diagnosticado en enero 2024"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo"]
+          example: "Activo"
+        registradoEn:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        actualizadoEn:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-02-10T14:20:00Z"
+        condicion:
+          $ref: '#/components/schemas/CondicionMedica'
+          description: "Información completa de la condición médica (nombre, descripción, tipo)"
 
   securitySchemes:
     bearerAuth:

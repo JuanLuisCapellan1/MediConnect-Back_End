@@ -23,6 +23,7 @@ import AuthPasswordRoutes from './AuthPasswordRoutes';
 import NotificacionesRoutes from './notificaciones.routes';
 import ConversacionesRoutes from './conversaciones.routes';
 import MensajesRoutes from './mensajes.routes';
+import CondicionesMedicasRoutes from './CondicionesMedicasRoutes';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 import { translationRateLimitMiddleware } from '../middlewares/TranslationRateLimiter';
 
@@ -100,5 +101,8 @@ router.use('/conversaciones', ConversacionesRoutes);
 
 // Rutas de Mensajes
 router.use('/conversaciones', MensajesRoutes);
+
+// Rutas de Condiciones Médicas (Catálogo, Doctores y Pacientes)
+router.use('/condiciones-medicas', CondicionesMedicasRoutes);
 
 export default router;

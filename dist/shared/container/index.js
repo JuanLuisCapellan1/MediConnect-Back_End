@@ -28,6 +28,7 @@ const PrismaMensajesRepository_1 = require("../../infrastructure/repositories/Pr
 const PrismaLecturasConversacionRepository_1 = require("../../infrastructure/repositories/PrismaLecturasConversacionRepository");
 const PrismaMediaRepository_1 = require("../../infrastructure/repositories/PrismaMediaRepository");
 const PrismaCentroSaludRepository_1 = require("../../infrastructure/repositories/PrismaCentroSaludRepository");
+const PrismaCondicionMedicaRepository_1 = require("../../infrastructure/repositories/PrismaCondicionMedicaRepository");
 const BcryptPasswordHasher_1 = require("../../infrastructure/external-services/BcryptPasswordHasher");
 const LibreTranslateService_1 = require("../../infrastructure/external-services/LibreTranslateService");
 const RedisCacheService_1 = require("../../infrastructure/external-services/RedisCacheService");
@@ -56,6 +57,7 @@ const TipoCentroSaludValidator_1 = require("../../domain/validators/TiposCentros
 const ProfesionValidator_1 = require("../../domain/validators/Profesiones/ProfesionValidator");
 const ExperienciaLaboralValidator_1 = require("../../domain/validators/ExperienciasLaborales/ExperienciaLaboralValidator");
 const CentroSaludValidator_1 = require("../../domain/validators/CentrosSalud/CentroSaludValidator");
+const CondicionMedicaValidator_1 = require("../../domain/validators/CondicionesMedicas/CondicionMedicaValidator");
 // UseCases
 const GestionarProvinciasUseCase_1 = require("../../application/use-cases/GestionarProvinciasUseCase");
 const GestionarMunicipiosUseCase_1 = require("../../application/use-cases/GestionarMunicipiosUseCase");
@@ -92,6 +94,7 @@ const CompletarPerfilCentroSaludUseCase_1 = require("../../application/use-cases
 const RegistrarCentroUseCase_1 = require("../../application/use-cases/RegistrarCentroUseCase");
 const ActualizarFotoPerfilUseCase_1 = require("../../application/use-cases/ActualizarFotoPerfilUseCase");
 const CentrosSaludController_1 = require("../../infrastructure/http/controllers/CentrosSaludController");
+const GestionarCondicionesMedicasUseCase_1 = require("../../application/use-cases/GestionarCondicionesMedicasUseCase");
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 // Registrar PrismaClient como singleton
 tsyringe_1.container.register('PrismaClient', {
@@ -222,6 +225,12 @@ tsyringe_1.container.register(ExperienciaLaboralValidator_1.ExperienciaLaboralVa
         return new ExperienciaLaboralValidator_1.ExperienciaLaboralValidator(repo);
     }
 });
+tsyringe_1.container.register(CondicionMedicaValidator_1.CondicionMedicaValidator, {
+    useFactory: () => {
+        const repo = tsyringe_1.container.resolve('CondicionMedicaRepository');
+        return new CondicionMedicaValidator_1.CondicionMedicaValidator(repo);
+    }
+});
 tsyringe_1.container.register(EstadoValidator_1.EstadoValidator, {
     useFactory: () => {
         return new EstadoValidator_1.EstadoValidator();
@@ -340,6 +349,12 @@ tsyringe_1.container.register('IExperienciasLaboralesRepository', {
         const prismaClient = tsyringe_1.container.resolve('PrismaClient');
         const redisCache = tsyringe_1.container.resolve(RedisCacheService_1.RedisCacheService);
         return new PrismaExperienciasLaboralesRepository_1.PrismaExperienciasLaboralesRepository(prismaClient, redisCache);
+    }
+});
+tsyringe_1.container.register('CondicionMedicaRepository', {
+    useFactory: (c) => {
+        const prismaClient = c.resolve('PrismaClient');
+        return new PrismaCondicionMedicaRepository_1.PrismaCondicionMedicaRepository(prismaClient);
     }
 });
 tsyringe_1.container.register('UsuarioRepository', { useClass: PrismaUsuarioRepository_1.PrismaUsuarioRepository });
@@ -571,6 +586,19 @@ tsyringe_1.container.register(GestionarMediaUseCase_1.GestionarMediaUseCase, {
     useFactory: () => {
         const mediaRepository = tsyringe_1.container.resolve('MediaRepository');
         return new GestionarMediaUseCase_1.GestionarMediaUseCase(mediaRepository);
+    }
+});
+tsyringe_1.container.register(GestionarCondicionesMedicasUseCase_1.GestionarCondicionesMedicasUseCase, {
+    useFactory: () => {
+        const repo = tsyringe_1.container.resolve('CondicionMedicaRepository');
+        const validator = tsyringe_1.container.resolve(CondicionMedicaValidator_1.CondicionMedicaValidator);
+        const estadoValidator = tsyringe_1.container.resolve(EstadoValidator_1.EstadoValidator);
+        return new GestionarCondicionesMedicasUseCase_1.GestionarCondicionesMedicasUseCase(repo, validator, estadoValidator);
+    }
+});
+tsyringe_1.container.register('GestionarCondicionesMedicasUseCase', {
+    useFactory: () => {
+        return tsyringe_1.container.resolve(GestionarCondicionesMedicasUseCase_1.GestionarCondicionesMedicasUseCase);
     }
 });
 // ===== REGISTRAR SERVICIOS DE APLICACIÓN =====

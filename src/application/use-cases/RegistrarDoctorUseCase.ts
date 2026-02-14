@@ -1,5 +1,6 @@
 import { inject, injectable } from 'tsyringe';
 import { IUsuarioRepository } from '../../domain/repositories/IUsuarioRepository';
+import { IEspecialidadRepository } from '../../domain/repositories/IEspecialidadRepository';
 import { IPasswordHasher } from '../interfaces/IPasswordHasher';
 import { IStorageService } from '../interfaces/IStorageService';
 import { RegistrarDoctorDto } from '../dtos/RegistrarDoctorDto';
@@ -9,6 +10,7 @@ import { AuthService } from '../../infrastructure/external-services/AuthService'
 export class RegistrarDoctorUseCase {
   constructor(
     @inject('UsuarioRepository') private usuarioRepository: IUsuarioRepository,
+    @inject('EspecialidadRepository') private especialidadRepository: IEspecialidadRepository,
     @inject('PasswordHasher') private passwordHasher: IPasswordHasher,
     @inject('StorageService') private storageService: IStorageService,
     @inject(AuthService) private authService: AuthService
@@ -46,8 +48,22 @@ export class RegistrarDoctorUseCase {
       throw new Error('Ya existe un doctor registrado con este número de exequatur. Por favor, verifica tus datos o contacta con soporte si crees que esto es un error.');
     }
 
-    // Validación de negocio: la especialidad principal NO debe estar en las secundarias
+    // Validar que la especialidad principal exista
+    const especialidadPrincipal = await this.especialidadRepository.obtenerPorId(dto.id_especialidad_principal);
+    if (!especialidadPrincipal) {
+      throw new Error(`La especialidad principal con ID ${dto.id_especialidad_principal} no existe. Por favor, selecciona una especialidad válida.`);
+    }
+
+    // Validar que las especialidades secundarias existan (si se proporcionan)
     if (dto.ids_especialidades_secundarias && dto.ids_especialidades_secundarias.length > 0) {
+      for (const idEspecialidad of dto.ids_especialidades_secundarias) {
+        const especialidadSecundaria = await this.especialidadRepository.obtenerPorId(idEspecialidad);
+        if (!especialidadSecundaria) {
+          throw new Error(`La especialidad secundaria con ID ${idEspecialidad} no existe. Por favor, verifica las especialidades seleccionadas.`);
+        }
+      }
+
+      // Validación de negocio: la especialidad principal NO debe estar en las secundarias
       if (dto.ids_especialidades_secundarias.includes(dto.id_especialidad_principal)) {
         throw new Error('La especialidad principal no puede estar incluida en las especialidades secundarias');
       }
@@ -57,11 +73,9 @@ export class RegistrarDoctorUseCase {
     const MAX_FOTO_DOCUMENTO = 2;
     const MAX_TITULO_ACADEMICO = 10;
 
-    // Validar que existan los archivos requeridos
-    if (!files.fotoPerfil?.[0]) {
-      throw new Error('La foto de perfil es requerida');
-    }
+    // fotoPerfil y certificaciones son opcionales
 
+    // Validar archivos requeridos
     if (!files.fotoDocumento || files.fotoDocumento.length === 0) {
       throw new Error('Al menos una foto de documento es requerida');
     }
@@ -78,21 +92,20 @@ export class RegistrarDoctorUseCase {
       throw new Error(`Máximo ${MAX_TITULO_ACADEMICO} títulos académicos permitidos`);
     }
 
-    if (!files.certificaciones || files.certificaciones.length === 0) {
-      throw new Error('Al menos una certificación es requerida');
-    }
-
     // Hashear contraseña
     const hashedPassword = await this.passwordHasher.hash(dto.password);
 
     try {
-      // Subir foto de perfil (solo 1)
-      const fotoPerfilUrl = await this.storageService.uploadFile(
-        files.fotoPerfil[0].buffer,
-        `doctors/${email}/profile.jpg`,
-        'public-assets',
-        files.fotoPerfil[0].mimetype
-      );
+      // Subir foto de perfil (opcional)
+      let fotoPerfilUrl: string | null = null;
+      if (files.fotoPerfil?.[0]) {
+        fotoPerfilUrl = await this.storageService.uploadFile(
+          files.fotoPerfil[0].buffer,
+          `doctors/${email}/profile.jpg`,
+          'public-assets',
+          files.fotoPerfil[0].mimetype
+        );
+      }
 
       // Subir múltiples fotos de documento (en paralelo)
       const fotosDocumentoPromises = files.fotoDocumento.map((file: any, index: number) =>
@@ -128,28 +141,31 @@ export class RegistrarDoctorUseCase {
         }))
       );
 
-      // Subir múltiples certificaciones (en paralelo)
-      const certificacionesPromises = files.certificaciones.map((file: any, index: number) =>
-        this.storageService.uploadFile(
-          file.buffer,
-          `doctors/${email}/certifications/cert-${index + 1}.${this.getExtension(file.mimetype)}`,
-          'secure-documents',
-          file.mimetype
-        ).then(url => ({
-          tipo_documento: 'certificacion',
-          url_archivo: url,
-          nombre_original: file.originalname,
-          tipo_mime: file.mimetype,
-          tamanio_bytes: file.size,
-          descripcion: dto.descripciones_certificaciones?.[index] || null,
-        }))
-      );
+      // Subir múltiples certificaciones (en paralelo) - opcional
+      let certificacionesPromises: Promise<any>[] = [];
+      if (files.certificaciones && files.certificaciones.length > 0) {
+        certificacionesPromises = files.certificaciones.map((file: any, index: number) =>
+          this.storageService.uploadFile(
+            file.buffer,
+            `doctors/${email}/certifications/cert-${index + 1}.${this.getExtension(file.mimetype)}`,
+            'secure-documents',
+            file.mimetype
+          ).then(url => ({
+            tipo_documento: 'certificacion',
+            url_archivo: url,
+            nombre_original: file.originalname,
+            tipo_mime: file.mimetype,
+            tamanio_bytes: file.size,
+            descripcion: dto.descripciones_certificaciones?.[index] || null,
+          }))
+        );
+      }
 
       // Esperar a que todos los archivos se suban en paralelo
       const [fotosDocumento, titulosAcademicos, certificaciones] = await Promise.all([
         Promise.all(fotosDocumentoPromises),
         Promise.all(titulosAcademicosPromises),
-        Promise.all(certificacionesPromises),
+        certificacionesPromises.length > 0 ? Promise.all(certificacionesPromises) : Promise.resolve([]),
       ]);
 
       // Combinar todos los documentos

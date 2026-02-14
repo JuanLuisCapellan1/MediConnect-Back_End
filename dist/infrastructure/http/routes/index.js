@@ -28,6 +28,7 @@ const AuthPasswordRoutes_1 = __importDefault(require("./AuthPasswordRoutes"));
 const notificaciones_routes_1 = __importDefault(require("./notificaciones.routes"));
 const conversaciones_routes_1 = __importDefault(require("./conversaciones.routes"));
 const mensajes_routes_1 = __importDefault(require("./mensajes.routes"));
+const CondicionesMedicasRoutes_1 = __importDefault(require("./CondicionesMedicasRoutes"));
 const TranslationMiddleware_1 = require("../middlewares/TranslationMiddleware");
 const TranslationRateLimiter_1 = require("../middlewares/TranslationRateLimiter");
 const router = (0, express_1.Router)();
@@ -85,4 +86,6 @@ router.use('/notificaciones', notificaciones_routes_1.default);
 router.use('/conversaciones', conversaciones_routes_1.default);
 // Rutas de Mensajes
 router.use('/conversaciones', mensajes_routes_1.default);
+// Rutas de Condiciones Médicas (Catálogo, Doctores y Pacientes)
+router.use('/condiciones-medicas', CondicionesMedicasRoutes_1.default);
 exports.default = router;

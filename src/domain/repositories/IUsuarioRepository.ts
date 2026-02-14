@@ -145,7 +145,7 @@ export interface SaveDoctorWithDocumentsData {
     telefono: string;
     tipo_documento_identificacion: string;
     numero_documento_identificacion: string;
-    foto_perfil: string;
+    foto_perfil: string | null;
     exequatur: string;
     biografia?: string;
     estado_verificacion: string;

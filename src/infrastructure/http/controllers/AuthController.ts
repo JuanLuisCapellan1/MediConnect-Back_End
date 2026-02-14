@@ -116,11 +116,11 @@ export class AuthController {
       const MAX_FOTO_DOCUMENTO = 2;
       const MAX_TITULO_ACADEMICO = 10;
 
-      // Validar fotoPerfil (exactamente 1)
-      if (!files.fotoPerfil || files.fotoPerfil.length === 0) {
+      // Validar fotoPerfil (opcional, máximo 1)
+      if (files.fotoPerfil && files.fotoPerfil.length > 1) {
         res.status(400).json({
           success: false,
-          message: 'La foto de perfil es requerida'
+          message: 'Solo puedes subir 1 foto de perfil'
         });
         return;
       }
@@ -159,14 +159,7 @@ export class AuthController {
         return;
       }
 
-      // Validar certificaciones (mínimo 1, sin límite superior)
-      if (!files.certificaciones || files.certificaciones.length === 0) {
-        res.status(400).json({
-          success: false,
-          message: 'Al menos una certificación es requerida'
-        });
-        return;
-      }
+      // Certificaciones son opcionales
 
 
       const dto = plainToInstance(RegistrarDoctorDto, req.body, {
@@ -481,7 +474,7 @@ export class AuthController {
   async actualizarFotoPerfil(req: Request, res: Response): Promise<void> {
     try {
       // Verificar autenticación
-      const usuarioId = (req as any).usuarioId;
+      const usuarioId = (req as any).user?.userId;
       if (!usuarioId) {
         res.status(401).json({
           success: false,
