@@ -7,7 +7,7 @@ export class ObtenerMisSegurosUseCase {
         @inject('SeguroMedicoRepository') private repository: ISeguroMedicoRepository
     ) { }
 
-    async execute(pacienteId: number): Promise<any[]> {
-        return await this.repository.obtenerSegurosPaciente(pacienteId);
+    async execute(pacienteId: number, incluirHistorial: boolean = false): Promise<any[]> {
+        return await this.repository.obtenerSegurosPaciente(pacienteId, incluirHistorial);
     }
 }

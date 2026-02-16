@@ -196,4 +196,15 @@ routerAuth.get('/verificar-documento', (req, res) =>
   authController.verificarDocumento(req, res)
 );
 
+/**
+ * PATCH /auth/cambiar-email
+ * Permite al usuario cambiar su dirección de email
+ * Requiere autenticación JWT
+ */
+routerAuth.patch(
+  '/cambiar-email',
+  autenticarJWT,
+  (req, res) => authController.cambiarEmail(req, res)
+);
+
 export default routerAuth;

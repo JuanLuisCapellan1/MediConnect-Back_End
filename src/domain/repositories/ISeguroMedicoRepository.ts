@@ -24,7 +24,7 @@ export interface ISeguroMedicoRepository {
     // Paciente - Gestión de seguros (máximo 3)
     // ============================================
     agregarSeguroPaciente(pacienteId: number, dto: AgregarSeguroPacienteDto): Promise<any>;
-    obtenerSegurosPaciente(pacienteId: number): Promise<any[]>;
+    obtenerSegurosPaciente(pacienteId: number, incluirHistorial?: boolean): Promise<any[]>;
     eliminarSeguroPaciente(pacienteId: number, seguroId: number): Promise<void>;
     contarSegurosActivosPaciente(pacienteId: number): Promise<number>;
     verificarSeguroExistentePaciente(pacienteId: number, seguroId: number): Promise<boolean>;

@@ -223,7 +223,7 @@ export class PrismaCondicionMedicaRepository implements ICondicionMedicaReposito
             where: {
                 pacienteId,
                 condicionId,
-                estado: { not: 'Inactivo' },
+                estado: 'Activo', // Solo validar contra condiciones activas
             },
         });
         return count > 0;
@@ -272,6 +272,19 @@ export class PrismaCondicionMedicaRepository implements ICondicionMedicaReposito
         pacienteId: number,
         dto: any
     ): Promise<any> {
+        // Validar que no exista ya una alergia activa con esta condición
+        const existente = await this.prisma.caracteristicaEspecial.findFirst({
+            where: {
+                pacienteId,
+                condicionId: dto.condicionId,
+                estado: 'Activo',
+            },
+        });
+
+        if (existente) {
+            throw new Error('Ya tienes esta alergia registrada como activa');
+        }
+
         const nueva = await this.prisma.caracteristicaEspecial.create({
             data: {
                 pacienteId,
@@ -426,7 +439,7 @@ export class PrismaCondicionMedicaRepository implements ICondicionMedicaReposito
             throw new Error('La condición especificada no es una alergia');
         }
 
-        // Marcar como inactivo en caracteristicas_especiales
+        // Marcar como eliminado en caracteristicas_especiales
         await this.prisma.caracteristicaEspecial.update({
             where: {
                 pacienteId_condicionId: {
@@ -435,7 +448,7 @@ export class PrismaCondicionMedicaRepository implements ICondicionMedicaReposito
                 },
             },
             data: {
-                estado: 'Inactivo',
+                estado: 'Eliminado',
                 actualizadoEn: new Date(),
             },
         });
@@ -497,7 +510,7 @@ export class PrismaCondicionMedicaRepository implements ICondicionMedicaReposito
             throw new Error('La condición especificada no es una condición personal');
         }
 
-        // Marcar como inactivo en caracteristicas_especiales
+        // Marcar como eliminado en caracteristicas_especiales
         await this.prisma.caracteristicaEspecial.update({
             where: {
                 pacienteId_condicionId: {
@@ -506,7 +519,7 @@ export class PrismaCondicionMedicaRepository implements ICondicionMedicaReposito
                 },
             },
             data: {
-                estado: 'Inactivo',
+                estado: 'Eliminado',
                 actualizadoEn: new Date(),
             },
         });

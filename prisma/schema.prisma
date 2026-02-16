@@ -420,6 +420,7 @@ model DoctorSeguro {
 }
 
 model PacienteSeguro {
+  id            Int          @id @default(autoincrement())
   pacienteId    Int          @map("id_usuario")
   seguroId      Int          @map("id_seguro")
   tipoSeguroId  Int          @map("id_tipo_seguro")
@@ -430,11 +431,13 @@ model PacienteSeguro {
   tipoSeguro    TipoSeguro   @relation(fields: [tipoSeguroId], references: [id])
   paciente      Paciente     @relation(fields: [pacienteId], references: [usuarioId])
 
-  @@id([pacienteId, seguroId])
+  @@unique([pacienteId, seguroId], map: "idx_paciente_seguro_activo")
+  @@index([pacienteId], map: "idx_paciente_seguros_usuario")
   @@map("pacientes_seguros")
 }
 
 model CaracteristicaEspecial {
+  id            Int             @id @default(autoincrement())
   pacienteId    Int             @map("id_usuario")
   condicionId   Int             @map("id_condicion")
   notas         String?
@@ -444,7 +447,8 @@ model CaracteristicaEspecial {
   condicion     CondicionMedica @relation(fields: [condicionId], references: [id])
   paciente      Paciente        @relation(fields: [pacienteId], references: [usuarioId])
 
-  @@id([pacienteId, condicionId])
+  @@unique([pacienteId, condicionId], map: "idx_paciente_condicion_activa")
+  @@index([pacienteId], map: "idx_caracteristicas_usuario")
   @@map("caracteristicas_especiales")
 }
 

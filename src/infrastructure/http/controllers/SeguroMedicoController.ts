@@ -155,9 +155,10 @@ export class SeguroMedicoController {
     async obtenerMisSeguros(req: Request, res: Response): Promise<void> {
         try {
             const pacienteId = (req as any).user?.userId;
+            const incluirHistorial = req.query.incluirHistorial === 'true';
 
             const useCase = container.resolve(ObtenerMisSegurosUseCase);
-            const seguros = await useCase.execute(pacienteId);
+            const seguros = await useCase.execute(pacienteId, incluirHistorial);
 
             res.status(200).json({
                 success: true,

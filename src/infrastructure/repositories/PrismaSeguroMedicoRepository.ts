@@ -112,12 +112,16 @@ export class PrismaSeguroMedicoRepository implements ISeguroMedicoRepository {
         };
     }
 
-    async obtenerSegurosPaciente(pacienteId: number): Promise<any[]> {
+    async obtenerSegurosPaciente(pacienteId: number, incluirHistorial: boolean = false): Promise<any[]> {
+        const whereClause: any = { pacienteId };
+
+        // Si no se incluye historial, filtrar solo activos
+        if (!incluirHistorial) {
+            whereClause.estado = 'Activo';
+        }
+
         const seguros = await this.prisma.pacienteSeguro.findMany({
-            where: {
-                pacienteId,
-                estado: 'Activo',
-            },
+            where: whereClause,
             include: {
                 seguro: true,
                 tipoSeguro: true,
@@ -144,7 +148,7 @@ export class PrismaSeguroMedicoRepository implements ISeguroMedicoRepository {
                 seguroId,
             },
             data: {
-                estado: 'Inactivo',
+                estado: 'Eliminado',
                 actualizadoEn: new Date(),
             },
         });
@@ -233,7 +237,7 @@ export class PrismaSeguroMedicoRepository implements ISeguroMedicoRepository {
                 tipoSeguroId,
             },
             data: {
-                estado: 'Inactivo',
+                estado: 'Eliminado',
                 actualizadoEn: new Date(),
             },
         });

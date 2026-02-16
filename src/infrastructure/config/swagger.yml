@@ -62,6 +62,9 @@ tags:
     description: Endpoints para gestionar condiciones médicas (alergias y enfermedades) y su relación con pacientes
   - name: Seguros
     description: Endpoints para gestionar seguros médicos (Admin CRUD, Pacientes máx 3, Doctores ilimitados)
+  - name: TiposSeguros
+    description: Endpoints para gestionar tipos de seguros (Admin CRUD, Cliente solo lectura)
+
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -1145,6 +1148,110 @@ paths:
                     type: string
                     example: "Solo se permiten imágenes (JPEG, PNG, WEBP)"
         '401':
+          description: No autenticado o token inválido.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Token inválido o expirado"
+
+  /auth/cambiar-email:
+    patch:
+      summary: Cambiar email del usuario autenticado
+      tags:
+        - Autenticación
+      description: |-
+        Permite al usuario cambiar su dirección de email.
+        
+        **Validaciones de Seguridad:**
+        - Requiere contraseña actual para confirmar identidad
+        - El nuevo email no debe estar registrado
+        - Solo usuarios con contraseña (cuentas Google deben establecer password primero)
+        - El nuevo email no puede ser igual al actual
+        
+        **Nota:** El token JWT actual seguirá siendo válido después del cambio.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nuevoEmail
+                - password
+              properties:
+                nuevoEmail:
+                  type: string
+                  format: email
+                  example: "nuevo@example.com"
+                  description: Nueva dirección de email
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: "MiPassword123"
+                  description: Contraseña actual para verificación
+      responses:
+        '200':
+          description: Email actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Email actualizado exitosamente"
+        '400':
+          description: Validación fallida o usuario sin contraseña
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Debes establecer una contraseña antes de cambiar el email"
+        '401':
+          description: Contraseña incorrecta o no autenticado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Contraseña incorrecta"
+        '409':
+          description: El email ya está registrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "El email ya está registrado"
           description: No autorizado. Token JWT inválido, expirado o no proporcionado.
           content:
             application/json:
@@ -6332,11 +6439,12 @@ paths:
       summary: Eliminar una alergia del perfil del paciente
       tags:
         - CondicionesMedicas - Pacientes
-      description: |
-        Permite al paciente eliminar una alergia de su perfil médico.
+      description: |-
+        Marca la alergia como "Eliminado" (soft delete). El registro se mantiene en el historial.
         
         **Funcionamiento:**
-        - Marca la alergia como "Inactivo" en `caracteristicas_especiales`
+        - Cambia el estado a "Eliminado" en `caracteristicas_especiales`
+        - El paciente puede volver a agregar la misma alergia, generando un nuevo registro activo
         - NO elimina la alergia del catálogo, solo la remueve del perfil del paciente
         - Solo funciona para alergias (tipo='Alergia'), no para condiciones personales
       security:
@@ -6582,11 +6690,12 @@ paths:
       summary: Eliminar una condición personal del paciente
       tags:
         - CondicionesMedicas - Pacientes
-      description: |
-        Permite al paciente eliminar una condición personal de su perfil médico.
+      description: |-
+        Marca la condición como "Eliminado" (soft delete). El registro se mantiene en el historial.
         
         **Funcionamiento:**
-        - Marca la condición como "Inactivo" en `caracteristicas_especiales`
+        - Cambia el estado a "Eliminado" en `caracteristicas_especiales`
+        - El paciente puede volver a crear una condición similar, generando un nuevo registro activo
         - Solo funciona para condiciones personales (tipo='Condición'), no para alergias
         - Para eliminar alergias, usa `DELETE /mis-alergias/:id`
       security:
@@ -9512,7 +9621,11 @@ paths:
         - Seguros
       summary: Obtener mis seguros (Paciente)
       description: |-
-        Obtiene los seguros del paciente autenticado
+        Obtiene los seguros del paciente autenticado. Por defecto solo muestra seguros activos.
+        
+        **Historial:**
+        Los seguros eliminados se marcan como "Eliminado" (no se borran). 
+        Usa `incluirHistorial=true` para ver el historial completo.
         
         **Traducción Automática:**
         Este endpoint soporta traducción automática de campos mediante query params.
@@ -9534,6 +9647,13 @@ paths:
             type: string
           description: "Campos a traducir separados por comas (ej: 'nombre')"
           example: "nombre"
+        - name: incluirHistorial
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: "Si es true, incluye seguros eliminados en el historial. Por defecto solo muestra seguros activos."
+          example: false
       responses:
         '200':
           description: Seguros obtenidos exitosamente
@@ -9544,7 +9664,9 @@ paths:
       tags:
         - Seguros
       summary: Eliminar mi seguro (Paciente)
-      description: Elimina un seguro del perfil del paciente
+      description: |-
+        Marca un seguro como "Eliminado" (soft delete). El registro se mantiene en el historial.
+        El paciente puede volver a agregar el mismo seguro, creando un nuevo registro activo.
       security:
         - bearerAuth: []
       parameters:
@@ -9640,6 +9762,287 @@ paths:
       responses:
         '200':
           description: Seguro eliminado exitosamente
+
+  # ============================================
+  # TIPOS DE SEGUROS
+  # ============================================
+
+  /tipos-seguros:
+    post:
+      tags:
+        - TiposSeguros
+      summary: Crear tipo de seguro (Admin)
+      description: Crea un nuevo tipo de seguro en el sistema
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nombre
+              properties:
+                nombre:
+                  type: string
+                  example: "Plan Básico de Salud (PDSS)"
+                descripcion:
+                  type: string
+                  example: "Cobertura básica de salud según normativas de la República Dominicana"
+      responses:
+        '201':
+          description: Tipo de seguro creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      nombre:
+                        type: string
+                      descripcion:
+                        type: string
+                      estado:
+                        type: string
+                      creadoEn:
+                        type: string
+                        format: date-time
+        '400':
+          description: Validación fallida
+        '409':
+          description: El tipo de seguro ya existe
+
+    get:
+      tags:
+        - TiposSeguros
+      summary: Listar tipos de seguros (Admin)
+      description: |
+        Obtiene todos los tipos de seguros con filtros y paginación.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/tipos-seguros?target=en&translate_fields=nombre,descripcion`
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: Campos a traducir separados por coma
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+          description: Filtrar por estado
+        - name: busqueda
+          in: query
+          schema:
+            type: string
+          description: Buscar por nombre
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Tipos de seguros obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+                  pagina:
+                    type: integer
+                  limite:
+                    type: integer
+
+  /tipos-seguros/disponibles:
+    get:
+      tags:
+        - TiposSeguros
+      summary: Obtener tipos activos (Público)
+      description: |
+        Retorna solo los tipos de seguros con estado "Activo" para uso público.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/tipos-seguros/disponibles?target=en&translate_fields=nombre,descripcion`
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: Campos a traducir separados por coma
+      responses:
+        '200':
+          description: Tipos de seguros activos obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        nombre:
+                          type: string
+                        descripcion:
+                          type: string
+                        estado:
+                          type: string
+                        creadoEn:
+                          type: string
+                          format: date-time
+
+  /tipos-seguros/{id}:
+    get:
+      tags:
+        - TiposSeguros
+      summary: Obtener tipo por ID (Admin)
+      description: Obtiene un tipo de seguro específico por su ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tipo de seguro obtenido exitosamente
+        '404':
+          description: Tipo de seguro no encontrado
+
+    patch:
+      tags:
+        - TiposSeguros
+      summary: Actualizar tipo de seguro (Admin)
+      description: Actualiza un tipo de seguro existente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                descripcion:
+                  type: string
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+      responses:
+        '200':
+          description: Tipo de seguro actualizado exitosamente
+        '404':
+          description: Tipo de seguro no encontrado
+        '409':
+          description: El nombre ya existe
+
+    delete:
+      tags:
+        - TiposSeguros
+      summary: Eliminar tipo de seguro (Admin)
+      description: |-
+        Realiza un soft delete del tipo de seguro (marca como "Eliminado").
+        
+        **Validación:** No se puede eliminar si está siendo usado por pacientes o doctores activos.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tipo de seguro eliminado exitosamente
+        '404':
+          description: Tipo de seguro no encontrado
+        '409':
+          description: No se puede eliminar - tipo de seguro en uso
 
 components:
   schemas:

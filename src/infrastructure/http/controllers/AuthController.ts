@@ -20,11 +20,13 @@ import { RefreshAccessTokenUseCase } from '../../../application/use-cases/Refres
 import { AttachPasswordToGoogleAccountUseCase } from '../../../application/use-cases/AttachPasswordToGoogleAccountUseCase';
 import { ActualizarFotoPerfilUseCase } from '../../../application/use-cases/ActualizarFotoPerfilUseCase';
 import { VerificarDocumentoUseCase } from '../../../application/use-cases/VerificarDocumentoUseCase';
+import { CambiarEmailUseCase } from '../../../application/use-cases/CambiarEmailUseCase';
 
 // DTOs (Tuyos)
 import { RegistrarPacienteDto } from '../../../application/dtos/RegistrarPacienteDto';
 import { RegistrarDoctorDto } from '../../../application/dtos/RegistrarDoctorDto';
 import { LoginDto } from '../../../application/dtos/LoginDto';
+import { CambiarEmailDto } from '../../../application/dtos/CambiarEmailDto';
 
 // Repositories (para el endpoint me)
 import { IUsuarioRepository } from '../../../domain/repositories/IUsuarioRepository';
@@ -642,5 +644,55 @@ export class AuthController {
     }
 
     res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+  }
+
+  /**
+   * PATCH /auth/cambiar-email
+   * Permite al usuario cambiar su dirección de email
+   */
+  async cambiarEmail(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioId = req.user!.userId; // Del middleware JWT
+      const dto = Object.assign(new CambiarEmailDto(req.body.nuevoEmail, req.body.password), req.body);
+      const errors = await validate(dto);
+
+      if (errors.length > 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Validación fallida',
+          errors: flattenValidationErrors(errors)
+        });
+        return;
+      }
+
+      const useCase = container.resolve(CambiarEmailUseCase);
+      await useCase.execute(usuarioId, dto);
+
+      res.status(200).json({
+        success: true,
+        message: 'Email actualizado exitosamente'
+      });
+    } catch (error: any) {
+      console.error('Error en cambiarEmail:', error);
+
+      // Manejo de errores específicos
+      if (error.message.includes('Contraseña incorrecta')) {
+        res.status(401).json({ success: false, message: error.message });
+        return;
+      }
+      if (error.message.includes('ya está registrado')) {
+        res.status(409).json({ success: false, message: error.message });
+        return;
+      }
+      if (error.message.includes('establecer una contraseña')) {
+        res.status(400).json({ success: false, message: error.message });
+        return;
+      }
+
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Error al cambiar el email'
+      });
+    }
   }
 }

@@ -25,6 +25,7 @@ import ConversacionesRoutes from './conversaciones.routes';
 import MensajesRoutes from './mensajes.routes';
 import CondicionesMedicasRoutes from './CondicionesMedicasRoutes';
 import SegurosRoutes from './SegurosRoutes';
+import TiposSegurosRoutes from './TiposSegurosRoutes';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 import { translationRateLimitMiddleware } from '../middlewares/TranslationRateLimiter';
 
@@ -108,5 +109,8 @@ router.use('/condiciones-medicas', CondicionesMedicasRoutes);
 
 // Rutas de Seguros Médicos
 router.use('/seguros', SegurosRoutes);
+
+// Rutas de Tipos de Seguros
+router.use('/tipos-seguros', TiposSegurosRoutes);
 
 export default router;

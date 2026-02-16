@@ -33,6 +33,8 @@ import { IMediaRepository } from '../../domain/repositories/IMediaRepository';
 import { ICentroSaludRepository } from '../../domain/repositories/ICentroSaludRepository';
 import { ICondicionMedicaRepository } from '../../domain/repositories/ICondicionMedicaRepository';
 import { ISeguroMedicoRepository } from '../../domain/repositories/ISeguroMedicoRepository';
+import { ITipoSeguroRepository } from '../../domain/repositories/ITipoSeguroRepository';
+
 
 // Implementaciones
 import { PrismaUsuarioRepository } from '../../infrastructure/repositories/PrismaUsuarioRepository';
@@ -61,6 +63,8 @@ import { PrismaMediaRepository } from '../../infrastructure/repositories/PrismaM
 import { PrismaCentroSaludRepository } from '../../infrastructure/repositories/PrismaCentroSaludRepository';
 import { PrismaCondicionMedicaRepository } from '../../infrastructure/repositories/PrismaCondicionMedicaRepository';
 import { PrismaSeguroMedicoRepository } from '../../infrastructure/repositories/PrismaSeguroMedicoRepository';
+import { PrismaTipoSeguroRepository } from '../../infrastructure/repositories/PrismaTipoSeguroRepository';
+
 
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
@@ -128,6 +132,7 @@ import { RefreshAccessTokenUseCase } from '../../application/use-cases/RefreshAc
 import { CompletarPerfilCentroSaludUseCase } from '../../application/use-cases/CompletarPerfilCentroSaludUseCase';
 import { RegistrarCentroUseCase } from '../../application/use-cases/RegistrarCentroUseCase';
 import { ActualizarFotoPerfilUseCase } from '../../application/use-cases/ActualizarFotoPerfilUseCase';
+import { CambiarEmailUseCase } from '../../application/use-cases/CambiarEmailUseCase';
 import { CentrosSaludController } from '../../infrastructure/http/controllers/CentrosSaludController';
 import { GestionarCondicionesMedicasUseCase } from '../../application/use-cases/GestionarCondicionesMedicasUseCase';
 
@@ -531,6 +536,17 @@ container.register<ISeguroMedicoRepository>(
   }
 );
 
+container.register<ITipoSeguroRepository>(
+  'TipoSeguroRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      return new PrismaTipoSeguroRepository(prismaClient);
+    }
+  }
+);
+
+
 // ===== REGISTRAR USE CASES =====
 container.register(GestionarProvinciasUseCase, {
   useFactory: () => {
@@ -879,6 +895,14 @@ container.register(ActualizarFotoPerfilUseCase, {
     const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
     const storageService = container.resolve(SupabaseStorageService);
     return new ActualizarFotoPerfilUseCase(usuarioRepository, storageService);
+  }
+});
+
+container.register(CambiarEmailUseCase, {
+  useFactory: () => {
+    const usuarioRepo = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    const passwordHasher = container.resolve<IPasswordHasher>('PasswordHasher');
+    return new CambiarEmailUseCase(usuarioRepo, passwordHasher);
   }
 });
 
