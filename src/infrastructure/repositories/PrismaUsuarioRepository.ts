@@ -44,7 +44,10 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
       // 1. CREAR O REACTIVAR USUARIO
       const usuarioEliminado = await tx.usuario.findFirst({
         where: {
-          email: data.email,
+          email: {
+            equals: data.email,
+            mode: 'insensitive'
+          },
           estado: 'Eliminado',
         },
       });
@@ -572,7 +575,10 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
   async existeEmailActivo(email: string): Promise<boolean> {
     const usuario = await prisma.usuario.findFirst({
       where: {
-        email,
+        email: {
+          equals: email,
+          mode: 'insensitive'
+        },
         estado: 'Activo',
       },
     });
@@ -657,7 +663,10 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
       // Primero verificar si existe un usuario eliminado con este email
       const usuarioEliminado = await tx.usuario.findFirst({
         where: {
-          email: data.email,
+          email: {
+            equals: data.email,
+            mode: 'insensitive'
+          },
           estado: 'Eliminado',
         },
       });

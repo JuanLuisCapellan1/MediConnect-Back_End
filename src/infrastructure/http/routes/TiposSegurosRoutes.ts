@@ -32,6 +32,19 @@ routerTiposSeguros.get(
     (req, res) => controller.obtenerTodos(req, res)
 );
 
+// ============================================
+// Público - Solo lectura de tipos activos
+// ============================================
+
+/**
+ * GET /api/tipos-seguros/disponibles
+ * Obtener tipos de seguros activos (Público/Autenticado)
+ */
+routerTiposSeguros.get(
+    '/disponibles',
+    (req, res) => controller.obtenerActivos(req, res)
+);
+
 /**
  * GET /api/tipos-seguros/:id
  * Obtener un tipo de seguro por ID (Solo Admin)
@@ -63,19 +76,6 @@ routerTiposSeguros.delete(
     autenticarJWT,
     requireRole('Administrador'),
     (req, res) => controller.eliminar(req, res)
-);
-
-// ============================================
-// Público - Solo lectura de tipos activos
-// ============================================
-
-/**
- * GET /api/tipos-seguros/disponibles
- * Obtener tipos de seguros activos (Público/Autenticado)
- */
-routerTiposSeguros.get(
-    '/disponibles',
-    (req, res) => controller.obtenerActivos(req, res)
 );
 
 export default routerTiposSeguros;

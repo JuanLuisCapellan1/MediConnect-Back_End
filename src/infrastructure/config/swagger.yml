@@ -10635,6 +10635,8 @@ paths:
         **Traducción Automática:**
         Este endpoint soporta traducción automática de campos mediante query params.
         Ejemplo: `/api/tipos-seguros/disponibles?target=en&translate_fields=nombre,descripcion`
+      security:
+        - bearerAuth: []
       parameters:
         - name: target
           in: query
