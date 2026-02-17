@@ -116,6 +116,22 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                     where: {
                         estado: 'Activo',
                     },
+                    include: {
+                        acciones: {
+                            where: {
+                                comentarioAdmin: { not: null }
+                            },
+                            orderBy: {
+                                fechaResolucion: 'desc'
+                            },
+                            take: 1,
+                            select: {
+                                comentarioAdmin: true,
+                                estado: true,
+                                fechaResolucion: true
+                            }
+                        }
+                    },
                     orderBy: {
                         creadoEn: 'desc',
                     },
@@ -156,6 +172,48 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                 },
             },
         });
+
+        // If doctor exists, fetch general verification comment and process documents
+        if (doctor) {
+            const accionVerificacion = await this.prisma.accion.findFirst({
+                where: {
+                    emisorId: usuarioId,
+                    documentoId: null,
+                    comentarioAdmin: { not: null }
+                },
+                orderBy: {
+                    fechaResolucion: 'desc'
+                },
+                select: {
+                    comentarioAdmin: true,
+                    estado: true,
+                    fechaResolucion: true
+                }
+            });
+
+            // Always add verification comment fields (null if not found)
+            (doctor as any).comentarioVerificacion = accionVerificacion?.comentarioAdmin || null;
+            (doctor as any).estadoAccionVerificacion = accionVerificacion?.estado || null;
+            (doctor as any).fechaResolucionVerificacion = accionVerificacion?.fechaResolucion || null;
+
+            // Process documents to always include comentarioAdmin field
+            if (doctor.documentos && Array.isArray(doctor.documentos)) {
+                (doctor as any).documentos = doctor.documentos.map((doc: any) => {
+                    const comentarioAdmin = doc.acciones?.[0]?.comentarioAdmin || null;
+                    const estadoAccion = doc.acciones?.[0]?.estado || null;
+                    const fechaResolucion = doc.acciones?.[0]?.fechaResolucion || null;
+
+                    // Remove acciones array and add flat fields
+                    const { acciones, ...docSinAcciones } = doc;
+                    return {
+                        ...docSinAcciones,
+                        comentarioAdmin,
+                        estadoAccion,
+                        fechaResolucionAccion: fechaResolucion
+                    };
+                });
+            }
+        }
 
         return doctor;
     }

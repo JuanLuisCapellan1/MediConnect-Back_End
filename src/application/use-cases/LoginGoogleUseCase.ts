@@ -13,6 +13,7 @@ export interface LoginGoogleResult {
     email: string;
     rol: string;
     fotoPerfil?: string | null;
+    banner?: string | null;
     paciente?: any | null;
     doctor?: any | null;
     centroSalud?: any | null;
@@ -27,7 +28,7 @@ export class LoginGoogleUseCase {
     private readonly usuarioRepository: IUsuarioRepository,
     private readonly authService: AuthService,
     private readonly passwordHasher: IPasswordHasher
-  ) {}
+  ) { }
 
   async execute(idToken: string): Promise<LoginGoogleResult> {
     const google = await this.authService.verificarGoogleToken(idToken);
@@ -96,16 +97,19 @@ export class LoginGoogleUseCase {
     rol: string;
     fotoPerfil?: string | null;
     foto_perfil?: string;
+    banner?: string | null;
     paciente?: any;
     doctor?: any;
     centroSalud?: any;
   }): LoginGoogleResult['user'] {
     const foto = (usuario as any).fotoPerfil ?? (usuario as any).foto_perfil ?? undefined;
+    const banner = (usuario as any).banner ?? undefined;
     return {
       id: usuario.id,
       email: usuario.email,
       rol: usuario.rol,
       fotoPerfil: foto ?? undefined,
+      banner: banner ?? null,
       paciente: (usuario as any).paciente ?? null,
       doctor: (usuario as any).doctor ?? null,
       centroSalud: (usuario as any).centroSalud ?? null,

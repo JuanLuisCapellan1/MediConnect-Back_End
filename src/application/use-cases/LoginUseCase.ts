@@ -12,6 +12,7 @@ export interface LoginResult {
     email: string;
     rol: string;
     fotoPerfil?: string | null;
+    banner?: string | null;
     paciente?: any | null;
     doctor?: any | null;
     centroSalud?: any | null;
@@ -27,7 +28,7 @@ export class LoginUseCase {
     private readonly usuarioRepository: IUsuarioRepository,
     private readonly passwordHasher: IPasswordHasher,
     private readonly authService: AuthService
-  ) {}
+  ) { }
 
   async execute(dto: LoginDto): Promise<LoginResult> {
     const usuario = await this.usuarioRepository.buscarPorEmail(dto.email);
@@ -59,6 +60,7 @@ export class LoginUseCase {
       base.rol
     );
     const fotoPerfil = base.fotoPerfil ?? base.foto_perfil ?? undefined;
+    const banner = base.banner ?? undefined;
 
     return {
       accessToken,
@@ -68,6 +70,7 @@ export class LoginUseCase {
         email: base.email,
         rol: base.rol,
         fotoPerfil: fotoPerfil ?? null,
+        banner: banner ?? null,
         paciente: base.paciente ?? null,
         doctor: base.doctor ?? null,
         centroSalud: base.centroSalud ?? null,
