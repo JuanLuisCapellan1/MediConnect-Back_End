@@ -58,13 +58,13 @@ model Paciente {
   foto_documento                  String?                  @unique(map: "pacientes_documento_identificacion_key")
   fechaNacimiento                 DateTime                 @map("fecha_nacimiento") @db.Date
   genero                          String                   @db.Char(1)
-  altura                          Int?                     @db.Integer
   peso                            Decimal?                 @db.Decimal(5, 2)
   tipoSangre                      String?                  @map("tipo_sangre") @db.VarChar(5)
   ubicacionId                     Int?                     @map("id_ubicacion")
   estado                          String                   @default("Activo") @db.VarChar(20)
   creadoEn                        DateTime                 @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn                   DateTime?                @map("actualizado_en") @db.Timestamptz(6)
+  altura                          Int?
   caracteristicas                 CaracteristicaEspecial[]
   citas                           Cita[]
   doctoresFavoritos               DoctorFavorito[]
@@ -78,38 +78,39 @@ model Paciente {
 }
 
 model Doctor {
-  usuarioId                     Int                       @id @map("id_usuario")
-  ubicacionId                   Int?                      @map("id_ubicacion")
-  nombre                        String                    @db.VarChar(80)
-  apellido                      String                    @db.VarChar(80)
-  tipoDocIdentificacion         String                    @default("Cédula") @map("tipo_documento_identificacion") @db.VarChar(20)
-  numeroDocumentoIdentificacion String                    @unique(map: "uq_doctores_numero_doc") @map("numero_documento_identificacion") @db.VarChar(20)
-  fechaNacimiento               DateTime                  @map("fecha_nacimiento") @db.Date
-  genero                        String                    @db.Char(1)
-  nacionalidad                  String?                   @db.VarChar(50)
-  exequatur                     String                    @unique @db.VarChar(40)
+  usuarioId                     Int                      @id @map("id_usuario")
+  ubicacionId                   Int?                     @map("id_ubicacion")
+  nombre                        String                   @db.VarChar(80)
+  apellido                      String                   @db.VarChar(80)
+  tipoDocIdentificacion         String                   @default("Cédula") @map("tipo_documento_identificacion") @db.VarChar(20)
+  numeroDocumentoIdentificacion String                   @unique(map: "uq_doctores_numero_doc") @map("numero_documento_identificacion") @db.VarChar(20)
+  fechaNacimiento               DateTime                 @map("fecha_nacimiento") @db.Date
+  genero                        String                   @db.Char(1)
+  nacionalidad                  String?                  @db.VarChar(50)
+  exequatur                     String                   @unique @db.VarChar(40)
   biografia                     String?
-  anosExperiencia               Int?                      @map("anos_experiencia")
-  estadoVerificacion            String                    @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
-  calificacionPromedio          Decimal?                  @default(0.00) @map("calificacion_promedio") @db.Decimal(3, 2)
-  estado                        String                    @default("Activo") @db.VarChar(20)
-  creadoEn                      DateTime                  @default(now()) @map("creado_en") @db.Timestamptz(6)
-  actualizadoEn                 DateTime?                 @map("actualizado_en") @db.Timestamptz(6)
-  duracionCitaPromedio          Int                       @default(30) @map("duracion_cita_promedio")
-  tarifas                       Decimal?                  @db.Decimal(10, 2)
-  citas                         Cita[]                    @relation("DoctorCita")
-  usuario                       Usuario                   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  ubicacion                     Ubicacion?                @relation(fields: [ubicacionId], references: [id], onUpdate: NoAction, map: "fk_doctores_ubicacion")
+  anosExperiencia               Int?                     @map("anos_experiencia")
+  estadoVerificacion            String                   @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
+  calificacionPromedio          Decimal?                 @default(0.00) @map("calificacion_promedio") @db.Decimal(3, 2)
+  estado                        String                   @default("Activo") @db.VarChar(20)
+  creadoEn                      DateTime                 @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn                 DateTime?                @map("actualizado_en") @db.Timestamptz(6)
+  duracionCitaPromedio          Int                      @default(30) @map("duracion_cita_promedio")
+  tarifas                       Decimal?                 @db.Decimal(10, 2)
+  caracteristicas_especiales    CaracteristicaEspecial[]
+  citas                         Cita[]                   @relation("DoctorCita")
+  usuario                       Usuario                  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  ubicacion                     Ubicacion?               @relation(fields: [ubicacionId], references: [id], onUpdate: NoAction, map: "fk_doctores_ubicacion")
   especialidades                DoctorEspecialidad[]
   favoritosDe                   DoctorFavorito[]
   segurosAceptados              DoctorSeguro[]
+  documentos                    DocumentoDoctor[]
   experiencias                  ExperienciaLaboral[]
   formaciones                   FormacionAcademica[]
   horarios                      Horario[]
   resenas                       Resena[]
   servicios                     Servicio[]
   solicitudesAlianza            SolicitudAlianza[]
-  documentos                    DocumentoDoctor[]
 
   @@index([ubicacionId], map: "idx_doctores_ubicacion")
   @@map("doctores")
@@ -245,14 +246,14 @@ model Ubicacion {
 }
 
 model Especialidad {
-  id                      Int                       @id @default(autoincrement()) @map("id_especialidad")
-  nombre                  String                    @unique @db.VarChar(80)
-  descripcion             String?
-  estado                  String                    @default("Activo") @db.VarChar(20)
-  creadoEn                DateTime                  @default(now()) @map("creado_en") @db.Timestamptz(6)
-  doctores                DoctorEspecialidad[]
-  formaciones             FormacionAcademica[]
-  servicios               Servicio[]
+  id          Int                  @id @default(autoincrement()) @map("id_especialidad")
+  nombre      String               @unique @db.VarChar(80)
+  descripcion String?
+  estado      String               @default("Activo") @db.VarChar(20)
+  creadoEn    DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
+  doctores    DoctorEspecialidad[]
+  formaciones FormacionAcademica[]
+  servicios   Servicio[]
 
   @@map("especialidades")
 }
@@ -304,7 +305,7 @@ model TipoServicio {
 
 model CondicionMedica {
   id              Int                      @id @default(autoincrement()) @map("id_condicion")
-  nombre          String                   @unique @db.VarChar(100)
+  nombre          String?                  @unique @db.VarChar(100)
   descripcion     String?
   tipo            String                   @default("Enfermedad") @db.VarChar(30)
   estado          String                   @default("Activa") @db.VarChar(20)
@@ -420,34 +421,36 @@ model DoctorSeguro {
 }
 
 model PacienteSeguro {
-  id            Int          @id @default(autoincrement())
   pacienteId    Int          @map("id_usuario")
   seguroId      Int          @map("id_seguro")
   tipoSeguroId  Int          @map("id_tipo_seguro")
   estado        String       @default("Activo") @db.VarChar(20)
   creadoEn      DateTime     @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn DateTime?    @map("actualizado_en") @db.Timestamptz(6)
+  id            Int          @id @default(autoincrement())
   seguro        SeguroMedico @relation(fields: [seguroId], references: [id])
   tipoSeguro    TipoSeguro   @relation(fields: [tipoSeguroId], references: [id])
   paciente      Paciente     @relation(fields: [pacienteId], references: [usuarioId])
 
-  @@unique([pacienteId, seguroId], map: "idx_paciente_seguro_activo")
   @@index([pacienteId], map: "idx_paciente_seguros_usuario")
   @@map("pacientes_seguros")
 }
 
 model CaracteristicaEspecial {
-  id            Int             @id @default(autoincrement())
   pacienteId    Int             @map("id_usuario")
   condicionId   Int             @map("id_condicion")
   notas         String?
   estado        String          @default("Activo") @db.VarChar(20)
   registradoEn  DateTime        @default(now()) @map("registrado_en") @db.Timestamptz(6)
   actualizadoEn DateTime?       @map("actualizado_en") @db.Timestamptz(6)
+  creado_por    String?         @db.VarChar(20)
+  id_doctor     Int?
+  id            Int             @id @default(autoincrement())
   condicion     CondicionMedica @relation(fields: [condicionId], references: [id])
   paciente      Paciente        @relation(fields: [pacienteId], references: [usuarioId])
+  doctores      Doctor?         @relation(fields: [id_doctor], references: [usuarioId], onUpdate: NoAction, map: "fk_caracteristicas_doctor")
 
-  @@unique([pacienteId, condicionId], map: "idx_paciente_condicion_activa")
+  @@unique([pacienteId, condicionId])
   @@index([pacienteId], map: "idx_caracteristicas_usuario")
   @@map("caracteristicas_especiales")
 }
@@ -749,20 +752,19 @@ model DoctorEspecialidad {
 
 /// Tabla para almacenar múltiples documentos por doctor
 model DocumentoDoctor {
-  id                Int       @id @default(autoincrement()) @map("id_documento_doctor")
-  doctorId          Int       @map("id_doctor")
-  tipoDocumento     String    @map("tipo_documento") @db.VarChar(50)
-  urlArchivo        String    @map("url_archivo")
-  nombreOriginal    String?   @map("nombre_original") @db.VarChar(255)
-  tipoMime          String?   @map("tipo_mime") @db.VarChar(100)
-  descripcion       String?
-  estado            String    @default("Activo") @db.VarChar(20)
-  creadoEn          DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
-  actualizadoEn     DateTime? @map("actualizado_en") @db.Timestamptz(6)
-  
-  doctor            Doctor    @relation(fields: [doctorId], references: [usuarioId], onDelete: Cascade)
+  id             Int       @id @default(autoincrement()) @map("id_documento_doctor")
+  doctorId       Int       @map("id_doctor")
+  tipoDocumento  String    @map("tipo_documento") @db.VarChar(50)
+  urlArchivo     String    @map("url_archivo")
+  nombreOriginal String?   @map("nombre_original") @db.VarChar(255)
+  tipoMime       String?   @map("tipo_mime") @db.VarChar(100)
+  tamanio_bytes  BigInt?
+  descripcion    String?
+  estado         String    @default("Activo") @db.VarChar(20)
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn  DateTime? @map("actualizado_en") @db.Timestamptz(6)
+  doctor         Doctor    @relation(fields: [doctorId], references: [usuarioId], onDelete: Cascade, onUpdate: NoAction, map: "fk_documentos_doctores_doctor")
 
-  @@index([doctorId, tipoDocumento])
+  @@index([doctorId, tipoDocumento], map: "idx_documentos_doctores_doctor_tipo")
   @@map("documentos_doctores")
 }
-
