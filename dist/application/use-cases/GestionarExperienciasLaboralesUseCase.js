@@ -15,165 +15,100 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GestionarExperienciasLaboralesUseCase = void 0;
 const tsyringe_1 = require("tsyringe");
 const ExperienciaLaboralValidator_1 = require("../../domain/validators/ExperienciasLaborales/ExperienciaLaboralValidator");
+const ExperienciaLaboral_1 = require("../../domain/entities/ExperienciaLaboral");
 const ExperienciaLaboralNoEncontradaError_1 = require("../../domain/errors/ExperienciasLaborales/ExperienciaLaboralNoEncontradaError");
-const DoctorNoEncontradoError_1 = require("../../domain/errors/ExperienciasLaborales/DoctorNoEncontradoError");
 let GestionarExperienciasLaboralesUseCase = class GestionarExperienciasLaboralesUseCase {
-    constructor(experienciasLaboralesRepository, experienciaLaboralValidator) {
-        this.experienciasLaboralesRepository = experienciasLaboralesRepository;
-        this.experienciaLaboralValidator = experienciaLaboralValidator;
+    constructor(experienciaLaboralRepository, validator) {
+        this.experienciaLaboralRepository = experienciaLaboralRepository;
+        this.validator = validator;
     }
     async crear(dto) {
+        // Validar que doctorId esté presente (viene del JWT en el controller)
+        if (!dto.doctorId) {
+            throw new Error('El ID del doctor es requerido');
+        }
         // Convertir fechas de string a Date
         const fechaInicio = new Date(dto.fechaInicio);
         const fechaFinalizacion = dto.fechaFinalizacion ? new Date(dto.fechaFinalizacion) : undefined;
         // Validar campos requeridos
-        this.experienciaLaboralValidator.validarCamposRequeridos(dto.doctorId, dto.profesionId, dto.descripcionCargo, fechaInicio);
-        // Validar que el doctor existe
-        const doctorExiste = await this.experienciasLaboralesRepository.verificarDoctorExiste(dto.doctorId);
-        if (!doctorExiste) {
-            throw new DoctorNoEncontradoError_1.DoctorNoEncontradoError(dto.doctorId);
-        }
-        // Validar que la profesión existe
-        const profesionExiste = await this.experienciasLaboralesRepository.verificarProfesionExiste(dto.profesionId);
-        if (!profesionExiste) {
-            throw new Error(`No se encontró la profesión con ID: ${dto.profesionId}`);
-        }
-        // Normalizar y validar institución
-        const institucionExternaNormalizada = dto.institucionExterna?.trim();
-        this.experienciaLaboralValidator.validarInstitucion(dto.centroSaludId, institucionExternaNormalizada);
-        // Si se especifica un centro de salud, validar que existe
-        if (dto.centroSaludId) {
-            const centroSaludExiste = await this.experienciasLaboralesRepository.verificarCentroSaludExiste(dto.centroSaludId);
-            if (!centroSaludExiste) {
-                throw new Error(`No se encontró el centro de salud con ID: ${dto.centroSaludId}`);
-            }
-        }
-        // Validar longitud de institución externa
-        if (institucionExternaNormalizada) {
-            this.experienciaLaboralValidator.validarInstitucionExterna(institucionExternaNormalizada);
-        }
-        // Normalizar y validar descripción del cargo
-        const descripcionCargoNormalizada = dto.descripcionCargo.trim();
-        this.experienciaLaboralValidator.validarDescripcionCargo(descripcionCargoNormalizada);
-        // Determinar si trabaja actualmente
-        const trabajaActualmente = dto.trabajaActualmente ?? false;
+        this.validator.validarCamposRequeridos(dto.doctorId, dto.institucion, dto.posicion, fechaInicio);
+        // Validar institución
+        this.validator.validarInstitucion(dto.institucion);
+        // Validar posición
+        this.validator.validarPosicion(dto.posicion);
         // Validar fechas
-        this.experienciaLaboralValidator.validarFechas(fechaInicio, fechaFinalizacion, trabajaActualmente);
-        // Normalizar estado
-        const estado = dto.estado
-            ? dto.estado.charAt(0).toUpperCase() + dto.estado.slice(1).toLowerCase()
-            : 'Activo';
-        // Validar estado
-        this.experienciaLaboralValidator.validarEstadoValido(estado);
-        // Crear experiencia laboral
-        return await this.experienciasLaboralesRepository.crear(dto.doctorId, dto.profesionId, descripcionCargoNormalizada, fechaInicio, trabajaActualmente, estado, dto.centroSaludId, institucionExternaNormalizada, fechaFinalizacion);
+        this.validator.validarFechas(fechaInicio, fechaFinalizacion, dto.trabajaActualmente);
+        // Verificar que el doctor existe
+        const doctorExiste = await this.experienciaLaboralRepository.verificarDoctorExiste(dto.doctorId);
+        if (!doctorExiste) {
+            throw new Error(`No se encontró el doctor con ID: ${dto.doctorId}`);
+        }
+        // Crear la entidad
+        const experiencia = new ExperienciaLaboral_1.ExperienciaLaboral(0, // El ID se asigna en la base de datos
+        dto.doctorId, dto.institucion, dto.posicion, fechaInicio, dto.estado || 'Activo', new Date(), fechaFinalizacion, dto.trabajaActualmente || false);
+        return await this.experienciaLaboralRepository.crear(experiencia);
     }
     async obtenerPorId(id) {
-        const experiencia = await this.experienciasLaboralesRepository.obtenerPorId(id);
+        const experiencia = await this.experienciaLaboralRepository.obtenerPorId(id);
         if (!experiencia) {
             throw new ExperienciaLaboralNoEncontradaError_1.ExperienciaLaboralNoEncontradaError(id);
         }
         return experiencia;
     }
     async obtenerTodos(filtro) {
-        const pagina = filtro.pagina && filtro.pagina > 0 ? filtro.pagina : 1;
-        const limite = filtro.limite && filtro.limite > 0 ? filtro.limite : 10;
-        // Normalizar estado si se proporciona
-        let estadoNormalizado;
-        if (filtro.estado) {
-            estadoNormalizado =
-                filtro.estado.charAt(0).toUpperCase() + filtro.estado.slice(1).toLowerCase();
-            this.experienciaLaboralValidator.validarEstadoValido(estadoNormalizado);
-        }
-        return await this.experienciasLaboralesRepository.obtenerTodos(filtro.doctorId, filtro.centroSaludId, filtro.profesionId, filtro.trabajaActualmente, estadoNormalizado, filtro.busqueda, pagina, limite);
-    }
-    async obtenerPorDoctor(doctorId, pagina, limite) {
-        // Validar que el doctor existe
-        const doctorExiste = await this.experienciasLaboralesRepository.verificarDoctorExiste(doctorId);
-        if (!doctorExiste) {
-            throw new DoctorNoEncontradoError_1.DoctorNoEncontradoError(doctorId);
-        }
-        const paginaFinal = pagina && pagina > 0 ? pagina : 1;
-        const limiteFinal = limite && limite > 0 ? limite : 20;
-        return await this.experienciasLaboralesRepository.obtenerPorDoctor(doctorId, paginaFinal, limiteFinal);
+        return await this.experienciaLaboralRepository.obtenerTodos(filtro.doctorId, filtro.estado, filtro.busqueda, filtro.pagina, filtro.limite);
     }
     async actualizar(id, dto) {
-        // Verificar que la experiencia laboral existe
-        const experienciaExistente = await this.experienciasLaboralesRepository.obtenerPorId(id);
+        // Verificar que la experiencia existe
+        const experienciaExistente = await this.experienciaLaboralRepository.obtenerPorId(id);
         if (!experienciaExistente) {
             throw new ExperienciaLaboralNoEncontradaError_1.ExperienciaLaboralNoEncontradaError(id);
-        }
-        // Convertir fechas si se proporcionan
-        const fechaInicio = dto.fechaInicio ? new Date(dto.fechaInicio) : undefined;
-        const fechaFinalizacion = dto.fechaFinalizacion ? new Date(dto.fechaFinalizacion) : undefined;
-        // Validar profesión si se proporciona
-        if (dto.profesionId !== undefined) {
-            if (dto.profesionId <= 0) {
-                throw new Error('El ID de la profesión debe ser válido');
-            }
-            const profesionExiste = await this.experienciasLaboralesRepository.verificarProfesionExiste(dto.profesionId);
-            if (!profesionExiste) {
-                throw new Error(`No se encontró la profesión con ID: ${dto.profesionId}`);
-            }
-        }
-        // Normalizar y validar institución si se proporciona
-        let institucionExternaNormalizada;
-        let centroSaludIdFinal;
-        if (dto.institucionExterna !== undefined || dto.centroSaludId !== undefined) {
-            institucionExternaNormalizada = dto.institucionExterna?.trim();
-            centroSaludIdFinal = dto.centroSaludId;
-            // Si ambos son undefined, usar los valores existentes
-            if (institucionExternaNormalizada === undefined && centroSaludIdFinal === undefined) {
-                institucionExternaNormalizada = experienciaExistente.institucionExterna;
-                centroSaludIdFinal = experienciaExistente.centroSaludId;
-            }
-            this.experienciaLaboralValidator.validarInstitucion(centroSaludIdFinal, institucionExternaNormalizada);
-            // Si se especifica un centro de salud, validar que existe
-            if (centroSaludIdFinal) {
-                const centroSaludExiste = await this.experienciasLaboralesRepository.verificarCentroSaludExiste(centroSaludIdFinal);
-                if (!centroSaludExiste) {
-                    throw new Error(`No se encontró el centro de salud con ID: ${centroSaludIdFinal}`);
-                }
-            }
-            // Validar longitud de institución externa
-            if (institucionExternaNormalizada) {
-                this.experienciaLaboralValidator.validarInstitucionExterna(institucionExternaNormalizada);
-            }
-        }
-        // Normalizar y validar descripción del cargo si se proporciona
-        let descripcionCargoNormalizada;
-        if (dto.descripcionCargo !== undefined) {
-            descripcionCargoNormalizada = dto.descripcionCargo.trim();
-            this.experienciaLaboralValidator.validarDescripcionCargo(descripcionCargoNormalizada);
         }
         // Validar fechas si se están actualizando
-        if (fechaInicio !== undefined || fechaFinalizacion !== undefined || dto.trabajaActualmente !== undefined) {
-            const fechaInicioFinal = fechaInicio ?? experienciaExistente.fechaInicio;
-            const fechaFinalizacionFinal = fechaFinalizacion ?? experienciaExistente.fechaFinalizacion;
-            const trabajaActualmenteFinal = dto.trabajaActualmente ?? experienciaExistente.trabajaActualmente;
-            this.experienciaLaboralValidator.validarFechas(fechaInicioFinal, fechaFinalizacionFinal, trabajaActualmenteFinal);
+        if (dto.fechaInicio || dto.fechaFinalizacion || dto.trabajaActualmente !== undefined) {
+            const fechaInicio = dto.fechaInicio ? new Date(dto.fechaInicio) : experienciaExistente.fechaInicio;
+            const fechaFinalizacion = dto.fechaFinalizacion
+                ? new Date(dto.fechaFinalizacion)
+                : experienciaExistente.fechaFinalizacion;
+            const trabajaActualmente = dto.trabajaActualmente !== undefined
+                ? dto.trabajaActualmente
+                : experienciaExistente.trabajaActualmente;
+            this.validator.validarFechas(fechaInicio, fechaFinalizacion, trabajaActualmente);
         }
-        // Normalizar estado si se proporciona
-        let estadoNormalizado;
-        if (dto.estado !== undefined) {
-            estadoNormalizado = dto.estado.charAt(0).toUpperCase() + dto.estado.slice(1).toLowerCase();
-            this.experienciaLaboralValidator.validarEstadoValido(estadoNormalizado);
+        // Validar institución si se está actualizando
+        if (dto.institucion) {
+            this.validator.validarInstitucion(dto.institucion);
         }
-        return await this.experienciasLaboralesRepository.actualizar(id, centroSaludIdFinal, institucionExternaNormalizada, dto.profesionId, descripcionCargoNormalizada, fechaInicio, fechaFinalizacion, dto.trabajaActualmente, estadoNormalizado);
+        // Validar posición si se está actualizando
+        if (dto.posicion) {
+            this.validator.validarPosicion(dto.posicion);
+        }
+        // Validar estado si se está actualizando
+        if (dto.estado) {
+            this.validator.validarEstadoValido(dto.estado);
+        }
+        // Preparar datos para actualizar
+        const datosActualizacion = {
+            ...dto,
+            fechaInicio: dto.fechaInicio ? new Date(dto.fechaInicio) : undefined,
+            fechaFinalizacion: dto.fechaFinalizacion ? new Date(dto.fechaFinalizacion) : undefined,
+            actualizadoEn: new Date(),
+        };
+        return await this.experienciaLaboralRepository.actualizar(id, datosActualizacion);
     }
     async eliminar(id) {
-        // Verificar que la experiencia laboral existe
-        const experienciaExistente = await this.experienciasLaboralesRepository.obtenerPorId(id);
-        if (!experienciaExistente) {
+        // Verificar que la experiencia existe
+        const experiencia = await this.experienciaLaboralRepository.obtenerPorId(id);
+        if (!experiencia) {
             throw new ExperienciaLaboralNoEncontradaError_1.ExperienciaLaboralNoEncontradaError(id);
         }
-        await this.experienciasLaboralesRepository.eliminar(id);
+        await this.experienciaLaboralRepository.eliminar(id);
     }
 };
 exports.GestionarExperienciasLaboralesUseCase = GestionarExperienciasLaboralesUseCase;
 exports.GestionarExperienciasLaboralesUseCase = GestionarExperienciasLaboralesUseCase = __decorate([
     (0, tsyringe_1.injectable)(),
-    __param(0, (0, tsyringe_1.inject)('IExperienciasLaboralesRepository')),
-    __param(1, (0, tsyringe_1.inject)('ExperienciaLaboralValidator')),
+    __param(0, (0, tsyringe_1.inject)('IExperienciaLaboralRepository')),
+    __param(1, (0, tsyringe_1.inject)(ExperienciaLaboralValidator_1.ExperienciaLaboralValidator)),
     __metadata("design:paramtypes", [Object, ExperienciaLaboralValidator_1.ExperienciaLaboralValidator])
 ], GestionarExperienciasLaboralesUseCase);

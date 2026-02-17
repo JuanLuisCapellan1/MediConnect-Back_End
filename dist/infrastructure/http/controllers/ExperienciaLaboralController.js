@@ -16,15 +16,17 @@ exports.ExperienciaLaboralController = void 0;
 const tsyringe_1 = require("tsyringe");
 const GestionarExperienciasLaboralesUseCase_1 = require("../../../application/use-cases/GestionarExperienciasLaboralesUseCase");
 const ExperienciaLaboralNoEncontradaError_1 = require("../../../domain/errors/ExperienciasLaborales/ExperienciaLaboralNoEncontradaError");
-const DoctorNoEncontradoError_1 = require("../../../domain/errors/ExperienciasLaborales/DoctorNoEncontradoError");
 const FechasInvalidasError_1 = require("../../../domain/errors/ExperienciasLaborales/FechasInvalidasError");
-const InstitucionRequeridaError_1 = require("../../../domain/errors/ExperienciasLaborales/InstitucionRequeridaError");
 let ExperienciaLaboralController = class ExperienciaLaboralController {
     constructor(gestionarExperienciasLaboralesUseCase) {
         this.gestionarExperienciasLaboralesUseCase = gestionarExperienciasLaboralesUseCase;
         this.crear = async (req, res) => {
             try {
-                const dto = req.body;
+                const doctorId = req.usuarioId; // Obtener doctor autenticado del JWT
+                const dto = {
+                    ...req.body,
+                    doctorId // Asignar doctor autenticado
+                };
                 const experiencia = await this.gestionarExperienciasLaboralesUseCase.crear(dto);
                 res.status(201).json({
                     message: 'Experiencia laboral creada exitosamente',
@@ -33,13 +35,7 @@ let ExperienciaLaboralController = class ExperienciaLaboralController {
                 });
             }
             catch (error) {
-                if (error instanceof DoctorNoEncontradoError_1.DoctorNoEncontradoError) {
-                    res.status(404).json({
-                        success: false,
-                        message: error.message,
-                    });
-                }
-                else if (error instanceof FechasInvalidasError_1.FechasInvalidasError || error instanceof InstitucionRequeridaError_1.InstitucionRequeridaError) {
+                if (error instanceof FechasInvalidasError_1.FechasInvalidasError) {
                     res.status(400).json({
                         success: false,
                         message: error.message,
@@ -49,8 +45,7 @@ let ExperienciaLaboralController = class ExperienciaLaboralController {
                     error.message.includes('inválido') ||
                     error.message.includes('No se encontró') ||
                     error.message.includes('debe') ||
-                    error.message.includes('puede') ||
-                    error.message.includes('especificar')) {
+                    error.message.includes('puede')) {
                     res.status(400).json({
                         success: false,
                         message: error.message,
@@ -67,6 +62,7 @@ let ExperienciaLaboralController = class ExperienciaLaboralController {
         };
         this.obtenerPorId = async (req, res) => {
             try {
+                const doctorId = req.usuarioId; // Obtener doctor autenticado del JWT
                 const id = parseInt(req.params.id);
                 if (isNaN(id)) {
                     res.status(400).json({
@@ -76,6 +72,14 @@ let ExperienciaLaboralController = class ExperienciaLaboralController {
                     return;
                 }
                 const experiencia = await this.gestionarExperienciasLaboralesUseCase.obtenerPorId(id);
+                // Verificar que la experiencia pertenece al doctor autenticado
+                if (experiencia.doctorId !== doctorId) {
+                    res.status(403).json({
+                        success: false,
+                        message: 'No tienes permiso para acceder a esta experiencia laboral',
+                    });
+                    return;
+                }
                 res.status(200).json({
                     message: 'Experiencia laboral obtenida exitosamente',
                     success: true,
@@ -100,12 +104,10 @@ let ExperienciaLaboralController = class ExperienciaLaboralController {
         };
         this.obtenerTodos = async (req, res) => {
             try {
+                const doctorId = req.usuarioId; // Obtener doctor autenticado del JWT
                 const filtro = {
-                    doctorId: req.query.doctorId ? parseInt(req.query.doctorId) : undefined,
-                    centroSaludId: req.query.centroSaludId ? parseInt(req.query.centroSaludId) : undefined,
-                    profesionId: req.query.profesionId ? parseInt(req.query.profesionId) : undefined,
-                    trabajaActualmente: req.query.trabajaActualmente === 'true' ? true : req.query.trabajaActualmente === 'false' ? false : undefined,
-                    estado: req.query.estado,
+                    doctorId, // Filtrar solo por el doctor autenticado
+                    estado: req.query.estado || 'Activo', // Por defecto solo mostrar activas
                     busqueda: req.query.busqueda,
                     pagina: req.query.pagina ? parseInt(req.query.pagina) : undefined,
                     limite: req.query.limite ? parseInt(req.query.limite) : undefined,
@@ -118,63 +120,30 @@ let ExperienciaLaboralController = class ExperienciaLaboralController {
                 });
             }
             catch (error) {
-                if (error.message.includes('inválido')) {
-                    res.status(400).json({
-                        success: false,
-                        message: error.message,
-                    });
-                }
-                else {
-                    console.error('Error al obtener experiencias laborales:', error);
-                    res.status(500).json({
-                        success: false,
-                        message: 'Error interno del servidor',
-                    });
-                }
-            }
-        };
-        this.obtenerPorDoctor = async (req, res) => {
-            try {
-                const doctorId = parseInt(req.params.doctorId);
-                if (isNaN(doctorId)) {
-                    res.status(400).json({
-                        success: false,
-                        message: 'ID del doctor inválido',
-                    });
-                    return;
-                }
-                const pagina = req.query.pagina ? parseInt(req.query.pagina) : undefined;
-                const limite = req.query.limite ? parseInt(req.query.limite) : undefined;
-                const resultado = await this.gestionarExperienciasLaboralesUseCase.obtenerPorDoctor(doctorId, pagina, limite);
-                res.status(200).json({
-                    message: 'Experiencias laborales del doctor obtenidas exitosamente',
-                    success: true,
-                    data: resultado,
+                console.error('Error al obtener experiencias laborales:', error);
+                res.status(500).json({
+                    success: false,
+                    message: 'Error interno del servidor',
                 });
-            }
-            catch (error) {
-                if (error instanceof DoctorNoEncontradoError_1.DoctorNoEncontradoError) {
-                    res.status(404).json({
-                        success: false,
-                        message: error.message,
-                    });
-                }
-                else {
-                    console.error('Error al obtener experiencias laborales del doctor:', error);
-                    res.status(500).json({
-                        success: false,
-                        message: 'Error interno del servidor',
-                    });
-                }
             }
         };
         this.actualizar = async (req, res) => {
             try {
+                const doctorId = req.usuarioId; // Obtener doctor autenticado del JWT
                 const id = parseInt(req.params.id);
                 if (isNaN(id)) {
                     res.status(400).json({
                         success: false,
                         message: 'ID inválido',
+                    });
+                    return;
+                }
+                // Verificar que la experiencia existe y pertenece al doctor
+                const experienciaExistente = await this.gestionarExperienciasLaboralesUseCase.obtenerPorId(id);
+                if (experienciaExistente.doctorId !== doctorId) {
+                    res.status(403).json({
+                        success: false,
+                        message: 'No tienes permiso para actualizar esta experiencia laboral',
                     });
                     return;
                 }
@@ -193,7 +162,7 @@ let ExperienciaLaboralController = class ExperienciaLaboralController {
                         message: error.message,
                     });
                 }
-                else if (error instanceof FechasInvalidasError_1.FechasInvalidasError || error instanceof InstitucionRequeridaError_1.InstitucionRequeridaError) {
+                else if (error instanceof FechasInvalidasError_1.FechasInvalidasError) {
                     res.status(400).json({
                         success: false,
                         message: error.message,
@@ -201,10 +170,8 @@ let ExperienciaLaboralController = class ExperienciaLaboralController {
                 }
                 else if (error.message.includes('requerido') ||
                     error.message.includes('inválido') ||
-                    error.message.includes('No se encontró') ||
                     error.message.includes('debe') ||
-                    error.message.includes('puede') ||
-                    error.message.includes('especificar')) {
+                    error.message.includes('puede')) {
                     res.status(400).json({
                         success: false,
                         message: error.message,
@@ -221,11 +188,21 @@ let ExperienciaLaboralController = class ExperienciaLaboralController {
         };
         this.eliminar = async (req, res) => {
             try {
+                const doctorId = req.usuarioId; // Obtener doctor autenticado del JWT
                 const id = parseInt(req.params.id);
                 if (isNaN(id)) {
                     res.status(400).json({
                         success: false,
                         message: 'ID inválido',
+                    });
+                    return;
+                }
+                // Verificar que la experiencia existe y pertenece al doctor
+                const experiencia = await this.gestionarExperienciasLaboralesUseCase.obtenerPorId(id);
+                if (experiencia.doctorId !== doctorId) {
+                    res.status(403).json({
+                        success: false,
+                        message: 'No tienes permiso para eliminar esta experiencia laboral',
                     });
                     return;
                 }

@@ -15,33 +15,38 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExperienciaLaboralValidator = void 0;
 const tsyringe_1 = require("tsyringe");
 const FechasInvalidasError_1 = require("../../errors/ExperienciasLaborales/FechasInvalidasError");
-const InstitucionRequeridaError_1 = require("../../errors/ExperienciasLaborales/InstitucionRequeridaError");
 let ExperienciaLaboralValidator = class ExperienciaLaboralValidator {
-    constructor(experienciasLaboralesRepository) {
-        this.experienciasLaboralesRepository = experienciasLaboralesRepository;
+    constructor(experienciaLaboralRepository) {
+        this.experienciaLaboralRepository = experienciaLaboralRepository;
     }
-    validarCamposRequeridos(doctorId, profesionId, descripcionCargo, fechaInicio) {
+    validarCamposRequeridos(doctorId, institucion, posicion, fechaInicio) {
         if (!doctorId || doctorId <= 0) {
             throw new Error('El ID del doctor es requerido y debe ser válido');
         }
-        if (!profesionId || profesionId <= 0) {
-            throw new Error('El ID de la profesión es requerido y debe ser válido');
+        if (!institucion || institucion.trim() === '') {
+            throw new Error('La institución es requerida');
         }
-        if (!descripcionCargo || descripcionCargo.trim() === '') {
-            throw new Error('La descripción del cargo es requerida');
+        if (!posicion || posicion.trim() === '') {
+            throw new Error('La posición es requerida');
         }
         if (!fechaInicio) {
             throw new Error('La fecha de inicio es requerida');
         }
     }
-    validarInstitucion(centroSaludId, institucionExterna) {
-        // Al menos uno debe estar presente
-        if (!centroSaludId && (!institucionExterna || institucionExterna.trim() === '')) {
-            throw new InstitucionRequeridaError_1.InstitucionRequeridaError();
+    validarInstitucion(institucion) {
+        if (institucion.trim().length < 2) {
+            throw new Error('El nombre de la institución debe tener al menos 2 caracteres');
         }
-        // No pueden estar ambos presentes
-        if (centroSaludId && institucionExterna && institucionExterna.trim() !== '') {
-            throw new Error('Solo puede especificar un centro de salud o una institución externa, no ambos');
+        if (institucion.length > 150) {
+            throw new Error('El nombre de la institución no puede exceder 150 caracteres');
+        }
+    }
+    validarPosicion(posicion) {
+        if (posicion.trim().length < 2) {
+            throw new Error('La posición debe tener al menos 2 caracteres');
+        }
+        if (posicion.length > 100) {
+            throw new Error('La posición no puede exceder 100 caracteres');
         }
     }
     validarFechas(fechaInicio, fechaFinalizacion, trabajaActualmente) {
@@ -75,23 +80,10 @@ let ExperienciaLaboralValidator = class ExperienciaLaboralValidator {
             throw new Error(`Estado inválido. Debe ser uno de: ${estadosValidos.join(', ')}`);
         }
     }
-    validarDescripcionCargo(descripcion) {
-        if (descripcion.length < 5) {
-            throw new Error('La descripción del cargo debe tener al menos 5 caracteres');
-        }
-        if (descripcion.length > 200) {
-            throw new Error('La descripción del cargo no puede exceder 200 caracteres');
-        }
-    }
-    validarInstitucionExterna(institucion) {
-        if (institucion.length > 150) {
-            throw new Error('El nombre de la institución externa no puede exceder 150 caracteres');
-        }
-    }
 };
 exports.ExperienciaLaboralValidator = ExperienciaLaboralValidator;
 exports.ExperienciaLaboralValidator = ExperienciaLaboralValidator = __decorate([
     (0, tsyringe_1.injectable)(),
-    __param(0, (0, tsyringe_1.inject)('IExperienciasLaboralesRepository')),
+    __param(0, (0, tsyringe_1.inject)('IExperienciaLaboralRepository')),
     __metadata("design:paramtypes", [Object])
 ], ExperienciaLaboralValidator);

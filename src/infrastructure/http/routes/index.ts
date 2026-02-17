@@ -17,7 +17,7 @@ import DoctoresRoutes from './DoctoresRoutes';
 import AccionesRoutes from './AccionesRoutes';
 import TiposCentrosSaludRoutes from './TiposCentrosSaludRoutes';
 import CentrosSaludRoutes from './CentrosSaludRoutes';
-import ProfesionesRoutes from './ProfesionesRoutes';
+
 import ExperienciasLaboralesRoutes from './ExperienciasLaboralesRoutes';
 import FormacionesAcademicasRoutes from './FormacionesAcademicasRoutes';
 import AuthRoutes from './AuthRoutes';
@@ -91,8 +91,7 @@ router.use('/tipos-centros-salud', TiposCentrosSaludRoutes);
 // Rutas de Centros de Salud
 router.use('/centros-salud', CentrosSaludRoutes);
 
-// Rutas de Profesiones
-router.use('/profesiones', ProfesionesRoutes);
+
 
 // Rutas de Experiencias Laborales
 router.use('/experiencias-laborales', ExperienciasLaboralesRoutes);

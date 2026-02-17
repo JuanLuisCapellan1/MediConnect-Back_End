@@ -12,7 +12,7 @@ datasource db {
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model Usuario {
   id                      Int                   @id @default(autoincrement()) @map("id_usuario")
-  email                   String                @unique @db.VarChar(120)
+  email                   String                @unique(map: "uq_usuarios_email") @db.VarChar(120)
   password                String                @map("contrasena") @db.VarChar(255)
   fotoPerfil              String?               @map("foto_perfil")
   telefono                String?               @db.VarChar(20)
@@ -118,23 +118,22 @@ model Doctor {
 }
 
 model CentroSalud {
-  usuarioId               Int                  @id @map("id_usuario")
-  nombreComercial         String               @map("nombre_comercial") @db.VarChar(120)
-  rnc                     String?              @unique @db.VarChar(20)
-  tipoCentroId            Int                  @map("id_tipo_centro")
-  ubicacionId             Int                  @map("id_ubicacion")
-  estadoVerificacion      String               @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
-  estado                  String               @default("Activo") @db.VarChar(20)
-  creadoEn                DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
-  actualizadoEn           DateTime?            @map("actualizado_en") @db.Timestamptz(6)
+  usuarioId               Int                @id @map("id_usuario")
+  nombreComercial         String             @map("nombre_comercial") @db.VarChar(120)
+  rnc                     String?            @unique @db.VarChar(20)
+  tipoCentroId            Int                @map("id_tipo_centro")
+  ubicacionId             Int                @map("id_ubicacion")
+  estadoVerificacion      String             @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
+  estado                  String             @default("Activo") @db.VarChar(20)
+  creadoEn                DateTime           @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn           DateTime?          @map("actualizado_en") @db.Timestamptz(6)
   certificacion_sanitaria String?
   sitio_web               String?
   descripcion             String?
   foto_perfil             String?
-  tipoCentro              TipoCentroSalud      @relation(fields: [tipoCentroId], references: [id])
-  ubicacion               Ubicacion            @relation(fields: [ubicacionId], references: [id])
-  usuario                 Usuario              @relation(fields: [usuarioId], references: [id])
-  experienciasStaff       ExperienciaLaboral[]
+  tipoCentro              TipoCentroSalud    @relation(fields: [tipoCentroId], references: [id])
+  ubicacion               Ubicacion          @relation(fields: [ubicacionId], references: [id])
+  usuario                 Usuario            @relation(fields: [usuarioId], references: [id])
   solicitudesAlianza      SolicitudAlianza[]
 
   @@map("centros_salud")
@@ -259,17 +258,6 @@ model Especialidad {
   @@map("especialidades")
 }
 
-model Profesion {
-  id           Int                  @id @default(autoincrement()) @map("id_profesion")
-  nombre       String               @db.VarChar(80)
-  estado       String               @default("Activo") @db.VarChar(20)
-  creadoEn     DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
-  descripcion  String?
-  experiencias ExperienciaLaboral[]
-
-  @@map("profesiones")
-}
-
 model Universidad {
   id          Int                  @id @default(autoincrement()) @map("id_universidad")
   paisId      Int                  @map("id_pais")
@@ -359,21 +347,17 @@ model FormacionAcademica {
 }
 
 model ExperienciaLaboral {
-  id                 Int          @id @default(autoincrement()) @map("id_experiencia")
-  doctorId           Int          @map("id_doctor")
-  centroSaludId      Int?         @map("id_centro_salud")
-  institucionExterna String?      @map("institucion_externa") @db.VarChar(150)
-  profesionId        Int          @map("id_profesion")
-  descripcionCargo   String       @map("descripcion_cargo") @db.VarChar(200)
-  fechaInicio        DateTime     @map("fecha_inicio") @db.Date
-  fechaFinalizacion  DateTime?    @map("fecha_finalizacion") @db.Date
-  trabajaActualmente Boolean      @default(false) @map("trabaja_actualmente")
-  estado             String       @default("Activo") @db.VarChar(20)
-  creadoEn           DateTime     @default(now()) @map("creado_en") @db.Timestamptz(6)
-  actualizadoEn      DateTime?    @map("actualizado_en") @db.Timestamptz(6)
-  centroSalud        CentroSalud? @relation(fields: [centroSaludId], references: [usuarioId])
-  doctor             Doctor       @relation(fields: [doctorId], references: [usuarioId])
-  profesion          Profesion    @relation(fields: [profesionId], references: [id])
+  id                 Int       @id @default(autoincrement()) @map("id_experiencia")
+  doctorId           Int       @map("id_doctor")
+  institucion        String    @db.VarChar(150)
+  fechaInicio        DateTime  @map("fecha_inicio") @db.Date
+  fechaFinalizacion  DateTime? @map("fecha_finalizacion") @db.Date
+  trabajaActualmente Boolean   @default(false) @map("trabaja_actualmente")
+  estado             String    @default("Activo") @db.VarChar(20)
+  creadoEn           DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn      DateTime? @map("actualizado_en") @db.Timestamptz(6)
+  posicion           String    @db.VarChar(100)
+  doctor             Doctor    @relation(fields: [doctorId], references: [usuarioId])
 
   @@map("experiencias_laborales")
 }

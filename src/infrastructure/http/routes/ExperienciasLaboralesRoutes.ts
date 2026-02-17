@@ -1,26 +1,65 @@
 import { Router } from 'express';
 import { container } from 'tsyringe';
 import { ExperienciaLaboralController } from '../controllers/ExperienciaLaboralController';
+import { autenticarJWT } from '../middlewares/autenticacion';
+import { requireRole } from '../middlewares/roleMiddleware';
 
 const router = Router();
 const experienciaLaboralController = container.resolve(ExperienciaLaboralController);
 
-// Crear una nueva experiencia laboral
-router.post('/', experienciaLaboralController.crear);
+/**
+ * POST /experiencias-laborales
+ * Crear una nueva experiencia laboral (requiere autenticación como Doctor)
+ */
+router.post(
+    '/',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => experienciaLaboralController.crear(req, res)
+);
 
-// Obtener todas las experiencias laborales (con filtros)
-router.get('/', experienciaLaboralController.obtenerTodos);
+/**
+ * GET /experiencias-laborales
+ * Obtener todas las experiencias laborales del doctor autenticado
+ */
+router.get(
+    '/',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => experienciaLaboralController.obtenerTodos(req, res)
+);
 
-// Obtener experiencias laborales de un doctor específico
-router.get('/doctor/:doctorId', experienciaLaboralController.obtenerPorDoctor);
+/**
+ * GET /experiencias-laborales/:id
+ * Obtener una experiencia laboral por ID (con validación de propiedad)
+ */
+router.get(
+    '/:id',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => experienciaLaboralController.obtenerPorId(req, res)
+);
 
-// Obtener una experiencia laboral por ID
-router.get('/:id', experienciaLaboralController.obtenerPorId);
+/**
+ * PUT /experiencias-laborales/:id
+ * Actualizar una experiencia laboral (con validación de propiedad)
+ */
+router.put(
+    '/:id',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => experienciaLaboralController.actualizar(req, res)
+);
 
-// Actualizar una experiencia laboral
-router.put('/:id', experienciaLaboralController.actualizar);
-
-// Eliminar una experiencia laboral (soft delete)
-router.delete('/:id', experienciaLaboralController.eliminar);
+/**
+ * DELETE /experiencias-laborales/:id
+ * Eliminar (soft delete) una experiencia laboral (con validación de propiedad)
+ */
+router.delete(
+    '/:id',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => experienciaLaboralController.eliminar(req, res)
+);
 
 export default router;

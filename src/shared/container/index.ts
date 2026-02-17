@@ -17,8 +17,8 @@ import { IEspecialidadRepository } from '../../domain/repositories/IEspecialidad
 import { IPacienteRepository } from '../../domain/repositories/IPacienteRepository';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
 import { ITipoCentroSaludRepository } from '../../domain/repositories/ITipoCentroSaludRepository';
-import { IProfesionesRepository } from '../../domain/repositories/IProfesionesRepository';
-import { IExperienciasLaboralesRepository } from '../../domain/repositories/IExperienciasLaboralesRepository';
+
+import { IExperienciaLaboralRepository } from '../../domain/repositories/IExperienciaLaboralRepository';
 import { IFormacionAcademicaRepository } from '../../domain/repositories/IFormacionAcademicaRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
@@ -53,8 +53,8 @@ import { PrismaEspecialidadRepository } from '../../infrastructure/repositories/
 import { PrismaPacienteRepository } from '../../infrastructure/repositories/PrismaPacienteRepository';
 import { PrismaDoctorRepository } from '../../infrastructure/repositories/PrismaDoctorRepository';
 import { PrismaTipoCentroSaludRepository } from '../../infrastructure/repositories/PrismaTipoCentroSaludRepository';
-import { PrismaProfesionesRepository } from '../../infrastructure/repositories/PrismaProfesionesRepository';
-import { PrismaExperienciasLaboralesRepository } from '../../infrastructure/repositories/PrismaExperienciasLaboralesRepository';
+
+import { PrismaExperienciaLaboralRepository } from '../../infrastructure/repositories/PrismaExperienciaLaboralRepository';
 import { PrismaFormacionAcademicaRepository } from '../../infrastructure/repositories/PrismaFormacionAcademicaRepository';
 // Implementaciones de tu compañero
 import { PrismaNotificacionesRepository } from '../../infrastructure/repositories/PrismaNotificacionesRepository';
@@ -94,7 +94,7 @@ import { EspecialidadValidator } from '../../domain/validators/Especialidades/Es
 import { PacienteValidator } from '../../domain/validators/Pacientes/PacienteValidator';
 import { DoctorValidator } from '../../domain/validators/Doctores/DoctorValidator';
 import { TipoCentroSaludValidator } from '../../domain/validators/TiposCentrosSalud/TipoCentroSaludValidator';
-import { ProfesionValidator } from '../../domain/validators/Profesiones/ProfesionValidator';
+
 import { ExperienciaLaboralValidator } from '../../domain/validators/ExperienciasLaborales/ExperienciaLaboralValidator';
 import { FormacionAcademicaValidator } from '../../domain/validators/FormacionesAcademicas/FormacionAcademicaValidator';
 import { CentroSaludValidator } from '../../domain/validators/CentrosSalud/CentroSaludValidator';
@@ -127,7 +127,7 @@ import { GestionarConversacionesUseCase } from '../../application/use-cases/Gest
 import { GestionarMensajesUseCase } from '../../application/use-cases/GestionarMensajesUseCase';
 import { GestionarMediaUseCase } from '../../application/use-cases/GestionarMediaUseCase';
 import { GestionarTiposCentrosSaludUseCase } from '../../application/use-cases/GestionarTiposCentrosSaludUseCase';
-import { GestionarProfesionesUseCase } from '../../application/use-cases/GestionarProfesionesUseCase';
+
 import { GestionarExperienciasLaboralesUseCase } from '../../application/use-cases/GestionarExperienciasLaboralesUseCase';
 import { GestionarFormacionesAcademicasUseCase } from '../../application/use-cases/GestionarFormacionesAcademicasUseCase';
 import { GestionarServicioHorariosUseCase } from '../../application/use-cases/GestionarServicioHorariosUseCase';
@@ -281,16 +281,12 @@ container.register(CentroSaludValidator, {
   }
 });
 
-container.register(ProfesionValidator, {
-  useFactory: () => {
-    const repo = container.resolve<IProfesionesRepository>('ProfesionesRepository');
-    return new ProfesionValidator(repo);
-  }
-});
+
+
 
 container.register(ExperienciaLaboralValidator, {
   useFactory: () => {
-    const repo = container.resolve<IExperienciasLaboralesRepository>('IExperienciasLaboralesRepository');
+    const repo = container.resolve<IExperienciaLaboralRepository>('IExperienciaLaboralRepository');
     return new ExperienciaLaboralValidator(repo);
   }
 });
@@ -476,24 +472,15 @@ container.register<ICentroSaludRepository>(
   }
 );
 
-container.register<IProfesionesRepository>(
-  'ProfesionesRepository',
-  {
-    useFactory: () => {
-      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
-      const redisCache = container.resolve(RedisCacheService);
-      return new PrismaProfesionesRepository(prismaClient, redisCache);
-    }
-  }
-);
 
-container.register<IExperienciasLaboralesRepository>(
-  'IExperienciasLaboralesRepository',
+
+container.register<IExperienciaLaboralRepository>(
+  'IExperienciaLaboralRepository',
   {
     useFactory: () => {
       const prismaClient = container.resolve<PrismaClient>('PrismaClient');
       const redisCache = container.resolve(RedisCacheService);
-      return new PrismaExperienciasLaboralesRepository(prismaClient, redisCache);
+      return new PrismaExperienciaLaboralRepository(prismaClient, redisCache);
     }
   }
 );
@@ -758,23 +745,11 @@ container.register(GestionarTiposCentrosSaludUseCase, {
   }
 });
 
-container.register(GestionarProfesionesUseCase, {
-  useFactory: () => {
-    const repo = container.resolve<IProfesionesRepository>('ProfesionesRepository');
-    const validator = container.resolve(ProfesionValidator);
-    return new GestionarProfesionesUseCase(repo, validator);
-  }
-});
 
-container.register('GestionarProfesionesUseCase', {
-  useFactory: () => {
-    return container.resolve(GestionarProfesionesUseCase);
-  }
-});
 
 container.register(GestionarExperienciasLaboralesUseCase, {
   useFactory: () => {
-    const repo = container.resolve<IExperienciasLaboralesRepository>('IExperienciasLaboralesRepository');
+    const repo = container.resolve<IExperienciaLaboralRepository>('IExperienciaLaboralRepository');
     const validator = container.resolve(ExperienciaLaboralValidator);
     return new GestionarExperienciasLaboralesUseCase(repo, validator);
   }

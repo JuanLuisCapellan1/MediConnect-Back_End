@@ -19,8 +19,7 @@ const PrismaEspecialidadRepository_1 = require("../../infrastructure/repositorie
 const PrismaPacienteRepository_1 = require("../../infrastructure/repositories/PrismaPacienteRepository");
 const PrismaDoctorRepository_1 = require("../../infrastructure/repositories/PrismaDoctorRepository");
 const PrismaTipoCentroSaludRepository_1 = require("../../infrastructure/repositories/PrismaTipoCentroSaludRepository");
-const PrismaProfesionesRepository_1 = require("../../infrastructure/repositories/PrismaProfesionesRepository");
-const PrismaExperienciasLaboralesRepository_1 = require("../../infrastructure/repositories/PrismaExperienciasLaboralesRepository");
+const PrismaExperienciaLaboralRepository_1 = require("../../infrastructure/repositories/PrismaExperienciaLaboralRepository");
 const PrismaFormacionAcademicaRepository_1 = require("../../infrastructure/repositories/PrismaFormacionAcademicaRepository");
 // Implementaciones de tu compañero
 const PrismaNotificacionesRepository_1 = require("../../infrastructure/repositories/PrismaNotificacionesRepository");
@@ -57,7 +56,6 @@ const EspecialidadValidator_1 = require("../../domain/validators/Especialidades/
 const PacienteValidator_1 = require("../../domain/validators/Pacientes/PacienteValidator");
 const DoctorValidator_1 = require("../../domain/validators/Doctores/DoctorValidator");
 const TipoCentroSaludValidator_1 = require("../../domain/validators/TiposCentrosSalud/TipoCentroSaludValidator");
-const ProfesionValidator_1 = require("../../domain/validators/Profesiones/ProfesionValidator");
 const ExperienciaLaboralValidator_1 = require("../../domain/validators/ExperienciasLaborales/ExperienciaLaboralValidator");
 const FormacionAcademicaValidator_1 = require("../../domain/validators/FormacionesAcademicas/FormacionAcademicaValidator");
 const CentroSaludValidator_1 = require("../../domain/validators/CentrosSalud/CentroSaludValidator");
@@ -89,7 +87,6 @@ const GestionarConversacionesUseCase_1 = require("../../application/use-cases/Ge
 const GestionarMensajesUseCase_1 = require("../../application/use-cases/GestionarMensajesUseCase");
 const GestionarMediaUseCase_1 = require("../../application/use-cases/GestionarMediaUseCase");
 const GestionarTiposCentrosSaludUseCase_1 = require("../../application/use-cases/GestionarTiposCentrosSaludUseCase");
-const GestionarProfesionesUseCase_1 = require("../../application/use-cases/GestionarProfesionesUseCase");
 const GestionarExperienciasLaboralesUseCase_1 = require("../../application/use-cases/GestionarExperienciasLaboralesUseCase");
 const GestionarFormacionesAcademicasUseCase_1 = require("../../application/use-cases/GestionarFormacionesAcademicasUseCase");
 const GestionarServicioHorariosUseCase_1 = require("../../application/use-cases/GestionarServicioHorariosUseCase");
@@ -221,15 +218,9 @@ tsyringe_1.container.register(CentroSaludValidator_1.CentroSaludValidator, {
         return new CentroSaludValidator_1.CentroSaludValidator();
     }
 });
-tsyringe_1.container.register(ProfesionValidator_1.ProfesionValidator, {
-    useFactory: () => {
-        const repo = tsyringe_1.container.resolve('ProfesionesRepository');
-        return new ProfesionValidator_1.ProfesionValidator(repo);
-    }
-});
 tsyringe_1.container.register(ExperienciaLaboralValidator_1.ExperienciaLaboralValidator, {
     useFactory: () => {
-        const repo = tsyringe_1.container.resolve('IExperienciasLaboralesRepository');
+        const repo = tsyringe_1.container.resolve('IExperienciaLaboralRepository');
         return new ExperienciaLaboralValidator_1.ExperienciaLaboralValidator(repo);
     }
 });
@@ -350,18 +341,11 @@ tsyringe_1.container.register('CentroSaludRepository', {
         return new PrismaCentroSaludRepository_1.PrismaCentroSaludRepository(prismaClient, redisCache);
     }
 });
-tsyringe_1.container.register('ProfesionesRepository', {
+tsyringe_1.container.register('IExperienciaLaboralRepository', {
     useFactory: () => {
         const prismaClient = tsyringe_1.container.resolve('PrismaClient');
         const redisCache = tsyringe_1.container.resolve(RedisCacheService_1.RedisCacheService);
-        return new PrismaProfesionesRepository_1.PrismaProfesionesRepository(prismaClient, redisCache);
-    }
-});
-tsyringe_1.container.register('IExperienciasLaboralesRepository', {
-    useFactory: () => {
-        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
-        const redisCache = tsyringe_1.container.resolve(RedisCacheService_1.RedisCacheService);
-        return new PrismaExperienciasLaboralesRepository_1.PrismaExperienciasLaboralesRepository(prismaClient, redisCache);
+        return new PrismaExperienciaLaboralRepository_1.PrismaExperienciaLaboralRepository(prismaClient, redisCache);
     }
 });
 tsyringe_1.container.register('IFormacionAcademicaRepository', {
@@ -561,21 +545,9 @@ tsyringe_1.container.register(GestionarTiposCentrosSaludUseCase_1.GestionarTipos
         return new GestionarTiposCentrosSaludUseCase_1.GestionarTiposCentrosSaludUseCase(repo, validator, estadoValidator);
     }
 });
-tsyringe_1.container.register(GestionarProfesionesUseCase_1.GestionarProfesionesUseCase, {
-    useFactory: () => {
-        const repo = tsyringe_1.container.resolve('ProfesionesRepository');
-        const validator = tsyringe_1.container.resolve(ProfesionValidator_1.ProfesionValidator);
-        return new GestionarProfesionesUseCase_1.GestionarProfesionesUseCase(repo, validator);
-    }
-});
-tsyringe_1.container.register('GestionarProfesionesUseCase', {
-    useFactory: () => {
-        return tsyringe_1.container.resolve(GestionarProfesionesUseCase_1.GestionarProfesionesUseCase);
-    }
-});
 tsyringe_1.container.register(GestionarExperienciasLaboralesUseCase_1.GestionarExperienciasLaboralesUseCase, {
     useFactory: () => {
-        const repo = tsyringe_1.container.resolve('IExperienciasLaboralesRepository');
+        const repo = tsyringe_1.container.resolve('IExperienciaLaboralRepository');
         const validator = tsyringe_1.container.resolve(ExperienciaLaboralValidator_1.ExperienciaLaboralValidator);
         return new GestionarExperienciasLaboralesUseCase_1.GestionarExperienciasLaboralesUseCase(repo, validator);
     }

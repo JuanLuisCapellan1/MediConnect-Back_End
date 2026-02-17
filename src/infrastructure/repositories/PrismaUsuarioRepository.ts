@@ -596,12 +596,6 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
           where: { centroSaludId: usuarioId },
           data: { estado: 'Eliminado', actualizadoEn: new Date() },
         });
-
-        // Marcar experiencias laborales en el centro como eliminadas
-        await tx.experienciaLaboral.updateMany({
-          where: { centroSaludId: usuarioId },
-          data: { estado: 'Eliminado', actualizadoEn: new Date() },
-        });
       }
 
       // 8. Marcar conversaciones como eliminadas

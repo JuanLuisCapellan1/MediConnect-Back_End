@@ -22,7 +22,6 @@ const DoctoresRoutes_1 = __importDefault(require("./DoctoresRoutes"));
 const AccionesRoutes_1 = __importDefault(require("./AccionesRoutes"));
 const TiposCentrosSaludRoutes_1 = __importDefault(require("./TiposCentrosSaludRoutes"));
 const CentrosSaludRoutes_1 = __importDefault(require("./CentrosSaludRoutes"));
-const ProfesionesRoutes_1 = __importDefault(require("./ProfesionesRoutes"));
 const ExperienciasLaboralesRoutes_1 = __importDefault(require("./ExperienciasLaboralesRoutes"));
 const FormacionesAcademicasRoutes_1 = __importDefault(require("./FormacionesAcademicasRoutes"));
 const AuthRoutes_1 = __importDefault(require("./AuthRoutes"));
@@ -80,8 +79,6 @@ router.use('/acciones', AccionesRoutes_1.default);
 router.use('/tipos-centros-salud', TiposCentrosSaludRoutes_1.default);
 // Rutas de Centros de Salud
 router.use('/centros-salud', CentrosSaludRoutes_1.default);
-// Rutas de Profesiones
-router.use('/profesiones', ProfesionesRoutes_1.default);
 // Rutas de Experiencias Laborales
 router.use('/experiencias-laborales', ExperienciasLaboralesRoutes_1.default);
 // Rutas de Formaciones Académicas
