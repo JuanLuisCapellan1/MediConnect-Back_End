@@ -23,9 +23,10 @@ let SolicitarCodigoRegistroUseCase = class SolicitarCodigoRegistroUseCase {
         this.OTP_TTL = 900; // 15 minutos
     }
     async execute(email) {
-        // 1. Validar si el correo ya está registrado
-        const usuarioExistente = await this.usuarioRepository.buscarPorEmail(email);
-        if (usuarioExistente) {
+        // 1. Validar si el correo ya está registrado y ACTIVO
+        // Esto permite re-registro si la cuenta anterior fue eliminada
+        const emailActivo = await this.usuarioRepository.existeEmailActivo(email);
+        if (emailActivo) {
             throw new Error('El correo ya está registrado.');
         }
         // 2. Generar código OTP

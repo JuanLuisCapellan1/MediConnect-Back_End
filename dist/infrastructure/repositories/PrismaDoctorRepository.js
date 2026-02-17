@@ -30,7 +30,162 @@ class PrismaDoctorRepository {
         return doctor ? this.mapearEntidad(doctor) : null;
     }
     async obtenerPorUsuarioId(usuarioId) {
-        return this.obtenerPorId(usuarioId);
+        const doctor = await this.prisma.doctor.findUnique({
+            where: { usuarioId },
+            include: {
+                usuario: {
+                    select: {
+                        email: true,
+                        telefono: true,
+                        fotoPerfil: true,
+                    },
+                },
+                especialidades: {
+                    include: {
+                        especialidades: true,
+                    },
+                },
+                documentos: {
+                    where: {
+                        estado: 'Activo',
+                    },
+                    select: {
+                        id: true,
+                        tipoDocumento: true,
+                        urlArchivo: true,
+                        estadoRevision: true,
+                        descripcion: true,
+                        creadoEn: true,
+                    },
+                    orderBy: {
+                        creadoEn: 'desc',
+                    },
+                },
+            },
+        });
+        return doctor ? this.mapearEntidad(doctor) : null;
+    }
+    /**
+     * Obtiene el perfil completo del doctor con todas sus relaciones
+     * Retorna los datos sin mapear a la entidad para incluir toda la información
+     */
+    async obtenerPerfilCompleto(usuarioId) {
+        const doctor = await this.prisma.doctor.findUnique({
+            where: { usuarioId },
+            include: {
+                usuario: {
+                    select: {
+                        email: true,
+                        telefono: true,
+                        fotoPerfil: true,
+                        emailVerificado: true,
+                    },
+                },
+                ubicacion: true,
+                especialidades: {
+                    include: {
+                        especialidades: true,
+                    },
+                },
+                documentos: {
+                    where: {
+                        estado: 'Activo',
+                    },
+                    include: {
+                        acciones: {
+                            where: {
+                                comentarioAdmin: { not: null }
+                            },
+                            orderBy: {
+                                fechaResolucion: 'desc'
+                            },
+                            take: 1,
+                            select: {
+                                comentarioAdmin: true,
+                                estado: true,
+                                fechaResolucion: true
+                            }
+                        }
+                    },
+                    orderBy: {
+                        creadoEn: 'desc',
+                    },
+                },
+                experiencias: {
+                    where: {
+                        estado: 'Activo',
+                    },
+                    orderBy: {
+                        creadoEn: 'desc',
+                    },
+                },
+                formaciones: {
+                    where: {
+                        estado: 'Activo',
+                    },
+                    orderBy: {
+                        creadoEn: 'desc',
+                    },
+                },
+                horarios: {
+                    where: {
+                        estado: 'Activo',
+                    },
+                    orderBy: {
+                        diaSemana: 'asc',
+                    },
+                },
+                servicios: {
+                    where: {
+                        estado: 'Activo',
+                    },
+                },
+                segurosAceptados: {
+                    include: {
+                        seguro: true,
+                    },
+                },
+            },
+        });
+        // If doctor exists, fetch general verification comment and process documents
+        if (doctor) {
+            const accionVerificacion = await this.prisma.accion.findFirst({
+                where: {
+                    emisorId: usuarioId,
+                    documentoId: null,
+                    comentarioAdmin: { not: null }
+                },
+                orderBy: {
+                    fechaResolucion: 'desc'
+                },
+                select: {
+                    comentarioAdmin: true,
+                    estado: true,
+                    fechaResolucion: true
+                }
+            });
+            // Always add verification comment fields (null if not found)
+            doctor.comentarioVerificacion = accionVerificacion?.comentarioAdmin || null;
+            doctor.estadoAccionVerificacion = accionVerificacion?.estado || null;
+            doctor.fechaResolucionVerificacion = accionVerificacion?.fechaResolucion || null;
+            // Process documents to always include comentarioAdmin field
+            if (doctor.documentos && Array.isArray(doctor.documentos)) {
+                doctor.documentos = doctor.documentos.map((doc) => {
+                    const comentarioAdmin = doc.acciones?.[0]?.comentarioAdmin || null;
+                    const estadoAccion = doc.acciones?.[0]?.estado || null;
+                    const fechaResolucion = doc.acciones?.[0]?.fechaResolucion || null;
+                    // Remove acciones array and add flat fields
+                    const { acciones, ...docSinAcciones } = doc;
+                    return {
+                        ...docSinAcciones,
+                        comentarioAdmin,
+                        estadoAccion,
+                        fechaResolucionAccion: fechaResolucion
+                    };
+                });
+            }
+        }
+        return doctor;
     }
     async obtenerTodos(filtros) {
         const pagina = filtros.pagina || 1;

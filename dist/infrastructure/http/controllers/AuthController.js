@@ -696,7 +696,7 @@ class AuthController {
             });
         }
         catch (error) {
-            this.manejarError(res, error);
+            this.manejarError(error, res);
         }
     }
 }

@@ -3,6 +3,7 @@ import multer from 'multer';
 import { DoctorController } from '../controllers/DoctorController';
 import { autenticarJWT } from '../middlewares/autenticacion';
 import { requireRole } from '../middlewares/roleMiddleware';
+import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 
 // Configurar multer para archivos en memoria
 const upload = multer({ storage: multer.memoryStorage() });
@@ -29,6 +30,7 @@ router.get(
     '/me',
     autenticarJWT,
     requireRole('Doctor'),
+    translationMiddleware,
     (req, res) => doctorController.obtenerPerfil(req, res)
 );
 

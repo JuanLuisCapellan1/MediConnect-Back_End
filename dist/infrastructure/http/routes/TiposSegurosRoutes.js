@@ -19,6 +19,14 @@ routerTiposSeguros.post('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1
  * Obtener todos los tipos de seguros con filtros (Solo Admin)
  */
 routerTiposSeguros.get('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.obtenerTodos(req, res));
+// ============================================
+// Público - Solo lectura de tipos activos
+// ============================================
+/**
+ * GET /api/tipos-seguros/disponibles
+ * Obtener tipos de seguros activos (Público/Autenticado)
+ */
+routerTiposSeguros.get('/disponibles', (req, res) => controller.obtenerActivos(req, res));
 /**
  * GET /api/tipos-seguros/:id
  * Obtener un tipo de seguro por ID (Solo Admin)
@@ -34,12 +42,4 @@ routerTiposSeguros.patch('/:id', autenticacion_1.autenticarJWT, (0, roleMiddlewa
  * Eliminar (soft delete) un tipo de seguro (Solo Admin)
  */
 routerTiposSeguros.delete('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.eliminar(req, res));
-// ============================================
-// Público - Solo lectura de tipos activos
-// ============================================
-/**
- * GET /api/tipos-seguros/disponibles
- * Obtener tipos de seguros activos (Público/Autenticado)
- */
-routerTiposSeguros.get('/disponibles', (req, res) => controller.obtenerActivos(req, res));
 exports.default = routerTiposSeguros;

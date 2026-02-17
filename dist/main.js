@@ -7,6 +7,11 @@ require("reflect-metadata");
 const dotenv_1 = __importDefault(require("dotenv"));
 // Cargar variables de entorno
 dotenv_1.default.config();
+// Fix para serialización de BigInt en JSON
+// Convierte BigInt a string automáticamente cuando se serializa a JSON
+BigInt.prototype.toJSON = function () {
+    return this.toString();
+};
 require("./shared/container"); // Configuración del contenedor de inyección
 const express_1 = __importDefault(require("express"));
 const http_1 = require("http");

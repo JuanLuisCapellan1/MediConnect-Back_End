@@ -42,6 +42,7 @@ let LoginUseCase = class LoginUseCase {
         const base = usuarioDetallado ?? usuario;
         const { accessToken, refreshToken } = this.authService.generarTokensSesion(base.id, base.email, base.rol);
         const fotoPerfil = base.fotoPerfil ?? base.foto_perfil ?? undefined;
+        const banner = base.banner ?? undefined;
         return {
             accessToken,
             refreshToken,
@@ -50,6 +51,7 @@ let LoginUseCase = class LoginUseCase {
                 email: base.email,
                 rol: base.rol,
                 fotoPerfil: fotoPerfil ?? null,
+                banner: banner ?? null,
                 paciente: base.paciente ?? null,
                 doctor: base.doctor ?? null,
                 centroSalud: base.centroSalud ?? null,

@@ -19,6 +19,7 @@ import TiposCentrosSaludRoutes from './TiposCentrosSaludRoutes';
 import CentrosSaludRoutes from './CentrosSaludRoutes';
 import ProfesionesRoutes from './ProfesionesRoutes';
 import ExperienciasLaboralesRoutes from './ExperienciasLaboralesRoutes';
+import FormacionesAcademicasRoutes from './FormacionesAcademicasRoutes';
 import AuthRoutes from './AuthRoutes';
 import AuthPasswordRoutes from './AuthPasswordRoutes';
 import NotificacionesRoutes from './notificaciones.routes';
@@ -95,6 +96,10 @@ router.use('/profesiones', ProfesionesRoutes);
 
 // Rutas de Experiencias Laborales
 router.use('/experiencias-laborales', ExperienciasLaboralesRoutes);
+
+// Rutas de Formaciones Académicas
+router.use('/formaciones-academicas', FormacionesAcademicasRoutes);
+
 
 // Rutas de Autenticación
 router.use('/auth', AuthRoutes);

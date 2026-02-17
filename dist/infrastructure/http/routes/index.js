@@ -19,10 +19,12 @@ const TiposServiciosRoutes_1 = __importDefault(require("./TiposServiciosRoutes")
 const EspecialidadesRoutes_1 = __importDefault(require("./EspecialidadesRoutes"));
 const PacientesRoutes_1 = __importDefault(require("./PacientesRoutes"));
 const DoctoresRoutes_1 = __importDefault(require("./DoctoresRoutes"));
+const AccionesRoutes_1 = __importDefault(require("./AccionesRoutes"));
 const TiposCentrosSaludRoutes_1 = __importDefault(require("./TiposCentrosSaludRoutes"));
 const CentrosSaludRoutes_1 = __importDefault(require("./CentrosSaludRoutes"));
 const ProfesionesRoutes_1 = __importDefault(require("./ProfesionesRoutes"));
 const ExperienciasLaboralesRoutes_1 = __importDefault(require("./ExperienciasLaboralesRoutes"));
+const FormacionesAcademicasRoutes_1 = __importDefault(require("./FormacionesAcademicasRoutes"));
 const AuthRoutes_1 = __importDefault(require("./AuthRoutes"));
 const AuthPasswordRoutes_1 = __importDefault(require("./AuthPasswordRoutes"));
 const notificaciones_routes_1 = __importDefault(require("./notificaciones.routes"));
@@ -72,6 +74,8 @@ router.use('/especialidades', EspecialidadesRoutes_1.default);
 router.use('/pacientes', PacientesRoutes_1.default);
 // Rutas de Doctores
 router.use('/doctores', DoctoresRoutes_1.default);
+// Rutas de Acciones (Revisión de Documentos)
+router.use('/acciones', AccionesRoutes_1.default);
 // Rutas de Tipos de Centros de Salud
 router.use('/tipos-centros-salud', TiposCentrosSaludRoutes_1.default);
 // Rutas de Centros de Salud
@@ -80,6 +84,8 @@ router.use('/centros-salud', CentrosSaludRoutes_1.default);
 router.use('/profesiones', ProfesionesRoutes_1.default);
 // Rutas de Experiencias Laborales
 router.use('/experiencias-laborales', ExperienciasLaboralesRoutes_1.default);
+// Rutas de Formaciones Académicas
+router.use('/formaciones-academicas', FormacionesAcademicasRoutes_1.default);
 // Rutas de Autenticación
 router.use('/auth', AuthRoutes_1.default);
 // Rutas de Notificaciones

@@ -42,37 +42,89 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
      */
     async savePaciente(data) {
         return await client_1.prisma.$transaction(async (tx) => {
-            // 1. Crear Usuario
-            const usuario = await tx.usuario.create({
-                data: {
-                    email: data.email,
-                    password: data.password,
-                    rol: 'Paciente',
-                    estado: 'Activo',
-                    emailVerificado: true,
-                    fotoPerfil: data.paciente.foto_perfil ?? null,
-                    creadoEn: new Date(),
+            // 1. CREAR O REACTIVAR USUARIO
+            const usuarioEliminado = await tx.usuario.findFirst({
+                where: {
+                    email: {
+                        equals: data.email,
+                        mode: 'insensitive'
+                    },
+                    estado: 'Eliminado',
                 },
             });
-            // 2. Crear Paciente con documento
-            // Nota: usuarioId es la clave primaria, por lo que se asigna directamente
-            await tx.paciente.create({
-                data: {
-                    usuarioId: usuario.id, // PK, se asigna directamente
-                    nombre: data.paciente.nombre,
-                    apellido: data.paciente.apellido,
-                    tipoDocIdentificacion: data.paciente.tipo_documento_identificacion,
-                    numero_documento_identificacion: data.paciente.numero_documento_identificacion,
-                    foto_documento: data.paciente.foto_documento ?? null,
-                    fechaNacimiento: data.paciente.fecha_nacimiento || new Date(),
-                    genero: data.paciente.genero || 'O',
-                    altura: data.paciente.altura || null,
-                    peso: data.paciente.peso || null,
-                    tipoSangre: data.paciente.tipo_sangre || null,
-                    estado: 'Activo',
-                    creadoEn: new Date(),
-                },
+            let usuario;
+            if (usuarioEliminado) {
+                // Reactivar usuario eliminado
+                usuario = await tx.usuario.update({
+                    where: { id: usuarioEliminado.id },
+                    data: {
+                        password: data.password,
+                        rol: 'Paciente',
+                        estado: 'Activo',
+                        emailVerificado: true,
+                        fotoPerfil: data.paciente.foto_perfil ?? null,
+                        actualizadoEn: new Date(),
+                    },
+                });
+            }
+            else {
+                // Crear nuevo usuario
+                usuario = await tx.usuario.create({
+                    data: {
+                        email: data.email,
+                        password: data.password,
+                        rol: 'Paciente',
+                        estado: 'Activo',
+                        emailVerificado: true,
+                        fotoPerfil: data.paciente.foto_perfil ?? null,
+                        creadoEn: new Date(),
+                    },
+                });
+            }
+            // 2. CREAR O REACTIVAR PACIENTE
+            const pacienteEliminado = await tx.paciente.findFirst({
+                where: { usuarioId: usuario.id },
             });
+            if (pacienteEliminado) {
+                // Reactivar perfil de paciente
+                await tx.paciente.update({
+                    where: { usuarioId: usuario.id },
+                    data: {
+                        nombre: data.paciente.nombre,
+                        apellido: data.paciente.apellido,
+                        tipoDocIdentificacion: data.paciente.tipo_documento_identificacion,
+                        numero_documento_identificacion: data.paciente.numero_documento_identificacion,
+                        foto_documento: data.paciente.foto_documento ?? null,
+                        fechaNacimiento: data.paciente.fecha_nacimiento || new Date(),
+                        genero: data.paciente.genero || 'O',
+                        altura: data.paciente.altura || null,
+                        peso: data.paciente.peso || null,
+                        tipoSangre: data.paciente.tipo_sangre || null,
+                        estado: 'Activo',
+                        actualizadoEn: new Date(),
+                    },
+                });
+            }
+            else {
+                // Crear nuevo paciente
+                await tx.paciente.create({
+                    data: {
+                        usuarioId: usuario.id,
+                        nombre: data.paciente.nombre,
+                        apellido: data.paciente.apellido,
+                        tipoDocIdentificacion: data.paciente.tipo_documento_identificacion,
+                        numero_documento_identificacion: data.paciente.numero_documento_identificacion,
+                        foto_documento: data.paciente.foto_documento ?? null,
+                        fechaNacimiento: data.paciente.fecha_nacimiento || new Date(),
+                        genero: data.paciente.genero || 'O',
+                        altura: data.paciente.altura || null,
+                        peso: data.paciente.peso || null,
+                        tipoSangre: data.paciente.tipo_sangre || null,
+                        estado: 'Activo',
+                        creadoEn: new Date(),
+                    },
+                });
+            }
             return usuario;
         });
     }
@@ -233,7 +285,7 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
         });
     }
     async buscarPerfilDetalladoPorId(id) {
-        return await client_1.prisma.usuario.findUnique({
+        const usuario = await client_1.prisma.usuario.findUnique({
             where: { id },
             include: {
                 paciente: true,
@@ -255,6 +307,22 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                             where: {
                                 estado: 'Activo',
                             },
+                            include: {
+                                acciones: {
+                                    where: {
+                                        comentarioAdmin: { not: null }
+                                    },
+                                    orderBy: {
+                                        fechaResolucion: 'desc'
+                                    },
+                                    take: 1,
+                                    select: {
+                                        comentarioAdmin: true,
+                                        estado: true,
+                                        fechaResolucion: true
+                                    }
+                                }
+                            },
                             orderBy: {
                                 creadoEn: 'desc',
                             },
@@ -264,6 +332,45 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                 centroSalud: true,
             },
         });
+        // If doctor exists, fetch general verification comment and process documents
+        if (usuario?.doctor) {
+            const accionVerificacion = await client_1.prisma.accion.findFirst({
+                where: {
+                    emisorId: id,
+                    documentoId: null,
+                    comentarioAdmin: { not: null }
+                },
+                orderBy: {
+                    fechaResolucion: 'desc'
+                },
+                select: {
+                    comentarioAdmin: true,
+                    estado: true,
+                    fechaResolucion: true
+                }
+            });
+            // Always add verification comment fields (null if not found)
+            usuario.doctor.comentarioVerificacion = accionVerificacion?.comentarioAdmin || null;
+            usuario.doctor.estadoAccionVerificacion = accionVerificacion?.estado || null;
+            usuario.doctor.fechaResolucionVerificacion = accionVerificacion?.fechaResolucion || null;
+            // Process documents to always include comentarioAdmin field
+            if (usuario.doctor.documentos && Array.isArray(usuario.doctor.documentos)) {
+                usuario.doctor.documentos = usuario.doctor.documentos.map((doc) => {
+                    const comentarioAdmin = doc.acciones?.[0]?.comentarioAdmin || null;
+                    const estadoAccion = doc.acciones?.[0]?.estado || null;
+                    const fechaResolucion = doc.acciones?.[0]?.fechaResolucion || null;
+                    // Remove acciones array and add flat fields
+                    const { acciones, ...docSinAcciones } = doc;
+                    return {
+                        ...docSinAcciones,
+                        comentarioAdmin,
+                        estadoAccion,
+                        fechaResolucionAccion: fechaResolucion
+                    };
+                });
+            }
+        }
+        return usuario;
     }
     async updateProfilePhoto(usuarioId, fotoPerfilUrl) {
         await client_1.prisma.usuario.update({
@@ -450,6 +557,11 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                 where: { usuarioId },
                 data: { estado: 'Eliminado' },
             });
+            // 10. Marcar acciones del usuario como eliminadas
+            await tx.accion.updateMany({
+                where: { emisorId: usuarioId },
+                data: { estado: 'Eliminado', actualizadoEn: new Date() },
+            });
         });
     }
     /**
@@ -458,7 +570,10 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
     async existeEmailActivo(email) {
         const usuario = await client_1.prisma.usuario.findFirst({
             where: {
-                email,
+                email: {
+                    equals: email,
+                    mode: 'insensitive'
+                },
                 estado: 'Activo',
             },
         });
@@ -513,19 +628,48 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
      */
     async saveDoctorWithDocuments(data) {
         return await client_1.prisma.$transaction(async (tx) => {
-            // 1. CREAR USUARIO
-            const usuario = await tx.usuario.create({
-                data: {
-                    email: data.email,
-                    password: data.password,
-                    rol: 'Doctor',
-                    estado: 'Activo',
-                    emailVerificado: true,
-                    telefono: data.doctor.telefono,
-                    fotoPerfil: data.doctor.foto_perfil,
-                    creadoEn: new Date(),
+            // 1. CREAR O REACTIVAR USUARIO
+            // Primero verificar si existe un usuario eliminado con este email
+            const usuarioEliminado = await tx.usuario.findFirst({
+                where: {
+                    email: {
+                        equals: data.email,
+                        mode: 'insensitive'
+                    },
+                    estado: 'Eliminado',
                 },
             });
+            let usuario;
+            if (usuarioEliminado) {
+                // Reactivar usuario eliminado
+                usuario = await tx.usuario.update({
+                    where: { id: usuarioEliminado.id },
+                    data: {
+                        password: data.password,
+                        rol: 'Doctor',
+                        estado: 'Activo',
+                        emailVerificado: true,
+                        telefono: data.doctor.telefono,
+                        fotoPerfil: data.doctor.foto_perfil,
+                        actualizadoEn: new Date(),
+                    },
+                });
+            }
+            else {
+                // Crear nuevo usuario
+                usuario = await tx.usuario.create({
+                    data: {
+                        email: data.email,
+                        password: data.password,
+                        rol: 'Doctor',
+                        estado: 'Activo',
+                        emailVerificado: true,
+                        telefono: data.doctor.telefono,
+                        fotoPerfil: data.doctor.foto_perfil,
+                        creadoEn: new Date(),
+                    },
+                });
+            }
             // 2. CREAR UBICACIÓN (OPCIONAL)
             let ubicacionId = null;
             if (data.ubicacion) {
@@ -540,40 +684,98 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                 });
                 ubicacionId = ubicacion.id;
             }
-            // 3. CREAR PERFIL DOCTOR
-            await tx.doctor.create({
-                data: {
+            // 3. CREAR O REACTIVAR PERFIL DOCTOR
+            const doctorEliminado = await tx.doctor.findFirst({
+                where: {
                     usuarioId: usuario.id,
-                    ubicacionId: ubicacionId,
-                    nombre: data.doctor.nombre,
-                    apellido: data.doctor.apellido,
-                    tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
-                    numeroDocumentoIdentificacion: data.doctor.numero_documento_identificacion,
-                    fechaNacimiento: data.doctor.fecha_nacimiento,
-                    genero: data.doctor.genero,
-                    nacionalidad: data.doctor.nacionalidad,
-                    exequatur: data.doctor.exequatur,
-                    biografia: data.doctor.biografia || null,
-                    estadoVerificacion: 'En revisión',
-                    calificacionPromedio: 0.00,
-                    estado: 'Activo',
-                    creadoEn: new Date(),
                 },
             });
-            // 4. CREAR DOCUMENTOS (múltiples por tipo)
-            if (data.documentos && data.documentos.length > 0) {
-                await Promise.all(data.documentos.map((doc) => tx.documentoDoctor.create({
+            if (doctorEliminado) {
+                // Reactivar perfil de doctor eliminado
+                await tx.doctor.update({
+                    where: { usuarioId: usuario.id },
                     data: {
-                        doctorId: usuario.id,
-                        tipoDocumento: doc.tipo_documento,
-                        urlArchivo: doc.url_archivo,
-                        nombreOriginal: doc.nombre_original || null,
-                        tipoMime: doc.tipo_mime || null,
-                        descripcion: doc.descripcion || null,
+                        ubicacionId: ubicacionId,
+                        nombre: data.doctor.nombre,
+                        apellido: data.doctor.apellido,
+                        tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
+                        numeroDocumentoIdentificacion: data.doctor.numero_documento_identificacion,
+                        fechaNacimiento: data.doctor.fecha_nacimiento,
+                        genero: data.doctor.genero,
+                        nacionalidad: data.doctor.nacionalidad,
+                        exequatur: data.doctor.exequatur,
+                        biografia: data.doctor.biografia || null,
+                        estadoVerificacion: 'En revisión',
+                        estado: 'Activo',
+                        actualizadoEn: new Date(),
+                    },
+                });
+            }
+            else {
+                // Crear nuevo perfil de doctor
+                await tx.doctor.create({
+                    data: {
+                        usuarioId: usuario.id,
+                        ubicacionId: ubicacionId,
+                        nombre: data.doctor.nombre,
+                        apellido: data.doctor.apellido,
+                        tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
+                        numeroDocumentoIdentificacion: data.doctor.numero_documento_identificacion,
+                        fechaNacimiento: data.doctor.fecha_nacimiento,
+                        genero: data.doctor.genero,
+                        nacionalidad: data.doctor.nacionalidad,
+                        exequatur: data.doctor.exequatur,
+                        biografia: data.doctor.biografia || null,
+                        estadoVerificacion: 'En revisión',
+                        calificacionPromedio: 0.00,
                         estado: 'Activo',
                         creadoEn: new Date(),
                     },
-                })));
+                });
+            }
+            // 4. CREAR DOCUMENTOS (múltiples por tipo) Y ACCIONES DE REVISIÓN
+            const documentosCreados = [];
+            if (data.documentos && data.documentos.length > 0) {
+                for (const doc of data.documentos) {
+                    const documentoCreado = await tx.documentoDoctor.create({
+                        data: {
+                            doctorId: usuario.id,
+                            tipoDocumento: doc.tipo_documento,
+                            urlArchivo: doc.url_archivo,
+                            nombreOriginal: doc.nombre_original || null,
+                            tipoMime: doc.tipo_mime || null,
+                            descripcion: doc.descripcion || null,
+                            estadoRevision: 'Pendiente',
+                            estado: 'Activo',
+                            creadoEn: new Date(),
+                        },
+                    });
+                    documentosCreados.push(documentoCreado);
+                    // Crear tipo de acción si no existe
+                    let tipoAccion = await tx.tipoAccion.findFirst({
+                        where: { nombre: `Revisión ${doc.tipo_documento}` },
+                    });
+                    if (!tipoAccion) {
+                        tipoAccion = await tx.tipoAccion.create({
+                            data: {
+                                nombre: `Revisión ${doc.tipo_documento}`,
+                                estado: 'Activo',
+                            },
+                        });
+                    }
+                    // Crear acción de revisión para este documento
+                    await tx.accion.create({
+                        data: {
+                            tipoAccionId: tipoAccion.id,
+                            emisorId: usuario.id,
+                            documentoId: documentoCreado.id,
+                            detalle: `Revisión de ${doc.tipo_documento}: ${data.doctor.nombre} ${data.doctor.apellido} - Exequatur: ${data.doctor.exequatur}`,
+                            comentarioEmisor: doc.descripcion || `Documento ${doc.tipo_documento} para revisión`,
+                            estado: 'Pendiente',
+                            fechaEmision: new Date(),
+                        },
+                    });
+                }
             }
             // 5. CREAR FORMACIONES ACADÉMICAS
             const mapEstadoFormacion = (estado) => {
@@ -603,6 +805,14 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                 })));
             }
             // 6. CREAR ESPECIALIDADES DEL DOCTOR
+            // Si el doctor ya existía, eliminar especialidades anteriores
+            if (doctorEliminado) {
+                await tx.doctorEspecialidad.deleteMany({
+                    where: {
+                        id_doctor: usuario.id
+                    }
+                });
+            }
             // Especialidad Principal (obligatoria)
             await tx.doctorEspecialidad.create({
                 data: {

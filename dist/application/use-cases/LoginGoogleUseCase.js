@@ -62,11 +62,13 @@ let LoginGoogleUseCase = class LoginGoogleUseCase {
     }
     toUserResponse(usuario) {
         const foto = usuario.fotoPerfil ?? usuario.foto_perfil ?? undefined;
+        const banner = usuario.banner ?? undefined;
         return {
             id: usuario.id,
             email: usuario.email,
             rol: usuario.rol,
             fotoPerfil: foto ?? undefined,
+            banner: banner ?? null,
             paciente: usuario.paciente ?? null,
             doctor: usuario.doctor ?? null,
             centroSalud: usuario.centroSalud ?? null,

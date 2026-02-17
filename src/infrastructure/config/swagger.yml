@@ -52,6 +52,8 @@ tags:
     description: Endpoints para gestionar profesiones
   - name: ExperienciasLaborales
     description: Endpoints para gestionar experiencias laborales de doctores
+  - name: FormacionesAcademicas
+    description: Endpoints para gestionar formaciones académicas de doctores
   - name: Autenticación
     description: Endpoints para autenticación y gestión de tokens JWT
   - name: Notificaciones
@@ -9167,6 +9169,398 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  # --- FORMACIONES ACADÉMICAS ENDPOINTS ---
+  
+  /formaciones-academicas:
+    post:
+      summary: Crear una nueva formación académica
+      tags:
+        - FormacionesAcademicas
+      description: |
+        Crea una nueva formación académica para el doctor autenticado. 
+        El doctor se obtiene automáticamente del token JWT.
+        Valida que no exista una formación duplicada (mismo doctor, universidad y especialidad) y que las fechas sean coherentes.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - universidadId
+                - especialidadId
+                - fechaInicio
+              properties:
+                universidadId:
+                  type: integer
+                  example: 5
+                  description: ID de la universidad
+                especialidadId:
+                  type: integer
+                  example: 2
+                  description: ID de la especialidad
+                fechaInicio:
+                  type: string
+                  format: date
+                  example: "2015-01-15"
+                  description: Fecha de inicio de la formación (ISO 8601)
+                fechaFinalizacion:
+                  type: string
+                  format: date
+                  example: "2019-06-30"
+                  description: Fecha de finalización de la formación (ISO 8601, opcional)
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+                  default: "Activo"
+                  description: Estado de la formación académica
+      responses:
+        '201':
+          description: Formación académica creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Formación académica creada exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/FormacionAcademica'
+        '400':
+          description: Datos inválidos (fechas inválidas, formación duplicada, campos faltantes, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Doctor, universidad o especialidad no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Obtener todas las formaciones académicas del doctor autenticado
+      tags:
+        - FormacionesAcademicas
+      description: |
+        Lista todas las formaciones académicas del doctor autenticado con soporte para filtros y paginación.
+        Los resultados se ordenan por estado (Activo primero) y luego por fecha de inicio descendente.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/formaciones-academicas?target=en&translate_fields=universidad.nombre,especialidad.nombre`
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "universidad.nombre,especialidad.nombre"
+          description: Campos a traducir separados por coma
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+          description: Filtrar por estado
+        - name: busqueda
+          in: query
+          schema:
+            type: string
+          description: Buscar en nombre de universidad y especialidad
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Número de página
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Cantidad de resultados por página
+      responses:
+        '200':
+          description: Lista de formaciones académicas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Formaciones académicas obtenidas exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      formaciones:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/FormacionAcademica'
+                      total:
+                        type: integer
+                        example: 15
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+
+  /formaciones-academicas/{id}:
+    get:
+      summary: Obtener una formación académica por ID
+      tags:
+        - FormacionesAcademicas
+      description: Obtiene los detalles completos de una formación académica específica por su ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la formación académica
+      responses:
+        '200':
+          description: Formación académica encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Formación académica obtenida exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/FormacionAcademica'
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Formación académica no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Actualizar una formación académica
+      tags:
+        - FormacionesAcademicas
+      description: |
+        Actualiza una formación académica existente. Todos los campos son opcionales, pero al menos uno debe ser proporcionado.
+        Se mantienen las validaciones de negocio (fechas coherentes, no duplicados, etc.).
+        
+        **Autenticación requerida:** Solo el doctor autenticado puede actualizar sus propias formaciones.
+        Si la formación no pertenece al doctor autenticado, se retornará 403 Forbidden.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la formación académica
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                universidadId:
+                  type: integer
+                  example: 7
+                  description: ID de la universidad
+                especialidadId:
+                  type: integer
+                  example: 3
+                  description: ID de la especialidad
+                fechaInicio:
+                  type: string
+                  format: date
+                  example: "2015-02-01"
+                  description: Fecha de inicio
+                fechaFinalizacion:
+                  type: string
+                  format: date
+                  example: "2019-07-15"
+                  description: Fecha de finalización
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo", "Eliminado"]
+                  example: "Activo"
+                  description: Estado de la formación
+      responses:
+        '200':
+          description: Formación académica actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Formación académica actualizada exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/FormacionAcademica'
+        '400':
+          description: Datos inválidos (fechas inválidas, formación duplicada, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: No tienes permiso para actualizar esta formación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "No tienes permiso para actualizar esta formación académica"
+        '404':
+          description: Formación académica, universidad o especialidad no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Eliminar una formación académica (soft delete)
+      tags:
+        - FormacionesAcademicas
+      description: |
+        Elimina lógicamente una formación académica marcándola como "Eliminado". No se elimina físicamente del sistema para preservar el historial.
+        
+        **Autenticación requerida:** Solo el doctor autenticado puede eliminar sus propias formaciones.
+        Si la formación no pertenece al doctor autenticado, se retornará 403 Forbidden.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la formación académica
+      responses:
+        '200':
+          description: Formación académica eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Formación académica eliminada exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: No tienes permiso para eliminar esta formación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "No tienes permiso para eliminar esta formación académica"
+        '404':
+          description: Formación académica no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
     # --- AUTENTICACIÓN ENDPOINTS ---
   
   /auth/login:
@@ -11189,6 +11583,69 @@ components:
           format: date-time
           nullable: true
           example: "2024-02-01T14:20:00Z"
+
+    FormacionAcademica:
+      type: object
+      description: Formación académica de un doctor en una universidad
+      properties:
+        id:
+          type: integer
+          example: 1
+        doctorId:
+          type: integer
+          example: 123
+        universidadId:
+          type: integer
+          example: 5
+        especialidadId:
+          type: integer
+          example: 2
+        fechaInicio:
+          type: string
+          format: date
+          example: "2015-01-15"
+          description: Fecha de inicio de la formación
+        fechaFinalizacion:
+          type: string
+          format: date
+          nullable: true
+          example: "2019-06-30"
+          description: Fecha de finalización (nulo si aún está en curso)
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo", "Eliminado"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        actualizadoEn:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-02-01T14:20:00Z"
+        universidad:
+          type: object
+          nullable: true
+          description: Información de la universidad (incluida cuando se consulta con relaciones)
+          properties:
+            nombre:
+              type: string
+              example: "Universidad Autónoma de Santo Domingo"
+            pais:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  example: "República Dominicana"
+        especialidad:
+          type: object
+          nullable: true
+          description: Información de la especialidad (incluida cuando se consulta con relaciones)
+          properties:
+            nombre:
+              type: string
+              example: "Cardiología"
 
     ErrorResponse:
       type: object

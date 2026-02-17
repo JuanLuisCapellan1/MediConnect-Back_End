@@ -19,6 +19,7 @@ import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
 import { ITipoCentroSaludRepository } from '../../domain/repositories/ITipoCentroSaludRepository';
 import { IProfesionesRepository } from '../../domain/repositories/IProfesionesRepository';
 import { IExperienciasLaboralesRepository } from '../../domain/repositories/IExperienciasLaboralesRepository';
+import { IFormacionAcademicaRepository } from '../../domain/repositories/IFormacionAcademicaRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
 // Tus imports
@@ -54,6 +55,7 @@ import { PrismaDoctorRepository } from '../../infrastructure/repositories/Prisma
 import { PrismaTipoCentroSaludRepository } from '../../infrastructure/repositories/PrismaTipoCentroSaludRepository';
 import { PrismaProfesionesRepository } from '../../infrastructure/repositories/PrismaProfesionesRepository';
 import { PrismaExperienciasLaboralesRepository } from '../../infrastructure/repositories/PrismaExperienciasLaboralesRepository';
+import { PrismaFormacionAcademicaRepository } from '../../infrastructure/repositories/PrismaFormacionAcademicaRepository';
 // Implementaciones de tu compañero
 import { PrismaNotificacionesRepository } from '../../infrastructure/repositories/PrismaNotificacionesRepository';
 import { PrismaConversacionesRepository } from '../../infrastructure/repositories/PrismaConversacionesRepository';
@@ -94,6 +96,7 @@ import { DoctorValidator } from '../../domain/validators/Doctores/DoctorValidato
 import { TipoCentroSaludValidator } from '../../domain/validators/TiposCentrosSalud/TipoCentroSaludValidator';
 import { ProfesionValidator } from '../../domain/validators/Profesiones/ProfesionValidator';
 import { ExperienciaLaboralValidator } from '../../domain/validators/ExperienciasLaborales/ExperienciaLaboralValidator';
+import { FormacionAcademicaValidator } from '../../domain/validators/FormacionesAcademicas/FormacionAcademicaValidator';
 import { CentroSaludValidator } from '../../domain/validators/CentrosSalud/CentroSaludValidator';
 import { CondicionMedicaValidator } from '../../domain/validators/CondicionesMedicas/CondicionMedicaValidator';
 
@@ -126,6 +129,7 @@ import { GestionarMediaUseCase } from '../../application/use-cases/GestionarMedi
 import { GestionarTiposCentrosSaludUseCase } from '../../application/use-cases/GestionarTiposCentrosSaludUseCase';
 import { GestionarProfesionesUseCase } from '../../application/use-cases/GestionarProfesionesUseCase';
 import { GestionarExperienciasLaboralesUseCase } from '../../application/use-cases/GestionarExperienciasLaboralesUseCase';
+import { GestionarFormacionesAcademicasUseCase } from '../../application/use-cases/GestionarFormacionesAcademicasUseCase';
 import { GestionarServicioHorariosUseCase } from '../../application/use-cases/GestionarServicioHorariosUseCase';
 import { GestionarNotificacionesUseCase } from '../../application/use-cases/GestionarNotificacionesUseCase';
 import { RefreshAccessTokenUseCase } from '../../application/use-cases/RefreshAccessTokenUseCase';
@@ -290,6 +294,13 @@ container.register(ExperienciaLaboralValidator, {
     return new ExperienciaLaboralValidator(repo);
   }
 });
+
+container.register(FormacionAcademicaValidator, {
+  useFactory: () => {
+    return new FormacionAcademicaValidator();
+  }
+});
+
 
 container.register(CondicionMedicaValidator, {
   useFactory: () => {
@@ -486,6 +497,18 @@ container.register<IExperienciasLaboralesRepository>(
     }
   }
 );
+
+container.register<IFormacionAcademicaRepository>(
+  'IFormacionAcademicaRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve(RedisCacheService);
+      return new PrismaFormacionAcademicaRepository(prismaClient, redisCache);
+    }
+  }
+);
+
 
 container.register<ICondicionMedicaRepository>(
   'CondicionMedicaRepository',
@@ -762,6 +785,21 @@ container.register('GestionarExperienciasLaboralesUseCase', {
     return container.resolve(GestionarExperienciasLaboralesUseCase);
   }
 });
+
+container.register(GestionarFormacionesAcademicasUseCase, {
+  useFactory: () => {
+    const repo = container.resolve<IFormacionAcademicaRepository>('IFormacionAcademicaRepository');
+    const validator = container.resolve(FormacionAcademicaValidator);
+    return new GestionarFormacionesAcademicasUseCase(repo, validator);
+  }
+});
+
+container.register('GestionarFormacionesAcademicasUseCase', {
+  useFactory: () => {
+    return container.resolve(GestionarFormacionesAcademicasUseCase);
+  }
+});
+
 
 container.register(GestionarServicioHorariosUseCase, {
   useFactory: () => {
