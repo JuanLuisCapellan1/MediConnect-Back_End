@@ -101,9 +101,31 @@ export interface IUsuarioRepository {
   updateProfilePhoto(usuarioId: number, fotoPerfilUrl: string): Promise<void>;
 
   /**
+   * Actualiza el banner de un usuario
+   */
+  updateBanner(usuarioId: number, bannerUrl: string): Promise<void>;
+
+  /**
    * Verifica si existe un doctor con el número de documento dado
    */
   existeDoctorConNumeroDocumento(numeroDocumento: string): Promise<boolean>;
+
+  /**
+   * Elimina (soft delete) la cuenta del usuario y todas sus entidades relacionadas
+   */
+  eliminarCuenta(usuarioId: number): Promise<void>;
+
+  /**
+   * Verifica si existe un email registrado con estado activo
+   * (para permitir re-registro de cuentas eliminadas)
+   */
+  existeEmailActivo(email: string): Promise<boolean>;
+
+  /**
+   * Busca un usuario por email incluyendo los eliminados
+   * (para re-activación de cuentas)
+   */
+  findByEmailIncludingDeleted(email: string): Promise<Usuario | null>;
 
   /**
    * Verifica si existe un doctor con el exequatur dado

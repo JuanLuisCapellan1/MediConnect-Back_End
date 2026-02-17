@@ -30,9 +30,10 @@ export class RegistrarDoctorUseCase {
       throw new Error('Token inválido o expirado');
     }
 
-    // Validar que no exista usuario con este email
-    const usuarioExistente = await this.usuarioRepository.buscarPorEmail(email);
-    if (usuarioExistente) {
+    // Validar que no exista usuario ACTIVO con este email
+    // Esto permite re-registro si la cuenta anterior fue eliminada
+    const emailActivo = await this.usuarioRepository.existeEmailActivo(email);
+    if (emailActivo) {
       throw new Error('El email ya está registrado');
     }
 

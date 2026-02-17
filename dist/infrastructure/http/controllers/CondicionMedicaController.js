@@ -173,10 +173,11 @@ let CondicionMedicaController = class CondicionMedicaController {
     // Métodos para Pacientes
     async listarAlergiasDisponibles(req, res) {
         try {
-            const alergias = await this.useCase.obtenerAlergias();
+            const { datos, total } = await this.useCase.obtenerAlergias();
             res.json({
                 success: true,
-                data: alergias
+                data: datos,
+                total
             });
         }
         catch (error) {
@@ -200,10 +201,10 @@ let CondicionMedicaController = class CondicionMedicaController {
     async agregarMiAlergia(req, res) {
         try {
             const pacienteId = req.user.userId;
-            const { condicionId, descripcion } = req.body;
+            const { condicionId, notas } = req.body;
             const alergia = await this.useCase.agregarMiAlergia(pacienteId, {
                 condicionId,
-                descripcion
+                notas
             });
             res.status(201).json({
                 success: true,
@@ -218,8 +219,8 @@ let CondicionMedicaController = class CondicionMedicaController {
     async crearMiCondicion(req, res) {
         try {
             const pacienteId = req.user.userId;
-            const { descripcion } = req.body;
-            const condicion = await this.useCase.crearMiCondicion(pacienteId, { descripcion });
+            const { notas } = req.body;
+            const condicion = await this.useCase.crearMiCondicion(pacienteId, { notas });
             res.status(201).json({
                 success: true,
                 message: 'Condición creada exitosamente.',
@@ -248,13 +249,45 @@ let CondicionMedicaController = class CondicionMedicaController {
             this.manejarError(error, res);
         }
     }
+    async actualizarMiAlergia(req, res) {
+        try {
+            const pacienteId = req.user.userId;
+            const idParam = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+            const condicionId = parseInt(idParam);
+            const { notas, estado } = req.body;
+            const alergia = await this.useCase.actualizarMiAlergia(pacienteId, condicionId, { notas, estado });
+            res.json({
+                success: true,
+                message: 'Alergia actualizada exitosamente.',
+                data: alergia
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    async eliminarMiAlergia(req, res) {
+        try {
+            const pacienteId = req.user.userId;
+            const idParam = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+            const condicionId = parseInt(idParam);
+            await this.useCase.eliminarMiAlergia(pacienteId, condicionId);
+            res.json({
+                success: true,
+                message: 'Alergia eliminada exitosamente de tu perfil.'
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
     async actualizarMiCondicion(req, res) {
         try {
             const pacienteId = req.user.userId;
             const idParam = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
             const condicionId = parseInt(idParam);
-            const { descripcion, estado } = req.body;
-            const condicion = await this.useCase.actualizarMiCondicion(pacienteId, condicionId, { descripcion, estado });
+            const { notas, estado } = req.body;
+            const condicion = await this.useCase.actualizarMiCondicion(pacienteId, condicionId, { notas, estado });
             res.json({
                 success: true,
                 message: 'Condición actualizada exitosamente.',
@@ -271,7 +304,10 @@ let CondicionMedicaController = class CondicionMedicaController {
             const idParam = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
             const condicionId = parseInt(idParam);
             await this.useCase.eliminarMiCondicion(pacienteId, condicionId);
-            res.status(204).send();
+            res.json({
+                success: true,
+                message: 'Condición eliminada exitosamente de tu perfil.'
+            });
         }
         catch (error) {
             this.manejarError(error, res);

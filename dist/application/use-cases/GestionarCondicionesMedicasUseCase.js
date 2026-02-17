@@ -132,8 +132,8 @@ let GestionarCondicionesMedicasUseCase = class GestionarCondicionesMedicasUseCas
         }
     }
     // Métodos para Pacientes
-    async obtenerAlergias() {
-        return await this.condicionMedicaRepository.obtenerAlergias();
+    async obtenerAlergias(filtros = {}) {
+        return await this.condicionMedicaRepository.obtenerAlergias(filtros);
     }
     async buscarAlergias(dto) {
         if (!dto.query || dto.query.trim().length === 0) {
@@ -156,8 +156,8 @@ let GestionarCondicionesMedicasUseCase = class GestionarCondicionesMedicasUseCas
         return await this.condicionMedicaRepository.agregarMiAlergia(pacienteId, dto);
     }
     async crearMiCondicion(pacienteId, dto) {
-        if (!dto.descripcion || dto.descripcion.trim().length === 0) {
-            throw new Error('La descripción es requerida.');
+        if (!dto.notas || dto.notas.trim().length === 0) {
+            throw new Error('Las notas son requeridas.');
         }
         return await this.condicionMedicaRepository.crearMiCondicion(pacienteId, dto);
     }
@@ -169,6 +169,24 @@ let GestionarCondicionesMedicasUseCase = class GestionarCondicionesMedicasUseCas
             filtros.estado = this.normalizarEstado(filtros.estado);
         }
         return await this.condicionMedicaRepository.obtenerMisCondiciones(pacienteId, filtros);
+    }
+    async actualizarMiAlergia(pacienteId, condicionId, dto) {
+        const existe = await this.condicionMedicaRepository.existeCondicionPaciente(pacienteId, condicionId);
+        if (!existe) {
+            throw new Error('Esta alergia no existe en tu perfil.');
+        }
+        if (dto.estado) {
+            dto.estado = this.normalizarEstado(dto.estado);
+            await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo']);
+        }
+        return await this.condicionMedicaRepository.actualizarMiAlergia(pacienteId, condicionId, dto);
+    }
+    async eliminarMiAlergia(pacienteId, condicionId) {
+        const existe = await this.condicionMedicaRepository.existeCondicionPaciente(pacienteId, condicionId);
+        if (!existe) {
+            throw new Error('Esta alergia no existe en tu perfil.');
+        }
+        return await this.condicionMedicaRepository.eliminarMiAlergia(pacienteId, condicionId);
     }
     async actualizarMiCondicion(pacienteId, condicionId, dto) {
         const existe = await this.condicionMedicaRepository.existeCondicionPaciente(pacienteId, condicionId);

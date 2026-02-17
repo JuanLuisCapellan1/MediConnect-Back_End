@@ -29,6 +29,8 @@ const PrismaLecturasConversacionRepository_1 = require("../../infrastructure/rep
 const PrismaMediaRepository_1 = require("../../infrastructure/repositories/PrismaMediaRepository");
 const PrismaCentroSaludRepository_1 = require("../../infrastructure/repositories/PrismaCentroSaludRepository");
 const PrismaCondicionMedicaRepository_1 = require("../../infrastructure/repositories/PrismaCondicionMedicaRepository");
+const PrismaSeguroMedicoRepository_1 = require("../../infrastructure/repositories/PrismaSeguroMedicoRepository");
+const PrismaTipoSeguroRepository_1 = require("../../infrastructure/repositories/PrismaTipoSeguroRepository");
 const BcryptPasswordHasher_1 = require("../../infrastructure/external-services/BcryptPasswordHasher");
 const LibreTranslateService_1 = require("../../infrastructure/external-services/LibreTranslateService");
 const RedisCacheService_1 = require("../../infrastructure/external-services/RedisCacheService");
@@ -93,6 +95,9 @@ const RefreshAccessTokenUseCase_1 = require("../../application/use-cases/Refresh
 const CompletarPerfilCentroSaludUseCase_1 = require("../../application/use-cases/CompletarPerfilCentroSaludUseCase");
 const RegistrarCentroUseCase_1 = require("../../application/use-cases/RegistrarCentroUseCase");
 const ActualizarFotoPerfilUseCase_1 = require("../../application/use-cases/ActualizarFotoPerfilUseCase");
+const ActualizarBannerUseCase_1 = require("../../application/use-cases/ActualizarBannerUseCase");
+const CambiarEmailUseCase_1 = require("../../application/use-cases/CambiarEmailUseCase");
+const EliminarCuentaUseCase_1 = require("../../application/use-cases/EliminarCuentaUseCase");
 const CentrosSaludController_1 = require("../../infrastructure/http/controllers/CentrosSaludController");
 const GestionarCondicionesMedicasUseCase_1 = require("../../application/use-cases/GestionarCondicionesMedicasUseCase");
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
@@ -352,8 +357,8 @@ tsyringe_1.container.register('IExperienciasLaboralesRepository', {
     }
 });
 tsyringe_1.container.register('CondicionMedicaRepository', {
-    useFactory: (c) => {
-        const prismaClient = c.resolve('PrismaClient');
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
         return new PrismaCondicionMedicaRepository_1.PrismaCondicionMedicaRepository(prismaClient);
     }
 });
@@ -364,6 +369,18 @@ tsyringe_1.container.register('ConversacionesRepository', { useClass: PrismaConv
 tsyringe_1.container.register('MensajesRepository', { useClass: PrismaMensajesRepository_1.PrismaMensajesRepository });
 tsyringe_1.container.register('LecturasConversacionRepository', { useClass: PrismaLecturasConversacionRepository_1.PrismaLecturasConversacionRepository });
 tsyringe_1.container.register('MediaRepository', { useClass: PrismaMediaRepository_1.PrismaMediaRepository });
+tsyringe_1.container.register('SeguroMedicoRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        return new PrismaSeguroMedicoRepository_1.PrismaSeguroMedicoRepository(prismaClient);
+    }
+});
+tsyringe_1.container.register('TipoSeguroRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        return new PrismaTipoSeguroRepository_1.PrismaTipoSeguroRepository(prismaClient);
+    }
+});
 // ===== REGISTRAR USE CASES =====
 tsyringe_1.container.register(GestionarProvinciasUseCase_1.GestionarProvinciasUseCase, {
     useFactory: () => {
@@ -454,10 +471,11 @@ tsyringe_1.container.register(ValidarCodigoRegistroUseCase_1.ValidarCodigoRegist
 tsyringe_1.container.register(RegistrarDoctorUseCase_1.RegistrarDoctorUseCase, {
     useFactory: () => {
         const usuarioRepository = tsyringe_1.container.resolve('UsuarioRepository');
+        const especialidadRepository = tsyringe_1.container.resolve('EspecialidadRepository');
         const passwordHasher = tsyringe_1.container.resolve('PasswordHasher');
         const storageService = tsyringe_1.container.resolve('StorageService');
         const authService = tsyringe_1.container.resolve(AuthService_1.AuthService);
-        return new RegistrarDoctorUseCase_1.RegistrarDoctorUseCase(usuarioRepository, passwordHasher, storageService, authService);
+        return new RegistrarDoctorUseCase_1.RegistrarDoctorUseCase(usuarioRepository, especialidadRepository, passwordHasher, storageService, authService);
     }
 });
 tsyringe_1.container.register('VerificarDocumentoUseCase', {
@@ -651,5 +669,26 @@ tsyringe_1.container.register(ActualizarFotoPerfilUseCase_1.ActualizarFotoPerfil
         const usuarioRepository = tsyringe_1.container.resolve('UsuarioRepository');
         const storageService = tsyringe_1.container.resolve(SupabaseStorageService_1.SupabaseStorageService);
         return new ActualizarFotoPerfilUseCase_1.ActualizarFotoPerfilUseCase(usuarioRepository, storageService);
+    }
+});
+tsyringe_1.container.register(ActualizarBannerUseCase_1.ActualizarBannerUseCase, {
+    useFactory: () => {
+        const usuarioRepository = tsyringe_1.container.resolve('UsuarioRepository');
+        const storageService = tsyringe_1.container.resolve(SupabaseStorageService_1.SupabaseStorageService);
+        return new ActualizarBannerUseCase_1.ActualizarBannerUseCase(usuarioRepository, storageService);
+    }
+});
+tsyringe_1.container.register(CambiarEmailUseCase_1.CambiarEmailUseCase, {
+    useFactory: () => {
+        const usuarioRepo = tsyringe_1.container.resolve('UsuarioRepository');
+        const passwordHasher = tsyringe_1.container.resolve('PasswordHasher');
+        return new CambiarEmailUseCase_1.CambiarEmailUseCase(usuarioRepo, passwordHasher);
+    }
+});
+tsyringe_1.container.register(EliminarCuentaUseCase_1.EliminarCuentaUseCase, {
+    useFactory: () => {
+        const usuarioRepo = tsyringe_1.container.resolve('UsuarioRepository');
+        const passwordHasher = tsyringe_1.container.resolve('PasswordHasher');
+        return new EliminarCuentaUseCase_1.EliminarCuentaUseCase(usuarioRepo, passwordHasher);
     }
 });

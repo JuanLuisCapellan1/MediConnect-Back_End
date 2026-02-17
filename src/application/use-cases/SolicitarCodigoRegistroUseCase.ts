@@ -11,12 +11,13 @@ export class SolicitarCodigoRegistroUseCase {
     @inject('UsuarioRepository') private usuarioRepository: IUsuarioRepository,
     @inject('EmailService') private emailService: IEmailService,
     @inject(RedisCacheService) private redisService: RedisCacheService
-  ) {}
+  ) { }
 
   async execute(email: string): Promise<void> {
-    // 1. Validar si el correo ya está registrado
-    const usuarioExistente = await this.usuarioRepository.buscarPorEmail(email);
-    if (usuarioExistente) {
+    // 1. Validar si el correo ya está registrado y ACTIVO
+    // Esto permite re-registro si la cuenta anterior fue eliminada
+    const emailActivo = await this.usuarioRepository.existeEmailActivo(email);
+    if (emailActivo) {
       throw new Error('El correo ya está registrado.');
     }
 

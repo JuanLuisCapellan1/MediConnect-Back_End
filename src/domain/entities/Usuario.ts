@@ -9,8 +9,9 @@ export class Usuario {
     public password?: string, // Opcional porque puede venir de Google
     public emailVerificado: boolean = false,
     public creadoEn?: Date,
-    public actualizadoEn?: Date
-  ) {}
+    public actualizadoEn?: Date,
+    public banner?: string
+  ) { }
 
   public esActivo(): boolean {
     return this.estado === 'Activo';

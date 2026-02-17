@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { prisma } from '../../database/prisma/client';
 
 export interface TokenPayload {
   userId: number;
@@ -18,8 +19,9 @@ declare global {
 
 /**
  * Middleware para verificar el token JWT en las peticiones HTTP
+ * Valida que el usuario esté activo (no eliminado)
  */
-export const autenticarJWT = (req: Request, res: Response, next: NextFunction): void => {
+export const autenticarJWT = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -44,8 +46,30 @@ export const autenticarJWT = (req: Request, res: Response, next: NextFunction): 
       return;
     }
 
+    // Verificar que el usuario existe y está activo
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, estado: true, rol: true },
+    });
+
+    if (!usuario) {
+      res.status(401).json({ error: 'Usuario no encontrado' });
+      return;
+    }
+
+    // Validar que el usuario esté activo
+    if (usuario.estado !== 'Activo') {
+      res.status(403).json({
+        error: 'Cuenta inactiva',
+        mensaje: 'Tu cuenta ha sido eliminada o desactivada. Si deseas volver a usar nuestros servicios, puedes registrarte nuevamente con el mismo email.',
+      });
+      return;
+    }
+
     // Agregar la información del usuario al objeto request
     req.user = decoded;
+    (req as any).usuarioId = decoded.userId;
+    (req as any).rol = usuario.rol;
 
     next();
   } catch (error) {

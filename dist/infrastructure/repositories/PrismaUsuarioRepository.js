@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaUsuarioRepository = void 0;
 const client_1 = require("../database/prisma/client");
 const tsyringe_1 = require("tsyringe");
+const Usuario_1 = require("../../domain/entities/Usuario");
 let PrismaUsuarioRepository = class PrismaUsuarioRepository {
     async crear(usuario) {
         return await client_1.prisma.usuario.create({ data: usuario });
@@ -273,14 +274,207 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
             },
         });
     }
+    async updateBanner(usuarioId, bannerUrl) {
+        await client_1.prisma.usuario.update({
+            where: { id: usuarioId },
+            data: {
+                banner: bannerUrl,
+                actualizadoEn: new Date(),
+            },
+        });
+    }
     async existeDoctorConNumeroDocumento(numeroDocumento) {
         const doctor = await client_1.prisma.doctor.findFirst({
             where: {
                 numeroDocumentoIdentificacion: numeroDocumento,
-                estado: { not: 'Eliminado' }
-            }
+                estado: 'Activo',
+            },
         });
         return doctor !== null;
+    }
+    /**
+     * Elimina (soft delete) la cuenta del usuario y todas sus entidades relacionadas
+     */
+    async eliminarCuenta(usuarioId) {
+        await client_1.prisma.$transaction(async (tx) => {
+            // 1. Marcar usuario como eliminado
+            await tx.usuario.update({
+                where: { id: usuarioId },
+                data: {
+                    estado: 'Eliminado',
+                    actualizadoEn: new Date(),
+                },
+            });
+            // 2. Verificar si es Paciente
+            const paciente = await tx.paciente.findUnique({
+                where: { usuarioId },
+            });
+            // 3. Verificar si es Doctor
+            const doctor = await tx.doctor.findUnique({
+                where: { usuarioId },
+            });
+            // 4. Verificar si es Centro de Salud
+            const centro = await tx.centroSalud.findUnique({
+                where: { usuarioId },
+            });
+            // 5. Si es Paciente, eliminar sus datos
+            if (paciente) {
+                // Marcar paciente como eliminado
+                await tx.paciente.update({
+                    where: { usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Marcar condiciones médicas/alergias como eliminadas
+                await tx.caracteristicaEspecial.updateMany({
+                    where: { pacienteId: usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Cancelar citas activas del paciente
+                await tx.cita.updateMany({
+                    where: {
+                        pacienteId: usuarioId,
+                        estado: { in: ['Programada', 'Confirmada'] },
+                    },
+                    data: { estado: 'Cancelada', actualizadoEn: new Date() },
+                });
+                // Marcar citas pasadas como eliminadas
+                await tx.cita.updateMany({
+                    where: {
+                        pacienteId: usuarioId,
+                        estado: { notIn: ['Programada', 'Confirmada'] },
+                    },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Nota: HistorialConsulta no tiene campo estado, se mantiene el historial
+                // Marcar seguros del paciente como eliminados
+                await tx.pacienteSeguro.updateMany({
+                    where: { pacienteId: usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Marcar doctores favoritos como eliminados
+                await tx.doctorFavorito.updateMany({
+                    where: { pacienteId: usuarioId },
+                    data: { estado: 'Eliminado' },
+                });
+                // Marcar reseñas como eliminadas
+                await tx.resena.updateMany({
+                    where: { pacienteId: usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+            }
+            // 6. Si es Doctor, eliminar sus datos
+            if (doctor) {
+                // Marcar doctor como eliminado
+                await tx.doctor.update({
+                    where: { usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Cancelar citas activas del doctor
+                await tx.cita.updateMany({
+                    where: {
+                        doctorUsuarioId: usuarioId,
+                        estado: { in: ['Programada', 'Confirmada'] },
+                    },
+                    data: { estado: 'Cancelada', actualizadoEn: new Date() },
+                });
+                // Marcar citas pasadas como eliminadas
+                await tx.cita.updateMany({
+                    where: {
+                        doctorUsuarioId: usuarioId,
+                        estado: { notIn: ['Programada', 'Confirmada'] },
+                    },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Marcar formaciones académicas como eliminadas
+                await tx.formacionAcademica.updateMany({
+                    where: { doctorId: usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Marcar especialidades como eliminadas
+                await tx.doctorEspecialidad.updateMany({
+                    where: { id_doctor: usuarioId },
+                    data: { estado: 'Eliminado', actualizado_en: new Date() },
+                });
+                // Marcar documentos del doctor como eliminados
+                await tx.documentoDoctor.updateMany({
+                    where: { doctorId: usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Marcar experiencias laborales como eliminadas
+                await tx.experienciaLaboral.updateMany({
+                    where: { doctorId: usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Marcar seguros aceptados como eliminados
+                await tx.doctorSeguro.updateMany({
+                    where: { doctorId: usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Marcar solicitudes de alianza como eliminadas
+                await tx.solicitudAlianza.updateMany({
+                    where: { doctorId: usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Nota: HistorialConsulta no tiene campo doctorId ni estado
+            }
+            // 7. Si es Centro de Salud, eliminar sus datos
+            if (centro) {
+                // Marcar centro como eliminado
+                await tx.centroSalud.update({
+                    where: { usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Marcar solicitudes de alianza del centro como eliminadas
+                await tx.solicitudAlianza.updateMany({
+                    where: { centroSaludId: usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+                // Marcar experiencias laborales en el centro como eliminadas
+                await tx.experienciaLaboral.updateMany({
+                    where: { centroSaludId: usuarioId },
+                    data: { estado: 'Eliminado', actualizadoEn: new Date() },
+                });
+            }
+            // 8. Marcar conversaciones como eliminadas
+            await tx.conversacion.updateMany({
+                where: {
+                    OR: [
+                        { emisorId: usuarioId },
+                        { receptorId: usuarioId },
+                    ],
+                },
+                data: { estado: 'Eliminado', actualizadoEn: new Date() },
+            });
+            // 9. Marcar notificaciones como eliminadas
+            await tx.notificacion.updateMany({
+                where: { usuarioId },
+                data: { estado: 'Eliminado' },
+            });
+        });
+    }
+    /**
+     * Verifica si existe un email registrado con estado activo
+     */
+    async existeEmailActivo(email) {
+        const usuario = await client_1.prisma.usuario.findFirst({
+            where: {
+                email,
+                estado: 'Activo',
+            },
+        });
+        return usuario !== null;
+    }
+    /**
+     * Busca un usuario por email incluyendo los eliminados
+     */
+    async findByEmailIncludingDeleted(email) {
+        const usuarioPrisma = await client_1.prisma.usuario.findUnique({
+            where: { email },
+        });
+        if (!usuarioPrisma) {
+            return null;
+        }
+        return new Usuario_1.Usuario(usuarioPrisma.id, usuarioPrisma.email, usuarioPrisma.rol, usuarioPrisma.estado, usuarioPrisma.fotoPerfil ?? undefined, usuarioPrisma.telefono ?? undefined, usuarioPrisma.password, usuarioPrisma.emailVerificado, usuarioPrisma.creadoEn, usuarioPrisma.actualizadoEn ?? undefined, usuarioPrisma.banner ?? undefined);
     }
     async existeDoctorConExequatur(exequatur) {
         const doctor = await client_1.prisma.doctor.findFirst({

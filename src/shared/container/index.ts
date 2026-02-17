@@ -132,7 +132,9 @@ import { RefreshAccessTokenUseCase } from '../../application/use-cases/RefreshAc
 import { CompletarPerfilCentroSaludUseCase } from '../../application/use-cases/CompletarPerfilCentroSaludUseCase';
 import { RegistrarCentroUseCase } from '../../application/use-cases/RegistrarCentroUseCase';
 import { ActualizarFotoPerfilUseCase } from '../../application/use-cases/ActualizarFotoPerfilUseCase';
+import { ActualizarBannerUseCase } from '../../application/use-cases/ActualizarBannerUseCase';
 import { CambiarEmailUseCase } from '../../application/use-cases/CambiarEmailUseCase';
+import { EliminarCuentaUseCase } from '../../application/use-cases/EliminarCuentaUseCase';
 import { CentrosSaludController } from '../../infrastructure/http/controllers/CentrosSaludController';
 import { GestionarCondicionesMedicasUseCase } from '../../application/use-cases/GestionarCondicionesMedicasUseCase';
 
@@ -898,11 +900,27 @@ container.register(ActualizarFotoPerfilUseCase, {
   }
 });
 
+container.register(ActualizarBannerUseCase, {
+  useFactory: () => {
+    const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    const storageService = container.resolve(SupabaseStorageService);
+    return new ActualizarBannerUseCase(usuarioRepository, storageService);
+  }
+});
+
 container.register(CambiarEmailUseCase, {
   useFactory: () => {
     const usuarioRepo = container.resolve<IUsuarioRepository>('UsuarioRepository');
     const passwordHasher = container.resolve<IPasswordHasher>('PasswordHasher');
     return new CambiarEmailUseCase(usuarioRepo, passwordHasher);
+  }
+});
+
+container.register(EliminarCuentaUseCase, {
+  useFactory: () => {
+    const usuarioRepo = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    const passwordHasher = container.resolve<IPasswordHasher>('PasswordHasher');
+    return new EliminarCuentaUseCase(usuarioRepo, passwordHasher);
   }
 });
 

@@ -1,6 +1,7 @@
 import { prisma } from '../database/prisma/client';
 import { injectable } from 'tsyringe';
 import { IUsuarioRepository } from '../../domain/repositories/IUsuarioRepository';
+import { Usuario } from '../../domain/entities/Usuario';
 
 @injectable()
 export class PrismaUsuarioRepository implements IUsuarioRepository {
@@ -40,38 +41,87 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
    */
   async savePaciente(data: any): Promise<any> {
     return await prisma.$transaction(async (tx) => {
-      // 1. Crear Usuario
-      const usuario = await tx.usuario.create({
-        data: {
+      // 1. CREAR O REACTIVAR USUARIO
+      const usuarioEliminado = await tx.usuario.findFirst({
+        where: {
           email: data.email,
-          password: data.password,
-          rol: 'Paciente',
-          estado: 'Activo',
-          emailVerificado: true,
-          fotoPerfil: data.paciente.foto_perfil ?? null,
-          creadoEn: new Date(),
+          estado: 'Eliminado',
         },
       });
 
-      // 2. Crear Paciente con documento
-      // Nota: usuarioId es la clave primaria, por lo que se asigna directamente
-      await tx.paciente.create({
-        data: {
-          usuarioId: usuario.id, // PK, se asigna directamente
-          nombre: data.paciente.nombre,
-          apellido: data.paciente.apellido,
-          tipoDocIdentificacion: data.paciente.tipo_documento_identificacion,
-          numero_documento_identificacion: data.paciente.numero_documento_identificacion,
-          foto_documento: data.paciente.foto_documento ?? null,
-          fechaNacimiento: data.paciente.fecha_nacimiento || new Date(),
-          genero: data.paciente.genero || 'O',
-          altura: data.paciente.altura || null,
-          peso: data.paciente.peso || null,
-          tipoSangre: data.paciente.tipo_sangre || null,
-          estado: 'Activo',
-          creadoEn: new Date(),
-        },
+      let usuario;
+      if (usuarioEliminado) {
+        // Reactivar usuario eliminado
+        usuario = await tx.usuario.update({
+          where: { id: usuarioEliminado.id },
+          data: {
+            password: data.password,
+            rol: 'Paciente',
+            estado: 'Activo',
+            emailVerificado: true,
+            fotoPerfil: data.paciente.foto_perfil ?? null,
+            actualizadoEn: new Date(),
+          },
+        });
+      } else {
+        // Crear nuevo usuario
+        usuario = await tx.usuario.create({
+          data: {
+            email: data.email,
+            password: data.password,
+            rol: 'Paciente',
+            estado: 'Activo',
+            emailVerificado: true,
+            fotoPerfil: data.paciente.foto_perfil ?? null,
+            creadoEn: new Date(),
+          },
+        });
+      }
+
+      // 2. CREAR O REACTIVAR PACIENTE
+      const pacienteEliminado = await tx.paciente.findFirst({
+        where: { usuarioId: usuario.id },
       });
+
+      if (pacienteEliminado) {
+        // Reactivar perfil de paciente
+        await tx.paciente.update({
+          where: { usuarioId: usuario.id },
+          data: {
+            nombre: data.paciente.nombre,
+            apellido: data.paciente.apellido,
+            tipoDocIdentificacion: data.paciente.tipo_documento_identificacion,
+            numero_documento_identificacion: data.paciente.numero_documento_identificacion,
+            foto_documento: data.paciente.foto_documento ?? null,
+            fechaNacimiento: data.paciente.fecha_nacimiento || new Date(),
+            genero: data.paciente.genero || 'O',
+            altura: data.paciente.altura || null,
+            peso: data.paciente.peso || null,
+            tipoSangre: data.paciente.tipo_sangre || null,
+            estado: 'Activo',
+            actualizadoEn: new Date(),
+          },
+        });
+      } else {
+        // Crear nuevo paciente
+        await tx.paciente.create({
+          data: {
+            usuarioId: usuario.id,
+            nombre: data.paciente.nombre,
+            apellido: data.paciente.apellido,
+            tipoDocIdentificacion: data.paciente.tipo_documento_identificacion,
+            numero_documento_identificacion: data.paciente.numero_documento_identificacion,
+            foto_documento: data.paciente.foto_documento ?? null,
+            fechaNacimiento: data.paciente.fecha_nacimiento || new Date(),
+            genero: data.paciente.genero || 'O',
+            altura: data.paciente.altura || null,
+            peso: data.paciente.peso || null,
+            tipoSangre: data.paciente.tipo_sangre || null,
+            estado: 'Activo',
+            creadoEn: new Date(),
+          },
+        });
+      }
 
       return usuario;
     });
@@ -303,14 +353,257 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
     });
   }
 
+  async updateBanner(usuarioId: number, bannerUrl: string): Promise<void> {
+    await prisma.usuario.update({
+      where: { id: usuarioId },
+      data: {
+        banner: bannerUrl,
+        actualizadoEn: new Date(),
+      },
+    });
+  }
+
   async existeDoctorConNumeroDocumento(numeroDocumento: string): Promise<boolean> {
     const doctor = await prisma.doctor.findFirst({
       where: {
         numeroDocumentoIdentificacion: numeroDocumento,
-        estado: { not: 'Eliminado' }
-      }
+        estado: 'Activo',
+      },
     });
     return doctor !== null;
+  }
+
+  /**
+   * Elimina (soft delete) la cuenta del usuario y todas sus entidades relacionadas
+   */
+  async eliminarCuenta(usuarioId: number): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+      // 1. Marcar usuario como eliminado
+      await tx.usuario.update({
+        where: { id: usuarioId },
+        data: {
+          estado: 'Eliminado',
+          actualizadoEn: new Date(),
+        },
+      });
+
+      // 2. Verificar si es Paciente
+      const paciente = await tx.paciente.findUnique({
+        where: { usuarioId },
+      });
+
+      // 3. Verificar si es Doctor
+      const doctor = await tx.doctor.findUnique({
+        where: { usuarioId },
+      });
+
+      // 4. Verificar si es Centro de Salud
+      const centro = await tx.centroSalud.findUnique({
+        where: { usuarioId },
+      });
+
+      // 5. Si es Paciente, eliminar sus datos
+      if (paciente) {
+        // Marcar paciente como eliminado
+        await tx.paciente.update({
+          where: { usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Marcar condiciones médicas/alergias como eliminadas
+        await tx.caracteristicaEspecial.updateMany({
+          where: { pacienteId: usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Cancelar citas activas del paciente
+        await tx.cita.updateMany({
+          where: {
+            pacienteId: usuarioId,
+            estado: { in: ['Programada', 'Confirmada'] },
+          },
+          data: { estado: 'Cancelada', actualizadoEn: new Date() },
+        });
+
+        // Marcar citas pasadas como eliminadas
+        await tx.cita.updateMany({
+          where: {
+            pacienteId: usuarioId,
+            estado: { notIn: ['Programada', 'Confirmada'] },
+          },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Nota: HistorialConsulta no tiene campo estado, se mantiene el historial
+
+        // Marcar seguros del paciente como eliminados
+        await tx.pacienteSeguro.updateMany({
+          where: { pacienteId: usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Marcar doctores favoritos como eliminados
+        await tx.doctorFavorito.updateMany({
+          where: { pacienteId: usuarioId },
+          data: { estado: 'Eliminado' },
+        });
+
+        // Marcar reseñas como eliminadas
+        await tx.resena.updateMany({
+          where: { pacienteId: usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+      }
+
+      // 6. Si es Doctor, eliminar sus datos
+      if (doctor) {
+        // Marcar doctor como eliminado
+        await tx.doctor.update({
+          where: { usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Cancelar citas activas del doctor
+        await tx.cita.updateMany({
+          where: {
+            doctorUsuarioId: usuarioId,
+            estado: { in: ['Programada', 'Confirmada'] },
+          },
+          data: { estado: 'Cancelada', actualizadoEn: new Date() },
+        });
+
+        // Marcar citas pasadas como eliminadas
+        await tx.cita.updateMany({
+          where: {
+            doctorUsuarioId: usuarioId,
+            estado: { notIn: ['Programada', 'Confirmada'] },
+          },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Marcar formaciones académicas como eliminadas
+        await tx.formacionAcademica.updateMany({
+          where: { doctorId: usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Marcar especialidades como eliminadas
+        await tx.doctorEspecialidad.updateMany({
+          where: { id_doctor: usuarioId },
+          data: { estado: 'Eliminado', actualizado_en: new Date() },
+        });
+
+        // Marcar documentos del doctor como eliminados
+        await tx.documentoDoctor.updateMany({
+          where: { doctorId: usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Marcar experiencias laborales como eliminadas
+        await tx.experienciaLaboral.updateMany({
+          where: { doctorId: usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Marcar seguros aceptados como eliminados
+        await tx.doctorSeguro.updateMany({
+          where: { doctorId: usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Marcar solicitudes de alianza como eliminadas
+        await tx.solicitudAlianza.updateMany({
+          where: { doctorId: usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Nota: HistorialConsulta no tiene campo doctorId ni estado
+      }
+
+      // 7. Si es Centro de Salud, eliminar sus datos
+      if (centro) {
+        // Marcar centro como eliminado
+        await tx.centroSalud.update({
+          where: { usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Marcar solicitudes de alianza del centro como eliminadas
+        await tx.solicitudAlianza.updateMany({
+          where: { centroSaludId: usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+
+        // Marcar experiencias laborales en el centro como eliminadas
+        await tx.experienciaLaboral.updateMany({
+          where: { centroSaludId: usuarioId },
+          data: { estado: 'Eliminado', actualizadoEn: new Date() },
+        });
+      }
+
+      // 8. Marcar conversaciones como eliminadas
+      await tx.conversacion.updateMany({
+        where: {
+          OR: [
+            { emisorId: usuarioId },
+            { receptorId: usuarioId },
+          ],
+        },
+        data: { estado: 'Eliminado', actualizadoEn: new Date() },
+      });
+
+      // 9. Marcar notificaciones como eliminadas
+      await tx.notificacion.updateMany({
+        where: { usuarioId },
+        data: { estado: 'Eliminado' },
+      });
+
+      // 10. Marcar acciones del usuario como eliminadas
+      await tx.accion.updateMany({
+        where: { emisorId: usuarioId },
+        data: { estado: 'Eliminado', actualizadoEn: new Date() },
+      });
+    });
+  }
+
+  /**
+   * Verifica si existe un email registrado con estado activo
+   */
+  async existeEmailActivo(email: string): Promise<boolean> {
+    const usuario = await prisma.usuario.findFirst({
+      where: {
+        email,
+        estado: 'Activo',
+      },
+    });
+    return usuario !== null;
+  }
+
+  /**
+   * Busca un usuario por email incluyendo los eliminados
+   */
+  async findByEmailIncludingDeleted(email: string): Promise<Usuario | null> {
+    const usuarioPrisma = await prisma.usuario.findUnique({
+      where: { email },
+    });
+
+    if (!usuarioPrisma) {
+      return null;
+    }
+
+    return new Usuario(
+      usuarioPrisma.id,
+      usuarioPrisma.email,
+      usuarioPrisma.rol,
+      usuarioPrisma.estado,
+      usuarioPrisma.fotoPerfil ?? undefined,
+      usuarioPrisma.telefono ?? undefined,
+      usuarioPrisma.password,
+      usuarioPrisma.emailVerificado,
+      usuarioPrisma.creadoEn,
+      usuarioPrisma.actualizadoEn ?? undefined,
+      usuarioPrisma.banner ?? undefined
+    );
   }
 
   async existeDoctorConExequatur(exequatur: string): Promise<boolean> {
@@ -360,19 +653,45 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
   async saveDoctorWithDocuments(data: any): Promise<any> {
     return await prisma.$transaction(async (tx) => {
 
-      // 1. CREAR USUARIO
-      const usuario = await tx.usuario.create({
-        data: {
+      // 1. CREAR O REACTIVAR USUARIO
+      // Primero verificar si existe un usuario eliminado con este email
+      const usuarioEliminado = await tx.usuario.findFirst({
+        where: {
           email: data.email,
-          password: data.password,
-          rol: 'Doctor',
-          estado: 'Activo',
-          emailVerificado: true,
-          telefono: data.doctor.telefono,
-          fotoPerfil: data.doctor.foto_perfil,
-          creadoEn: new Date(),
+          estado: 'Eliminado',
         },
       });
+
+      let usuario;
+      if (usuarioEliminado) {
+        // Reactivar usuario eliminado
+        usuario = await tx.usuario.update({
+          where: { id: usuarioEliminado.id },
+          data: {
+            password: data.password,
+            rol: 'Doctor',
+            estado: 'Activo',
+            emailVerificado: true,
+            telefono: data.doctor.telefono,
+            fotoPerfil: data.doctor.foto_perfil,
+            actualizadoEn: new Date(),
+          },
+        });
+      } else {
+        // Crear nuevo usuario
+        usuario = await tx.usuario.create({
+          data: {
+            email: data.email,
+            password: data.password,
+            rol: 'Doctor',
+            estado: 'Activo',
+            emailVerificado: true,
+            telefono: data.doctor.telefono,
+            fotoPerfil: data.doctor.foto_perfil,
+            creadoEn: new Date(),
+          },
+        });
+      }
 
       // 2. CREAR UBICACIÓN (OPCIONAL)
       let ubicacionId: number | null = null;
@@ -389,45 +708,102 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
         ubicacionId = ubicacion.id;
       }
 
-      // 3. CREAR PERFIL DOCTOR
-      await tx.doctor.create({
-        data: {
+      // 3. CREAR O REACTIVAR PERFIL DOCTOR
+      const doctorEliminado = await tx.doctor.findFirst({
+        where: {
           usuarioId: usuario.id,
-          ubicacionId: ubicacionId,
-          nombre: data.doctor.nombre,
-          apellido: data.doctor.apellido,
-          tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
-          numeroDocumentoIdentificacion: data.doctor.numero_documento_identificacion,
-          fechaNacimiento: data.doctor.fecha_nacimiento,
-          genero: data.doctor.genero,
-          nacionalidad: data.doctor.nacionalidad,
-          exequatur: data.doctor.exequatur,
-          biografia: data.doctor.biografia || null,
-          estadoVerificacion: 'En revisión',
-          calificacionPromedio: 0.00,
-          estado: 'Activo',
-          creadoEn: new Date(),
         },
       });
 
-      // 4. CREAR DOCUMENTOS (múltiples por tipo)
+      if (doctorEliminado) {
+        // Reactivar perfil de doctor eliminado
+        await tx.doctor.update({
+          where: { usuarioId: usuario.id },
+          data: {
+            ubicacionId: ubicacionId,
+            nombre: data.doctor.nombre,
+            apellido: data.doctor.apellido,
+            tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
+            numeroDocumentoIdentificacion: data.doctor.numero_documento_identificacion,
+            fechaNacimiento: data.doctor.fecha_nacimiento,
+            genero: data.doctor.genero,
+            nacionalidad: data.doctor.nacionalidad,
+            exequatur: data.doctor.exequatur,
+            biografia: data.doctor.biografia || null,
+            estadoVerificacion: 'En revisión',
+            estado: 'Activo',
+            actualizadoEn: new Date(),
+          },
+        });
+      } else {
+        // Crear nuevo perfil de doctor
+        await tx.doctor.create({
+          data: {
+            usuarioId: usuario.id,
+            ubicacionId: ubicacionId,
+            nombre: data.doctor.nombre,
+            apellido: data.doctor.apellido,
+            tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
+            numeroDocumentoIdentificacion: data.doctor.numero_documento_identificacion,
+            fechaNacimiento: data.doctor.fecha_nacimiento,
+            genero: data.doctor.genero,
+            nacionalidad: data.doctor.nacionalidad,
+            exequatur: data.doctor.exequatur,
+            biografia: data.doctor.biografia || null,
+            estadoVerificacion: 'En revisión',
+            calificacionPromedio: 0.00,
+            estado: 'Activo',
+            creadoEn: new Date(),
+          },
+        });
+      }
+
+      // 4. CREAR DOCUMENTOS (múltiples por tipo) Y ACCIONES DE REVISIÓN
+      const documentosCreados: any[] = [];
       if (data.documentos && data.documentos.length > 0) {
-        await Promise.all(
-          data.documentos.map((doc: any) =>
-            tx.documentoDoctor.create({
+        for (const doc of data.documentos) {
+          const documentoCreado = await tx.documentoDoctor.create({
+            data: {
+              doctorId: usuario.id,
+              tipoDocumento: doc.tipo_documento,
+              urlArchivo: doc.url_archivo,
+              nombreOriginal: doc.nombre_original || null,
+              tipoMime: doc.tipo_mime || null,
+              descripcion: doc.descripcion || null,
+              estadoRevision: 'Pendiente',
+              estado: 'Activo',
+              creadoEn: new Date(),
+            },
+          });
+          documentosCreados.push(documentoCreado);
+
+          // Crear tipo de acción si no existe
+          let tipoAccion = await tx.tipoAccion.findFirst({
+            where: { nombre: `Revisión ${doc.tipo_documento}` },
+          });
+
+          if (!tipoAccion) {
+            tipoAccion = await tx.tipoAccion.create({
               data: {
-                doctorId: usuario.id,
-                tipoDocumento: doc.tipo_documento,
-                urlArchivo: doc.url_archivo,
-                nombreOriginal: doc.nombre_original || null,
-                tipoMime: doc.tipo_mime || null,
-                descripcion: doc.descripcion || null,
+                nombre: `Revisión ${doc.tipo_documento}`,
                 estado: 'Activo',
-                creadoEn: new Date(),
               },
-            })
-          )
-        );
+            });
+          }
+
+          // Crear acción de revisión para este documento
+          await tx.accion.create({
+            data: {
+              tipoAccionId: tipoAccion.id,
+              emisorId: usuario.id,
+              documentoId: documentoCreado.id,
+              detalle: `Revisión de ${doc.tipo_documento}: ${data.doctor.nombre} ${data.doctor.apellido} - Exequatur: ${data.doctor.exequatur}`,
+              comentarioEmisor: doc.descripcion || `Documento ${doc.tipo_documento} para revisión`,
+              estado: 'Pendiente',
+              fechaEmision: new Date(),
+            },
+          });
+        }
       }
 
       // 5. CREAR FORMACIONES ACADÉMICAS

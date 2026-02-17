@@ -4,6 +4,7 @@ import { ActualizarDoctorDto, FiltroDoctoresDto } from '../../application/dtos/D
 export interface IDoctorRepository {
     obtenerPorId(id: number): Promise<Doctor | null>;
     obtenerPorUsuarioId(usuarioId: number): Promise<Doctor | null>;
+    obtenerPerfilCompleto(usuarioId: number): Promise<any | null>;
     obtenerTodos(filtros: FiltroDoctoresDto): Promise<{ datos: Doctor[]; total: number }>;
     actualizar(usuarioId: number, datos: ActualizarDoctorDto): Promise<Doctor>;
     eliminar(usuarioId: number): Promise<void>;

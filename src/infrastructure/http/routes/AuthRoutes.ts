@@ -187,6 +187,25 @@ routerAuth.patch(
   (req, res) => authController.actualizarFotoPerfil(req, res)
 );
 
+// Actualizar banner del usuario autenticado
+routerAuth.patch(
+  '/banner',
+  autenticarJWT,
+  upload.single('banner'),
+  (req, res) => authController.actualizarBanner(req, res)
+);
+
+/**
+ * DELETE /auth/cuenta
+ * Elimina (soft delete) la cuenta del usuario autenticado.
+ * Requiere: JWT token en Authorization header
+ */
+routerAuth.delete(
+  '/cuenta',
+  autenticarJWT,
+  (req, res) => authController.eliminarCuenta(req, res)
+);
+
 /**
  * GET /auth/verificar-documento
  * Verifica si un número de documento ya está registrado

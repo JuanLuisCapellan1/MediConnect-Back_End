@@ -53,7 +53,111 @@ export class PrismaDoctorRepository implements IDoctorRepository {
     }
 
     async obtenerPorUsuarioId(usuarioId: number): Promise<Doctor | null> {
-        return this.obtenerPorId(usuarioId);
+        const doctor = await this.prisma.doctor.findUnique({
+            where: { usuarioId },
+            include: {
+                usuario: {
+                    select: {
+                        email: true,
+                        telefono: true,
+                        fotoPerfil: true,
+                    },
+                },
+                especialidades: {
+                    include: {
+                        especialidades: true,
+                    },
+                },
+                documentos: {
+                    where: {
+                        estado: 'Activo',
+                    },
+                    select: {
+                        id: true,
+                        tipoDocumento: true,
+                        urlArchivo: true,
+                        estadoRevision: true,
+                        descripcion: true,
+                        creadoEn: true,
+                    },
+                    orderBy: {
+                        creadoEn: 'desc',
+                    },
+                },
+            },
+        });
+
+        return doctor ? this.mapearEntidad(doctor) : null;
+    }
+
+    /**
+     * Obtiene el perfil completo del doctor con todas sus relaciones
+     * Retorna los datos sin mapear a la entidad para incluir toda la información
+     */
+    async obtenerPerfilCompleto(usuarioId: number): Promise<any | null> {
+        const doctor = await this.prisma.doctor.findUnique({
+            where: { usuarioId },
+            include: {
+                usuario: {
+                    select: {
+                        email: true,
+                        telefono: true,
+                        fotoPerfil: true,
+                        emailVerificado: true,
+                    },
+                },
+                ubicacion: true,
+                especialidades: {
+                    include: {
+                        especialidades: true,
+                    },
+                },
+                documentos: {
+                    where: {
+                        estado: 'Activo',
+                    },
+                    orderBy: {
+                        creadoEn: 'desc',
+                    },
+                },
+                experiencias: {
+                    where: {
+                        estado: 'Activo',
+                    },
+                    orderBy: {
+                        creadoEn: 'desc',
+                    },
+                },
+                formaciones: {
+                    where: {
+                        estado: 'Activo',
+                    },
+                    orderBy: {
+                        creadoEn: 'desc',
+                    },
+                },
+                horarios: {
+                    where: {
+                        estado: 'Activo',
+                    },
+                    orderBy: {
+                        diaSemana: 'asc',
+                    },
+                },
+                servicios: {
+                    where: {
+                        estado: 'Activo',
+                    },
+                },
+                segurosAceptados: {
+                    include: {
+                        seguro: true,
+                    },
+                },
+            },
+        });
+
+        return doctor;
     }
 
     async obtenerTodos(filtros: FiltroDoctoresDto): Promise<{ datos: Doctor[]; total: number }> {

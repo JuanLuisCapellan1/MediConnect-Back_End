@@ -4,6 +4,12 @@ import dotenv from 'dotenv';
 // Cargar variables de entorno
 dotenv.config();
 
+// Fix para serialización de BigInt en JSON
+// Convierte BigInt a string automáticamente cuando se serializa a JSON
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 import './shared/container'; // Configuración del contenedor de inyección
 import express from 'express';
 import { createServer } from 'http';

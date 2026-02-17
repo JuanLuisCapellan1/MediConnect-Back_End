@@ -47,13 +47,10 @@ let GestionarPacientesUseCase = class GestionarPacientesUseCase {
     async actualizar(usuarioId, dto) {
         // Verificar que el paciente existe
         await this.obtenerPorUsuarioId(usuarioId);
-        // Normalizar estado si existe
-        if (dto.estado) {
-            dto.estado = this.normalizarEstado(dto.estado);
+        // Asegurar que fechaNacimiento sea Date si viene como string
+        if (dto.fechaNacimiento && typeof dto.fechaNacimiento === 'string') {
+            dto.fechaNacimiento = new Date(dto.fechaNacimiento);
         }
-        // Validar documento único si se está actualizando
-        // Nota: numero_documento_identificacion NO debería ser editable, pero validamos por seguridad
-        // await this.validator.validarActualizacion(usuarioId); // This line is removed as per instruction
         return await this.pacienteRepository.actualizar(usuarioId, dto);
     }
     async eliminar(usuarioId) {

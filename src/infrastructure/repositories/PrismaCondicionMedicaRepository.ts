@@ -182,13 +182,21 @@ export class PrismaCondicionMedicaRepository implements ICondicionMedicaReposito
         condicionId: number,
         datos: ActualizarCondicionPacienteDto
     ): Promise<CaracteristicaEspecial> {
-        const actualizado = await this.prisma.caracteristicaEspecial.update({
+        // Buscar el registro activo
+        const registro = await this.prisma.caracteristicaEspecial.findFirst({
             where: {
-                pacienteId_condicionId: {
-                    pacienteId,
-                    condicionId,
-                },
+                pacienteId,
+                condicionId,
+                estado: 'Activo',
             },
+        });
+
+        if (!registro) {
+            throw new Error('Condición no encontrada');
+        }
+
+        const actualizado = await this.prisma.caracteristicaEspecial.update({
+            where: { id: registro.id },
             data: {
                 ...datos,
                 actualizadoEn: new Date(),
@@ -201,13 +209,21 @@ export class PrismaCondicionMedicaRepository implements ICondicionMedicaReposito
         pacienteId: number,
         condicionId: number
     ): Promise<void> {
-        await this.prisma.caracteristicaEspecial.update({
+        // Buscar el registro activo
+        const registro = await this.prisma.caracteristicaEspecial.findFirst({
             where: {
-                pacienteId_condicionId: {
-                    pacienteId,
-                    condicionId,
-                },
+                pacienteId,
+                condicionId,
+                estado: 'Activo',
             },
+        });
+
+        if (!registro) {
+            throw new Error('Condición no encontrada');
+        }
+
+        await this.prisma.caracteristicaEspecial.update({
+            where: { id: registro.id },
             data: {
                 estado: 'Inactivo',
                 actualizadoEn: new Date(),
@@ -402,13 +418,21 @@ export class PrismaCondicionMedicaRepository implements ICondicionMedicaReposito
         }
 
         // Actualizar SOLO las notas en caracteristicas_especiales
-        const caracteristica = await this.prisma.caracteristicaEspecial.update({
+        // Buscar el registro activo
+        const caracteristicaExistente = await this.prisma.caracteristicaEspecial.findFirst({
             where: {
-                pacienteId_condicionId: {
-                    pacienteId,
-                    condicionId,
-                },
+                pacienteId,
+                condicionId,
+                estado: 'Activo',
             },
+        });
+
+        if (!caracteristicaExistente) {
+            throw new Error('Alergia no encontrada en tus registros');
+        }
+
+        const caracteristica = await this.prisma.caracteristicaEspecial.update({
+            where: { id: caracteristicaExistente.id },
             data: {
                 notas: dto.notas,
                 estado: dto.estado || undefined,
@@ -440,13 +464,21 @@ export class PrismaCondicionMedicaRepository implements ICondicionMedicaReposito
         }
 
         // Marcar como eliminado en caracteristicas_especiales
-        await this.prisma.caracteristicaEspecial.update({
+        // Buscar el registro activo
+        const caracteristica = await this.prisma.caracteristicaEspecial.findFirst({
             where: {
-                pacienteId_condicionId: {
-                    pacienteId,
-                    condicionId,
-                },
+                pacienteId,
+                condicionId,
+                estado: 'Activo',
             },
+        });
+
+        if (!caracteristica) {
+            throw new Error('Alergia no encontrada en tus registros');
+        }
+
+        await this.prisma.caracteristicaEspecial.update({
+            where: { id: caracteristica.id },
             data: {
                 estado: 'Eliminado',
                 actualizadoEn: new Date(),
@@ -473,13 +505,21 @@ export class PrismaCondicionMedicaRepository implements ICondicionMedicaReposito
         }
 
         // Actualizar SOLO las notas en caracteristicas_especiales
-        const caracteristica = await this.prisma.caracteristicaEspecial.update({
+        // Buscar el registro activo
+        const caracteristicaExistente = await this.prisma.caracteristicaEspecial.findFirst({
             where: {
-                pacienteId_condicionId: {
-                    pacienteId,
-                    condicionId,
-                },
+                pacienteId,
+                condicionId,
+                estado: 'Activo',
             },
+        });
+
+        if (!caracteristicaExistente) {
+            throw new Error('Condición no encontrada en tus registros');
+        }
+
+        const caracteristica = await this.prisma.caracteristicaEspecial.update({
+            where: { id: caracteristicaExistente.id },
             data: {
                 notas: dto.notas,
                 estado: dto.estado || undefined,
@@ -511,13 +551,21 @@ export class PrismaCondicionMedicaRepository implements ICondicionMedicaReposito
         }
 
         // Marcar como eliminado en caracteristicas_especiales
-        await this.prisma.caracteristicaEspecial.update({
+        // Buscar el registro activo
+        const caracteristica = await this.prisma.caracteristicaEspecial.findFirst({
             where: {
-                pacienteId_condicionId: {
-                    pacienteId,
-                    condicionId,
-                },
+                pacienteId,
+                condicionId,
+                estado: 'Activo',
             },
+        });
+
+        if (!caracteristica) {
+            throw new Error('Condición no encontrada en tus registros');
+        }
+
+        await this.prisma.caracteristicaEspecial.update({
+            where: { id: caracteristica.id },
             data: {
                 estado: 'Eliminado',
                 actualizadoEn: new Date(),

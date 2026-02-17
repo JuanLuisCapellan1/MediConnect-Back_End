@@ -142,10 +142,24 @@ routerAuth.post('/password/cambiar', (req, res) => authController.cambiarPasswor
  */
 const autenticacion_1 = require("../middlewares/autenticacion");
 routerAuth.patch('/foto-perfil', autenticacion_1.autenticarJWT, upload.single('fotoPerfil'), (req, res) => authController.actualizarFotoPerfil(req, res));
+// Actualizar banner del usuario autenticado
+routerAuth.patch('/banner', autenticacion_1.autenticarJWT, upload.single('banner'), (req, res) => authController.actualizarBanner(req, res));
+/**
+ * DELETE /auth/cuenta
+ * Elimina (soft delete) la cuenta del usuario autenticado.
+ * Requiere: JWT token en Authorization header
+ */
+routerAuth.delete('/cuenta', autenticacion_1.autenticarJWT, (req, res) => authController.eliminarCuenta(req, res));
 /**
  * GET /auth/verificar-documento
  * Verifica si un número de documento ya está registrado
  * Query params: numero (string)
  */
 routerAuth.get('/verificar-documento', (req, res) => authController.verificarDocumento(req, res));
+/**
+ * PATCH /auth/cambiar-email
+ * Permite al usuario cambiar su dirección de email
+ * Requiere autenticación JWT
+ */
+routerAuth.patch('/cambiar-email', autenticacion_1.autenticarJWT, (req, res) => authController.cambiarEmail(req, res));
 exports.default = routerAuth;

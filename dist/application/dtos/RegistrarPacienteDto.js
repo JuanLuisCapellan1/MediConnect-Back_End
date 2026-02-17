@@ -70,8 +70,8 @@ __decorate([
             return undefined;
         return num;
     }),
-    (0, class_validator_1.Min)(0.30, { message: 'La altura debe ser al menos 0.30 metros (30 cm)' }),
-    (0, class_validator_1.Max)(2.50, { message: 'La altura no puede exceder 2.50 metros (250 cm). Por favor, ingresa la altura en metros (ej: 1.75)' }),
+    (0, class_validator_1.Min)(30, { message: 'La altura debe ser al menos 30 cm' }),
+    (0, class_validator_1.Max)(300, { message: 'La altura no puede exceder 300 cm' }),
     __metadata("design:type", Number)
 ], RegistrarPacienteDto.prototype, "altura", void 0);
 __decorate([

@@ -21,6 +21,7 @@ model Usuario {
   estado                  String                @default("Activo") @db.VarChar(20)
   creadoEn                DateTime              @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn           DateTime?             @map("actualizado_en") @db.Timestamptz(6)
+  banner                  String?
   accionesRevisadas       Accion[]              @relation("RevisorAccion")
   accionesEmitidas        Accion[]              @relation("EmisorAccion")
   centroSalud             CentroSalud?
@@ -450,7 +451,6 @@ model CaracteristicaEspecial {
   paciente      Paciente        @relation(fields: [pacienteId], references: [usuarioId])
   doctores      Doctor?         @relation(fields: [id_doctor], references: [usuarioId], onUpdate: NoAction, map: "fk_caracteristicas_doctor")
 
-  @@unique([pacienteId, condicionId])
   @@index([pacienteId], map: "idx_caracteristicas_usuario")
   @@map("caracteristicas_especiales")
 }
@@ -674,21 +674,23 @@ model TipoAccion {
 }
 
 model Accion {
-  id               Int             @id @default(autoincrement()) @map("id_accion")
-  tipoAccionId     Int             @map("id_tipo_accion")
-  emisorId         Int             @map("id_emisor")
-  adminRevisorId   Int?            @map("id_admin_revisor")
+  id               Int              @id @default(autoincrement()) @map("id_accion")
+  tipoAccionId     Int              @map("id_tipo_accion")
+  emisorId         Int              @map("id_emisor")
+  adminRevisorId   Int?             @map("id_admin_revisor")
   detalle          String
-  comentarioEmisor String?         @map("comentario_emisor")
-  comentarioAdmin  String?         @map("comentario_admin")
-  fechaEmision     DateTime        @default(now()) @map("fecha_emision") @db.Timestamptz(6)
-  fechaVencimiento DateTime?       @map("fecha_vencimiento") @db.Timestamptz(6)
-  fechaResolucion  DateTime?       @map("fecha_resolucion") @db.Timestamptz(6)
-  actualizadoEn    DateTime?       @map("actualizado_en") @db.Timestamptz(6)
-  estado           String          @default("Pendiente") @db.VarChar(20)
-  adminRevisor     Usuario?        @relation("RevisorAccion", fields: [adminRevisorId], references: [id])
-  emisor           Usuario         @relation("EmisorAccion", fields: [emisorId], references: [id])
-  tipoAccion       TipoAccion      @relation(fields: [tipoAccionId], references: [id])
+  comentarioEmisor String?          @map("comentario_emisor")
+  comentarioAdmin  String?          @map("comentario_admin")
+  fechaEmision     DateTime         @default(now()) @map("fecha_emision") @db.Timestamptz(6)
+  fechaVencimiento DateTime?        @map("fecha_vencimiento") @db.Timestamptz(6)
+  fechaResolucion  DateTime?        @map("fecha_resolucion") @db.Timestamptz(6)
+  actualizadoEn    DateTime?        @map("actualizado_en") @db.Timestamptz(6)
+  estado           String           @default("Pendiente") @db.VarChar(20)
+  documentoId      Int?             @map("id_documento")
+  adminRevisor     Usuario?         @relation("RevisorAccion", fields: [adminRevisorId], references: [id])
+  emisor           Usuario          @relation("EmisorAccion", fields: [emisorId], references: [id])
+  tipoAccion       TipoAccion       @relation(fields: [tipoAccionId], references: [id])
+  documento        DocumentoDoctor? @relation(fields: [documentoId], references: [id], onUpdate: NoAction, map: "fk_acciones_documento")
   adjuntos         AdjuntoAccion[]
 
   @@map("acciones")
@@ -763,6 +765,8 @@ model DocumentoDoctor {
   estado         String    @default("Activo") @db.VarChar(20)
   creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn  DateTime? @map("actualizado_en") @db.Timestamptz(6)
+  estadoRevision String?   @default("Pendiente") @map("estado_revision") @db.VarChar(20)
+  acciones       Accion[]
   doctor         Doctor    @relation(fields: [doctorId], references: [usuarioId], onDelete: Cascade, onUpdate: NoAction, map: "fk_documentos_doctores_doctor")
 
   @@index([doctorId, tipoDocumento], map: "idx_documentos_doctores_doctor_tipo")

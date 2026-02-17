@@ -19,14 +19,17 @@ import { CambiarPasswordConTokenUseCase } from '../../../application/use-cases/C
 import { RefreshAccessTokenUseCase } from '../../../application/use-cases/RefreshAccessTokenUseCase';
 import { AttachPasswordToGoogleAccountUseCase } from '../../../application/use-cases/AttachPasswordToGoogleAccountUseCase';
 import { ActualizarFotoPerfilUseCase } from '../../../application/use-cases/ActualizarFotoPerfilUseCase';
+import { ActualizarBannerUseCase } from '../../../application/use-cases/ActualizarBannerUseCase';
 import { VerificarDocumentoUseCase } from '../../../application/use-cases/VerificarDocumentoUseCase';
 import { CambiarEmailUseCase } from '../../../application/use-cases/CambiarEmailUseCase';
+import { EliminarCuentaUseCase } from '../../../application/use-cases/EliminarCuentaUseCase';
 
 // DTOs (Tuyos)
 import { RegistrarPacienteDto } from '../../../application/dtos/RegistrarPacienteDto';
 import { RegistrarDoctorDto } from '../../../application/dtos/RegistrarDoctorDto';
 import { LoginDto } from '../../../application/dtos/LoginDto';
 import { CambiarEmailDto } from '../../../application/dtos/CambiarEmailDto';
+import { EliminarCuentaDto } from '../../../application/dtos/EliminarCuentaDto';
 
 // Repositories (para el endpoint me)
 import { IUsuarioRepository } from '../../../domain/repositories/IUsuarioRepository';
@@ -531,6 +534,40 @@ export class AuthController {
    * GET /auth/verificar-documento
    * Verifica si un número de documento ya está registrado
    */
+  /**
+   * PATCH /auth/banner
+   * Actualiza el banner del usuario autenticado
+   */
+  async actualizarBanner(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioId = (req as any).user?.userId;
+      if (!usuarioId) {
+        res.status(401).json({ success: false, message: "No autorizado. Debe iniciar sesión." });
+        return;
+      }
+      if (!req.file) {
+        res.status(400).json({ success: false, message: "Debe proporcionar una imagen de banner" });
+        return;
+      }
+      const allowedMimes = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowedMimes.includes(req.file.mimetype)) {
+        res.status(400).json({ success: false, message: "Solo se permiten imágenes (JPEG, PNG, WEBP)" });
+        return;
+      }
+      const maxSize = 5 * 1024 * 1024;
+      if (req.file.size > maxSize) {
+        res.status(400).json({ success: false, message: "La imagen no puede exceder 5MB" });
+        return;
+      }
+      const useCase = container.resolve(ActualizarBannerUseCase);
+      const result = await useCase.execute(usuarioId, req.file);
+      res.status(200).json({ success: true, message: "Banner actualizado exitosamente", data: result });
+    } catch (error) {
+      this.manejarError(error, res);
+    }
+  }
+
+
   async verificarDocumento(req: Request, res: Response): Promise<void> {
     try {
       const { numero } = req.query;
@@ -693,6 +730,58 @@ export class AuthController {
         success: false,
         message: error.message || 'Error al cambiar el email'
       });
+    }
+  }
+
+  /**
+   * DELETE /auth/cuenta
+   * Elimina (soft delete) la cuenta del usuario autenticado
+   */
+  async eliminarCuenta(req: Request, res: Response): Promise<void> {
+    try {
+      // 1. Verificar autenticación
+      const usuarioId = (req as any).usuarioId;
+      if (!usuarioId) {
+        res.status(401).json({ error: 'No autenticado' });
+        return;
+      }
+
+      // 2. Validar body
+      if (!req.body || !req.body.password || !req.body.confirmacion) {
+        res.status(400).json({
+          error: 'Datos incompletos',
+          detalles: 'Se requiere password y confirmación',
+        });
+        return;
+      }
+
+      // 3. Crear y validar DTO
+      const dto = plainToInstance(EliminarCuentaDto, {
+        password: req.body.password,
+        confirmacion: req.body.confirmacion,
+      });
+
+      const errores = await validate(dto);
+      if (errores.length > 0) {
+        const mensajes = flattenValidationErrors(errores);
+        res.status(400).json({
+          error: 'Validación fallida',
+          detalles: mensajes,
+        });
+        return;
+      }
+
+      // 4. Ejecutar use case
+      const useCase = container.resolve(EliminarCuentaUseCase);
+      await useCase.execute(usuarioId, dto);
+
+      // 5. Respuesta exitosa
+      res.status(200).json({
+        mensaje: 'Cuenta eliminada exitosamente',
+        nota: 'Puedes volver a registrarte con el mismo email si lo deseas',
+      });
+    } catch (error: any) {
+      this.manejarError(error, res);
     }
   }
 }

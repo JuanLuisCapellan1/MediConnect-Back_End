@@ -18,10 +18,15 @@ const CambiarPasswordConTokenUseCase_1 = require("../../../application/use-cases
 const RefreshAccessTokenUseCase_1 = require("../../../application/use-cases/RefreshAccessTokenUseCase");
 const AttachPasswordToGoogleAccountUseCase_1 = require("../../../application/use-cases/AttachPasswordToGoogleAccountUseCase");
 const ActualizarFotoPerfilUseCase_1 = require("../../../application/use-cases/ActualizarFotoPerfilUseCase");
+const ActualizarBannerUseCase_1 = require("../../../application/use-cases/ActualizarBannerUseCase");
+const CambiarEmailUseCase_1 = require("../../../application/use-cases/CambiarEmailUseCase");
+const EliminarCuentaUseCase_1 = require("../../../application/use-cases/EliminarCuentaUseCase");
 // DTOs (Tuyos)
 const RegistrarPacienteDto_1 = require("../../../application/dtos/RegistrarPacienteDto");
 const RegistrarDoctorDto_1 = require("../../../application/dtos/RegistrarDoctorDto");
 const LoginDto_1 = require("../../../application/dtos/LoginDto");
+const CambiarEmailDto_1 = require("../../../application/dtos/CambiarEmailDto");
+const EliminarCuentaDto_1 = require("../../../application/dtos/EliminarCuentaDto");
 // Errores y Servicios
 const RedisCacheService_1 = require("../../../infrastructure/external-services/RedisCacheService");
 /** Recorre recursivamente ValidationError y devuelve todos los mensajes */
@@ -96,11 +101,11 @@ class AuthController {
             // Límites de archivos
             const MAX_FOTO_DOCUMENTO = 2;
             const MAX_TITULO_ACADEMICO = 10;
-            // Validar fotoPerfil (exactamente 1)
-            if (!files.fotoPerfil || files.fotoPerfil.length === 0) {
+            // Validar fotoPerfil (opcional, máximo 1)
+            if (files.fotoPerfil && files.fotoPerfil.length > 1) {
                 res.status(400).json({
                     success: false,
-                    message: 'La foto de perfil es requerida'
+                    message: 'Solo puedes subir 1 foto de perfil'
                 });
                 return;
             }
@@ -134,14 +139,7 @@ class AuthController {
                 });
                 return;
             }
-            // Validar certificaciones (mínimo 1, sin límite superior)
-            if (!files.certificaciones || files.certificaciones.length === 0) {
-                res.status(400).json({
-                    success: false,
-                    message: 'Al menos una certificación es requerida'
-                });
-                return;
-            }
+            // Certificaciones son opcionales
             const dto = (0, class_transformer_1.plainToInstance)(RegistrarDoctorDto_1.RegistrarDoctorDto, req.body, {
                 enableImplicitConversion: true,
                 excludeExtraneousValues: false,
@@ -425,7 +423,7 @@ class AuthController {
     async actualizarFotoPerfil(req, res) {
         try {
             // Verificar autenticación
-            const usuarioId = req.usuarioId;
+            const usuarioId = req.user?.userId;
             if (!usuarioId) {
                 res.status(401).json({
                     success: false,
@@ -475,6 +473,39 @@ class AuthController {
      * GET /auth/verificar-documento
      * Verifica si un número de documento ya está registrado
      */
+    /**
+     * PATCH /auth/banner
+     * Actualiza el banner del usuario autenticado
+     */
+    async actualizarBanner(req, res) {
+        try {
+            const usuarioId = req.user?.userId;
+            if (!usuarioId) {
+                res.status(401).json({ success: false, message: "No autorizado. Debe iniciar sesión." });
+                return;
+            }
+            if (!req.file) {
+                res.status(400).json({ success: false, message: "Debe proporcionar una imagen de banner" });
+                return;
+            }
+            const allowedMimes = ["image/jpeg", "image/png", "image/webp"];
+            if (!allowedMimes.includes(req.file.mimetype)) {
+                res.status(400).json({ success: false, message: "Solo se permiten imágenes (JPEG, PNG, WEBP)" });
+                return;
+            }
+            const maxSize = 5 * 1024 * 1024;
+            if (req.file.size > maxSize) {
+                res.status(400).json({ success: false, message: "La imagen no puede exceder 5MB" });
+                return;
+            }
+            const useCase = tsyringe_1.container.resolve(ActualizarBannerUseCase_1.ActualizarBannerUseCase);
+            const result = await useCase.execute(usuarioId, req.file);
+            res.status(200).json({ success: true, message: "Banner actualizado exitosamente", data: result });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
     async verificarDocumento(req, res) {
         try {
             const { numero } = req.query;
@@ -575,6 +606,98 @@ class AuthController {
             return;
         }
         res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+    }
+    /**
+     * PATCH /auth/cambiar-email
+     * Permite al usuario cambiar su dirección de email
+     */
+    async cambiarEmail(req, res) {
+        try {
+            const usuarioId = req.user.userId; // Del middleware JWT
+            const dto = Object.assign(new CambiarEmailDto_1.CambiarEmailDto(req.body.nuevoEmail, req.body.password), req.body);
+            const errors = await (0, class_validator_1.validate)(dto);
+            if (errors.length > 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Validación fallida',
+                    errors: flattenValidationErrors(errors)
+                });
+                return;
+            }
+            const useCase = tsyringe_1.container.resolve(CambiarEmailUseCase_1.CambiarEmailUseCase);
+            await useCase.execute(usuarioId, dto);
+            res.status(200).json({
+                success: true,
+                message: 'Email actualizado exitosamente'
+            });
+        }
+        catch (error) {
+            console.error('Error en cambiarEmail:', error);
+            // Manejo de errores específicos
+            if (error.message.includes('Contraseña incorrecta')) {
+                res.status(401).json({ success: false, message: error.message });
+                return;
+            }
+            if (error.message.includes('ya está registrado')) {
+                res.status(409).json({ success: false, message: error.message });
+                return;
+            }
+            if (error.message.includes('establecer una contraseña')) {
+                res.status(400).json({ success: false, message: error.message });
+                return;
+            }
+            res.status(400).json({
+                success: false,
+                message: error.message || 'Error al cambiar el email'
+            });
+        }
+    }
+    /**
+     * DELETE /auth/cuenta
+     * Elimina (soft delete) la cuenta del usuario autenticado
+     */
+    async eliminarCuenta(req, res) {
+        try {
+            // 1. Verificar autenticación
+            const usuarioId = req.usuarioId;
+            if (!usuarioId) {
+                res.status(401).json({ error: 'No autenticado' });
+                return;
+            }
+            // 2. Validar body
+            if (!req.body || !req.body.password || !req.body.confirmacion) {
+                res.status(400).json({
+                    error: 'Datos incompletos',
+                    detalles: 'Se requiere password y confirmación',
+                });
+                return;
+            }
+            // 3. Crear y validar DTO
+            const dto = (0, class_transformer_1.plainToInstance)(EliminarCuentaDto_1.EliminarCuentaDto, {
+                password: req.body.password,
+                confirmacion: req.body.confirmacion,
+            });
+            const errores = await (0, class_validator_1.validate)(dto);
+            if (errores.length > 0) {
+                const mensajes = flattenValidationErrors(errores);
+                res.status(400).json({
+                    error: 'Validación fallida',
+                    detalles: mensajes,
+                });
+                return;
+            }
+            // 4. Ejecutar use case
+            const useCase = tsyringe_1.container.resolve(EliminarCuentaUseCase_1.EliminarCuentaUseCase);
+            await useCase.execute(usuarioId, dto);
+            // 5. Respuesta exitosa
+            res.status(200).json({
+                mensaje: 'Cuenta eliminada exitosamente',
+                nota: 'Puedes volver a registrarte con el mismo email si lo deseas',
+            });
+        }
+        catch (error) {
+            this.manejarError(res, error);
+        }
     }
 }
 exports.AuthController = AuthController;

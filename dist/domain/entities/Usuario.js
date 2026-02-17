@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Usuario = void 0;
 class Usuario {
     constructor(id, email, rol, estado, foto_perfil, telefono, password, // Opcional porque puede venir de Google
-    emailVerificado = false, creadoEn, actualizadoEn) {
+    emailVerificado = false, creadoEn, actualizadoEn, banner) {
         this.id = id;
         this.email = email;
         this.rol = rol;
@@ -14,6 +14,7 @@ class Usuario {
         this.emailVerificado = emailVerificado;
         this.creadoEn = creadoEn;
         this.actualizadoEn = actualizadoEn;
+        this.banner = banner;
     }
     esActivo() {
         return this.estado === 'Activo';

@@ -16,8 +16,9 @@ exports.RegistrarDoctorUseCase = void 0;
 const tsyringe_1 = require("tsyringe");
 const AuthService_1 = require("../../infrastructure/external-services/AuthService");
 let RegistrarDoctorUseCase = class RegistrarDoctorUseCase {
-    constructor(usuarioRepository, passwordHasher, storageService, authService) {
+    constructor(usuarioRepository, especialidadRepository, passwordHasher, storageService, authService) {
         this.usuarioRepository = usuarioRepository;
+        this.especialidadRepository = especialidadRepository;
         this.passwordHasher = passwordHasher;
         this.storageService = storageService;
         this.authService = authService;
@@ -34,9 +35,10 @@ let RegistrarDoctorUseCase = class RegistrarDoctorUseCase {
         if (!email) {
             throw new Error('Token inválido o expirado');
         }
-        // Validar que no exista usuario con este email
-        const usuarioExistente = await this.usuarioRepository.buscarPorEmail(email);
-        if (usuarioExistente) {
+        // Validar que no exista usuario ACTIVO con este email
+        // Esto permite re-registro si la cuenta anterior fue eliminada
+        const emailActivo = await this.usuarioRepository.existeEmailActivo(email);
+        if (emailActivo) {
             throw new Error('El email ya está registrado');
         }
         // Validar que no exista doctor con el mismo número de documento
@@ -49,8 +51,20 @@ let RegistrarDoctorUseCase = class RegistrarDoctorUseCase {
         if (exequaturExistente) {
             throw new Error('Ya existe un doctor registrado con este número de exequatur. Por favor, verifica tus datos o contacta con soporte si crees que esto es un error.');
         }
-        // Validación de negocio: la especialidad principal NO debe estar en las secundarias
+        // Validar que la especialidad principal exista
+        const especialidadPrincipal = await this.especialidadRepository.obtenerPorId(dto.id_especialidad_principal);
+        if (!especialidadPrincipal) {
+            throw new Error(`La especialidad principal con ID ${dto.id_especialidad_principal} no existe. Por favor, selecciona una especialidad válida.`);
+        }
+        // Validar que las especialidades secundarias existan (si se proporcionan)
         if (dto.ids_especialidades_secundarias && dto.ids_especialidades_secundarias.length > 0) {
+            for (const idEspecialidad of dto.ids_especialidades_secundarias) {
+                const especialidadSecundaria = await this.especialidadRepository.obtenerPorId(idEspecialidad);
+                if (!especialidadSecundaria) {
+                    throw new Error(`La especialidad secundaria con ID ${idEspecialidad} no existe. Por favor, verifica las especialidades seleccionadas.`);
+                }
+            }
+            // Validación de negocio: la especialidad principal NO debe estar en las secundarias
             if (dto.ids_especialidades_secundarias.includes(dto.id_especialidad_principal)) {
                 throw new Error('La especialidad principal no puede estar incluida en las especialidades secundarias');
             }
@@ -58,10 +72,8 @@ let RegistrarDoctorUseCase = class RegistrarDoctorUseCase {
         // VALIDACIONES DE ARCHIVOS MÚLTIPLES
         const MAX_FOTO_DOCUMENTO = 2;
         const MAX_TITULO_ACADEMICO = 10;
-        // Validar que existan los archivos requeridos
-        if (!files.fotoPerfil?.[0]) {
-            throw new Error('La foto de perfil es requerida');
-        }
+        // fotoPerfil y certificaciones son opcionales
+        // Validar archivos requeridos
         if (!files.fotoDocumento || files.fotoDocumento.length === 0) {
             throw new Error('Al menos una foto de documento es requerida');
         }
@@ -74,14 +86,14 @@ let RegistrarDoctorUseCase = class RegistrarDoctorUseCase {
         if (files.tituloAcademico.length > MAX_TITULO_ACADEMICO) {
             throw new Error(`Máximo ${MAX_TITULO_ACADEMICO} títulos académicos permitidos`);
         }
-        if (!files.certificaciones || files.certificaciones.length === 0) {
-            throw new Error('Al menos una certificación es requerida');
-        }
         // Hashear contraseña
         const hashedPassword = await this.passwordHasher.hash(dto.password);
         try {
-            // Subir foto de perfil (solo 1)
-            const fotoPerfilUrl = await this.storageService.uploadFile(files.fotoPerfil[0].buffer, `doctors/${email}/profile.jpg`, 'public-assets', files.fotoPerfil[0].mimetype);
+            // Subir foto de perfil (opcional)
+            let fotoPerfilUrl = null;
+            if (files.fotoPerfil?.[0]) {
+                fotoPerfilUrl = await this.storageService.uploadFile(files.fotoPerfil[0].buffer, `doctors/${email}/profile.jpg`, 'public-assets', files.fotoPerfil[0].mimetype);
+            }
             // Subir múltiples fotos de documento (en paralelo)
             const fotosDocumentoPromises = files.fotoDocumento.map((file, index) => this.storageService.uploadFile(file.buffer, `doctors/${email}/documents/document-${index + 1}.${this.getExtension(file.mimetype)}`, 'secure-documents', file.mimetype).then(url => ({
                 tipo_documento: 'foto_documento',
@@ -100,20 +112,23 @@ let RegistrarDoctorUseCase = class RegistrarDoctorUseCase {
                 tamanio_bytes: file.size,
                 descripcion: dto.descripciones_titulos?.[index] || null,
             })));
-            // Subir múltiples certificaciones (en paralelo)
-            const certificacionesPromises = files.certificaciones.map((file, index) => this.storageService.uploadFile(file.buffer, `doctors/${email}/certifications/cert-${index + 1}.${this.getExtension(file.mimetype)}`, 'secure-documents', file.mimetype).then(url => ({
-                tipo_documento: 'certificacion',
-                url_archivo: url,
-                nombre_original: file.originalname,
-                tipo_mime: file.mimetype,
-                tamanio_bytes: file.size,
-                descripcion: dto.descripciones_certificaciones?.[index] || null,
-            })));
+            // Subir múltiples certificaciones (en paralelo) - opcional
+            let certificacionesPromises = [];
+            if (files.certificaciones && files.certificaciones.length > 0) {
+                certificacionesPromises = files.certificaciones.map((file, index) => this.storageService.uploadFile(file.buffer, `doctors/${email}/certifications/cert-${index + 1}.${this.getExtension(file.mimetype)}`, 'secure-documents', file.mimetype).then(url => ({
+                    tipo_documento: 'certificacion',
+                    url_archivo: url,
+                    nombre_original: file.originalname,
+                    tipo_mime: file.mimetype,
+                    tamanio_bytes: file.size,
+                    descripcion: dto.descripciones_certificaciones?.[index] || null,
+                })));
+            }
             // Esperar a que todos los archivos se suban en paralelo
             const [fotosDocumento, titulosAcademicos, certificaciones] = await Promise.all([
                 Promise.all(fotosDocumentoPromises),
                 Promise.all(titulosAcademicosPromises),
-                Promise.all(certificacionesPromises),
+                certificacionesPromises.length > 0 ? Promise.all(certificacionesPromises) : Promise.resolve([]),
             ]);
             // Combinar todos los documentos
             const todosLosDocumentos = [
@@ -165,8 +180,9 @@ exports.RegistrarDoctorUseCase = RegistrarDoctorUseCase;
 exports.RegistrarDoctorUseCase = RegistrarDoctorUseCase = __decorate([
     (0, tsyringe_1.injectable)(),
     __param(0, (0, tsyringe_1.inject)('UsuarioRepository')),
-    __param(1, (0, tsyringe_1.inject)('PasswordHasher')),
-    __param(2, (0, tsyringe_1.inject)('StorageService')),
-    __param(3, (0, tsyringe_1.inject)(AuthService_1.AuthService)),
-    __metadata("design:paramtypes", [Object, Object, Object, AuthService_1.AuthService])
+    __param(1, (0, tsyringe_1.inject)('EspecialidadRepository')),
+    __param(2, (0, tsyringe_1.inject)('PasswordHasher')),
+    __param(3, (0, tsyringe_1.inject)('StorageService')),
+    __param(4, (0, tsyringe_1.inject)(AuthService_1.AuthService)),
+    __metadata("design:paramtypes", [Object, Object, Object, Object, AuthService_1.AuthService])
 ], RegistrarDoctorUseCase);

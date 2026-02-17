@@ -42,6 +42,8 @@ tags:
     description: Endpoints para gestionar pacientes
   - name: Doctores
     description: Endpoints para gestionar doctores
+  - name: Acciones
+    description: Endpoints para revisión administrativa de documentos de doctores
   - name: TiposCentrosSalud
     description: Endpoints para gestionar tipos de centros de salud
   - name: CentrosSalud
@@ -959,6 +961,240 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   /auth/verificar-documento:
+  /auth/banner:
+    patch:
+      summary: Actualizar banner del usuario autenticado
+      tags:
+        - Autenticación
+      description: |
+        Permite a un usuario autenticado actualizar su imagen de banner. 
+        
+        **Validaciones**:
+        - Usuario debe estar autenticado (JWT token válido)
+        - Solo se permiten imágenes (JPEG, PNG, WEBP)
+        - Tamaño máximo: 5MB
+        
+        **Comportamiento**:
+        - Sube la nueva imagen a Supabase (bucket `public-assets`)
+        - Actualiza el registro en la base de datos
+        - Elimina automáticamente el banner anterior (si existe)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - banner
+              properties:
+                banner:
+                  type: string
+                  format: binary
+                  description: Archivo de imagen (JPEG, PNG o WEBP, máximo 5MB)
+      responses:
+        '200':
+          description: Banner actualizado exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Banner actualizado exitosamente"
+                  data:
+                    type: object
+                    properties:
+                      bannerUrl:
+                        type: string
+                        example: "https://avjupegentogqimsrxkg.supabase.co/storage/v1/object/public/public-assets/users/123/banner.jpg"
+                        description: URL pública del nuevo banner en Supabase
+        '400':
+          description: Solicitud inválida (archivo faltante, tipo incorrecto o tamaño excedido).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Solo se permiten imágenes (JPEG, PNG, WEBP)"
+        '401':
+          description: No autorizado (token faltante o inválido).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "No autorizado. Debe iniciar sesión."
+
+  /auth/cuenta:
+    delete:
+      summary: Eliminar cuenta del usuario autenticado (Soft Delete)
+      tags:
+        - Autenticación
+      description: |
+        Permite a un usuario autenticado eliminar su cuenta mediante **soft delete**. 
+        
+        **Validaciones**:
+        - Usuario debe estar autenticado (JWT token válido)
+        - Contraseña debe ser correcta
+        - Confirmación exacta: `"ELIMINAR CUENTA"` (case-sensitive)
+        
+        **Comportamiento**:
+        - Marca el usuario como `estado: 'Eliminado'`
+        - Elimina en cascada todas las entidades relacionadas:
+          - **Paciente**: condiciones médicas, citas, seguros, favoritos, reseñas
+          - **Doctor**: citas, formaciones, especialidades, documentos, experiencias, seguros
+          - **Centro**: solicitudes de alianza, experiencias laborales
+          - **Todos**: conversaciones y notificaciones
+        - Las citas activas se marcan como `'Cancelada'`
+        - El historial médico se preserva (sin campo estado)
+        - Permite re-registro posterior con el mismo email
+        
+        **⚠️ ADVERTENCIA**: Esta acción marca la cuenta como eliminada y no se puede deshacer. El usuario puede volver a registrarse con el mismo email si lo desea.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+                - confirmacion
+              properties:
+                password:
+                  type: string
+                  minLength: 8
+                  description: Contraseña actual del usuario (mínimo 8 caracteres)
+                  example: "MiPassword123"
+                confirmacion:
+                  type: string
+                  enum: ["ELIMINAR CUENTA"]
+                  description: Debe ser exactamente "ELIMINAR CUENTA" (case-sensitive)
+                  example: "ELIMINAR CUENTA"
+            examples:
+              eliminacion_valida:
+                summary: Solicitud válida de eliminación
+                value:
+                  password: "MiPassword123"
+                  confirmacion: "ELIMINAR CUENTA"
+      responses:
+        '200':
+          description: Cuenta eliminada exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: "Cuenta eliminada exitosamente"
+                  nota:
+                    type: string
+                    example: "Puedes volver a registrarte con el mismo email si lo deseas"
+        '400':
+          description: Solicitud inválida (datos faltantes o confirmación incorrecta).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Validación fallida"
+                  detalles:
+                    type: array
+                    items:
+                      type: string
+                    example: 
+                      - "confirmacion: confirmacion must be equal to ELIMINAR CUENTA"
+              examples:
+                datos_incompletos:
+                  summary: Datos faltantes
+                  value:
+                    error: "Datos incompletos"
+                    detalles: "Se requiere password y confirmación"
+                confirmacion_incorrecta:
+                  summary: Confirmación incorrecta
+                  value:
+                    error: "Validación fallida"
+                    detalles:
+                      - "confirmacion: confirmacion must be equal to ELIMINAR CUENTA"
+                password_corto:
+                  summary: Password muy corto
+                  value:
+                    error: "Validación fallida"
+                    detalles:
+                      - "password: password must be longer than or equal to 8 characters"
+        '401':
+          description: No autorizado (token faltante, inválido o contraseña incorrecta).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Contraseña incorrecta"
+              examples:
+                sin_token:
+                  summary: Token no proporcionado
+                  value:
+                    error: "No autenticado"
+                password_incorrecta:
+                  summary: Contraseña incorrecta
+                  value:
+                    error: "Contraseña incorrecta"
+        '403':
+          description: Cuenta ya eliminada o inactiva.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Cuenta inactiva"
+                  mensaje:
+                    type: string
+                    example: "Tu cuenta ha sido eliminada o desactivada. Si deseas volver a usar nuestros servicios, puedes registrarte nuevamente con el mismo email."
+        '404':
+          description: Usuario no encontrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Usuario no encontrado"
+        '500':
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Error al eliminar la cuenta"
+
     get:
       tags:
         - Autenticación
@@ -7352,6 +7588,493 @@ paths:
         '500':
           description: Error interno del servidor
 
+  /doctores/mis-documentos:
+    get:
+      summary: Obtener estado de documentos del doctor autenticado
+      tags:
+        - Doctores
+      description: |
+        Obtiene el estado de todos los documentos del doctor autenticado, incluyendo:
+        - Lista de documentos con su estado de revisión
+        - Estadísticas (total, aprobados, rechazados, pendientes)
+        - Última acción de revisión por documento
+        - Comentarios de administradores
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Estado de documentos obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      estadisticas:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                            example: 5
+                          aprobados:
+                            type: integer
+                            example: 3
+                          rechazados:
+                            type: integer
+                            example: 1
+                          pendientes:
+                            type: integer
+                            example: 1
+                      documentos:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 123
+                            tipoDocumento:
+                              type: string
+                              example: "Título Académico"
+                            urlArchivo:
+                              type: string
+                              example: "https://storage.supabase.co/..."
+                            estadoRevision:
+                              type: string
+                              enum: ["Pendiente", "Aprobado", "Rechazado"]
+                              example: "Aprobado"
+                            ultimaAccion:
+                              type: object
+                              nullable: true
+                              properties:
+                                id:
+                                  type: integer
+                                estado:
+                                  type: string
+                                  example: "Aprobada"
+                                comentarioAdmin:
+                                  type: string
+                                  nullable: true
+                                  example: "Documento verificado correctamente"
+                                fechaResolucion:
+                                  type: string
+                                  format: date-time
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '500':
+          description: Error interno del servidor
+
+  /doctores/documentos/{id}:
+    put:
+      summary: Actualizar un documento rechazado
+      tags:
+        - Doctores
+      description: |
+        Permite a un doctor actualizar un documento que fue rechazado por un administrador.
+        
+        **Requisitos:**
+        - El doctor debe estar en estado "En revisión"
+        - El documento debe estar en estado "Rechazado"
+        - Se debe enviar un nuevo archivo
+        
+        **Proceso:**
+        1. Se sube el nuevo archivo a Supabase
+        2. Se actualiza el documento con el nuevo archivo
+        3. El estado del documento cambia a "Pendiente"
+        4. Se crea automáticamente una nueva acción de revisión
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del documento a actualizar
+          schema:
+            type: integer
+          example: 123
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - archivo
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+                  description: Nuevo archivo del documento (JPG, PNG, WebP o PDF, máx 5MB)
+                descripcion:
+                  type: string
+                  description: Descripción opcional del documento actualizado
+                  example: "Título académico actualizado con sello oficial"
+      responses:
+        '200':
+          description: Documento actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Documento actualizado exitosamente. Se ha creado una nueva acción de revisión."
+        '400':
+          description: Solicitud inválida (archivo faltante, documento no rechazado, etc.)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "El documento no está en estado rechazado"
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor o doctor no en revisión)
+        '404':
+          description: Documento no encontrado
+        '500':
+          description: Error interno del servidor
+
+  /doctores/certificaciones:
+    post:
+      summary: Agregar una nueva certificación
+      tags:
+        - Doctores
+      description: |
+        Permite a un doctor agregar una nueva certificación en cualquier momento.
+        
+        **Disponible para:**
+        - Doctores en estado "En revisión"
+        - Doctores en estado "Aprobado"
+        
+        **Proceso:**
+        1. Se sube el archivo de certificación a Supabase
+        2. Se crea un nuevo documento tipo "Certificación"
+        3. Se crea automáticamente una acción de revisión
+        4. Se notifica a los administradores
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - archivo
+                - descripcion
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+                  description: Archivo de la certificación (JPG, PNG, WebP o PDF, máx 5MB)
+                descripcion:
+                  type: string
+                  description: Descripción de la certificación
+                  example: "Certificación en Cardiología Intervencionista - 2024"
+      responses:
+        '201':
+          description: Certificación agregada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Certificación agregada exitosamente. Se ha creado una acción de revisión."
+                  data:
+                    type: object
+                    properties:
+                      documentoId:
+                        type: integer
+                        example: 456
+                      accionId:
+                        type: integer
+                        example: 789
+        '400':
+          description: Solicitud inválida (archivo faltante, descripción faltante, etc.)
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '500':
+          description: Error interno del servidor
+
+  # --- ACCIONES (REVISIÓN DE DOCUMENTOS) ENDPOINTS ---
+  /acciones/pendientes:
+    get:
+      summary: Listar acciones pendientes de revisión
+      tags:
+        - Acciones
+      description: |
+        Obtiene todas las acciones pendientes de revisión de documentos.
+        Solo accesible por administradores.
+        
+        **Incluye:**
+        - Información del doctor emisor
+        - Detalles del documento a revisar
+        - Fecha de emisión
+        - Tipo de documento
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tipoDocumento
+          in: query
+          description: Filtrar por tipo de documento
+          schema:
+            type: string
+            example: "Título Académico"
+        - name: limite
+          in: query
+          description: Número máximo de resultados
+          schema:
+            type: integer
+            default: 50
+            example: 20
+      responses:
+        '200':
+          description: Acciones pendientes obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 789
+                        detalle:
+                          type: string
+                          example: "Revisión de Título Académico: Dr. Juan Pérez - Exequatur: 12345"
+                        fechaEmision:
+                          type: string
+                          format: date-time
+                        emisor:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            nombre:
+                              type: string
+                            apellido:
+                              type: string
+                            email:
+                              type: string
+                        documento:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            tipoDocumento:
+                              type: string
+                            urlArchivo:
+                              type: string
+                            descripcion:
+                              type: string
+                              nullable: true
+                  count:
+                    type: integer
+                    example: 15
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Admin)
+        '500':
+          description: Error interno del servidor
+
+  /acciones/{id}:
+    get:
+      summary: Obtener detalle de una acción
+      tags:
+        - Acciones
+      description: |
+        Obtiene el detalle completo de una acción específica.
+        Solo accesible por administradores.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de la acción
+          schema:
+            type: integer
+          example: 789
+      responses:
+        '200':
+          description: Detalle de acción obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      estado:
+                        type: string
+                        example: "Pendiente"
+                      detalle:
+                        type: string
+                      comentarioEmisor:
+                        type: string
+                        nullable: true
+                      comentarioAdmin:
+                        type: string
+                        nullable: true
+                      fechaEmision:
+                        type: string
+                        format: date-time
+                      fechaResolucion:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      emisor:
+                        type: object
+                      adminRevisor:
+                        type: object
+                        nullable: true
+                      documento:
+                        type: object
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Admin)
+        '404':
+          description: Acción no encontrada
+        '500':
+          description: Error interno del servidor
+
+  /acciones/{id}/revisar:
+    patch:
+      summary: Aprobar o rechazar un documento
+      tags:
+        - Acciones
+      description: |
+        Permite a un administrador aprobar o rechazar un documento específico.
+        
+        **Proceso de Aprobación:**
+        1. Se actualiza el estado de la acción a "Aprobada"
+        2. Se actualiza el estado del documento a "Aprobado"
+        3. Si todos los documentos del doctor están aprobados:
+           - Se actualiza el estado de verificación del doctor a "Aprobado"
+           - Se crea una notificación de cuenta aprobada
+        
+        **Proceso de Rechazo:**
+        1. Se actualiza el estado de la acción a "Rechazada"
+        2. Se actualiza el estado del documento a "Rechazado"
+        3. Se crea una notificación con el motivo del rechazo
+        4. El doctor puede actualizar el documento rechazado
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de la acción a revisar
+          schema:
+            type: integer
+          example: 789
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - decision
+              properties:
+                decision:
+                  type: string
+                  enum: ["Aprobada", "Rechazada"]
+                  description: Decisión del administrador
+                  example: "Aprobada"
+                comentario:
+                  type: string
+                  description: Comentario opcional del administrador
+                  example: "Documento verificado correctamente"
+      responses:
+        '200':
+          description: Documento revisado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Documento aprobado exitosamente"
+                  data:
+                    type: object
+                    properties:
+                      accionId:
+                        type: integer
+                      documentoId:
+                        type: integer
+                      decision:
+                        type: string
+                      doctorAprobado:
+                        type: boolean
+                        description: Indica si el doctor fue aprobado automáticamente
+                        example: true
+        '400':
+          description: Solicitud inválida (decisión inválida, acción no pendiente, etc.)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "La acción no está en estado pendiente"
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Admin)
+        '404':
+          description: Acción no encontrada
+        '500':
+          description: Error interno del servidor
+
   # --- TIPOS CENTROS SALUD ENDPOINTS ---
   /tipos-centros-salud:
     get:
@@ -11129,4 +11852,5 @@ components:
       type: apiKey
       in: header
 
+      name: Authorization
       description: Token de registro temporal para endpoints de registro (sin prefijo "Bearer")

@@ -29,6 +29,8 @@ const notificaciones_routes_1 = __importDefault(require("./notificaciones.routes
 const conversaciones_routes_1 = __importDefault(require("./conversaciones.routes"));
 const mensajes_routes_1 = __importDefault(require("./mensajes.routes"));
 const CondicionesMedicasRoutes_1 = __importDefault(require("./CondicionesMedicasRoutes"));
+const SegurosRoutes_1 = __importDefault(require("./SegurosRoutes"));
+const TiposSegurosRoutes_1 = __importDefault(require("./TiposSegurosRoutes"));
 const TranslationMiddleware_1 = require("../middlewares/TranslationMiddleware");
 const TranslationRateLimiter_1 = require("../middlewares/TranslationRateLimiter");
 const router = (0, express_1.Router)();
@@ -88,4 +90,8 @@ router.use('/conversaciones', conversaciones_routes_1.default);
 router.use('/conversaciones', mensajes_routes_1.default);
 // Rutas de Condiciones Médicas (Catálogo, Doctores y Pacientes)
 router.use('/condiciones-medicas', CondicionesMedicasRoutes_1.default);
+// Rutas de Seguros Médicos
+router.use('/seguros', SegurosRoutes_1.default);
+// Rutas de Tipos de Seguros
+router.use('/tipos-seguros', TiposSegurosRoutes_1.default);
 exports.default = router;

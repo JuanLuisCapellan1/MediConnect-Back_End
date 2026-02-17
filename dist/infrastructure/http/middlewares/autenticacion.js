@@ -5,10 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.verificarRol = exports.autenticarJWTOpcional = exports.autenticarJWT = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const client_1 = require("../../database/prisma/client");
 /**
  * Middleware para verificar el token JWT en las peticiones HTTP
+ * Valida que el usuario esté activo (no eliminado)
  */
-const autenticarJWT = (req, res, next) => {
+const autenticarJWT = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader) {
@@ -27,8 +29,27 @@ const autenticarJWT = (req, res, next) => {
             res.status(401).json({ error: 'Token de acceso inválido' });
             return;
         }
+        // Verificar que el usuario existe y está activo
+        const usuario = await client_1.prisma.usuario.findUnique({
+            where: { id: decoded.userId },
+            select: { id: true, estado: true, rol: true },
+        });
+        if (!usuario) {
+            res.status(401).json({ error: 'Usuario no encontrado' });
+            return;
+        }
+        // Validar que el usuario esté activo
+        if (usuario.estado !== 'Activo') {
+            res.status(403).json({
+                error: 'Cuenta inactiva',
+                mensaje: 'Tu cuenta ha sido eliminada o desactivada. Si deseas volver a usar nuestros servicios, puedes registrarte nuevamente con el mismo email.',
+            });
+            return;
+        }
         // Agregar la información del usuario al objeto request
         req.user = decoded;
+        req.usuarioId = decoded.userId;
+        req.rol = usuario.rol;
         next();
     }
     catch (error) {

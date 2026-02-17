@@ -11,10 +11,9 @@ class CaracteristicaEspecial {
         this.condicionId = data.condicionId;
         this.notas = data.notas;
         this.estado = data.estado || 'Activo';
-        this.creadoPor = data.creadoPor;
-        this.doctorId = data.doctorId;
         this.registradoEn = data.registradoEn || new Date();
         this.actualizadoEn = data.actualizadoEn;
+        this.condicion = data.condicion;
     }
 }
 exports.CaracteristicaEspecial = CaracteristicaEspecial;
