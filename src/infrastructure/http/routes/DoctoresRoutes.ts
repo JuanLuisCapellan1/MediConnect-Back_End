@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { DoctorController } from '../controllers/DoctorController';
+import { DoctorIdiomaController } from '../controllers/DoctorIdiomaController';
 import { autenticarJWT } from '../middlewares/autenticacion';
 import { requireRole } from '../middlewares/roleMiddleware';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
@@ -10,6 +11,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const router = Router();
 const doctorController = new DoctorController();
+const doctorIdiomaController = new DoctorIdiomaController();
 
 /**
  * GET /doctores
@@ -80,6 +82,51 @@ router.post(
     requireRole('Doctor'),
     upload.single('archivo'),
     (req, res) => doctorController.agregarCertificacion(req, res)
+);
+
+/**
+ * POST /doctores/idiomas
+ * Agregar un idioma al doctor autenticado
+ */
+router.post(
+    '/idiomas',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => doctorIdiomaController.agregar(req, res)
+);
+
+/**
+ * GET /doctores/idiomas
+ * Obtener todos los idiomas del doctor autenticado
+ */
+router.get(
+    '/idiomas',
+    autenticarJWT,
+    requireRole('Doctor'),
+    translationMiddleware,
+    (req, res) => doctorIdiomaController.obtenerIdiomas(req, res)
+);
+
+/**
+ * PATCH /doctores/idiomas/:id
+ * Actualizar un idioma del doctor autenticado
+ */
+router.patch(
+    '/idiomas/:id',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => doctorIdiomaController.actualizar(req, res)
+);
+
+/**
+ * DELETE /doctores/idiomas/:id
+ * Eliminar un idioma del doctor autenticado
+ */
+router.delete(
+    '/idiomas/:id',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => doctorIdiomaController.eliminar(req, res)
 );
 
 /**

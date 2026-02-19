@@ -22,3 +22,13 @@ export interface FiltroDoctoresDto {
     pagina?: number;
     limite?: number;
 }
+
+export interface AgregarIdiomaDto {
+    nombre: string;
+    nivel?: string;
+}
+
+export interface ActualizarIdiomaDto {
+    nombre?: string;
+    nivel?: string;
+}

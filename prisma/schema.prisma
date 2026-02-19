@@ -104,6 +104,7 @@ model Doctor {
   ubicacion                     Ubicacion?               @relation(fields: [ubicacionId], references: [id], onUpdate: NoAction, map: "fk_doctores_ubicacion")
   especialidades                DoctorEspecialidad[]
   favoritosDe                   DoctorFavorito[]
+  idiomas                       DoctorIdioma[]
   segurosAceptados              DoctorSeguro[]
   documentos                    DocumentoDoctor[]
   experiencias                  ExperienciaLaboral[]
@@ -757,6 +758,21 @@ model DoctorEspecialidad {
   @@index([id_doctor], map: "idx_doctores_especialidades_doctor")
   @@index([id_especialidad], map: "idx_doctores_especialidades_especialidad")
   @@map("doctores_especialidades")
+}
+
+model DoctorIdioma {
+  id            Int       @id @default(autoincrement()) @map("id_idioma")
+  doctorId      Int       @map("id_doctor")
+  nombre        String    @db.VarChar(50)
+  nivel         String?   @db.VarChar(20)
+  estado        String    @default("Activo") @db.VarChar(20)
+  creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn DateTime? @map("actualizado_en") @db.Timestamptz(6)
+  doctor        Doctor    @relation(fields: [doctorId], references: [usuarioId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([doctorId, nombre], map: "uq_doctor_idioma")
+  @@index([doctorId], map: "idx_idiomas_doctor")
+  @@map("doctores_idiomas")
 }
 
 /// Tabla para almacenar múltiples documentos por doctor

@@ -16,6 +16,7 @@ import { ITipoServicioRepository } from '../../domain/repositories/ITipoServicio
 import { IEspecialidadRepository } from '../../domain/repositories/IEspecialidadRepository';
 import { IPacienteRepository } from '../../domain/repositories/IPacienteRepository';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
+import { IDoctorIdiomaRepository } from '../../domain/repositories/IDoctorIdiomaRepository';
 import { ITipoCentroSaludRepository } from '../../domain/repositories/ITipoCentroSaludRepository';
 
 import { IExperienciaLaboralRepository } from '../../domain/repositories/IExperienciaLaboralRepository';
@@ -53,6 +54,7 @@ import { PrismaTipoServicioRepository } from '../../infrastructure/repositories/
 import { PrismaEspecialidadRepository } from '../../infrastructure/repositories/PrismaEspecialidadRepository';
 import { PrismaPacienteRepository } from '../../infrastructure/repositories/PrismaPacienteRepository';
 import { PrismaDoctorRepository } from '../../infrastructure/repositories/PrismaDoctorRepository';
+import { PrismaDoctorIdiomaRepository } from '../../infrastructure/repositories/PrismaDoctorIdiomaRepository';
 import { PrismaTipoCentroSaludRepository } from '../../infrastructure/repositories/PrismaTipoCentroSaludRepository';
 
 import { PrismaExperienciaLaboralRepository } from '../../infrastructure/repositories/PrismaExperienciaLaboralRepository';
@@ -125,6 +127,7 @@ import { GestionarTiposServiciosUseCase } from '../../application/use-cases/Gest
 import { GestionarEspecialidadesUseCase } from '../../application/use-cases/GestionarEspecialidadesUseCase';
 import { GestionarPacientesUseCase } from '../../application/use-cases/GestionarPacientesUseCase';
 import { GestionarDoctoresUseCase } from '../../application/use-cases/GestionarDoctoresUseCase';
+import { GestionarDoctorIdiomasUseCase } from '../../application/use-cases/GestionarDoctorIdiomasUseCase';
 import { GestionarConversacionesUseCase } from '../../application/use-cases/GestionarConversacionesUseCase';
 import { GestionarMensajesUseCase } from '../../application/use-cases/GestionarMensajesUseCase';
 import { GestionarMediaUseCase } from '../../application/use-cases/GestionarMediaUseCase';
@@ -453,6 +456,16 @@ container.register<IDoctorRepository>(
   }
 );
 
+container.register<IDoctorIdiomaRepository>(
+  'DoctorIdiomaRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      return new PrismaDoctorIdiomaRepository(prismaClient);
+    }
+  }
+);
+
 container.register<ITipoCentroSaludRepository>(
   'TipoCentroSaludRepository',
   {
@@ -747,6 +760,13 @@ container.register(GestionarDoctoresUseCase, {
     const validator = container.resolve(DoctorValidator);
     const estadoValidator = container.resolve(EstadoValidator);
     return new GestionarDoctoresUseCase(repo, validator, estadoValidator);
+  }
+});
+
+container.register(GestionarDoctorIdiomasUseCase, {
+  useFactory: () => {
+    const repo = container.resolve<IDoctorIdiomaRepository>('DoctorIdiomaRepository');
+    return new GestionarDoctorIdiomasUseCase(repo);
   }
 });
 

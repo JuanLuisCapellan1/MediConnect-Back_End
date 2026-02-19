@@ -8186,6 +8186,216 @@ paths:
         '500':
           description: Error interno del servidor
 
+  /doctores/idiomas:
+    post:
+      summary: Agregar un idioma al doctor autenticado
+      tags:
+        - Doctores
+      description: Permite al doctor autenticado agregar un nuevo idioma que maneja.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nombre
+              properties:
+                nombre:
+                  type: string
+                  description: Nombre del idioma
+                  example: "Inglés"
+                nivel:
+                  type: string
+                  description: Nivel de dominio del idioma
+                  enum: ["Básico", "Intermedio", "Avanzado", "Nativo"]
+                  example: "Avanzado"
+      responses:
+        '201':
+          description: Idioma agregado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Idioma agregado exitosamente."
+                  data:
+                    $ref: '#/components/schemas/DoctorIdioma'
+        '400':
+          description: Solicitud inválida
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '409':
+          description: El idioma ya existe para este doctor
+        '500':
+          description: Error interno del servidor
+
+    get:
+      summary: Obtener todos los idiomas del doctor autenticado
+      tags:
+        - Doctores
+      description: |
+        Obtiene la lista de todos los idiomas que maneja el doctor autenticado.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params:
+        
+        - `target`: Idioma destino (ej: en, fr, de)
+        - `source`: Idioma origen (opcional, default: es)
+        - `translate_fields`: Campos a traducir separados por coma (ej: nombre)
+        
+        Ejemplo: `/api/doctores/idiomas?target=en&translate_fields=nombre`
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir separados por coma (ej nombre)
+      responses:
+        '200':
+          description: Idiomas obtenidos exitosamente (pueden estar traducidos)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DoctorIdioma'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '500':
+          description: Error interno del servidor
+
+  /doctores/idiomas/{id}:
+    patch:
+      summary: Actualizar un idioma del doctor autenticado
+      tags:
+        - Doctores
+      description: Permite al doctor autenticado actualizar un idioma que maneja.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del idioma
+          example: 123
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  description: Nuevo nombre del idioma
+                  example: "Francés"
+                nivel:
+                  type: string
+                  description: Nuevo nivel de dominio
+                  enum: ["Básico", "Intermedio", "Avanzado", "Nativo"]
+                  example: "Intermedio"
+      responses:
+        '200':
+          description: Idioma actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Idioma actualizado exitosamente."
+                  data:
+                    $ref: '#/components/schemas/DoctorIdioma'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '404':
+          description: Idioma no encontrado
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar un idioma del doctor autenticado
+      tags:
+        - Doctores
+      description: Permite al doctor autenticado eliminar un idioma.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del idioma
+          example: 123
+      responses:
+        '200':
+          description: Idioma eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Idioma eliminado exitosamente."
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '404':
+          description: Idioma no encontrado
+        '500':
+          description: Error interno del servidor
+
   # --- ACCIONES (REVISIÓN DE DOCUMENTOS) ENDPOINTS ---
   /acciones/pendientes:
     get:
@@ -13076,6 +13286,34 @@ components:
           type: string
           example: "Activo"
         creadoEn:
+          type: string
+          format: date-time
+
+    DoctorIdioma:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        doctorId:
+          type: integer
+          example: 5
+        nombre:
+          type: string
+          description: Nombre del idioma
+          example: "Inglés"
+        nivel:
+          type: string
+          description: Nivel de dominio del idioma
+          enum: ["Básico", "Intermedio", "Avanzado", "Nativo"]
+          example: "Avanzado"
+        estado:
+          type: string
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+        actualizadoEn:
           type: string
           format: date-time
 
