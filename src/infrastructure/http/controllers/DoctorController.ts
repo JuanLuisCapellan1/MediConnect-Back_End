@@ -120,6 +120,11 @@ export class DoctorController {
             const useCase = container.resolve(GestionarDoctoresUseCase);
             const usuarioId = req.user!.userId; // Del middleware de autenticación
 
+            // Transformar fechaNacimiento si viene en formato string
+            if (req.body.fechaNacimiento && typeof req.body.fechaNacimiento === 'string') {
+                req.body.fechaNacimiento = new Date(req.body.fechaNacimiento);
+            }
+
             const doctor = await useCase.actualizar(usuarioId, req.body);
 
             return res.status(200).json({

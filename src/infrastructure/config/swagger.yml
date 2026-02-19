@@ -66,6 +66,8 @@ tags:
     description: Endpoints para gestionar seguros médicos (Admin CRUD, Pacientes máx 3, Doctores ilimitados)
   - name: TiposSeguros
     description: Endpoints para gestionar tipos de seguros (Admin CRUD, Cliente solo lectura)
+  - name: Servicios
+    description: Endpoints para gestionar servicios médicos ofrecidos por doctores (CRUD, imágenes, desactivación)
 
 
 # --- RUTAS (ENDPOINTS) ---
@@ -4360,12 +4362,16 @@ paths:
       summary: Listar todos los horarios
       tags:
         - Horarios
+      security:
+        - bearerAuth: []
       description: |
-        Obtiene una lista de todos los horarios del sistema. 
+        Obtiene una lista de todos los horarios del sistema.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
 
         **Traducción Automática:**
         Este endpoint soporta traducción automática de campos mediante query params.
-        Ejemplo: `/api/servicios-horarios?target=en&translate_fields=descripcion`
+        Ejemplo: `/api/horarios?target=en&translate_fields=descripcion`
       parameters:
         - name: target
           in: query
@@ -4388,7 +4394,7 @@ paths:
           schema:
             type: string
           example: "descripcion,nombre"
-          description: Campos a traducir separados por comas (ejemplo: "descripcion,nombre")
+          description: 'Campos a traducir separados por comas (ejemplo: "descripcion,nombre")'
       responses:
         '200':
           description: Horarios obtenidos exitosamente
@@ -4398,6 +4404,18 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Horario'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
           content:
@@ -4409,7 +4427,12 @@ paths:
       summary: Crear un nuevo horario
       tags:
         - Horarios
-      description: Crea un nuevo horario para un doctor en una ubicación específica. El horario especifica un bloque de tiempo en un día de la semana.
+      security:
+        - bearerAuth: []
+      description: |
+        Crea un nuevo horario para un doctor en una ubicación específica. El horario especifica un bloque de tiempo en un día de la semana.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       requestBody:
         required: true
         content:
@@ -4462,6 +4485,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: Conflicto de horario (se superpone con otro existente)
           content:
@@ -4480,7 +4515,12 @@ paths:
       summary: Obtener horario por ID
       tags:
         - Horarios
-      description: Obtiene los detalles de un horario específico por su ID.
+      security:
+        - bearerAuth: []
+      description: |
+        Obtiene los detalles de un horario específico por su ID.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: id
           in: path
@@ -4502,6 +4542,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Horario no encontrado
           content:
@@ -4519,7 +4571,12 @@ paths:
       summary: Actualizar un horario
       tags:
         - Horarios
-      description: Actualiza los datos de un horario existente. Al menos uno de los campos opcionales debe ser proporcionado.
+      security:
+        - bearerAuth: []
+      description: |
+        Actualiza los datos de un horario existente. Al menos uno de los campos opcionales debe ser proporcionado.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: id
           in: path
@@ -4578,6 +4635,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Horario no encontrado
           content:
@@ -4601,7 +4670,12 @@ paths:
       summary: Eliminar un horario
       tags:
         - Horarios
-      description: Elimina (soft delete) un horario, marcándolo como eliminado.
+      security:
+        - bearerAuth: []
+      description: |
+        Elimina (soft delete) un horario, marcándolo como eliminado.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: id
           in: path
@@ -4619,6 +4693,18 @@ paths:
                 $ref: '#/components/schemas/Horario'
         '400':
           description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
           content:
             application/json:
               schema:
@@ -4641,7 +4727,12 @@ paths:
       summary: Listar horarios de un doctor
       tags:
         - Horarios
-      description: Obtiene todos los horarios asociados a un doctor específico.
+      security:
+        - bearerAuth: []
+      description: |
+        Obtiene todos los horarios asociados a un doctor específico.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: doctorId
           in: path
@@ -4665,6 +4756,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
           content:
@@ -4677,7 +4780,12 @@ paths:
       summary: Listar horarios por día de la semana
       tags:
         - Horarios
-      description: Obtiene todos los horarios programados para un día específico de la semana.
+      security:
+        - bearerAuth: []
+      description: |
+        Obtiene todos los horarios programados para un día específico de la semana.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: diaSemana
           in: path
@@ -4702,6 +4810,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
           content:
@@ -4714,7 +4834,12 @@ paths:
       summary: Listar horarios por estado
       tags:
         - Horarios
-      description: Obtiene todos los horarios que tienen un estado específico (Activo, Inactivo o Eliminado).
+      security:
+        - bearerAuth: []
+      description: |
+        Obtiene todos los horarios que tienen un estado específico (Activo, Inactivo o Eliminado).
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: target
           in: query
@@ -4761,6 +4886,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
           content:
@@ -4774,7 +4911,12 @@ paths:
       summary: Crear una nueva relación ServicioHorario
       tags:
         - ServiciosHorarios
-      description: Crea una nueva relación entre un servicio y un horario. Especifica que un servicio está disponible en un horario determinado.
+      security:
+        - bearerAuth: []
+      description: |
+        Crea una nueva relación entre un servicio y un horario. Especifica que un servicio está disponible en un horario determinado.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       requestBody:
         required: true
         content:
@@ -4820,6 +4962,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: La relación ya existe
           content:
@@ -4833,9 +4987,13 @@ paths:
       summary: Listar todas las relaciones ServicioHorario
       tags:
         - ServiciosHorarios
+      security:
+        - bearerAuth: []
       description: |
         Obtiene una lista de todas las relaciones ServicioHorario con soporte para paginación y filtros.
-        
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
+
         **Traducción Automática:**
         Este endpoint soporta traducción automática de campos mediante query params.
         Ejemplo: `/api/servicios-horarios?target=en&translate_fields=descripcion`
@@ -4926,6 +5084,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
 
@@ -4934,7 +5104,12 @@ paths:
       summary: Obtener una relación ServicioHorario específica
       tags:
         - ServiciosHorarios
-      description: Obtiene los detalles de una relación específica entre un servicio y un horario.
+      security:
+        - bearerAuth: []
+      description: |
+        Obtiene los detalles de una relación específica entre un servicio y un horario.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: servicioId
           in: path
@@ -4967,6 +5142,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Relación ServicioHorario no encontrada
           content:
@@ -4980,7 +5167,12 @@ paths:
       summary: Actualizar una relación ServicioHorario
       tags:
         - ServiciosHorarios
-      description: Actualiza una relación ServicioHorario existente. Puede cambiar la combinación de IDs (servicioId y/o horarioId) o solo el estado. Si se cambia la combinación de IDs, se valida que la nueva combinación no exista y que los nuevos servicio y horario existan en la base de datos.
+      security:
+        - bearerAuth: []
+      description: |
+        Actualiza una relación ServicioHorario existente. Puede cambiar la combinación de IDs (servicioId y/o horarioId) o solo el estado.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: servicioId
           in: path
@@ -5036,6 +5228,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Relación ServicioHorario no encontrada
           content:
@@ -5055,7 +5259,12 @@ paths:
       summary: Eliminar una relación ServicioHorario
       tags:
         - ServiciosHorarios
-      description: Elimina una relación ServicioHorario, removiendo la disponibilidad de ese servicio en ese horario.
+      security:
+        - bearerAuth: []
+      description: |
+        Elimina una relación ServicioHorario, removiendo la disponibilidad de ese servicio en ese horario.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: servicioId
           in: path
@@ -5089,6 +5298,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Relación ServicioHorario no encontrada
           content:
@@ -5103,7 +5324,12 @@ paths:
       summary: Listar todos los horarios de un servicio
       tags:
         - ServiciosHorarios
-      description: Obtiene todos los horarios en los que está disponible un servicio específico.
+      security:
+        - bearerAuth: []
+      description: |
+        Obtiene todos los horarios en los que está disponible un servicio específico.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: servicioId
           in: path
@@ -5132,6 +5358,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
 
@@ -5140,7 +5378,12 @@ paths:
       summary: Listar todos los servicios de un horario
       tags:
         - ServiciosHorarios
-      description: Obtiene todos los servicios disponibles en un horario específico.
+      security:
+        - bearerAuth: []
+      description: |
+        Obtiene todos los servicios disponibles en un horario específico.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: horarioId
           in: path
@@ -5169,6 +5412,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
 
@@ -5177,7 +5432,12 @@ paths:
       summary: Listar todas las relaciones ServicioHorario por estado
       tags:
         - ServiciosHorarios
-      description: Obtiene todas las relaciones ServicioHorario filtradas por estado (Activo, Inactivo, Eliminado) con soporte para paginación.
+      security:
+        - bearerAuth: []
+      description: |
+        Obtiene todas las relaciones ServicioHorario filtradas por estado (Activo, Inactivo, Eliminado) con soporte para paginación.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: estado
           in: path
@@ -5237,6 +5497,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
           content:
@@ -5250,9 +5522,13 @@ paths:
       summary: Listar tipos de servicios
       tags:
         - TiposServicios
+      security:
+        - bearerAuth: []
       description: |
         Obtiene una lista de tipos de servicios con soporte para paginación y filtros.
-        
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
+
         **Traducción Automática:**
         Este endpoint soporta traducción automática de campos mediante query params.
         Ejemplo: `/api/tipos-servicios?target=en&translate_fields=nombre,descripcion`
@@ -5332,11 +5608,29 @@ paths:
              application/json:
                schema:
                  $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
     post:
       summary: Crear un nuevo tipo de servicio
       tags:
         - TiposServicios
+      security:
+        - bearerAuth: []
+      description: |
+        Crea un nuevo tipo de servicio.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       requestBody:
         required: true
         content:
@@ -5367,6 +5661,18 @@ paths:
                     $ref: '#/components/schemas/TipoServicio'
         '400':
           description: Datos inválidos
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: El tipo de servicio ya existe
         '500':
@@ -5381,6 +5687,12 @@ paths:
       summary: Obtener tipo de servicio por ID
       tags:
         - TiposServicios
+      security:
+        - bearerAuth: []
+      description: |
+        Obtiene un tipo de servicio por su ID.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: id
           in: path
@@ -5401,6 +5713,18 @@ paths:
                     $ref: '#/components/schemas/TipoServicio'
         '404':
           description: Tipo de servicio no encontrado
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
           content:
@@ -5412,6 +5736,12 @@ paths:
       summary: Actualizar tipo de servicio
       tags:
         - TiposServicios
+      security:
+        - bearerAuth: []
+      description: |
+        Actualiza un tipo de servicio existente.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: id
           in: path
@@ -5447,6 +5777,18 @@ paths:
                       $ref: '#/components/schemas/TipoServicio'
         '404':
           description: Tipo de servicio no encontrado
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
           content:
@@ -5458,6 +5800,12 @@ paths:
       summary: Eliminar tipo de servicio
       tags:
         - TiposServicios
+      security:
+        - bearerAuth: []
+      description: |
+        Elimina un tipo de servicio.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
       parameters:
         - name: id
           in: path
@@ -5478,6 +5826,18 @@ paths:
                       type: string
         '404':
           description: Tipo de servicio no encontrado
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor o Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor
           content:
@@ -7428,6 +7788,11 @@ paths:
                 nacionalidad:
                   type: string
                   example: "Dominicana"
+                fechaNacimiento:
+                  type: string
+                  format: date
+                  example: "1985-06-20"
+                  description: "Fecha de nacimiento del doctor (formato ISO 8601: YYYY-MM-DD)"
                 estado:
                   type: string
                   enum: ["Activo", "Inactivo"]
@@ -10727,8 +11092,852 @@ paths:
         '409':
           description: No se puede eliminar - tipo de seguro en uso
 
+  # ─── SERVICIOS ─────────────────────────────────────────────────────────────
+  /servicios:
+    post:
+      summary: Crear un nuevo servicio médico
+      tags:
+        - Servicios
+      description: |
+        Crea un nuevo servicio médico para el doctor autenticado.
+        Acepta `multipart/form-data` para subir imágenes opcionales (máx. 10, 5MB c/u).
+
+        **Sedes (ubicaciones donde se imparte el servicio):**
+        Cada sede tiene `centroSaludId` **O** `ubicacionId` (mutuamente excluyentes),
+        y una lista de `horarios` específicos para esa sede.
+        Se envía como JSON string en el campo `sedes` del form-data.
+
+        **Acceso:** Doctor
+      security:
+        - bearerAuth: []
+
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - tipoServicioId
+                - especialidadId
+                - nombre
+                - precio
+                - duracionMinutos
+              properties:
+                tipoServicioId:
+                  type: integer
+                  example: 2
+                especialidadId:
+                  type: integer
+                  example: 3
+                nombre:
+                  type: string
+                  example: "Consulta General"
+                descripcion:
+                  type: string
+                  example: "Consulta médica general de 30 minutos"
+                precio:
+                  type: number
+                  example: 1500.00
+                duracionMinutos:
+                  type: integer
+                  example: 30
+                maxPacientesDia:
+                  type: integer
+                  example: 20
+                sedes:
+                  type: array
+                  description: |
+                    Sedes donde se impartirá el servicio, cada una con sus horarios.
+                    Cada sede tiene `centroSaludId` **O** `ubicacionId` (mutuamente excluyentes).
+                  items:
+                    type: object
+                    required: [horarios]
+                    properties:
+                      centroSaludId:
+                        type: integer
+                        description: ID de un centro de salud existente.
+                        example: 1
+                      ubicacionId:
+                        type: integer
+                        description: ID de una ubicación propia del doctor.
+                        example: 7
+                      horarios:
+                        type: array
+                        description: Horarios que el doctor asigna a esta sede.
+                        items:
+                          type: object
+                          required: [nombre, diaSemana, horaInicio, horaFin]
+                          properties:
+                            nombre:
+                              type: string
+                              example: "Lunes mañana"
+                            diaSemana:
+                              type: integer
+                              description: 1=Lunes, 2=Martes ... 7=Domingo
+                              example: 1
+                            horaInicio:
+                              type: string
+                              pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+                              example: "08:00"
+                            horaFin:
+                              type: string
+                              pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+                              example: "12:00"
+                  example:
+                    - centroSaludId: 1
+                      horarios:
+                        - nombre: "Lunes mañana"
+                          diaSemana: 1
+                          horaInicio: "08:00"
+                          horaFin: "12:00"
+                    - ubicacionId: 7
+                      horarios:
+                        - nombre: "Viernes tarde"
+                          diaSemana: 5
+                          horaInicio: "14:00"
+                          horaFin: "18:00"
+                imagenes:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: "Imágenes del servicio (JPEG, PNG, WebP — máx. 10 archivos, 5MB c/u)"
+      responses:
+        '201':
+          description: Servicio creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ServicioDetalle'
+                  message:
+                    type: string
+                    example: "Servicio creado exitosamente"
+        '400':
+          description: Datos inválidos o imagen no permitida
+        '401':
+          description: No autenticado
+        '403':
+          description: Acceso denegado (solo Doctor)
+
+  /servicios/{id}:
+    get:
+      summary: Obtener detalle completo de un servicio
+      tags:
+        - Servicios
+      description: |
+        Retorna el detalle completo de un servicio incluyendo doctor, especialidad,
+        tipo de servicio, horarios disponibles y todas las imágenes.
+        **Acceso:** Doctor, Administrador, Paciente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 10
+      responses:
+        '200':
+          description: Detalle del servicio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ServicioDetalle'
+        '400':
+          description: ID inválido
+        '401':
+          description: No autenticado
+        '404':
+          description: Servicio no encontrado
+
+    put:
+      summary: Actualizar un servicio
+      tags:
+        - Servicios
+      description: |
+        Actualiza los datos de un servicio. Solo el doctor propietario puede modificarlo.
+        Todos los campos son opcionales (PATCH semántico).
+        **Acceso:** Doctor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 10
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tipoServicioId:
+                  type: integer
+                  example: 2
+                especialidadId:
+                  type: integer
+                  example: 3
+                nombre:
+                  type: string
+                  example: "Consulta General Actualizada"
+                descripcion:
+                  type: string
+                  example: "Nueva descripción del servicio"
+                precio:
+                  type: number
+                  example: 1800.00
+                duracionMinutos:
+                  type: integer
+                  example: 45
+                maxPacientesDia:
+                  type: integer
+                  example: 15
+                estado:
+                  type: string
+                  enum: [Activo, Inactivo]
+                  example: "Activo"
+                sedesAgregar:
+                  type: array
+                  description: Nuevas sedes a agregar al servicio con sus horarios.
+                  items:
+                    type: object
+                    required: [horarios]
+                    properties:
+                      centroSaludId:
+                        type: integer
+                        example: 5
+                      ubicacionId:
+                        type: integer
+                        example: 9
+                      horarios:
+                        type: array
+                        items:
+                          type: object
+                          required: [nombre, diaSemana, horaInicio, horaFin]
+                          properties:
+                            nombre:
+                              type: string
+                              example: "Sábado mañana"
+                            diaSemana:
+                              type: integer
+                              example: 6
+                            horaInicio:
+                              type: string
+                              example: "09:00"
+                            horaFin:
+                              type: string
+                              example: "13:00"
+                sedesEliminar:
+                  type: array
+                  items:
+                    type: integer
+                  description: IDs (centroSaludId) de sedes a desactivar del servicio.
+                  example: [1, 3]
+                horariosEliminar:
+                  type: array
+                  items:
+                    type: integer
+                  description: IDs de horarios existentes del servicio a desactivar.
+                  example: [10, 15]
+      responses:
+        '200':
+          description: Servicio actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ServicioResumen'
+                  message:
+                    type: string
+                    example: "Servicio actualizado exitosamente"
+        '400':
+          description: Datos inválidos o estado no permitido
+        '401':
+          description: No autenticado
+        '403':
+          description: No eres el propietario del servicio
+        '404':
+          description: Servicio no encontrado
+
+    delete:
+      summary: Eliminar un servicio (soft delete)
+      tags:
+        - Servicios
+      description: |
+        Marca el servicio como `Eliminado`. No elimina físicamente el registro.
+        Solo el doctor propietario puede eliminarlo.
+        **Acceso:** Doctor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 10
+      responses:
+        '200':
+          description: Servicio eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Servicio eliminado exitosamente"
+        '401':
+          description: No autenticado
+        '403':
+          description: No eres el propietario del servicio
+        '404':
+          description: Servicio no encontrado
+
+  /servicios/{id}/desactivar:
+    patch:
+      summary: Desactivar un servicio
+      tags:
+        - Servicios
+      description: |
+        Cambia el estado del servicio a `Inactivo`. El servicio deja de aparecer
+        en búsquedas pero no se elimina.
+        **Acceso:** Doctor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 10
+      responses:
+        '200':
+          description: Servicio desactivado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Servicio desactivado exitosamente"
+        '400':
+          description: El servicio ya está inactivo
+        '401':
+          description: No autenticado
+        '403':
+          description: No eres el propietario del servicio
+        '404':
+          description: Servicio no encontrado
+
+  /servicios/doctor/{doctorId}:
+    get:
+      summary: Listar servicios de un doctor
+      tags:
+        - Servicios
+      description: |
+        Retorna la lista de servicios activos (no eliminados) de un doctor.
+        Soporta filtros opcionales por especialidad, tipo de servicio, estado y rango de precio.
+        **Acceso:** Doctor, Administrador, Paciente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 5
+        - name: especialidadId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por especialidad
+          example: 3
+        - name: tipoServicioId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por tipo de servicio
+          example: 2
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [Activo, Inactivo]
+          description: Filtrar por estado (por defecto excluye Eliminados)
+          example: "Activo"
+        - name: precioMin
+          in: query
+          schema:
+            type: number
+          description: Precio mínimo
+          example: 500
+        - name: precioMax
+          in: query
+          schema:
+            type: number
+          description: Precio máximo
+          example: 3000
+      responses:
+        '200':
+          description: Lista de servicios del doctor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServicioResumen'
+                  count:
+                    type: integer
+                    example: 5
+        '400':
+          description: doctorId inválido
+        '401':
+          description: No autenticado
+
+  /servicios/centro/{centroId}:
+    get:
+      summary: Listar servicios de un centro de salud
+      tags:
+        - Servicios
+      description: |
+        Retorna todos los servicios ofrecidos en un centro de salud específico.
+        Los servicios se vinculan al centro a través de la tabla `servicios_centros_salud`.
+        Soporta filtros opcionales por especialidad, tipo de servicio, estado y rango de precio.
+        **Acceso:** Doctor, Administrador, Paciente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: centroId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del centro de salud
+          example: 1
+        - name: especialidadId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por especialidad
+          example: 3
+        - name: tipoServicioId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por tipo de servicio
+          example: 2
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [Activo, Inactivo]
+          description: Filtrar por estado (por defecto excluye Eliminados)
+          example: "Activo"
+        - name: precioMin
+          in: query
+          schema:
+            type: number
+          description: Precio mínimo
+          example: 500
+        - name: precioMax
+          in: query
+          schema:
+            type: number
+          description: Precio máximo
+          example: 3000
+      responses:
+        '200':
+          description: Lista de servicios del centro de salud
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServicioResumen'
+                  count:
+                    type: integer
+                    example: 8
+        '400':
+          description: centroId inválido
+        '401':
+          description: No autenticado
+
+  /servicios/{id}/imagenes:
+
+    post:
+      summary: Agregar imágenes a un servicio
+      tags:
+        - Servicios
+      description: |
+        Sube y asocia nuevas imágenes a un servicio existente.
+        Máximo 10 imágenes en total por servicio (JPEG, PNG, WebP — 5MB c/u).
+        **Acceso:** Doctor (propietario del servicio)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 10
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - imagenes
+              properties:
+                imagenes:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: "Imágenes a agregar (JPEG, PNG, WebP — máx. 10 en total, 5MB c/u)"
+      responses:
+        '201':
+          description: Imágenes agregadas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServicioImagen'
+                  message:
+                    type: string
+                    example: "2 imagen(es) agregada(s) exitosamente"
+        '400':
+          description: Sin archivos, tipo no permitido o límite de 10 imágenes superado
+        '401':
+          description: No autenticado
+        '403':
+          description: No eres el propietario del servicio
+        '404':
+          description: Servicio no encontrado
+
+  /servicios/{id}/imagenes/{imagenId}:
+    delete:
+      summary: Eliminar una imagen de un servicio
+      tags:
+        - Servicios
+      description: |
+        Elimina (soft delete) una imagen específica de un servicio.
+        También intenta eliminar el archivo de Supabase Storage.
+        **Acceso:** Doctor (propietario del servicio)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del servicio
+          example: 10
+        - name: imagenId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la imagen a eliminar
+          example: 3
+      responses:
+        '200':
+          description: Imagen eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Imagen eliminada exitosamente"
+        '401':
+          description: No autenticado
+        '403':
+          description: No eres el propietario del servicio
+        '404':
+          description: Servicio o imagen no encontrada
+
 components:
   schemas:
+    # ─── Servicios ───────────────────────────────────────────────────────────
+    ServicioImagen:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        servicioId:
+          type: integer
+          example: 10
+        url:
+          type: string
+          example: "https://xyz.supabase.co/storage/v1/object/public/public-assets/servicios/5/10/img.jpg"
+        orden:
+          type: integer
+          example: 0
+        estado:
+          type: string
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+
+    ServicioResumen:
+      type: object
+      description: Servicio en listado (incluye sólo la primera imagen)
+      properties:
+        id:
+          type: integer
+          example: 10
+        doctorId:
+          type: integer
+          example: 5
+        tipoServicioId:
+          type: integer
+          example: 2
+        especialidadId:
+          type: integer
+          example: 3
+        nombre:
+          type: string
+          example: "Consulta General"
+        descripcion:
+          type: string
+          nullable: true
+          example: "Consulta médica general de 30 minutos"
+        precio:
+          type: number
+          example: 1500.00
+        duracionMinutos:
+          type: integer
+          example: 30
+        maxPacientesDia:
+          type: integer
+          nullable: true
+          example: 20
+        calificacionPromedio:
+          type: number
+          nullable: true
+          example: 4.5
+        estado:
+          type: string
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+        actualizadoEn:
+          type: string
+          format: date-time
+          nullable: true
+        imagenes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServicioImagen'
+        especialidad:
+          type: object
+          properties:
+            id:
+              type: integer
+            nombre:
+              type: string
+        tipoServicio:
+          type: object
+          properties:
+            id:
+              type: integer
+            nombre:
+              type: string
+        centros:
+          type: array
+          description: Centros de salud donde se ofrece el servicio
+          items:
+            type: object
+            properties:
+              id_centro_salud:
+                type: integer
+              estado:
+                type: string
+                example: "Activo"
+              centros_salud:
+                type: object
+                properties:
+                  usuarioId:
+                    type: integer
+                  nombreComercial:
+                    type: string
+                    example: "Clínica Santa María"
+                  foto_perfil:
+                    type: string
+                    nullable: true
+                  ubicacion:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      direccion:
+                        type: string
+                        example: "Av. Independencia #45"
+                      barrio:
+                        type: object
+                        properties:
+                          nombre:
+                            type: string
+        ubicacion:
+          type: object
+          nullable: true
+          description: Ubicación personalizada (cuando el servicio no es en un centro de salud)
+          properties:
+            id:
+              type: integer
+            direccion:
+              type: string
+              example: "Calle 5ta #10, Local 2"
+            barrio:
+              type: object
+              properties:
+                nombre:
+                  type: string
+        horarios:
+          type: array
+          description: Horarios del servicio con su centro/ubicación
+          items:
+            type: object
+            properties:
+              servicioId:
+                type: integer
+              horarioId:
+                type: integer
+              estado:
+                type: string
+                example: "Activo"
+              horario:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  nombre:
+                    type: string
+                    example: "Lunes mañana"
+                  diaSemana:
+                    type: integer
+                    description: "1=Lunes … 7=Domingo"
+                    example: 1
+                  horaInicio:
+                    type: string
+                    format: date-time
+                  horaFin:
+                    type: string
+                    format: date-time
+                  centroSalud:
+                    type: object
+                    nullable: true
+                    properties:
+                      usuarioId:
+                        type: integer
+                      nombreComercial:
+                        type: string
+                  ubicacion:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      direccion:
+                        type: string
+                        example: "Av. Independencia #45"
+                      barrio:
+                        type: object
+                        properties:
+                          nombre:
+                            type: string
+                            example: "Los Prados"
+
+    ServicioDetalle:
+      allOf:
+        - $ref: '#/components/schemas/ServicioResumen'
+        - type: object
+          description: Servicio con detalle completo (doctor, horarios completos, todas las imágenes)
+          properties:
+            doctor:
+              type: object
+              properties:
+                usuarioId:
+                  type: integer
+                nombre:
+                  type: string
+                apellido:
+                  type: string
+                especialidadPrincipal:
+                  type: string
+                  nullable: true
+                usuario:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    email:
+                      type: string
+                    fotoPerfil:
+                      type: string
+                      nullable: true
+
+    # ─── Otros schemas ────────────────────────────────────────────────────────
     Provincia:
       type: object
       properties:
@@ -11676,6 +12885,11 @@ components:
       type: object
       properties:
         id:
+        fechaNacimiento:
+          type: string
+          format: date
+          example: "1985-06-20"
+          description: Fecha de nacimiento del doctor (ISO 8601)
           type: integer
           example: 1
         usuarioId:
@@ -11874,6 +13088,5 @@ components:
     ApiKeyAuth:
       type: apiKey
       in: header
-
       name: Authorization
       description: Token de registro temporal para endpoints de registro (sin prefijo "Bearer")

@@ -8,6 +8,7 @@ export interface ActualizarDoctorDto {
     duracionCitaPromedio?: number;
     nacionalidad?: string;
     estado?: string;
+    fechaNacimiento?: Date;
 }
 
 export interface FiltroDoctoresDto {

@@ -35,6 +35,7 @@ import { ICentroSaludRepository } from '../../domain/repositories/ICentroSaludRe
 import { ICondicionMedicaRepository } from '../../domain/repositories/ICondicionMedicaRepository';
 import { ISeguroMedicoRepository } from '../../domain/repositories/ISeguroMedicoRepository';
 import { ITipoSeguroRepository } from '../../domain/repositories/ITipoSeguroRepository';
+import { IServicioRepository } from '../../domain/repositories/IServicioRepository';
 
 
 // Implementaciones
@@ -66,6 +67,7 @@ import { PrismaCentroSaludRepository } from '../../infrastructure/repositories/P
 import { PrismaCondicionMedicaRepository } from '../../infrastructure/repositories/PrismaCondicionMedicaRepository';
 import { PrismaSeguroMedicoRepository } from '../../infrastructure/repositories/PrismaSeguroMedicoRepository';
 import { PrismaTipoSeguroRepository } from '../../infrastructure/repositories/PrismaTipoSeguroRepository';
+import { PrismaServicioRepository } from '../../infrastructure/repositories/PrismaServicioRepository';
 
 
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
@@ -141,6 +143,7 @@ import { CambiarEmailUseCase } from '../../application/use-cases/CambiarEmailUse
 import { EliminarCuentaUseCase } from '../../application/use-cases/EliminarCuentaUseCase';
 import { CentrosSaludController } from '../../infrastructure/http/controllers/CentrosSaludController';
 import { GestionarCondicionesMedicasUseCase } from '../../application/use-cases/GestionarCondicionesMedicasUseCase';
+import { GestionarServiciosUseCase } from '../../application/use-cases/GestionarServiciosUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 // Registrar PrismaClient como singleton
@@ -558,6 +561,17 @@ container.register<ITipoSeguroRepository>(
   }
 );
 
+container.register<IServicioRepository>(
+  'ServicioRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve(RedisCacheService);
+      return new PrismaServicioRepository(prismaClient, redisCache);
+    }
+  }
+);
+
 
 // ===== REGISTRAR USE CASES =====
 container.register(GestionarProvinciasUseCase, {
@@ -934,6 +948,14 @@ container.register(EliminarCuentaUseCase, {
     const usuarioRepo = container.resolve<IUsuarioRepository>('UsuarioRepository');
     const passwordHasher = container.resolve<IPasswordHasher>('PasswordHasher');
     return new EliminarCuentaUseCase(usuarioRepo, passwordHasher);
+  }
+});
+
+container.register(GestionarServiciosUseCase, {
+  useFactory: () => {
+    const servicioRepository = container.resolve<IServicioRepository>('ServicioRepository');
+    const storageService = container.resolve<IStorageService>('StorageService');
+    return new GestionarServiciosUseCase(servicioRepository, storageService);
   }
 });
 

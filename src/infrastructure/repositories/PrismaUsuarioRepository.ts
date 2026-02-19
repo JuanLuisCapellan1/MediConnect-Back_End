@@ -319,11 +319,33 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
         paciente: true,
         doctor: {
           include: {
+            usuario: {
+              select: {
+                email: true,
+                telefono: true,
+                fotoPerfil: true,
+                emailVerificado: true,
+              },
+            },
             ubicacion: true,
             formaciones: {
+              where: {
+                estado: 'Activo',
+              },
               include: {
                 especialidad: true,
                 universidad: true,
+              },
+              orderBy: {
+                creadoEn: 'desc',
+              },
+            },
+            experiencias: {
+              where: {
+                estado: 'Activo',
+              },
+              orderBy: {
+                creadoEn: 'desc',
               },
             },
             especialidades: {
@@ -353,6 +375,24 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
               },
               orderBy: {
                 creadoEn: 'desc',
+              },
+            },
+            horarios: {
+              where: {
+                estado: 'Activo',
+              },
+              orderBy: {
+                diaSemana: 'asc',
+              },
+            },
+            servicios: {
+              where: {
+                estado: 'Activo',
+              },
+            },
+            segurosAceptados: {
+              include: {
+                seguro: true,
               },
             },
           },

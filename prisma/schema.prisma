@@ -118,22 +118,24 @@ model Doctor {
 }
 
 model CentroSalud {
-  usuarioId               Int                @id @map("id_usuario")
-  nombreComercial         String             @map("nombre_comercial") @db.VarChar(120)
-  rnc                     String?            @unique @db.VarChar(20)
-  tipoCentroId            Int                @map("id_tipo_centro")
-  ubicacionId             Int                @map("id_ubicacion")
-  estadoVerificacion      String             @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
-  estado                  String             @default("Activo") @db.VarChar(20)
-  creadoEn                DateTime           @default(now()) @map("creado_en") @db.Timestamptz(6)
-  actualizadoEn           DateTime?          @map("actualizado_en") @db.Timestamptz(6)
+  usuarioId               Int                       @id @map("id_usuario")
+  nombreComercial         String                    @map("nombre_comercial") @db.VarChar(120)
+  rnc                     String?                   @unique @db.VarChar(20)
+  tipoCentroId            Int                       @map("id_tipo_centro")
+  ubicacionId             Int                       @map("id_ubicacion")
+  estadoVerificacion      String                    @default("En revisión") @map("estado_verificacion") @db.VarChar(20)
+  estado                  String                    @default("Activo") @db.VarChar(20)
+  creadoEn                DateTime                  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn           DateTime?                 @map("actualizado_en") @db.Timestamptz(6)
   certificacion_sanitaria String?
   sitio_web               String?
   descripcion             String?
   foto_perfil             String?
-  tipoCentro              TipoCentroSalud    @relation(fields: [tipoCentroId], references: [id])
-  ubicacion               Ubicacion          @relation(fields: [ubicacionId], references: [id])
-  usuario                 Usuario            @relation(fields: [usuarioId], references: [id])
+  tipoCentro              TipoCentroSalud           @relation(fields: [tipoCentroId], references: [id])
+  ubicacion               Ubicacion                 @relation(fields: [ubicacionId], references: [id])
+  usuario                 Usuario                   @relation(fields: [usuarioId], references: [id])
+  horarios                Horario[]
+  servicios_centros_salud servicios_centros_salud[]
   solicitudesAlianza      SolicitudAlianza[]
 
   @@map("centros_salud")
@@ -239,6 +241,7 @@ model Ubicacion {
   doctores        Doctor[]
   horarios        Horario[]
   pacientes       Paciente[]
+  servicios       Servicio[]
   barrio          Barrio                   @relation(fields: [barrioId], references: [id])
   subBarrio       SubBarrio?               @relation(fields: [subBarrioId], references: [id])
 
@@ -450,6 +453,8 @@ model Horario {
   estado        String            @default("Activo") @db.VarChar(20)
   creadoEn      DateTime          @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn DateTime?         @map("actualizado_en") @db.Timestamptz(6)
+  centroSaludId Int?              @map("id_centro_salud")
+  centroSalud   CentroSalud?      @relation(fields: [centroSaludId], references: [usuarioId], onUpdate: NoAction)
   ubicacion     Ubicacion         @relation(fields: [ubicacionId], references: [id])
   doctor        Doctor            @relation(fields: [doctorId], references: [usuarioId])
   servicios     ServicioHorario[]
@@ -459,26 +464,44 @@ model Horario {
 }
 
 model Servicio {
-  id                   Int               @id @default(autoincrement()) @map("id_servicio")
-  doctorId             Int               @map("id_doctor")
-  tipoServicioId       Int               @map("id_tipo_servicio")
-  especialidadId       Int               @map("id_especialidad")
-  nombre               String            @db.VarChar(120)
-  descripcion          String?
-  precio               Decimal           @default(0.00) @db.Decimal(10, 2)
-  duracionMinutos      Int               @default(30) @map("duracion_minutos")
-  maxPacientesDia      Int?              @map("max_pacientes_dia")
-  calificacionPromedio Decimal?          @default(0.00) @map("calificacion_promedio") @db.Decimal(3, 2)
-  estado               String            @default("Activo") @db.VarChar(20)
-  creadoEn             DateTime          @default(now()) @map("creado_en") @db.Timestamptz(6)
-  actualizadoEn        DateTime?         @map("actualizado_en") @db.Timestamptz(6)
-  citas                Cita[]
-  doctor               Doctor            @relation(fields: [doctorId], references: [usuarioId])
-  especialidad         Especialidad      @relation(fields: [especialidadId], references: [id])
-  tipoServicio         TipoServicio      @relation(fields: [tipoServicioId], references: [id])
-  horarios             ServicioHorario[]
+  id                      Int                       @id @default(autoincrement()) @map("id_servicio")
+  doctorId                Int                       @map("id_doctor")
+  tipoServicioId          Int                       @map("id_tipo_servicio")
+  especialidadId          Int                       @map("id_especialidad")
+  nombre                  String                    @db.VarChar(120)
+  descripcion             String?
+  precio                  Decimal                   @default(0.00) @db.Decimal(10, 2)
+  duracionMinutos         Int                       @default(30) @map("duracion_minutos")
+  maxPacientesDia         Int?                      @map("max_pacientes_dia")
+  calificacionPromedio    Decimal?                  @default(0.00) @map("calificacion_promedio") @db.Decimal(3, 2)
+  estado                  String                    @default("Activo") @db.VarChar(20)
+  creadoEn                DateTime                  @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn           DateTime?                 @map("actualizado_en") @db.Timestamptz(6)
+  id_ubicacion            Int?
+  citas                   Cita[]
+  imagenes                ServicioImagen[]
+  doctor                  Doctor                    @relation(fields: [doctorId], references: [usuarioId])
+  especialidad            Especialidad              @relation(fields: [especialidadId], references: [id])
+  tipoServicio            TipoServicio              @relation(fields: [tipoServicioId], references: [id])
+  ubicaciones             Ubicacion?                @relation(fields: [id_ubicacion], references: [id], onUpdate: NoAction)
+  servicios_centros_salud servicios_centros_salud[]
+  horarios                ServicioHorario[]
 
   @@map("servicios")
+}
+
+/// Imágenes asociadas a un servicio médico (máx. 10 por servicio)
+model ServicioImagen {
+  id         Int      @id @default(autoincrement()) @map("id_imagen")
+  servicioId Int      @map("id_servicio")
+  url        String
+  orden      Int      @default(0)
+  estado     String   @default("Activo") @db.VarChar(20)
+  creadoEn   DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+  servicio   Servicio @relation(fields: [servicioId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([servicioId], map: "idx_servicio_imagenes_servicio")
+  @@map("servicio_imagenes")
 }
 
 model ServicioHorario {
@@ -755,4 +778,16 @@ model DocumentoDoctor {
 
   @@index([doctorId, tipoDocumento], map: "idx_documentos_doctores_doctor_tipo")
   @@map("documentos_doctores")
+}
+
+model servicios_centros_salud {
+  id_servicio     Int
+  id_centro_salud Int
+  estado          String      @default("Activo") @db.VarChar(20)
+  creado_en       DateTime    @default(now()) @db.Timestamptz(6)
+  centros_salud   CentroSalud @relation(fields: [id_centro_salud], references: [usuarioId], onDelete: Cascade, onUpdate: NoAction)
+  servicios       Servicio    @relation(fields: [id_servicio], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([id_servicio, id_centro_salud])
+  @@index([id_servicio], map: "idx_servicios_centros_servicio")
 }

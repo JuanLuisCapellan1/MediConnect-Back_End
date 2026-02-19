@@ -301,6 +301,7 @@ export class PrismaDoctorRepository implements IDoctorRepository {
         if (datos.duracionCitaPromedio !== undefined) dataToUpdate.duracionCitaPromedio = datos.duracionCitaPromedio;
         if (datos.nacionalidad !== undefined) dataToUpdate.nacionalidad = datos.nacionalidad;
         if (datos.estado !== undefined) dataToUpdate.estado = datos.estado;
+        if (datos.fechaNacimiento !== undefined) dataToUpdate.fechaNacimiento = datos.fechaNacimiento;
 
         dataToUpdate.actualizadoEn = new Date();
 
