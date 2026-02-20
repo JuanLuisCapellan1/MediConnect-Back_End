@@ -26,15 +26,20 @@ export class GestionarFormacionesAcademicasUseCase {
             throw new Error('El ID del doctor es requerido');
         }
 
+        // Validar que nombre esté presente
+        if (!dto.nombre || dto.nombre.trim() === '') {
+            throw new Error('El nombre de la formación es requerido');
+        }
+
         // Convertir fechas de string a Date
         const fechaInicio = new Date(dto.fechaInicio);
         const fechaFinalizacion = dto.fechaFinalizacion ? new Date(dto.fechaFinalizacion) : undefined;
+        const enCurso = dto.enCurso ?? false;
 
         // Validar campos requeridos
         this.formacionAcademicaValidator.validarCamposRequeridos(
             dto.doctorId,
             dto.universidadId,
-            dto.especialidadId,
             fechaInicio
         );
 
@@ -54,22 +59,23 @@ export class GestionarFormacionesAcademicasUseCase {
             throw new UniversidadNoEncontradaError(dto.universidadId);
         }
 
-        // Validar que la especialidad existe
-        const especialidadExiste = await this.formacionAcademicaRepository.verificarEspecialidadExiste(
-            dto.especialidadId
-        );
-        if (!especialidadExiste) {
-            throw new Error(`No se encontró la especialidad con ID: ${dto.especialidadId}`);
+        // Validar fechas
+        // Si enCurso es true, no requiere fechaFinalizacion
+        if (enCurso && fechaFinalizacion) {
+            throw new Error('Si la formación está en curso, no puede tener fecha de finalización');
         }
 
-        // Validar fechas
+        if (!enCurso && !fechaFinalizacion) {
+            throw new Error('Si la formación no está en curso, debe proporcionar la fecha de finalización');
+        }
+
         this.formacionAcademicaValidator.validarFechas(fechaInicio, fechaFinalizacion);
 
         // Validar que no exista una formación duplicada
         const esDuplicada = await this.formacionAcademicaRepository.verificarFormacionDuplicada(
             dto.doctorId,
             dto.universidadId,
-            dto.especialidadId
+            dto.nombre
         );
         if (esDuplicada) {
             throw new FormacionDuplicadaError();
@@ -87,9 +93,10 @@ export class GestionarFormacionesAcademicasUseCase {
         return await this.formacionAcademicaRepository.crear(
             dto.doctorId,
             dto.universidadId,
-            dto.especialidadId,
+            dto.nombre,
             fechaInicio,
             estado,
+            enCurso,
             fechaFinalizacion
         );
     }
@@ -120,8 +127,6 @@ export class GestionarFormacionesAcademicasUseCase {
 
         return await this.formacionAcademicaRepository.obtenerTodos(
             filtro.doctorId,
-            undefined, // universidadId - no se usa en filtros públicos
-            undefined, // especialidadId - no se usa en filtros públicos
             estadoNormalizado,
             filtro.busqueda,
             pagina,
@@ -165,6 +170,7 @@ export class GestionarFormacionesAcademicasUseCase {
         // Convertir fechas si se proporcionan
         const fechaInicio = dto.fechaInicio ? new Date(dto.fechaInicio) : undefined;
         const fechaFinalizacion = dto.fechaFinalizacion ? new Date(dto.fechaFinalizacion) : undefined;
+        const enCurso = dto.enCurso !== undefined ? dto.enCurso : formacionExistente.enCurso;
 
         // Validar universidad si se proporciona
         if (dto.universidadId !== undefined) {
@@ -180,35 +186,23 @@ export class GestionarFormacionesAcademicasUseCase {
             }
         }
 
-        // Validar especialidad si se proporciona
-        if (dto.especialidadId !== undefined) {
-            if (dto.especialidadId <= 0) {
-                throw new Error('El ID de la especialidad debe ser válido');
-            }
-
-            const especialidadExiste = await this.formacionAcademicaRepository.verificarEspecialidadExiste(
-                dto.especialidadId
-            );
-            if (!especialidadExiste) {
-                throw new Error(`No se encontró la especialidad con ID: ${dto.especialidadId}`);
-            }
-        }
-
-        // Validar que no se cree una formación duplicada con la actualización
-        const universidadIdFinal = dto.universidadId ?? formacionExistente.universidadId;
-        const especialidadIdFinal = dto.especialidadId ?? formacionExistente.especialidadId;
-
-        const esDuplicada = await this.formacionAcademicaRepository.verificarFormacionDuplicada(
-            formacionExistente.doctorId,
-            universidadIdFinal,
-            especialidadIdFinal,
-            id // Excluir el registro actual de la validación
-        );
-        if (esDuplicada) {
-            throw new FormacionDuplicadaError();
+        // Validar que nombre no esté vacío si se proporciona
+        if (dto.nombre !== undefined && (!dto.nombre || dto.nombre.trim() === '')) {
+            throw new Error('El nombre de la formación no puede estar vacío');
         }
 
         // Validar fechas si se están actualizando
+        // Si enCurso es true, no requiere fechaFinalizacion
+        if (enCurso && (fechaFinalizacion !== undefined || formacionExistente.fechaFinalizacion)) {
+            throw new Error('Si la formación está en curso, no puede tener fecha de finalización');
+        }
+
+        if (!enCurso && fechaFinalizacion === undefined && !formacionExistente.fechaFinalizacion) {
+            // Verifica si se updated fechaInicio o se mantiene la actual
+            const fechaInicioFinal = fechaInicio ?? formacionExistente.fechaInicio;
+            throw new Error('Si la formación no está en curso, debe proporcionar la fecha de finalización');
+        }
+
         if (fechaInicio !== undefined || fechaFinalizacion !== undefined) {
             const fechaInicioFinal = fechaInicio ?? formacionExistente.fechaInicio;
             const fechaFinalizacionFinal = fechaFinalizacion ?? formacionExistente.fechaFinalizacion;
@@ -217,6 +211,20 @@ export class GestionarFormacionesAcademicasUseCase {
                 fechaInicioFinal,
                 fechaFinalizacionFinal
             );
+        }
+
+        // Validar que no se cree una formación duplicada con la actualización
+        const universidadIdFinal = dto.universidadId ?? formacionExistente.universidadId;
+        const nombreFinal = dto.nombre ?? formacionExistente.nombre;
+
+        const esDuplicada = await this.formacionAcademicaRepository.verificarFormacionDuplicada(
+            formacionExistente.doctorId,
+            universidadIdFinal,
+            nombreFinal,
+            id // Excluir el registro actual de la validación
+        );
+        if (esDuplicada) {
+            throw new FormacionDuplicadaError();
         }
 
         // Normalizar estado si se proporciona
@@ -229,9 +237,10 @@ export class GestionarFormacionesAcademicasUseCase {
         return await this.formacionAcademicaRepository.actualizar(
             id,
             dto.universidadId,
-            dto.especialidadId,
+            dto.nombre,
             fechaInicio,
             fechaFinalizacion,
+            enCurso,
             estadoNormalizado
         );
     }

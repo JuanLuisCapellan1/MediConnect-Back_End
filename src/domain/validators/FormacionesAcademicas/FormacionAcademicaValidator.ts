@@ -9,7 +9,6 @@ export class FormacionAcademicaValidator {
     validarCamposRequeridos(
         doctorId: number,
         universidadId: number,
-        especialidadId: number,
         fechaInicio: Date
     ): void {
         if (!doctorId || doctorId <= 0) {
@@ -18,10 +17,6 @@ export class FormacionAcademicaValidator {
 
         if (!universidadId || universidadId <= 0) {
             throw new Error('El ID de la universidad es requerido y debe ser válido');
-        }
-
-        if (!especialidadId || especialidadId <= 0) {
-            throw new Error('El ID de la especialidad es requerido y debe ser válido');
         }
 
         if (!fechaInicio || !(fechaInicio instanceof Date) || isNaN(fechaInicio.getTime())) {

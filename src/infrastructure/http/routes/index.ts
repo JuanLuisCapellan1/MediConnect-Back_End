@@ -20,6 +20,8 @@ import CentrosSaludRoutes from './CentrosSaludRoutes';
 
 import ExperienciasLaboralesRoutes from './ExperienciasLaboralesRoutes';
 import FormacionesAcademicasRoutes from './FormacionesAcademicasRoutes';
+import PaisesRoutes from './PaisesRoutes';
+import UniversidadesRoutes from './UniversidadesRoutes';
 import AuthRoutes from './AuthRoutes';
 import AuthPasswordRoutes from './AuthPasswordRoutes';
 import NotificacionesRoutes from './notificaciones.routes';
@@ -31,6 +33,7 @@ import TiposSegurosRoutes from './TiposSegurosRoutes';
 import ServiciosRoutes from './ServiciosRoutes';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 import { translationRateLimitMiddleware } from '../middlewares/TranslationRateLimiter';
+import DoctorIdiomasRoutes from './DoctorIdiomasRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -64,6 +67,8 @@ router.use('/secciones', SeccionesRoutes);
 router.use('/barrios', BarriosRoutes);
 router.use('/subBarrios', SubBarriosRoutes);
 router.use('/ubicaciones', UbicacionesRoutes);
+router.use('/paises', PaisesRoutes);
+router.use('/universidades', UniversidadesRoutes);
 
 // Rutas de horarios
 router.use('/horarios', HorariosRoutes);
@@ -99,6 +104,9 @@ router.use('/experiencias-laborales', ExperienciasLaboralesRoutes);
 
 // Rutas de Formaciones Académicas
 router.use('/formaciones-academicas', FormacionesAcademicasRoutes);
+
+// Rutas de Doctor Idiomas
+router.use('/doctores/idiomas', DoctorIdiomasRoutes);
 
 
 // Rutas de Autenticación

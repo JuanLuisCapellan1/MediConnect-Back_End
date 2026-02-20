@@ -52,6 +52,10 @@ tags:
     description: Endpoints para gestionar experiencias laborales de doctores
   - name: FormacionesAcademicas
     description: Endpoints para gestionar formaciones académicas de doctores
+  - name: Paises
+    description: Endpoints para gestionar países (geografía)
+  - name: Universidades
+    description: Endpoints para gestionar universidades
   - name: Autenticación
     description: Endpoints para autenticación y gestión de tokens JWT
   - name: Notificaciones
@@ -9318,7 +9322,7 @@ paths:
       description: |
         Crea una nueva formación académica para el doctor autenticado. 
         El doctor se obtiene automáticamente del token JWT.
-        Valida que no exista una formación duplicada (mismo doctor, universidad y especialidad) y que las fechas sean coherentes.
+        Valida que no exista una formación duplicada (mismo doctor, universidad y nombre) y que las fechas sean coherentes.
       security:
         - bearerAuth: []
       requestBody:
@@ -9329,17 +9333,17 @@ paths:
               type: object
               required:
                 - universidadId
-                - especialidadId
+                - nombre
                 - fechaInicio
               properties:
                 universidadId:
                   type: integer
                   example: 5
                   description: ID de la universidad
-                especialidadId:
-                  type: integer
-                  example: 2
-                  description: ID de la especialidad
+                nombre:
+                  type: string
+                  example: "Tecnólogo en Radiología"
+                  description: Nombre de la formación académica
                 fechaInicio:
                   type: string
                   format: date
@@ -9349,7 +9353,12 @@ paths:
                   type: string
                   format: date
                   example: "2019-06-30"
-                  description: Fecha de finalización de la formación (ISO 8601, opcional)
+                  description: Fecha de finalización (ISO 8601). Requerida si enCurso es false
+                enCurso:
+                  type: boolean
+                  example: false
+                  default: false
+                  description: Indica si la formación está actualmente en curso. Si es true, no requiere fechaFinalizacion
                 estado:
                   type: string
                   enum: ["Activo", "Inactivo"]
@@ -9379,7 +9388,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Doctor, universidad o especialidad no encontrado
+          description: Doctor o universidad no encontrado
           content:
             application/json:
               schema:
@@ -9401,7 +9410,7 @@ paths:
         
         **Traducción Automática:**
         Este endpoint soporta traducción automática de campos mediante query params.
-        Ejemplo: `/api/formaciones-academicas?target=en&translate_fields=universidad.nombre,especialidad.nombre`
+        Ejemplo: `/api/formaciones-academicas?target=en&translate_fields=nombre,universidad.nombre`
       security:
         - bearerAuth: []
       parameters:
@@ -9425,7 +9434,7 @@ paths:
           required: false
           schema:
             type: string
-          example: "universidad.nombre,especialidad.nombre"
+          example: "nombre,universidad.nombre"
           description: Campos a traducir separados por coma
         - name: estado
           in: query
@@ -9437,7 +9446,7 @@ paths:
           in: query
           schema:
             type: string
-          description: Buscar en nombre de universidad y especialidad
+          description: Buscar en nombre de la formación y nombre de universidad
         - name: pagina
           in: query
           schema:
@@ -9547,6 +9556,9 @@ paths:
         Actualiza una formación académica existente. Todos los campos son opcionales, pero al menos uno debe ser proporcionado.
         Se mantienen las validaciones de negocio (fechas coherentes, no duplicados, etc.).
         
+        Si enCurso se actualiza a true, fechaFinalizacion debe ser null.
+        Si enCurso se actualiza a false, fechaFinalizacion es requerida.
+        
         **Autenticación requerida:** Solo el doctor autenticado puede actualizar sus propias formaciones.
         Si la formación no pertenece al doctor autenticado, se retornará 403 Forbidden.
       security:
@@ -9569,10 +9581,10 @@ paths:
                   type: integer
                   example: 7
                   description: ID de la universidad
-                especialidadId:
-                  type: integer
-                  example: 3
-                  description: ID de la especialidad
+                nombre:
+                  type: string
+                  example: "Licenciatura en Radiología"
+                  description: Nombre de la formación académica
                 fechaInicio:
                   type: string
                   format: date
@@ -9582,7 +9594,11 @@ paths:
                   type: string
                   format: date
                   example: "2019-07-15"
-                  description: Fecha de finalización
+                  description: Fecha de finalización (requerida si enCurso es false)
+                enCurso:
+                  type: boolean
+                  example: false
+                  description: Indica si la formación está en curso
                 estado:
                   type: string
                   enum: ["Activo", "Inactivo", "Eliminado"]
@@ -9624,7 +9640,7 @@ paths:
                     type: string
                     example: "No tienes permiso para actualizar esta formación académica"
         '404':
-          description: Formación académica, universidad o especialidad no encontrado
+          description: Formación académica o universidad no encontrado
           content:
             application/json:
               schema:
@@ -9795,6 +9811,118 @@ paths:
                     example: "Usuario inactivo. Contacta al administrador"
         '500':
           description: Error interno del servidor
+
+  /formaciones/referencias/paises:
+    get:
+      summary: Obtener todos los países disponibles
+      tags:
+        - FormacionesAcademicas
+      description: |
+        Obtiene la lista de todos los países activos para que el doctor pueda seleccionarlos al crear una formación académica.
+        Los países se retornan ordenados alfabéticamente por nombre.
+      parameters:
+        - name: _limit
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Limitar cantidad de registros
+      responses:
+        '200':
+          description: Lista de países obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Países obtenidos exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                          description: ID del país
+                        nombre:
+                          type: string
+                          example: "República Dominicana"
+                          description: Nombre del país
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /formaciones/referencias/universidades/{paisId}:
+    get:
+      summary: Obtener universidades de un país específico
+      tags:
+        - FormacionesAcademicas
+      description: |
+        Obtiene la lista de universidades activas para un país específico.
+        Esta lista se usa para que el doctor seleccione la universidad donde realizó su formación.
+        Las universidades se retornan ordenadas alfabéticamente por nombre.
+      parameters:
+        - name: paisId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del país
+          example: 1
+      responses:
+        '200':
+          description: Lista de universidades obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Universidades obtenidas exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 5
+                          description: ID de la universidad
+                        nombre:
+                          type: string
+                          example: "Universidad Autónoma de Santo Domingo"
+                          description: Nombre de la universidad
+        '400':
+          description: ID del país inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: País no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   # --- NOTIFICACIONES ENDPOINTS ---
   /notificaciones:
@@ -11924,6 +12052,664 @@ paths:
         '404':
           description: Servicio o imagen no encontrada
 
+  # --- PAÍSES ENDPOINTS ---
+  /paises:
+    get:
+      summary: Obtener todos los países
+      tags:
+        - Paises
+      description: |
+        Obtiene una lista paginada de países con opciones de filtrado y búsqueda. **Nota**: Sin filtros utiliza caché Redis (TTL 1 hora) para optimizar performance.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos. Agrega los siguientes parámetros de query:
+        
+        - `target`: Idioma destino (ej: en, fr, de)
+        - `source`: Idioma origen (opcional, default: es)
+        - `translate_fields`: Campos a traducir separados por coma (ej: nombre)
+        
+        Ejemplo: `/api/paises?target=en&translate_fields=nombre`
+      parameters:
+        - name: estado
+          in: query
+          schema:
+            type: string
+            default: "Activo"
+          description: Filtrar por estado (Activo, Inactivo)
+          example: "Activo"
+        - name: busqueda
+          in: query
+          schema:
+            type: string
+          description: Buscar por nombre o código ISO
+          example: "Republica"
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Número de página
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Cantidad de registros por página
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir separados por coma (ej nombre,codigo_iso)
+      responses:
+        '200':
+          description: Lista de países obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Países obtenidos exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      paises:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Pais'
+                      total:
+                        type: integer
+                        example: 195
+        '400':
+          description: Parámetros inválidos
+
+    post:
+      summary: Crear un nuevo país
+      tags:
+        - Paises
+      description: Crea un nuevo país. Requiere autenticación como Admin.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nombre
+              properties:
+                nombre:
+                  type: string
+                  example: "Costa Rica"
+                  description: Nombre del país
+                codigo_iso:
+                  type: string
+                  example: "CR"
+                  description: Código ISO de 2 letras (opcional)
+      responses:
+        '201':
+          description: País creado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "País creado exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Pais'
+        '400':
+          description: Datos inválidos o país duplicado
+        '401':
+          description: No autenticado
+
+  /paises/{id}:
+    get:
+      summary: Obtener un país por ID
+      tags:
+        - Paises
+      description: |
+        Obtiene los detalles de un país específico incluyendo sus universidades activas. **Nota**: Utiliza caché Redis (TTL 1 hora). El caché se invalida automáticamente cuando el país se actualiza o elimina.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos. Agrega los siguientes parámetros de query:
+        
+        - `target`: Idioma destino (ej: en, fr, de)
+        - `source`: Idioma origen (opcional, default: es)
+        - `translate_fields`: Campos a traducir (ej: nombre)
+        
+        Ejemplo: `/api/paises/1?target=en&translate_fields=nombre`
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del país
+          example: 1
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir (ej nombre,codigo_iso)
+      responses:
+        '200':
+          description: País obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "País obtenido exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Pais'
+        '404':
+          description: País no encontrado
+
+    put:
+      summary: Actualizar un país
+      tags:
+        - Paises
+      description: Actualiza los datos de un país. Requiere autenticación como Admin.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del país
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  example: "Costa Rica Actualizado"
+                codigo_iso:
+                  type: string
+                  example: "CR"
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+      responses:
+        '200':
+          description: País actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "País actualizado exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Pais'
+        '400':
+          description: Datos inválidos
+        '401':
+          description: No autenticado
+        '404':
+          description: País no encontrado
+
+    delete:
+      summary: Eliminar un país (soft delete)
+      tags:
+        - Paises
+      description: Marca un país como inactivo. Requiere autenticación como Admin.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del país
+          example: 1
+      responses:
+        '200':
+          description: País eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "País eliminado exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+        '401':
+          description: No autenticado
+        '404':
+          description: País no encontrado
+
+  # --- UNIVERSIDADES ENDPOINTS ---
+  /universidades:
+    get:
+      summary: Obtener todas las universidades
+      tags:
+        - Universidades
+      description: |
+        Obtiene una lista paginada de universidades con opciones de filtrado y búsqueda. **Nota**: Sin filtros utiliza caché Redis (TTL 1 hora) para optimizar performance.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos. Agrega los siguientes parámetros de query:
+        
+        - `target`: Idioma destino (ej: en, fr, de)
+        - `source`: Idioma origen (opcional, default: es)
+        - `translate_fields`: Campos a traducir separados por coma (ej: nombre)
+        
+        Ejemplo: `/api/universidades?target=en&translate_fields=nombre`
+      parameters:
+        - name: paisId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID del país
+          example: 1
+        - name: estado
+          in: query
+          schema:
+            type: string
+            default: "Activo"
+          description: Filtrar por estado (Activo, Inactivo)
+          example: "Activo"
+        - name: busqueda
+          in: query
+          schema:
+            type: string
+          description: Buscar por nombre de universidad
+          example: "Santo Domingo"
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Número de página
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Cantidad de registros por página
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir separados por coma (ej nombre)
+      responses:
+        '200':
+          description: Lista de universidades obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Universidades obtenidas exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      universidades:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Universidad'
+                      total:
+                        type: integer
+                        example: 5000
+        '400':
+          description: Parámetros inválidos
+
+    post:
+      summary: Crear una nueva universidad
+      tags:
+        - Universidades
+      description: Crea una nueva universidad. Requiere autenticación como Admin.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - paisId
+                - nombre
+              properties:
+                paisId:
+                  type: integer
+                  example: 1
+                  description: ID del país
+                nombre:
+                  type: string
+                  example: "Universidad Autónoma de Santo Domingo"
+                  description: Nombre de la universidad
+      responses:
+        '201':
+          description: Universidad creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Universidad creada exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Universidad'
+        '400':
+          description: Datos inválidos
+        '401':
+          description: No autenticado
+        '404':
+          description: País no encontrado
+
+  /universidades/{id}:
+    get:
+      summary: Obtener una universidad por ID
+      tags:
+        - Universidades
+      description: |
+        Obtiene los detalles de una universidad específica. **Nota**: Utiliza caché Redis (TTL 1 hora). El caché se invalida automáticamente cuando la universidad se actualiza o elimina.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos. Agrega los siguientes parámetros de query:
+        
+        - `target`: Idioma destino (ej: en, fr, de)
+        - `source`: Idioma origen (opcional, default: es)
+        - `translate_fields`: Campos a traducir (ej: nombre)
+        
+        Ejemplo: `/api/universidades/1?target=en&translate_fields=nombre`
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la universidad
+          example: 1
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir (ej nombre)
+      responses:
+        '200':
+          description: Universidad obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Universidad obtenida exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Universidad'
+        '404':
+          description: Universidad no encontrada
+
+    put:
+      summary: Actualizar una universidad
+      tags:
+        - Universidades
+      description: Actualiza los datos de una universidad. Requiere autenticación como Admin.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la universidad
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                  example: "UASD - Actualizada"
+                paisId:
+                  type: integer
+                  example: 1
+                estado:
+                  type: string
+                  enum: ["Activo", "Inactivo"]
+                  example: "Activo"
+      responses:
+        '200':
+          description: Universidad actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Universidad actualizada exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Universidad'
+        '400':
+          description: Datos inválidos
+        '401':
+          description: No autenticado
+        '404':
+          description: Universidad no encontrada
+
+    delete:
+      summary: Eliminar una universidad (soft delete)
+      tags:
+        - Universidades
+      description: Marca una universidad como inactiva. Requiere autenticación como Admin.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la universidad
+          example: 1
+      responses:
+        '200':
+          description: Universidad eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Universidad eliminada exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+        '401':
+          description: No autenticado
+        '404':
+          description: Universidad no encontrada
+
+  /universidades/pais/{paisId}:
+    get:
+      summary: Obtener universidades de un país
+      tags:
+        - Universidades
+      description: |
+        Obtiene todas las universidades activas de un país específico, ordenadas alfabéticamente. **Optimizado para frontend**: Utiliza caché Redis (TTL 1 hora) para rapidez en dropdowns y selecciones.
+        
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos. Agrega los siguientes parámetros de query:
+        
+        - `target`: Idioma destino (ej: en, fr, de)
+        - `source`: Idioma origen (opcional, default: es)
+        - `translate_fields`: Campos a traducir (ej: nombre)
+        
+        Ejemplo: `/api/universidades/pais/1?target=en&translate_fields=nombre`
+      parameters:
+        - name: paisId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del país
+          example: 1
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir (ej nombre)
+      responses:
+        '200':
+          description: Universidades del país obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Universidades del país obtenidas exitosamente"
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Universidad'
+        '404':
+          description: País no encontrado
+
 components:
   schemas:
     # ─── Servicios ───────────────────────────────────────────────────────────
@@ -12580,9 +13366,10 @@ components:
         universidadId:
           type: integer
           example: 5
-        especialidadId:
-          type: integer
-          example: 2
+        nombre:
+          type: string
+          example: "Tecnólogo en Radiología"
+          description: Nombre de la formación académica
         fechaInicio:
           type: string
           format: date
@@ -12593,7 +13380,11 @@ components:
           format: date
           nullable: true
           example: "2019-06-30"
-          description: Fecha de finalización (nulo si aún está en curso)
+          description: Fecha de finalización (requerida si enCurso es false)
+        enCurso:
+          type: boolean
+          example: false
+          description: Indica si la formación está actualmente en curso
         estado:
           type: string
           enum: ["Activo", "Inactivo", "Eliminado"]
@@ -12621,14 +13412,6 @@ components:
                 nombre:
                   type: string
                   example: "República Dominicana"
-        especialidad:
-          type: object
-          nullable: true
-          description: Información de la especialidad (incluida cuando se consulta con relaciones)
-          properties:
-            nombre:
-              type: string
-              example: "Cardiología"
 
     ErrorResponse:
       type: object
@@ -13316,6 +14099,62 @@ components:
         actualizadoEn:
           type: string
           format: date-time
+
+    Pais:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Republica Dominicana"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo"]
+          example: "Activo"
+        codigo_iso:
+          type: string
+          nullable: true
+          example: "DO"
+        creadoEn:
+          type: string
+          format: date-time
+        universidades:
+          type: array
+          description: Lista de universidades activas del país
+          items:
+            $ref: '#/components/schemas/Universidad'
+
+    Universidad:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        paisId:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Universidad Autónoma de Santo Domingo"
+        estado:
+          type: string
+          enum: ["Activo", "Inactivo"]
+          example: "Activo"
+        creadoEn:
+          type: string
+          format: date-time
+        pais:
+          type: object
+          description: Información del país
+          properties:
+            id:
+              type: integer
+              example: 1
+            nombre:
+              type: string
+              example: "Republica Dominicana"
 
   securitySchemes:
     bearerAuth:

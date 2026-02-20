@@ -24,6 +24,8 @@ const TiposCentrosSaludRoutes_1 = __importDefault(require("./TiposCentrosSaludRo
 const CentrosSaludRoutes_1 = __importDefault(require("./CentrosSaludRoutes"));
 const ExperienciasLaboralesRoutes_1 = __importDefault(require("./ExperienciasLaboralesRoutes"));
 const FormacionesAcademicasRoutes_1 = __importDefault(require("./FormacionesAcademicasRoutes"));
+const PaisesRoutes_1 = __importDefault(require("./PaisesRoutes"));
+const UniversidadesRoutes_1 = __importDefault(require("./UniversidadesRoutes"));
 const AuthRoutes_1 = __importDefault(require("./AuthRoutes"));
 const AuthPasswordRoutes_1 = __importDefault(require("./AuthPasswordRoutes"));
 const notificaciones_routes_1 = __importDefault(require("./notificaciones.routes"));
@@ -32,8 +34,10 @@ const mensajes_routes_1 = __importDefault(require("./mensajes.routes"));
 const CondicionesMedicasRoutes_1 = __importDefault(require("./CondicionesMedicasRoutes"));
 const SegurosRoutes_1 = __importDefault(require("./SegurosRoutes"));
 const TiposSegurosRoutes_1 = __importDefault(require("./TiposSegurosRoutes"));
+const ServiciosRoutes_1 = __importDefault(require("./ServiciosRoutes"));
 const TranslationMiddleware_1 = require("../middlewares/TranslationMiddleware");
 const TranslationRateLimiter_1 = require("../middlewares/TranslationRateLimiter");
+const DoctorIdiomasRoutes_1 = __importDefault(require("./DoctorIdiomasRoutes"));
 const router = (0, express_1.Router)();
 const traduccionController = new TraduccionController_1.TraduccionController();
 const translationUtilsController = new TranslationUtilsController_1.TranslationUtilsController();
@@ -61,6 +65,8 @@ router.use('/secciones', SeccionesRoutes_1.default);
 router.use('/barrios', BarriosRoutes_1.default);
 router.use('/subBarrios', SubBarriosRoutes_1.default);
 router.use('/ubicaciones', UbicacionesRoutes_1.default);
+router.use('/paises', PaisesRoutes_1.default);
+router.use('/universidades', UniversidadesRoutes_1.default);
 // Rutas de horarios
 router.use('/horarios', HorariosRoutes_1.default);
 // Rutas de Servicios Horarios
@@ -83,6 +89,8 @@ router.use('/centros-salud', CentrosSaludRoutes_1.default);
 router.use('/experiencias-laborales', ExperienciasLaboralesRoutes_1.default);
 // Rutas de Formaciones Académicas
 router.use('/formaciones-academicas', FormacionesAcademicasRoutes_1.default);
+// Rutas de Doctor Idiomas
+router.use('/doctores/idiomas', DoctorIdiomasRoutes_1.default);
 // Rutas de Autenticación
 router.use('/auth', AuthRoutes_1.default);
 // Rutas de Notificaciones
@@ -97,4 +105,6 @@ router.use('/condiciones-medicas', CondicionesMedicasRoutes_1.default);
 router.use('/seguros', SegurosRoutes_1.default);
 // Rutas de Tipos de Seguros
 router.use('/tipos-seguros', TiposSegurosRoutes_1.default);
+// Rutas de Servicios
+router.use('/servicios', ServiciosRoutes_1.default);
 exports.default = router;

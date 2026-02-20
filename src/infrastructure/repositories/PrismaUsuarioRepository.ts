@@ -196,17 +196,12 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
           data.formaciones.map((f: any) =>
             tx.formacionAcademica.create({
               data: {
-                doctor: {
-                  connect: { usuarioId: usuario.id }
-                },
-                universidad: {
-                  connect: { id: Number(f.id_universidad) }
-                },
-                especialidad: {
-                  connect: { id: Number(f.id_especialidad) }
-                },
+                doctorId: usuario.id,
+                universidadId: Number(f.id_universidad),
+                nombre: f.nombre || 'Sin especificar',
                 fecha_inicio: new Date(f.fecha_inicio),
                 fecha_finalizacion: f.fecha_finalizacion ? new Date(f.fecha_finalizacion) : null,
+                enCurso: f.en_curso || false,
                 estado: mapEstadoFormacion(f.estado || 'Activo'),
                 creadoEn: new Date(),
               },
@@ -333,7 +328,6 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
                 estado: 'Activo',
               },
               include: {
-                especialidad: true,
                 universidad: true,
               },
               orderBy: {
@@ -393,6 +387,14 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
             segurosAceptados: {
               include: {
                 seguro: true,
+              },
+            },
+            idiomas: {
+              where: {
+                estado: 'Activo',
+              },
+              orderBy: {
+                creadoEn: 'desc',
               },
             },
           },
@@ -920,17 +922,12 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
           data.formaciones.map((f: any) =>
             tx.formacionAcademica.create({
               data: {
-                doctor: {
-                  connect: { usuarioId: usuario.id }
-                },
-                universidad: {
-                  connect: { id: Number(f.id_universidad) }
-                },
-                especialidad: {
-                  connect: { id: Number(f.id_especialidad) }
-                },
+                doctorId: usuario.id,
+                universidadId: Number(f.id_universidad),
+                nombre: f.nombre || 'Sin especificar',
                 fecha_inicio: new Date(f.fecha_inicio),
                 fecha_finalizacion: f.fecha_finalizacion ? new Date(f.fecha_finalizacion) : null,
+                enCurso: f.en_curso || false,
                 estado: mapEstadoFormacion(f.estado || 'Activo'),
                 creadoEn: new Date(),
               },

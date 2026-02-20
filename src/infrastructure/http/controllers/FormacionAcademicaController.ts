@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { injectable, inject } from 'tsyringe';
+import { PrismaClient } from '@prisma/client';
 import { GestionarFormacionesAcademicasUseCase } from '../../../application/use-cases/GestionarFormacionesAcademicasUseCase';
 import {
     CrearFormacionAcademicaDto,
@@ -15,7 +16,9 @@ import { FormacionDuplicadaError } from '../../../domain/errors/FormacionesAcade
 export class FormacionAcademicaController {
     constructor(
         @inject('GestionarFormacionesAcademicasUseCase')
-        private gestionarFormacionesAcademicasUseCase: GestionarFormacionesAcademicasUseCase
+        private gestionarFormacionesAcademicasUseCase: GestionarFormacionesAcademicasUseCase,
+        @inject('PrismaClient')
+        private prisma: PrismaClient
     ) { }
 
     crear = async (req: Request, res: Response): Promise<void> => {
@@ -255,6 +258,90 @@ export class FormacionAcademicaController {
                     message: 'Error interno del servidor',
                 });
             }
+        }
+    };
+
+    /**
+     * GET /formaciones/referencias/paises
+     * Obtener todos los países activos
+     */
+    obtenerPaises = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const paises = await this.prisma.pais.findMany({
+                where: { estado: 'Activo' },
+                select: {
+                    id: true,
+                    nombre: true,
+                },
+                orderBy: { nombre: 'asc' },
+            });
+
+            res.status(200).json({
+                message: 'Países obtenidos exitosamente',
+                success: true,
+                data: paises,
+            });
+        } catch (error: any) {
+            console.error('Error al obtener países:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+            });
+        }
+    };
+
+    /**
+     * GET /formaciones/referencias/universidades/:paisId
+     * Obtener todas las universidades activas de un país específico
+     */
+    obtenerUniversidadesPorPais = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const paisId = parseInt(req.params.paisId as string);
+
+            if (isNaN(paisId)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'ID del país inválido',
+                });
+                return;
+            }
+
+            // Verificar que el país existe
+            const paisExiste = await this.prisma.pais.findUnique({
+                where: { id: paisId },
+            });
+
+            if (!paisExiste) {
+                res.status(404).json({
+                    success: false,
+                    message: 'País no encontrado',
+                });
+                return;
+            }
+
+            const universidades = await this.prisma.universidad.findMany({
+                where: {
+                    paisId,
+                    estado: 'Activo',
+                },
+                select: {
+                    id: true,
+                    nombre: true,
+                },
+                orderBy: { nombre: 'asc' },
+            });
+
+            res.status(200).json({
+                message: 'Universidades obtenidas exitosamente',
+                success: true,
+                data: universidades,
+            });
+        } catch (error: any) {
+            console.error('Error al obtener universidades por país:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error interno del servidor',
+            });
         }
     };
 }

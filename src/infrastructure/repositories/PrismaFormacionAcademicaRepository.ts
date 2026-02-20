@@ -18,18 +18,20 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
     async crear(
         doctorId: number,
         universidadId: number,
-        especialidadId: number,
+        nombre: string,
         fechaInicio: Date,
         estado: string,
+        enCurso: boolean,
         fechaFinalizacion?: Date
     ): Promise<FormacionAcademica> {
         const nuevaFormacion = await this.prisma.formacionAcademica.create({
             data: {
                 doctorId,
                 universidadId,
-                especialidadId,
+                nombre,
                 fecha_inicio: fechaInicio,
                 fecha_finalizacion: fechaFinalizacion,
+                enCurso,
                 estado,
             },
             include: {
@@ -41,11 +43,6 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
                                 nombre: true,
                             },
                         },
-                    },
-                },
-                especialidad: {
-                    select: {
-                        nombre: true,
                     },
                 },
             },
@@ -79,11 +76,6 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
                         },
                     },
                 },
-                especialidad: {
-                    select: {
-                        nombre: true,
-                    },
-                },
             },
         });
 
@@ -101,25 +93,17 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
 
     async obtenerTodos(
         doctorId?: number,
-        universidadId?: number,
-        especialidadId?: number,
         estado?: string,
         busqueda?: string,
-        pagina: number = 1,
-        limite: number = 10
+        pagina?: number,
+        limite?: number
     ): Promise<{ formaciones: FormacionAcademica[]; total: number }> {
         const where: any = {};
+        const paginaActual = pagina ?? 1;
+        const limiteActual = limite ?? 10;
 
         if (doctorId) {
             where.doctorId = doctorId;
-        }
-
-        if (universidadId) {
-            where.universidadId = universidadId;
-        }
-
-        if (especialidadId) {
-            where.especialidadId = especialidadId;
         }
 
         if (estado) {
@@ -129,15 +113,13 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
         if (busqueda) {
             where.OR = [
                 {
-                    universidad: {
-                        nombre: {
-                            contains: busqueda,
-                            mode: 'insensitive',
-                        },
+                    nombre: {
+                        contains: busqueda,
+                        mode: 'insensitive',
                     },
                 },
                 {
-                    especialidad: {
+                    universidad: {
                         nombre: {
                             contains: busqueda,
                             mode: 'insensitive',
@@ -150,8 +132,8 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
         const [formaciones, total] = await Promise.all([
             this.prisma.formacionAcademica.findMany({
                 where,
-                skip: (pagina - 1) * limite,
-                take: limite,
+                skip: (paginaActual - 1) * limiteActual,
+                take: limiteActual,
                 orderBy: [
                     { estado: 'asc' }, // Activo primero
                     { fecha_inicio: 'desc' }, // Más reciente primero
@@ -165,11 +147,6 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
                                     nombre: true,
                                 },
                             },
-                        },
-                    },
-                    especialidad: {
-                        select: {
-                            nombre: true,
                         },
                     },
                 },
@@ -225,11 +202,6 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
                             },
                         },
                     },
-                    especialidad: {
-                        select: {
-                            nombre: true,
-                        },
-                    },
                 },
             }),
             this.prisma.formacionAcademica.count({ where }),
@@ -251,9 +223,10 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
     async actualizar(
         id: number,
         universidadId?: number,
-        especialidadId?: number,
+        nombre?: string,
         fechaInicio?: Date,
         fechaFinalizacion?: Date,
+        enCurso?: boolean,
         estado?: string
     ): Promise<FormacionAcademica> {
         // Obtener la formación actual para invalidar cache del doctor
@@ -268,8 +241,8 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
             data.universidadId = universidadId;
         }
 
-        if (especialidadId !== undefined) {
-            data.especialidadId = especialidadId;
+        if (nombre !== undefined) {
+            data.nombre = nombre;
         }
 
         if (fechaInicio !== undefined) {
@@ -278,6 +251,10 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
 
         if (fechaFinalizacion !== undefined) {
             data.fecha_finalizacion = fechaFinalizacion;
+        }
+
+        if (enCurso !== undefined) {
+            data.enCurso = enCurso;
         }
 
         if (estado !== undefined) {
@@ -298,11 +275,6 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
                                 nombre: true,
                             },
                         },
-                    },
-                },
-                especialidad: {
-                    select: {
-                        nombre: true,
                     },
                 },
             },
@@ -354,23 +326,16 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
         return universidad !== null;
     }
 
-    async verificarEspecialidadExiste(especialidadId: number): Promise<boolean> {
-        const especialidad = await this.prisma.especialidad.findUnique({
-            where: { id: especialidadId },
-        });
-        return especialidad !== null;
-    }
-
     async verificarFormacionDuplicada(
         doctorId: number,
         universidadId: number,
-        especialidadId: number,
+        nombre: string,
         idExcluir?: number
     ): Promise<boolean> {
         const where: any = {
             doctorId,
             universidadId,
-            especialidadId,
+            nombre,
             estado: { not: 'Eliminado' },
         };
 
@@ -391,11 +356,12 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
             data.id,
             data.doctorId,
             data.universidadId,
-            data.especialidadId,
+            data.nombre,
             data.fecha_inicio,
             data.estado,
             data.creadoEn,
             data.fecha_finalizacion,
+            data.en_curso,
             data.actualizadoEn,
             // Mapear objetos relacionados si existen
             data.universidad
@@ -403,8 +369,7 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
                     nombre: data.universidad.nombre,
                     pais: { nombre: data.universidad.pais.nombre },
                 }
-                : undefined,
-            data.especialidad ? { nombre: data.especialidad.nombre } : undefined
+                : undefined
         );
     }
 }

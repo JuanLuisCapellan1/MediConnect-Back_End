@@ -267,6 +267,8 @@ class PrismaDoctorRepository {
             dataToUpdate.nacionalidad = datos.nacionalidad;
         if (datos.estado !== undefined)
             dataToUpdate.estado = datos.estado;
+        if (datos.fechaNacimiento !== undefined)
+            dataToUpdate.fechaNacimiento = datos.fechaNacimiento;
         dataToUpdate.actualizadoEn = new Date();
         // Actualizar también el teléfono en la tabla Usuario si se proporciona
         if (datos.telefono !== undefined) {

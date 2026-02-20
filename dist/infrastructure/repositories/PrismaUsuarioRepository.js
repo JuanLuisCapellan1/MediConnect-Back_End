@@ -190,17 +190,12 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
             if (data.formaciones && data.formaciones.length > 0) {
                 await Promise.all(data.formaciones.map((f) => tx.formacionAcademica.create({
                     data: {
-                        doctor: {
-                            connect: { usuarioId: usuario.id }
-                        },
-                        universidad: {
-                            connect: { id: Number(f.id_universidad) }
-                        },
-                        especialidad: {
-                            connect: { id: Number(f.id_especialidad) }
-                        },
+                        doctorId: usuario.id,
+                        universidadId: Number(f.id_universidad),
+                        nombre: f.nombre || 'Sin especificar',
                         fecha_inicio: new Date(f.fecha_inicio),
                         fecha_finalizacion: f.fecha_finalizacion ? new Date(f.fecha_finalizacion) : null,
+                        enCurso: f.en_curso || false,
                         estado: mapEstadoFormacion(f.estado || 'Activo'),
                         creadoEn: new Date(),
                     },
@@ -291,11 +286,32 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                 paciente: true,
                 doctor: {
                     include: {
+                        usuario: {
+                            select: {
+                                email: true,
+                                telefono: true,
+                                fotoPerfil: true,
+                                emailVerificado: true,
+                            },
+                        },
                         ubicacion: true,
                         formaciones: {
+                            where: {
+                                estado: 'Activo',
+                            },
                             include: {
-                                especialidad: true,
                                 universidad: true,
+                            },
+                            orderBy: {
+                                creadoEn: 'desc',
+                            },
+                        },
+                        experiencias: {
+                            where: {
+                                estado: 'Activo',
+                            },
+                            orderBy: {
+                                creadoEn: 'desc',
                             },
                         },
                         especialidades: {
@@ -322,6 +338,32 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                                         fechaResolucion: true
                                     }
                                 }
+                            },
+                            orderBy: {
+                                creadoEn: 'desc',
+                            },
+                        },
+                        horarios: {
+                            where: {
+                                estado: 'Activo',
+                            },
+                            orderBy: {
+                                diaSemana: 'asc',
+                            },
+                        },
+                        servicios: {
+                            where: {
+                                estado: 'Activo',
+                            },
+                        },
+                        segurosAceptados: {
+                            include: {
+                                seguro: true,
+                            },
+                        },
+                        idiomas: {
+                            where: {
+                                estado: 'Activo',
                             },
                             orderBy: {
                                 creadoEn: 'desc',
@@ -783,17 +825,12 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
             if (data.formaciones && data.formaciones.length > 0) {
                 await Promise.all(data.formaciones.map((f) => tx.formacionAcademica.create({
                     data: {
-                        doctor: {
-                            connect: { usuarioId: usuario.id }
-                        },
-                        universidad: {
-                            connect: { id: Number(f.id_universidad) }
-                        },
-                        especialidad: {
-                            connect: { id: Number(f.id_especialidad) }
-                        },
+                        doctorId: usuario.id,
+                        universidadId: Number(f.id_universidad),
+                        nombre: f.nombre || 'Sin especificar',
                         fecha_inicio: new Date(f.fecha_inicio),
                         fecha_finalizacion: f.fecha_finalizacion ? new Date(f.fecha_finalizacion) : null,
+                        enCurso: f.en_curso || false,
                         estado: mapEstadoFormacion(f.estado || 'Activo'),
                         creadoEn: new Date(),
                     },

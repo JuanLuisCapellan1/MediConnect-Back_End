@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const multer_1 = __importDefault(require("multer"));
 const DoctorController_1 = require("../controllers/DoctorController");
+const DoctorIdiomaController_1 = require("../controllers/DoctorIdiomaController");
 const autenticacion_1 = require("../middlewares/autenticacion");
 const roleMiddleware_1 = require("../middlewares/roleMiddleware");
 const TranslationMiddleware_1 = require("../middlewares/TranslationMiddleware");
@@ -13,6 +14,7 @@ const TranslationMiddleware_1 = require("../middlewares/TranslationMiddleware");
 const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
 const router = (0, express_1.Router)();
 const doctorController = new DoctorController_1.DoctorController();
+const doctorIdiomaController = new DoctorIdiomaController_1.DoctorIdiomaController();
 /**
  * GET /doctores
  * Listar doctores (solo Admin)
@@ -45,6 +47,26 @@ router.put('/documentos/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_
  * Requiere: multipart/form-data con campo 'archivo' y 'descripcion'
  */
 router.post('/certificaciones', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), upload.single('archivo'), (req, res) => doctorController.agregarCertificacion(req, res));
+/**
+ * POST /doctores/idiomas
+ * Agregar un idioma al doctor autenticado
+ */
+router.post('/idiomas', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorIdiomaController.agregar(req, res));
+/**
+ * GET /doctores/idiomas
+ * Obtener todos los idiomas del doctor autenticado
+ */
+router.get('/idiomas', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorIdiomaController.obtenerIdiomas(req, res));
+/**
+ * PATCH /doctores/idiomas/:id
+ * Actualizar un idioma del doctor autenticado
+ */
+router.patch('/idiomas/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorIdiomaController.actualizar(req, res));
+/**
+ * DELETE /doctores/idiomas/:id
+ * Eliminar un idioma del doctor autenticado
+ */
+router.delete('/idiomas/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorIdiomaController.eliminar(req, res));
 /**
  * GET /doctores/:id
  * Obtener doctor por ID (solo Admin)

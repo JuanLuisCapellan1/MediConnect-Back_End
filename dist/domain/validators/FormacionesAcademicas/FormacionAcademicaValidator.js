@@ -13,15 +13,12 @@ let FormacionAcademicaValidator = class FormacionAcademicaValidator {
     /**
      * Valida que todos los campos requeridos estén presentes
      */
-    validarCamposRequeridos(doctorId, universidadId, especialidadId, fechaInicio) {
+    validarCamposRequeridos(doctorId, universidadId, fechaInicio) {
         if (!doctorId || doctorId <= 0) {
             throw new Error('El ID del doctor es requerido y debe ser válido');
         }
         if (!universidadId || universidadId <= 0) {
             throw new Error('El ID de la universidad es requerido y debe ser válido');
-        }
-        if (!especialidadId || especialidadId <= 0) {
-            throw new Error('El ID de la especialidad es requerido y debe ser válido');
         }
         if (!fechaInicio || !(fechaInicio instanceof Date) || isNaN(fechaInicio.getTime())) {
             throw new Error('La fecha de inicio es requerida y debe ser válida');

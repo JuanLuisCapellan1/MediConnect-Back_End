@@ -147,6 +147,7 @@ model Pais {
   nombre        String        @unique @db.VarChar(80)
   estado        String        @default("Activo") @db.VarChar(20)
   creadoEn      DateTime      @default(now()) @map("creado_en") @db.Timestamptz(6)
+  codigo_iso    String?       @db.VarChar(2)
   universidades Universidad[]
 
   @@map("paises")
@@ -256,7 +257,6 @@ model Especialidad {
   estado      String               @default("Activo") @db.VarChar(20)
   creadoEn    DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
   doctores    DoctorEspecialidad[]
-  formaciones FormacionAcademica[]
   servicios   Servicio[]
 
   @@map("especialidades")
@@ -333,20 +333,22 @@ model TipoSeguro {
 }
 
 model FormacionAcademica {
-  id                 Int          @id @default(autoincrement()) @map("id_formacion")
-  doctorId           Int          @map("id_doctor")
-  universidadId      Int          @map("id_universidad")
-  especialidadId     Int          @map("id_especialidad")
-  fecha_inicio       DateTime     @db.Date
-  fecha_finalizacion DateTime?    @db.Date
-  estado             String       @default("Activo") @db.VarChar(20)
-  creadoEn           DateTime     @default(now()) @map("creado_en") @db.Timestamptz(6)
-  actualizadoEn      DateTime?    @map("actualizado_en") @db.Timestamptz(6)
-  doctor             Doctor       @relation(fields: [doctorId], references: [usuarioId])
-  especialidad       Especialidad @relation(fields: [especialidadId], references: [id])
-  universidad        Universidad  @relation(fields: [universidadId], references: [id])
+  id                 Int         @id @default(autoincrement()) @map("id_formacion")
+  doctorId           Int         @map("id_doctor")
+  universidadId      Int         @map("id_universidad")
+  fecha_inicio       DateTime    @db.Date
+  fecha_finalizacion DateTime?   @db.Date
+  estado             String      @default("Activo") @db.VarChar(20)
+  creadoEn           DateTime    @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn      DateTime?   @map("actualizado_en") @db.Timestamptz(6)
+  nombre             String      @default("Sin especificar") @db.VarChar(150)
+  enCurso            Boolean     @default(false) @map("en_curso")
+  doctor             Doctor      @relation(fields: [doctorId], references: [usuarioId])
+  universidad        Universidad @relation(fields: [universidadId], references: [id])
 
-  @@unique([doctorId, universidadId, especialidadId], map: "uq_formacion_detalle_nuevo")
+  @@unique([doctorId, universidadId, nombre], map: "uq_formacion_detalle_nuevo")
+  @@index([doctorId, estado, enCurso], map: "idx_formaciones_doctor_activas")
+  @@index([universidadId], map: "idx_formaciones_universidad")
   @@map("formaciones_academicas")
 }
 

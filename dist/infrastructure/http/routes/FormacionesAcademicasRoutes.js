@@ -18,4 +18,9 @@ router.get('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRo
 router.put('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), formacionAcademicaController.actualizar);
 // Eliminar una formación académica (soft delete, solo si pertenece al doctor autenticado)
 router.delete('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), formacionAcademicaController.eliminar);
+// ========== REFERENCIAS (Países y Universidades) ==========
+// Obtener todos los países activos
+router.get('/referencias/paises', formacionAcademicaController.obtenerPaises);
+// Obtener todas las universidades activas de un país específico
+router.get('/referencias/universidades/:paisId', formacionAcademicaController.obtenerUniversidadesPorPais);
 exports.default = router;

@@ -49,4 +49,18 @@ router.delete(
     formacionAcademicaController.eliminar
 );
 
+// ========== REFERENCIAS (Países y Universidades) ==========
+
+// Obtener todos los países activos
+router.get(
+    '/referencias/paises',
+    formacionAcademicaController.obtenerPaises
+);
+
+// Obtener todas las universidades activas de un país específico
+router.get(
+    '/referencias/universidades/:paisId',
+    formacionAcademicaController.obtenerUniversidadesPorPais
+);
+
 export default router;

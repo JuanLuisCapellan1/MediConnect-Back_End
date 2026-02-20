@@ -22,14 +22,15 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
         this.CACHE_KEY_DOCTOR_PREFIX = 'formaciones_academicas:doctor:';
         this.CACHE_TTL = 3600; // 1 hora
     }
-    async crear(doctorId, universidadId, especialidadId, fechaInicio, estado, fechaFinalizacion) {
+    async crear(doctorId, universidadId, nombre, fechaInicio, estado, enCurso, fechaFinalizacion) {
         const nuevaFormacion = await this.prisma.formacionAcademica.create({
             data: {
                 doctorId,
                 universidadId,
-                especialidadId,
+                nombre,
                 fecha_inicio: fechaInicio,
                 fecha_finalizacion: fechaFinalizacion,
+                enCurso,
                 estado,
             },
             include: {
@@ -41,11 +42,6 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
                                 nombre: true,
                             },
                         },
-                    },
-                },
-                especialidad: {
-                    select: {
-                        nombre: true,
                     },
                 },
             },
@@ -74,11 +70,6 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
                         },
                     },
                 },
-                especialidad: {
-                    select: {
-                        nombre: true,
-                    },
-                },
             },
         });
         if (!encontrada) {
@@ -89,16 +80,12 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
         await this.redis.set(cacheKey, JSON.stringify(entidad), this.CACHE_TTL);
         return entidad;
     }
-    async obtenerTodos(doctorId, universidadId, especialidadId, estado, busqueda, pagina = 1, limite = 10) {
+    async obtenerTodos(doctorId, estado, busqueda, pagina, limite) {
         const where = {};
+        const paginaActual = pagina ?? 1;
+        const limiteActual = limite ?? 10;
         if (doctorId) {
             where.doctorId = doctorId;
-        }
-        if (universidadId) {
-            where.universidadId = universidadId;
-        }
-        if (especialidadId) {
-            where.especialidadId = especialidadId;
         }
         if (estado) {
             where.estado = estado;
@@ -106,15 +93,13 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
         if (busqueda) {
             where.OR = [
                 {
-                    universidad: {
-                        nombre: {
-                            contains: busqueda,
-                            mode: 'insensitive',
-                        },
+                    nombre: {
+                        contains: busqueda,
+                        mode: 'insensitive',
                     },
                 },
                 {
-                    especialidad: {
+                    universidad: {
                         nombre: {
                             contains: busqueda,
                             mode: 'insensitive',
@@ -126,8 +111,8 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
         const [formaciones, total] = await Promise.all([
             this.prisma.formacionAcademica.findMany({
                 where,
-                skip: (pagina - 1) * limite,
-                take: limite,
+                skip: (paginaActual - 1) * limiteActual,
+                take: limiteActual,
                 orderBy: [
                     { estado: 'asc' }, // Activo primero
                     { fecha_inicio: 'desc' }, // Más reciente primero
@@ -141,11 +126,6 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
                                     nombre: true,
                                 },
                             },
-                        },
-                    },
-                    especialidad: {
-                        select: {
-                            nombre: true,
                         },
                     },
                 },
@@ -191,11 +171,6 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
                             },
                         },
                     },
-                    especialidad: {
-                        select: {
-                            nombre: true,
-                        },
-                    },
                 },
             }),
             this.prisma.formacionAcademica.count({ where }),
@@ -210,7 +185,7 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
         }
         return resultado;
     }
-    async actualizar(id, universidadId, especialidadId, fechaInicio, fechaFinalizacion, estado) {
+    async actualizar(id, universidadId, nombre, fechaInicio, fechaFinalizacion, enCurso, estado) {
         // Obtener la formación actual para invalidar cache del doctor
         const formacionActual = await this.prisma.formacionAcademica.findUnique({
             where: { id },
@@ -220,14 +195,17 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
         if (universidadId !== undefined) {
             data.universidadId = universidadId;
         }
-        if (especialidadId !== undefined) {
-            data.especialidadId = especialidadId;
+        if (nombre !== undefined) {
+            data.nombre = nombre;
         }
         if (fechaInicio !== undefined) {
             data.fecha_inicio = fechaInicio;
         }
         if (fechaFinalizacion !== undefined) {
             data.fecha_finalizacion = fechaFinalizacion;
+        }
+        if (enCurso !== undefined) {
+            data.enCurso = enCurso;
         }
         if (estado !== undefined) {
             data.estado = estado;
@@ -245,11 +223,6 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
                                 nombre: true,
                             },
                         },
-                    },
-                },
-                especialidad: {
-                    select: {
-                        nombre: true,
                     },
                 },
             },
@@ -293,17 +266,11 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
         });
         return universidad !== null;
     }
-    async verificarEspecialidadExiste(especialidadId) {
-        const especialidad = await this.prisma.especialidad.findUnique({
-            where: { id: especialidadId },
-        });
-        return especialidad !== null;
-    }
-    async verificarFormacionDuplicada(doctorId, universidadId, especialidadId, idExcluir) {
+    async verificarFormacionDuplicada(doctorId, universidadId, nombre, idExcluir) {
         const where = {
             doctorId,
             universidadId,
-            especialidadId,
+            nombre,
             estado: { not: 'Eliminado' },
         };
         // Si se proporciona un ID a excluir, agregarlo al where
@@ -316,14 +283,14 @@ let PrismaFormacionAcademicaRepository = class PrismaFormacionAcademicaRepositor
         return formacion !== null;
     }
     mapearEntidad(data) {
-        return new FormacionAcademica_1.FormacionAcademica(data.id, data.doctorId, data.universidadId, data.especialidadId, data.fecha_inicio, data.estado, data.creadoEn, data.fecha_finalizacion, data.actualizadoEn, 
+        return new FormacionAcademica_1.FormacionAcademica(data.id, data.doctorId, data.universidadId, data.nombre, data.fecha_inicio, data.estado, data.creadoEn, data.fecha_finalizacion, data.en_curso, data.actualizadoEn, 
         // Mapear objetos relacionados si existen
         data.universidad
             ? {
                 nombre: data.universidad.nombre,
                 pais: { nombre: data.universidad.pais.nombre },
             }
-            : undefined, data.especialidad ? { nombre: data.especialidad.nombre } : undefined);
+            : undefined);
     }
 };
 exports.PrismaFormacionAcademicaRepository = PrismaFormacionAcademicaRepository;

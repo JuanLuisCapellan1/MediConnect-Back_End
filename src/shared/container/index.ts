@@ -21,6 +21,8 @@ import { ITipoCentroSaludRepository } from '../../domain/repositories/ITipoCentr
 
 import { IExperienciaLaboralRepository } from '../../domain/repositories/IExperienciaLaboralRepository';
 import { IFormacionAcademicaRepository } from '../../domain/repositories/IFormacionAcademicaRepository';
+import { IPaisRepository } from '../../domain/repositories/IPaisRepository';
+import { IUniversidadRepository } from '../../domain/repositories/IUniversidadRepository';
 import { IPasswordHasher } from '../../application/interfaces/IPasswordHasher';
 import { ITranslationService } from '../../application/interfaces/ITranslationService';
 // Tus imports
@@ -59,6 +61,8 @@ import { PrismaTipoCentroSaludRepository } from '../../infrastructure/repositori
 
 import { PrismaExperienciaLaboralRepository } from '../../infrastructure/repositories/PrismaExperienciaLaboralRepository';
 import { PrismaFormacionAcademicaRepository } from '../../infrastructure/repositories/PrismaFormacionAcademicaRepository';
+import { PrismaPaisRepository } from '../../infrastructure/repositories/PrismaPaisRepository';
+import { PrismaUniversidadRepository } from '../../infrastructure/repositories/PrismaUniversidadRepository';
 // Implementaciones de tu compañero
 import { PrismaNotificacionesRepository } from '../../infrastructure/repositories/PrismaNotificacionesRepository';
 import { PrismaConversacionesRepository } from '../../infrastructure/repositories/PrismaConversacionesRepository';
@@ -135,6 +139,8 @@ import { GestionarTiposCentrosSaludUseCase } from '../../application/use-cases/G
 
 import { GestionarExperienciasLaboralesUseCase } from '../../application/use-cases/GestionarExperienciasLaboralesUseCase';
 import { GestionarFormacionesAcademicasUseCase } from '../../application/use-cases/GestionarFormacionesAcademicasUseCase';
+import { GestionarPaisesUseCase } from '../../application/use-cases/GestionarPaisesUseCase';
+import { GestionarUniversidadesUseCase } from '../../application/use-cases/GestionarUniversidadesUseCase';
 import { GestionarServicioHorariosUseCase } from '../../application/use-cases/GestionarServicioHorariosUseCase';
 import { GestionarNotificacionesUseCase } from '../../application/use-cases/GestionarNotificacionesUseCase';
 import { RefreshAccessTokenUseCase } from '../../application/use-cases/RefreshAccessTokenUseCase';
@@ -498,7 +504,7 @@ container.register<IExperienciaLaboralRepository>(
       const redisCache = container.resolve(RedisCacheService);
       return new PrismaExperienciaLaboralRepository(prismaClient, redisCache);
     }
-  }
+  } as any
 );
 
 container.register<IFormacionAcademicaRepository>(
@@ -509,7 +515,29 @@ container.register<IFormacionAcademicaRepository>(
       const redisCache = container.resolve(RedisCacheService);
       return new PrismaFormacionAcademicaRepository(prismaClient, redisCache);
     }
-  }
+  } as any
+);
+
+container.register<IPaisRepository>(
+  'IPaisRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve<RedisCacheService>(RedisCacheService);
+      return new PrismaPaisRepository(prismaClient, redisCache);
+    }
+  } as any
+);
+
+container.register<IUniversidadRepository>(
+  'IUniversidadRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      const redisCache = container.resolve<RedisCacheService>(RedisCacheService);
+      return new PrismaUniversidadRepository(prismaClient, redisCache);
+    }
+  } as any
 );
 
 
@@ -806,6 +834,33 @@ container.register(GestionarFormacionesAcademicasUseCase, {
 container.register('GestionarFormacionesAcademicasUseCase', {
   useFactory: () => {
     return container.resolve(GestionarFormacionesAcademicasUseCase);
+  }
+});
+
+container.register(GestionarPaisesUseCase, {
+  useFactory: () => {
+    const repo = container.resolve<IPaisRepository>('IPaisRepository');
+    return new GestionarPaisesUseCase(repo);
+  }
+});
+
+container.register('GestionarPaisesUseCase', {
+  useFactory: () => {
+    return container.resolve(GestionarPaisesUseCase);
+  }
+});
+
+container.register(GestionarUniversidadesUseCase, {
+  useFactory: () => {
+    const universidadRepo = container.resolve<IUniversidadRepository>('IUniversidadRepository');
+    const paisRepo = container.resolve<IPaisRepository>('IPaisRepository');
+    return new GestionarUniversidadesUseCase(universidadRepo, paisRepo);
+  }
+});
+
+container.register('GestionarUniversidadesUseCase', {
+  useFactory: () => {
+    return container.resolve(GestionarUniversidadesUseCase);
   }
 });
 

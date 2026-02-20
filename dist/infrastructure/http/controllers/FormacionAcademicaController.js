@@ -14,14 +14,16 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FormacionAcademicaController = void 0;
 const tsyringe_1 = require("tsyringe");
+const client_1 = require("@prisma/client");
 const GestionarFormacionesAcademicasUseCase_1 = require("../../../application/use-cases/GestionarFormacionesAcademicasUseCase");
 const FormacionAcademicaNoEncontradaError_1 = require("../../../domain/errors/FormacionesAcademicas/FormacionAcademicaNoEncontradaError");
 const UniversidadNoEncontradaError_1 = require("../../../domain/errors/FormacionesAcademicas/UniversidadNoEncontradaError");
 const FechasFormacionInvalidasError_1 = require("../../../domain/errors/FormacionesAcademicas/FechasFormacionInvalidasError");
 const FormacionDuplicadaError_1 = require("../../../domain/errors/FormacionesAcademicas/FormacionDuplicadaError");
 let FormacionAcademicaController = class FormacionAcademicaController {
-    constructor(gestionarFormacionesAcademicasUseCase) {
+    constructor(gestionarFormacionesAcademicasUseCase, prisma) {
         this.gestionarFormacionesAcademicasUseCase = gestionarFormacionesAcademicasUseCase;
+        this.prisma = prisma;
         this.crear = async (req, res) => {
             try {
                 const doctorId = req.usuarioId; // Obtener doctor autenticado del JWT
@@ -253,11 +255,91 @@ let FormacionAcademicaController = class FormacionAcademicaController {
                 }
             }
         };
+        /**
+         * GET /formaciones/referencias/paises
+         * Obtener todos los países activos
+         */
+        this.obtenerPaises = async (req, res) => {
+            try {
+                const paises = await this.prisma.pais.findMany({
+                    where: { estado: 'Activo' },
+                    select: {
+                        id: true,
+                        nombre: true,
+                    },
+                    orderBy: { nombre: 'asc' },
+                });
+                res.status(200).json({
+                    message: 'Países obtenidos exitosamente',
+                    success: true,
+                    data: paises,
+                });
+            }
+            catch (error) {
+                console.error('Error al obtener países:', error);
+                res.status(500).json({
+                    success: false,
+                    message: 'Error interno del servidor',
+                });
+            }
+        };
+        /**
+         * GET /formaciones/referencias/universidades/:paisId
+         * Obtener todas las universidades activas de un país específico
+         */
+        this.obtenerUniversidadesPorPais = async (req, res) => {
+            try {
+                const paisId = parseInt(req.params.paisId);
+                if (isNaN(paisId)) {
+                    res.status(400).json({
+                        success: false,
+                        message: 'ID del país inválido',
+                    });
+                    return;
+                }
+                // Verificar que el país existe
+                const paisExiste = await this.prisma.pais.findUnique({
+                    where: { id: paisId },
+                });
+                if (!paisExiste) {
+                    res.status(404).json({
+                        success: false,
+                        message: 'País no encontrado',
+                    });
+                    return;
+                }
+                const universidades = await this.prisma.universidad.findMany({
+                    where: {
+                        paisId,
+                        estado: 'Activo',
+                    },
+                    select: {
+                        id: true,
+                        nombre: true,
+                    },
+                    orderBy: { nombre: 'asc' },
+                });
+                res.status(200).json({
+                    message: 'Universidades obtenidas exitosamente',
+                    success: true,
+                    data: universidades,
+                });
+            }
+            catch (error) {
+                console.error('Error al obtener universidades por país:', error);
+                res.status(500).json({
+                    success: false,
+                    message: 'Error interno del servidor',
+                });
+            }
+        };
     }
 };
 exports.FormacionAcademicaController = FormacionAcademicaController;
 exports.FormacionAcademicaController = FormacionAcademicaController = __decorate([
     (0, tsyringe_1.injectable)(),
     __param(0, (0, tsyringe_1.inject)('GestionarFormacionesAcademicasUseCase')),
-    __metadata("design:paramtypes", [GestionarFormacionesAcademicasUseCase_1.GestionarFormacionesAcademicasUseCase])
+    __param(1, (0, tsyringe_1.inject)('PrismaClient')),
+    __metadata("design:paramtypes", [GestionarFormacionesAcademicasUseCase_1.GestionarFormacionesAcademicasUseCase,
+        client_1.PrismaClient])
 ], FormacionAcademicaController);

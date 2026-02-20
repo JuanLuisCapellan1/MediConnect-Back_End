@@ -18,9 +18,12 @@ const PrismaTipoServicioRepository_1 = require("../../infrastructure/repositorie
 const PrismaEspecialidadRepository_1 = require("../../infrastructure/repositories/PrismaEspecialidadRepository");
 const PrismaPacienteRepository_1 = require("../../infrastructure/repositories/PrismaPacienteRepository");
 const PrismaDoctorRepository_1 = require("../../infrastructure/repositories/PrismaDoctorRepository");
+const PrismaDoctorIdiomaRepository_1 = require("../../infrastructure/repositories/PrismaDoctorIdiomaRepository");
 const PrismaTipoCentroSaludRepository_1 = require("../../infrastructure/repositories/PrismaTipoCentroSaludRepository");
 const PrismaExperienciaLaboralRepository_1 = require("../../infrastructure/repositories/PrismaExperienciaLaboralRepository");
 const PrismaFormacionAcademicaRepository_1 = require("../../infrastructure/repositories/PrismaFormacionAcademicaRepository");
+const PrismaPaisRepository_1 = require("../../infrastructure/repositories/PrismaPaisRepository");
+const PrismaUniversidadRepository_1 = require("../../infrastructure/repositories/PrismaUniversidadRepository");
 // Implementaciones de tu compañero
 const PrismaNotificacionesRepository_1 = require("../../infrastructure/repositories/PrismaNotificacionesRepository");
 const PrismaConversacionesRepository_1 = require("../../infrastructure/repositories/PrismaConversacionesRepository");
@@ -31,6 +34,7 @@ const PrismaCentroSaludRepository_1 = require("../../infrastructure/repositories
 const PrismaCondicionMedicaRepository_1 = require("../../infrastructure/repositories/PrismaCondicionMedicaRepository");
 const PrismaSeguroMedicoRepository_1 = require("../../infrastructure/repositories/PrismaSeguroMedicoRepository");
 const PrismaTipoSeguroRepository_1 = require("../../infrastructure/repositories/PrismaTipoSeguroRepository");
+const PrismaServicioRepository_1 = require("../../infrastructure/repositories/PrismaServicioRepository");
 const BcryptPasswordHasher_1 = require("../../infrastructure/external-services/BcryptPasswordHasher");
 const LibreTranslateService_1 = require("../../infrastructure/external-services/LibreTranslateService");
 const RedisCacheService_1 = require("../../infrastructure/external-services/RedisCacheService");
@@ -83,12 +87,15 @@ const GestionarTiposServiciosUseCase_1 = require("../../application/use-cases/Ge
 const GestionarEspecialidadesUseCase_1 = require("../../application/use-cases/GestionarEspecialidadesUseCase");
 const GestionarPacientesUseCase_1 = require("../../application/use-cases/GestionarPacientesUseCase");
 const GestionarDoctoresUseCase_1 = require("../../application/use-cases/GestionarDoctoresUseCase");
+const GestionarDoctorIdiomasUseCase_1 = require("../../application/use-cases/GestionarDoctorIdiomasUseCase");
 const GestionarConversacionesUseCase_1 = require("../../application/use-cases/GestionarConversacionesUseCase");
 const GestionarMensajesUseCase_1 = require("../../application/use-cases/GestionarMensajesUseCase");
 const GestionarMediaUseCase_1 = require("../../application/use-cases/GestionarMediaUseCase");
 const GestionarTiposCentrosSaludUseCase_1 = require("../../application/use-cases/GestionarTiposCentrosSaludUseCase");
 const GestionarExperienciasLaboralesUseCase_1 = require("../../application/use-cases/GestionarExperienciasLaboralesUseCase");
 const GestionarFormacionesAcademicasUseCase_1 = require("../../application/use-cases/GestionarFormacionesAcademicasUseCase");
+const GestionarPaisesUseCase_1 = require("../../application/use-cases/GestionarPaisesUseCase");
+const GestionarUniversidadesUseCase_1 = require("../../application/use-cases/GestionarUniversidadesUseCase");
 const GestionarServicioHorariosUseCase_1 = require("../../application/use-cases/GestionarServicioHorariosUseCase");
 const GestionarNotificacionesUseCase_1 = require("../../application/use-cases/GestionarNotificacionesUseCase");
 const RefreshAccessTokenUseCase_1 = require("../../application/use-cases/RefreshAccessTokenUseCase");
@@ -100,6 +107,7 @@ const CambiarEmailUseCase_1 = require("../../application/use-cases/CambiarEmailU
 const EliminarCuentaUseCase_1 = require("../../application/use-cases/EliminarCuentaUseCase");
 const CentrosSaludController_1 = require("../../infrastructure/http/controllers/CentrosSaludController");
 const GestionarCondicionesMedicasUseCase_1 = require("../../application/use-cases/GestionarCondicionesMedicasUseCase");
+const GestionarServiciosUseCase_1 = require("../../application/use-cases/GestionarServiciosUseCase");
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 // Registrar PrismaClient como singleton
 tsyringe_1.container.register('PrismaClient', {
@@ -327,6 +335,12 @@ tsyringe_1.container.register('DoctorRepository', {
         return new PrismaDoctorRepository_1.PrismaDoctorRepository(prismaClient);
     }
 });
+tsyringe_1.container.register('DoctorIdiomaRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        return new PrismaDoctorIdiomaRepository_1.PrismaDoctorIdiomaRepository(prismaClient);
+    }
+});
 tsyringe_1.container.register('TipoCentroSaludRepository', {
     useFactory: () => {
         const prismaClient = tsyringe_1.container.resolve('PrismaClient');
@@ -355,6 +369,20 @@ tsyringe_1.container.register('IFormacionAcademicaRepository', {
         return new PrismaFormacionAcademicaRepository_1.PrismaFormacionAcademicaRepository(prismaClient, redisCache);
     }
 });
+tsyringe_1.container.register('IPaisRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        const redisCache = tsyringe_1.container.resolve(RedisCacheService_1.RedisCacheService);
+        return new PrismaPaisRepository_1.PrismaPaisRepository(prismaClient, redisCache);
+    }
+});
+tsyringe_1.container.register('IUniversidadRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        const redisCache = tsyringe_1.container.resolve(RedisCacheService_1.RedisCacheService);
+        return new PrismaUniversidadRepository_1.PrismaUniversidadRepository(prismaClient, redisCache);
+    }
+});
 tsyringe_1.container.register('CondicionMedicaRepository', {
     useFactory: () => {
         const prismaClient = tsyringe_1.container.resolve('PrismaClient');
@@ -378,6 +406,13 @@ tsyringe_1.container.register('TipoSeguroRepository', {
     useFactory: () => {
         const prismaClient = tsyringe_1.container.resolve('PrismaClient');
         return new PrismaTipoSeguroRepository_1.PrismaTipoSeguroRepository(prismaClient);
+    }
+});
+tsyringe_1.container.register('ServicioRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        const redisCache = tsyringe_1.container.resolve(RedisCacheService_1.RedisCacheService);
+        return new PrismaServicioRepository_1.PrismaServicioRepository(prismaClient, redisCache);
     }
 });
 // ===== REGISTRAR USE CASES =====
@@ -537,6 +572,12 @@ tsyringe_1.container.register(GestionarDoctoresUseCase_1.GestionarDoctoresUseCas
         return new GestionarDoctoresUseCase_1.GestionarDoctoresUseCase(repo, validator, estadoValidator);
     }
 });
+tsyringe_1.container.register(GestionarDoctorIdiomasUseCase_1.GestionarDoctorIdiomasUseCase, {
+    useFactory: () => {
+        const repo = tsyringe_1.container.resolve('DoctorIdiomaRepository');
+        return new GestionarDoctorIdiomasUseCase_1.GestionarDoctorIdiomasUseCase(repo);
+    }
+});
 tsyringe_1.container.register(GestionarTiposCentrosSaludUseCase_1.GestionarTiposCentrosSaludUseCase, {
     useFactory: () => {
         const repo = tsyringe_1.container.resolve('TipoCentroSaludRepository');
@@ -567,6 +608,29 @@ tsyringe_1.container.register(GestionarFormacionesAcademicasUseCase_1.GestionarF
 tsyringe_1.container.register('GestionarFormacionesAcademicasUseCase', {
     useFactory: () => {
         return tsyringe_1.container.resolve(GestionarFormacionesAcademicasUseCase_1.GestionarFormacionesAcademicasUseCase);
+    }
+});
+tsyringe_1.container.register(GestionarPaisesUseCase_1.GestionarPaisesUseCase, {
+    useFactory: () => {
+        const repo = tsyringe_1.container.resolve('IPaisRepository');
+        return new GestionarPaisesUseCase_1.GestionarPaisesUseCase(repo);
+    }
+});
+tsyringe_1.container.register('GestionarPaisesUseCase', {
+    useFactory: () => {
+        return tsyringe_1.container.resolve(GestionarPaisesUseCase_1.GestionarPaisesUseCase);
+    }
+});
+tsyringe_1.container.register(GestionarUniversidadesUseCase_1.GestionarUniversidadesUseCase, {
+    useFactory: () => {
+        const universidadRepo = tsyringe_1.container.resolve('IUniversidadRepository');
+        const paisRepo = tsyringe_1.container.resolve('IPaisRepository');
+        return new GestionarUniversidadesUseCase_1.GestionarUniversidadesUseCase(universidadRepo, paisRepo);
+    }
+});
+tsyringe_1.container.register('GestionarUniversidadesUseCase', {
+    useFactory: () => {
+        return tsyringe_1.container.resolve(GestionarUniversidadesUseCase_1.GestionarUniversidadesUseCase);
     }
 });
 tsyringe_1.container.register(GestionarServicioHorariosUseCase_1.GestionarServicioHorariosUseCase, {
@@ -689,5 +753,12 @@ tsyringe_1.container.register(EliminarCuentaUseCase_1.EliminarCuentaUseCase, {
         const usuarioRepo = tsyringe_1.container.resolve('UsuarioRepository');
         const passwordHasher = tsyringe_1.container.resolve('PasswordHasher');
         return new EliminarCuentaUseCase_1.EliminarCuentaUseCase(usuarioRepo, passwordHasher);
+    }
+});
+tsyringe_1.container.register(GestionarServiciosUseCase_1.GestionarServiciosUseCase, {
+    useFactory: () => {
+        const servicioRepository = tsyringe_1.container.resolve('ServicioRepository');
+        const storageService = tsyringe_1.container.resolve('StorageService');
+        return new GestionarServiciosUseCase_1.GestionarServiciosUseCase(servicioRepository, storageService);
     }
 });
