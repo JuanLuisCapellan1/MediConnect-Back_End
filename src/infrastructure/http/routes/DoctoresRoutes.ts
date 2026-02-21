@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { container } from 'tsyringe';
 import { DoctorController } from '../controllers/DoctorController';
 import { DoctorIdiomaController } from '../controllers/DoctorIdiomaController';
 import { DoctorEspecialidadController } from '../controllers/DoctorEspecialidadController';
+import { CentrosSaludController } from '../controllers/CentrosSaludController';
 import { autenticarJWT } from '../middlewares/autenticacion';
 import { requireRole } from '../middlewares/roleMiddleware';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
@@ -173,6 +175,28 @@ router.delete(
     autenticarJWT,
     requireRole('Doctor'),
     (req, res) => doctorEspecialidadController.eliminar(req, res)
+);
+
+// ─── Solicitudes de alianza (lado Doctor) — ANTES de /:id para evitar captura ─
+router.post(
+    '/solicitudes-alianza',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => container.resolve(CentrosSaludController).doctorEnviarSolicitud(req, res)
+);
+
+router.get(
+    '/solicitudes-alianza',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => container.resolve(CentrosSaludController).doctorListarSolicitudes(req, res)
+);
+
+router.put(
+    '/solicitudes-alianza/:id',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => container.resolve(CentrosSaludController).doctorResponderSolicitud(req, res)
 );
 
 /**

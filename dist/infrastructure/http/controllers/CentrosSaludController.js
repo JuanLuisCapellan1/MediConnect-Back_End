@@ -19,61 +19,283 @@ const class_validator_1 = require("class-validator");
 const CompletarPerfilCentroSaludUseCase_1 = require("../../../application/use-cases/CompletarPerfilCentroSaludUseCase");
 const CompletarPerfilCentroSaludDto_1 = require("../../../application/dtos/CompletarPerfilCentroSaludDto");
 const RegistrarCentroUseCase_1 = require("../../../application/use-cases/RegistrarCentroUseCase");
+const GestionarCentroSaludUseCase_1 = require("../../../application/use-cases/GestionarCentroSaludUseCase");
+const GestionarSolicitudesAlianzaUseCase_1 = require("../../../application/use-cases/GestionarSolicitudesAlianzaUseCase");
 const CentroSaludNoEncontradoError_1 = require("../../../domain/errors/CentrosSalud/CentroSaludNoEncontradoError");
 const TipoCentroSaludNoEncontradoError_1 = require("../../../domain/errors/TiposCentrosSalud/TipoCentroSaludNoEncontradoError");
-/**
- * Utilidad para aplanar errores de validación
- */
 function flattenValidationErrors(errors) {
     const messages = [];
-    errors.forEach((error) => {
-        if (error.constraints) {
-            messages.push(...Object.values(error.constraints));
-        }
-        if (error.children && error.children.length > 0) {
-            messages.push(...flattenValidationErrors(error.children));
-        }
+    errors.forEach(e => {
+        if (e.constraints)
+            messages.push(...Object.values(e.constraints));
+        if (e.children?.length)
+            messages.push(...flattenValidationErrors(e.children));
     });
     return messages;
 }
 let CentrosSaludController = class CentrosSaludController {
-    constructor(completarPerfilUseCase, registrarCentroUseCase) {
+    constructor(completarPerfilUseCase, registrarCentroUseCase, gestionarCentroUseCase, solicitudesUseCase) {
         this.completarPerfilUseCase = completarPerfilUseCase;
         this.registrarCentroUseCase = registrarCentroUseCase;
+        this.gestionarCentroUseCase = gestionarCentroUseCase;
+        this.solicitudesUseCase = solicitudesUseCase;
     }
-    /**
-     * POST /centros-salud/completar-perfil
-     * Completa el perfil de un centro de salud autenticado
-     *
-     * Headers requeridos:
-     * - Authorization: Bearer <token>
-     *
-     * Form Data:
-     * - nombreComercial: string (requerido)
-     * - telefono: string (requerido)
-     * - sitioWeb: string (opcional, URL válida)
-     * - descripcion: string (opcional)
-     * - tipoCentroId: number (requerido)
-     * - direccion: string (requerido)
-     * - barrioId: number (requerido)
-     * - subBarrioId: number (opcional)
-     * - codigoPostal: string (opcional)
-     * - puntoGeografico: string (opcional, GeoJSON)
-     * - certificadoSanitario: file (requerido, PDF)
-     * - fotoPerfil: file (opcional, JPG/PNG)
-     */
+    // ══════════════════════════════════════════════════════════════
+    // GET /centros-salud/mi-perfil
+    // ══════════════════════════════════════════════════════════════
+    async obtenerPerfil(req, res) {
+        try {
+            const centroId = req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const data = await this.gestionarCentroUseCase.obtenerPerfil(centroId);
+            res.status(200).json({ success: true, data });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // PUT /centros-salud/mi-perfil
+    // ══════════════════════════════════════════════════════════════
+    async actualizarPerfil(req, res) {
+        try {
+            const centroId = req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const dto = req.body;
+            const data = await this.gestionarCentroUseCase.actualizarPerfil(centroId, dto);
+            res.status(200).json({ success: true, data, message: 'Perfil actualizado exitosamente' });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // PUT /centros-salud/mi-perfil/foto
+    // ══════════════════════════════════════════════════════════════
+    async actualizarFoto(req, res) {
+        try {
+            const centroId = req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const file = req.files?.fotoPerfil?.[0]
+                ?? req.file;
+            if (!file) {
+                res.status(400).json({ success: false, message: 'Se requiere una foto de perfil' });
+                return;
+            }
+            const data = await this.gestionarCentroUseCase.actualizarFoto(centroId, file);
+            res.status(200).json({ success: true, data, message: 'Foto actualizada exitosamente' });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // GET /centros-salud/mi-ubicacion
+    // ══════════════════════════════════════════════════════════════
+    async obtenerUbicacion(req, res) {
+        try {
+            const centroId = req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const data = await this.gestionarCentroUseCase.obtenerUbicacion(centroId);
+            res.status(200).json({ success: true, data });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // PUT /centros-salud/mi-ubicacion
+    // ══════════════════════════════════════════════════════════════
+    async actualizarUbicacion(req, res) {
+        try {
+            const centroId = req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const { barrioId, subBarrioId, direccion, codigoPostal } = req.body;
+            const dto = {
+                barrioId: barrioId !== undefined ? Number(barrioId) : undefined,
+                subBarrioId: subBarrioId !== undefined ? (subBarrioId === null ? null : Number(subBarrioId)) : undefined,
+                direccion,
+                codigoPostal: codigoPostal ?? undefined,
+            };
+            const data = await this.gestionarCentroUseCase.actualizarUbicacion(centroId, dto);
+            res.status(200).json({ success: true, data, message: 'Ubicación actualizada exitosamente' });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // GET /centros-salud/mis-doctores
+    // ══════════════════════════════════════════════════════════════
+    async listarDoctores(req, res) {
+        try {
+            const centroId = req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const data = await this.gestionarCentroUseCase.listarDoctoresAsociados(centroId);
+            res.status(200).json({ success: true, data });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // POST /centros-salud/solicitudes-alianza
+    // ══════════════════════════════════════════════════════════════
+    async enviarSolicitud(req, res) {
+        try {
+            const centroId = req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const { destinatarioId, mensaje } = req.body;
+            if (!destinatarioId || isNaN(Number(destinatarioId))) {
+                res.status(400).json({ success: false, message: 'destinatarioId (ID del doctor) es requerido y debe ser numérico' });
+                return;
+            }
+            const data = await this.solicitudesUseCase.enviarSolicitud(centroId, 'CentroSalud', { destinatarioId: Number(destinatarioId), mensaje });
+            res.status(201).json({ success: true, data, message: 'Solicitud de alianza enviada exitosamente' });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // GET /centros-salud/solicitudes-alianza
+    // ══════════════════════════════════════════════════════════════
+    async listarSolicitudes(req, res) {
+        try {
+            const centroId = req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const data = await this.solicitudesUseCase.listarSolicitudes(centroId, 'CentroSalud');
+            res.status(200).json({ success: true, data });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // PUT /centros-salud/solicitudes-alianza/:id
+    // ══════════════════════════════════════════════════════════════
+    async responderSolicitud(req, res) {
+        try {
+            const centroId = req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const solicitudId = Number(req.params.id);
+            if (isNaN(solicitudId)) {
+                res.status(400).json({ success: false, message: 'ID de solicitud inválido' });
+                return;
+            }
+            const { estado, motivoRechazo } = req.body;
+            if (!estado || !['Aceptada', 'Rechazada'].includes(estado)) {
+                res.status(400).json({ success: false, message: 'estado debe ser Aceptada o Rechazada' });
+                return;
+            }
+            const data = await this.solicitudesUseCase.responderSolicitud(solicitudId, centroId, 'CentroSalud', { estado, motivoRechazo });
+            res.status(200).json({ success: true, data, message: `Solicitud ${estado.toLowerCase()} exitosamente` });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // SOLICITUDES DESDE EL LADO DEL DOCTOR
+    // POST /doctores/solicitudes-alianza
+    // ══════════════════════════════════════════════════════════════
+    async doctorEnviarSolicitud(req, res) {
+        try {
+            const doctorId = req.user?.userId;
+            if (!doctorId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const { destinatarioId, mensaje } = req.body;
+            if (!destinatarioId || isNaN(Number(destinatarioId))) {
+                res.status(400).json({ success: false, message: 'destinatarioId (ID del centro) es requerido y debe ser numérico' });
+                return;
+            }
+            const data = await this.solicitudesUseCase.enviarSolicitud(doctorId, 'Doctor', { destinatarioId: Number(destinatarioId), mensaje });
+            res.status(201).json({ success: true, data, message: 'Solicitud de alianza enviada exitosamente' });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // GET /doctores/solicitudes-alianza
+    async doctorListarSolicitudes(req, res) {
+        try {
+            const doctorId = req.user?.userId;
+            if (!doctorId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const data = await this.solicitudesUseCase.listarSolicitudes(doctorId, 'Doctor');
+            res.status(200).json({ success: true, data });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // PUT /doctores/solicitudes-alianza/:id
+    async doctorResponderSolicitud(req, res) {
+        try {
+            const doctorId = req.user?.userId;
+            if (!doctorId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const solicitudId = Number(req.params.id);
+            if (isNaN(solicitudId)) {
+                res.status(400).json({ success: false, message: 'ID de solicitud inválido' });
+                return;
+            }
+            const { estado, motivoRechazo } = req.body;
+            if (!estado || !['Aceptada', 'Rechazada'].includes(estado)) {
+                res.status(400).json({ success: false, message: 'estado debe ser Aceptada o Rechazada' });
+                return;
+            }
+            const data = await this.solicitudesUseCase.responderSolicitud(solicitudId, doctorId, 'Doctor', { estado, motivoRechazo });
+            res.status(200).json({ success: true, data, message: `Solicitud ${estado.toLowerCase()} exitosamente` });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // Heredado: POST /centros-salud/completar-perfil
+    // ══════════════════════════════════════════════════════════════
     async completarPerfil(req, res) {
         try {
-            // ===================================================================
-            // 1. OBTENER USUARIO AUTENTICADO DEL REQUEST
-            // ===================================================================
             const usuarioId = req.usuarioId;
-            // Si no hay usuarioId intentamos flujo de registro usando token de registro
             if (!usuarioId) {
-                // Extraer token del header Authorization (acepta 'Bearer ' o token puro)
                 let authHeader = req.originalAuthorization || req.headers.authorization || req.headers.Authorization;
                 if (!authHeader) {
-                    authHeader = req.headers['authorization'] ?? req.headers['Authorization'] ?? req.headers['x-authorization'] ?? req.headers['X-Authorization'];
+                    authHeader = req.headers['authorization'] ?? req.headers['Authorization']
+                        ?? req.headers['x-authorization'] ?? req.headers['X-Authorization'];
                 }
                 let token = null;
                 if (typeof authHeader === 'string') {
@@ -84,115 +306,68 @@ let CentrosSaludController = class CentrosSaludController {
                     res.status(401).json({ success: false, message: 'Token de registro no proporcionado' });
                     return;
                 }
-                // Validaciones de archivos y DTO se comparten con el otro flujo más abajo
                 const files = req.files ?? {};
-                // Validar archivos requeridos
                 if (!files.certificadoSanitario?.[0]) {
                     res.status(400).json({ success: false, message: 'El certificado sanitario es obligatorio' });
                     return;
                 }
-                // Validar DTO
                 const dtoReg = (0, class_transformer_1.plainToInstance)(CompletarPerfilCentroSaludDto_1.CompletarPerfilCentroSaludDto, req.body, {
-                    enableImplicitConversion: true,
-                    excludeExtraneousValues: false,
+                    enableImplicitConversion: true, excludeExtraneousValues: false,
                 });
                 const errorsReg = await (0, class_validator_1.validate)(dtoReg, { forbidNonWhitelisted: false, skipMissingProperties: false });
                 if (errorsReg.length > 0) {
-                    const messages = flattenValidationErrors(errorsReg);
-                    res.status(400).json({ success: false, message: 'Validación fallida', errors: messages });
+                    res.status(400).json({ success: false, message: 'Validación fallida', errors: flattenValidationErrors(errorsReg) });
                     return;
                 }
-                // Ejecutar use-case de registro para centros con el token de registro
                 await this.registrarCentroUseCase.execute(dtoReg, files, token);
                 res.status(201).json({ success: true, message: 'Centro registrado exitosamente. Su solicitud está en revisión.' });
                 return;
             }
-            // ===================================================================
-            // 2. VALIDAR ARCHIVOS REQUERIDOS
-            // ===================================================================
             const files = req.files ?? {};
             if (!files.certificadoSanitario?.[0]) {
-                res.status(400).json({
-                    success: false,
-                    message: 'El certificado sanitario es obligatorio',
-                });
+                res.status(400).json({ success: false, message: 'El certificado sanitario es obligatorio' });
                 return;
             }
-            // Validar tipos MIME
-            const mimesCertificado = ['application/pdf'];
-            if (!mimesCertificado.includes(files.certificadoSanitario[0].mimetype)) {
-                res.status(400).json({
-                    success: false,
-                    message: 'El certificado sanitario debe ser un archivo PDF',
-                });
+            const mimesCert = ['application/pdf'];
+            if (!mimesCert.includes(files.certificadoSanitario[0].mimetype)) {
+                res.status(400).json({ success: false, message: 'El certificado sanitario debe ser un archivo PDF' });
                 return;
             }
             if (files.fotoPerfil?.[0]) {
                 const mimesFoto = ['image/jpeg', 'image/png', 'image/webp'];
                 if (!mimesFoto.includes(files.fotoPerfil[0].mimetype)) {
-                    res.status(400).json({
-                        success: false,
-                        message: 'La foto de perfil debe ser JPG, PNG o WebP',
-                    });
+                    res.status(400).json({ success: false, message: 'La foto de perfil debe ser JPG, PNG o WebP' });
                     return;
                 }
             }
-            // ===================================================================
-            // 3. VALIDAR DTO
-            // ===================================================================
             const dto = (0, class_transformer_1.plainToInstance)(CompletarPerfilCentroSaludDto_1.CompletarPerfilCentroSaludDto, req.body, {
-                enableImplicitConversion: true,
-                excludeExtraneousValues: false,
+                enableImplicitConversion: true, excludeExtraneousValues: false,
             });
-            const errors = await (0, class_validator_1.validate)(dto, {
-                forbidNonWhitelisted: false,
-                skipMissingProperties: false,
-            });
+            const errors = await (0, class_validator_1.validate)(dto, { forbidNonWhitelisted: false, skipMissingProperties: false });
             if (errors.length > 0) {
-                const messages = flattenValidationErrors(errors);
-                res.status(400).json({
-                    success: false,
-                    message: 'Validación fallida',
-                    errors: messages,
-                });
+                res.status(400).json({ success: false, message: 'Validación fallida', errors: flattenValidationErrors(errors) });
                 return;
             }
-            // ===================================================================
-            // 4. EJECUTAR USE CASE
-            // ===================================================================
             const resultado = await this.completarPerfilUseCase.execute(usuarioId, dto, files);
             res.status(200).json({
-                success: true,
-                message: resultado.message,
-                data: {
-                    id: resultado.id,
-                    nombreComercial: resultado.nombreComercial,
-                    estado: resultado.estado,
-                    estadoVerificacion: resultado.estadoVerificacion,
-                },
+                success: true, message: resultado.message,
+                data: { id: resultado.id, nombreComercial: resultado.nombreComercial, estado: resultado.estado, estadoVerificacion: resultado.estadoVerificacion },
             });
         }
         catch (error) {
             this.manejarError(error, res);
         }
     }
-    /**
-     * Manejador centralizado de errores
-     */
     manejarError(error, res) {
-        // Manejo en línea de errores de Prisma (sin depender de utils eliminadas)
         const e = error;
-        if (e && typeof e === 'object') {
-            if (e.code === 'P2002') {
-                const target = e.meta?.target;
-                const fields = Array.isArray(target) ? target.join(', ') : target;
-                res.status(409).json({ success: false, message: `Valor duplicado en campo(s): ${fields}` });
-                return;
-            }
-            if (e.code === 'P2025') {
-                res.status(404).json({ success: false, message: 'Registro no encontrado' });
-                return;
-            }
+        if (e?.code === 'P2002') {
+            const fields = Array.isArray(e.meta?.target) ? e.meta.target.join(', ') : e.meta?.target;
+            res.status(409).json({ success: false, message: `Valor duplicado en campo(s): ${fields}` });
+            return;
+        }
+        if (e?.code === 'P2025') {
+            res.status(404).json({ success: false, message: 'Registro no encontrado' });
+            return;
         }
         if (error instanceof CentroSaludNoEncontradoError_1.CentroSaludNoEncontradoError) {
             res.status(404).json({ success: false, message: error.message });
@@ -202,16 +377,25 @@ let CentrosSaludController = class CentrosSaludController {
             res.status(404).json({ success: false, message: error.message });
             return;
         }
-        if (error?.message?.includes('El certificado sanitario')) {
-            res.status(400).json({ success: false, message: error.message });
+        const msg = error?.message ?? 'Error interno del servidor';
+        if (msg.includes('no encontrad') || msg.includes('no existe')) {
+            res.status(404).json({ success: false, message: msg });
             return;
         }
-        if (error?.message?.includes('transacción')) {
-            res.status(500).json({ success: false, message: 'Error al procesar la solicitud. Intente de nuevo.' });
+        if (msg.includes('No tienes permisos') || msg.includes('no puedes')) {
+            res.status(403).json({ success: false, message: msg });
             return;
         }
-        console.error('Error en completarPerfil:', error);
-        res.status(500).json({ success: false, message: error.message || 'Error interno del servidor' });
+        if (msg.includes('ya existe') || msg.includes('Ya existe') || msg.includes('pendiente')) {
+            res.status(409).json({ success: false, message: msg });
+            return;
+        }
+        if (msg.includes('requerido') || msg.includes('inválido') || msg.includes('debe')) {
+            res.status(400).json({ success: false, message: msg });
+            return;
+        }
+        console.error('Error en CentrosSaludController:', error);
+        res.status(500).json({ success: false, message: msg });
     }
 };
 exports.CentrosSaludController = CentrosSaludController;
@@ -219,6 +403,10 @@ exports.CentrosSaludController = CentrosSaludController = __decorate([
     (0, tsyringe_1.injectable)(),
     __param(0, (0, tsyringe_1.inject)(CompletarPerfilCentroSaludUseCase_1.CompletarPerfilCentroSaludUseCase)),
     __param(1, (0, tsyringe_1.inject)(RegistrarCentroUseCase_1.RegistrarCentroUseCase)),
+    __param(2, (0, tsyringe_1.inject)(GestionarCentroSaludUseCase_1.GestionarCentroSaludUseCase)),
+    __param(3, (0, tsyringe_1.inject)(GestionarSolicitudesAlianzaUseCase_1.GestionarSolicitudesAlianzaUseCase)),
     __metadata("design:paramtypes", [CompletarPerfilCentroSaludUseCase_1.CompletarPerfilCentroSaludUseCase,
-        RegistrarCentroUseCase_1.RegistrarCentroUseCase])
+        RegistrarCentroUseCase_1.RegistrarCentroUseCase,
+        GestionarCentroSaludUseCase_1.GestionarCentroSaludUseCase,
+        GestionarSolicitudesAlianzaUseCase_1.GestionarSolicitudesAlianzaUseCase])
 ], CentrosSaludController);

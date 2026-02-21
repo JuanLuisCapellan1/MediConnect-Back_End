@@ -378,6 +378,7 @@ model SolicitudAlianza {
   mensaje       String?     @db.VarChar(255)
   estado        String      @default("Pendiente") @db.VarChar(20)
   motivoRechazo String?     @map("motivo_rechazo")
+  iniciadaPor   String      @default("Centro") @map("iniciada_por") @db.VarChar(10)
   creadoEn      DateTime    @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn DateTime?   @map("actualizado_en") @db.Timestamptz(6)
   centroSalud   CentroSalud @relation(fields: [centroSaludId], references: [usuarioId])

@@ -493,6 +493,38 @@ container.register<ICentroSaludRepository>(
   }
 );
 
+// Solicitudes de Alianza
+import { ISolicitudAlianzaRepository } from '../../domain/repositories/ISolicitudAlianzaRepository';
+import { PrismaSolicitudAlianzaRepository } from '../../infrastructure/repositories/PrismaSolicitudAlianzaRepository';
+import { GestionarCentroSaludUseCase } from '../../application/use-cases/GestionarCentroSaludUseCase';
+import { GestionarSolicitudesAlianzaUseCase } from '../../application/use-cases/GestionarSolicitudesAlianzaUseCase';
+
+container.register<ISolicitudAlianzaRepository>(
+  'SolicitudAlianzaRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      return new PrismaSolicitudAlianzaRepository(prismaClient);
+    }
+  }
+);
+
+container.register(GestionarCentroSaludUseCase, {
+  useFactory: () => {
+    const centroRepo = container.resolve<ICentroSaludRepository>('CentroSaludRepository');
+    const supabase = container.resolve(SupabaseStorageService);
+    return new GestionarCentroSaludUseCase(centroRepo, supabase);
+  }
+});
+
+container.register(GestionarSolicitudesAlianzaUseCase, {
+  useFactory: () => {
+    const solicitudRepo = container.resolve<ISolicitudAlianzaRepository>('SolicitudAlianzaRepository');
+    const centroRepo = container.resolve<ICentroSaludRepository>('CentroSaludRepository');
+    return new GestionarSolicitudesAlianzaUseCase(solicitudRepo, centroRepo);
+  }
+});
+
 
 
 container.register<IExperienciaLaboralRepository>(
@@ -981,7 +1013,12 @@ container.register(CentrosSaludController, {
   useFactory: () => {
     const completarPerfilUseCase = container.resolve(CompletarPerfilCentroSaludUseCase);
     const registrarCentroUseCase = container.resolve(RegistrarCentroUseCase);
-    return new CentrosSaludController(completarPerfilUseCase, registrarCentroUseCase);
+    return new CentrosSaludController(
+      completarPerfilUseCase,
+      registrarCentroUseCase,
+      container.resolve(GestionarCentroSaludUseCase),
+      container.resolve(GestionarSolicitudesAlianzaUseCase)
+    );
   }
 });
 

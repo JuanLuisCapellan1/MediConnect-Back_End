@@ -104,4 +104,11 @@ router.patch('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.require
  * Eliminar doctor (solo Admin)
  */
 router.delete('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin'), (req, res) => doctorController.eliminar(req, res));
+// ─── Solicitudes de alianza (lado Doctor) ─────────────────────────────────────
+const tsyringe_1 = require("tsyringe");
+const CentrosSaludController_1 = require("../controllers/CentrosSaludController");
+const centroController = tsyringe_1.container.resolve(CentrosSaludController_1.CentrosSaludController);
+router.post('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => centroController.doctorEnviarSolicitud(req, res));
+router.get('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => centroController.doctorListarSolicitudes(req, res));
+router.put('/solicitudes-alianza/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => centroController.doctorResponderSolicitud(req, res));
 exports.default = router;

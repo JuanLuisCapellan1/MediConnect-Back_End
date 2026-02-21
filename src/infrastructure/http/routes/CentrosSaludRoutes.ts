@@ -2,31 +2,96 @@ import { Router } from 'express';
 import { container } from 'tsyringe';
 import multer from 'multer';
 import { CentrosSaludController } from '../controllers/CentrosSaludController';
-import { autenticarJWTOpcional } from '../middlewares/autenticacion'; // Middleware opcional para aceptar registro tokens
+import { autenticarJWT, autenticarJWTOpcional } from '../middlewares/autenticacion';
+import { requireRole } from '../middlewares/roleMiddleware';
 
 const centrosSaludRouter = Router();
 const controller = container.resolve(CentrosSaludController);
 
-// Configurar multer
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
-  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-/**
- * POST /centros-salud/completar-perfil
- * Requiere autenticación
- */
+const uploadFoto = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
+
+// ─── Registro (token opcional) ─────────────────────────────────────────────────
 centrosSaludRouter.post(
   '/completar-perfil',
-  autenticarJWTOpcional, // Middleware opcional (no bloqueante)
-  upload.fields([
-    { name: 'certificadoSanitario', maxCount: 1 },
-    { name: 'fotoPerfil', maxCount: 1 },
-  ]),
+  autenticarJWTOpcional,
+  upload.fields([{ name: 'certificadoSanitario', maxCount: 1 }, { name: 'fotoPerfil', maxCount: 1 }]),
   (req, res) => controller.completarPerfil(req, res)
+);
+
+// ─── Perfil ────────────────────────────────────────────────────────────────────
+centrosSaludRouter.get(
+  '/mi-perfil',
+  autenticarJWT,
+  requireRole('Centro'),
+  (req, res) => controller.obtenerPerfil(req, res)
+);
+
+centrosSaludRouter.put(
+  '/mi-perfil',
+  autenticarJWT,
+  requireRole('Centro'),
+  (req, res) => controller.actualizarPerfil(req, res)
+);
+
+centrosSaludRouter.put(
+  '/mi-perfil/foto',
+  autenticarJWT,
+  requireRole('Centro'),
+  uploadFoto.fields([{ name: 'fotoPerfil', maxCount: 1 }]),
+  (req, res) => controller.actualizarFoto(req, res)
+);
+
+// ─── Ubicación ─────────────────────────────────────────────────────────────────
+centrosSaludRouter.get(
+  '/mi-ubicacion',
+  autenticarJWT,
+  requireRole('Centro'),
+  (req, res) => controller.obtenerUbicacion(req, res)
+);
+
+centrosSaludRouter.put(
+  '/mi-ubicacion',
+  autenticarJWT,
+  requireRole('Centro'),
+  (req, res) => controller.actualizarUbicacion(req, res)
+);
+
+// ─── Doctores asociados ────────────────────────────────────────────────────────
+centrosSaludRouter.get(
+  '/mis-doctores',
+  autenticarJWT,
+  requireRole('Centro'),
+  (req, res) => controller.listarDoctores(req, res)
+);
+
+// ─── Solicitudes de alianza (lado Centro) ─────────────────────────────────────
+centrosSaludRouter.post(
+  '/solicitudes-alianza',
+  autenticarJWT,
+  requireRole('Centro'),
+  (req, res) => controller.enviarSolicitud(req, res)
+);
+
+centrosSaludRouter.get(
+  '/solicitudes-alianza',
+  autenticarJWT,
+  requireRole('Centro'),
+  (req, res) => controller.listarSolicitudes(req, res)
+);
+
+centrosSaludRouter.put(
+  '/solicitudes-alianza/:id',
+  autenticarJWT,
+  requireRole('Centro'),
+  (req, res) => controller.responderSolicitud(req, res)
 );
 
 export default centrosSaludRouter;

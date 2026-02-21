@@ -48,6 +48,8 @@ tags:
     description: Endpoints para gestionar tipos de centros de salud
   - name: CentrosSalud
     description: Endpoints para gestionar centros de salud y completar su perfil
+  - name: SolicitudesAlianza
+    description: Sistema de solicitudes de alianza bidireccional entre doctores y centros de salud
   - name: ExperienciasLaborales
     description: Endpoints para gestionar experiencias laborales de doctores
   - name: FormacionesAcademicas
@@ -9200,7 +9202,684 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
 
+  # ─── CENTROS DE SALUD: PERFIL & GESTIÓN ───────────────────────────────────────
 
+  /centros-salud/mi-perfil:
+    get:
+      summary: Obtener perfil completo del centro de salud autenticado
+      tags:
+        - CentrosSalud
+      security:
+        - bearerAuth: []
+      description: Retorna todos los datos del centro de salud autenticado, incluyendo tipo de centro, ubicación (barrio, sección) y datos de usuario.
+      responses:
+        '200':
+          description: Perfil obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/CentroSaludPerfil'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Centro de salud no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Editar perfil del centro de salud
+      tags:
+        - CentrosSalud
+      security:
+        - bearerAuth: []
+      description: Actualiza uno o más campos del perfil del centro de salud autenticado. Todos los campos son opcionales.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombreComercial:
+                  type: string
+                  minLength: 3
+                  maxLength: 120
+                  example: "Clínica del Este"
+                rnc:
+                  type: string
+                  minLength: 7
+                  maxLength: 20
+                  example: "4-99999-9"
+                tipoCentroId:
+                  type: integer
+                  example: 2
+                sitio_web:
+                  type: string
+                  format: uri
+                  example: "https://clinicadeleste.com"
+                descripcion:
+                  type: string
+                  maxLength: 1000
+                  example: "Centro médico especializado en atención primaria"
+      responses:
+        '200':
+          description: Perfil actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Perfil actualizado exitosamente"
+                  data:
+                    $ref: '#/components/schemas/CentroSaludPerfil'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /centros-salud/mi-perfil/foto:
+    put:
+      summary: Actualizar foto de perfil del centro de salud
+      tags:
+        - CentrosSalud
+      security:
+        - bearerAuth: []
+      description: "Sube o reemplaza la foto de perfil del centro. Formatos aceptados: JPG, PNG, WebP. Tamaño máximo 5MB."
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - fotoPerfil
+              properties:
+                fotoPerfil:
+                  type: string
+                  format: binary
+                  description: Imagen en JPG, PNG o WebP (máx. 5MB)
+      responses:
+        '200':
+          description: Foto actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Foto actualizada exitosamente"
+                  data:
+                    $ref: '#/components/schemas/CentroSaludPerfil'
+        '400':
+          description: Archivo inválido o no proporcionado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── CENTROS DE SALUD: UBICACIÓN ────────────────────────────────────────────
+
+  /centros-salud/mi-ubicacion:
+    get:
+      summary: Obtener ubicación del centro de salud
+      tags:
+        - CentrosSalud
+      security:
+        - bearerAuth: []
+      description: Retorna la ubicación actual del centro de salud con barrio, sub-barrio y sección.
+      responses:
+        '200':
+          description: Ubicación obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/UbicacionDetalle'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Actualizar ubicación del centro de salud
+      tags:
+        - CentrosSalud
+      security:
+        - bearerAuth: []
+      description: Actualiza la dirección y/o barrio del centro de salud. Todos los campos son opcionales.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                barrioId:
+                  type: integer
+                  example: 12
+                  description: ID del nuevo barrio
+                subBarrioId:
+                  type: integer
+                  nullable: true
+                  example: 3
+                  description: ID del sub-barrio (null para quitar)
+                direccion:
+                  type: string
+                  maxLength: 255
+                  example: "Av. 27 de Febrero #456"
+                codigoPostal:
+                  type: string
+                  maxLength: 10
+                  nullable: true
+                  example: "10109"
+      responses:
+        '200':
+          description: Ubicación actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Ubicación actualizada exitosamente"
+                  data:
+                    $ref: '#/components/schemas/UbicacionDetalle'
+        '400':
+          description: Barrio inválido o datos incorrectos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── CENTROS DE SALUD: DOCTORES ASOCIADOS ────────────────────────────────────
+
+  /centros-salud/mis-doctores:
+    get:
+      summary: Listar doctores asociados al centro de salud
+      tags:
+        - CentrosSalud
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna todos los doctores que tienen una solicitud de alianza **Aceptada** con el centro autenticado.
+        Incluye sus especialidades y servicios activos.
+      responses:
+        '200':
+          description: Lista de doctores asociados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        solicitudId:
+                          type: integer
+                          example: 7
+                        aliadoDesde:
+                          type: string
+                          format: date-time
+                          example: "2026-02-20T14:00:00Z"
+                        doctor:
+                          type: object
+                          properties:
+                            usuarioId:
+                              type: integer
+                              example: 5
+                            nombre:
+                              type: string
+                              example: "Carlos"
+                            apellido:
+                              type: string
+                              example: "Pérez"
+                            exequatur:
+                              type: string
+                              example: "EX-00123"
+                            calificacionPromedio:
+                              type: number
+                              example: 4.7
+                            estado:
+                              type: string
+                              example: "Activo"
+                            usuario:
+                              type: object
+                              properties:
+                                email:
+                                  type: string
+                                telefono:
+                                  type: string
+                                fotoPerfil:
+                                  type: string
+                            especialidades:
+                              type: array
+                              items:
+                                type: object
+                            servicios:
+                              type: array
+                              items:
+                                type: object
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── SOLICITUDES DE ALIANZA (LADO CENTRO) ─────────────────────────────────────
+
+  /centros-salud/solicitudes-alianza:
+    post:
+      summary: Centro envía solicitud de alianza a un doctor
+      tags:
+        - CentrosSalud
+        - SolicitudesAlianza
+      security:
+        - bearerAuth: []
+      description: |
+        El centro de salud autenticado envía una solicitud de alianza a un doctor.
+        
+        **Reglas:**
+        - No puede existir una solicitud Pendiente o Aceptada entre el mismo doctor y centro
+        - El doctor recibirá la solicitud y será el único que puede aceptarla o rechazarla
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - destinatarioId
+              properties:
+                destinatarioId:
+                  type: integer
+                  description: ID (usuarioId) del doctor al que se envía la solicitud
+                  example: 5
+                mensaje:
+                  type: string
+                  maxLength: 255
+                  example: "Nos gustaría contar con su colaboración en nuestro centro"
+      responses:
+        '201':
+          description: Solicitud enviada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Solicitud de alianza enviada exitosamente"
+                  data:
+                    $ref: '#/components/schemas/SolicitudAlianza'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Ya existe una alianza o solicitud pendiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: Listar solicitudes de alianza del centro
+      tags:
+        - CentrosSalud
+        - SolicitudesAlianza
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna todas las solicitudes de alianza del centro autenticado, tanto las que el centro inició como las que recibió de doctores.
+        Ordenadas de más reciente a más antigua.
+      responses:
+        '200':
+          description: Lista de solicitudes de alianza
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SolicitudAlianza'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /centros-salud/solicitudes-alianza/{id}:
+    put:
+      summary: Centro responde a una solicitud de alianza (iniciada por el doctor)
+      tags:
+        - CentrosSalud
+        - SolicitudesAlianza
+      security:
+        - bearerAuth: []
+      description: |
+        El centro de salud acepta o rechaza una solicitud que **inició un doctor**.
+        
+        **Reglas:**
+        - Solo se pueden responder solicitudes en estado `Pendiente`
+        - Solo puede responder el centro destinatario (el que no inició)
+        - Al rechazar, `motivoRechazo` es obligatorio
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la solicitud de alianza
+          example: 3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - estado
+              properties:
+                estado:
+                  type: string
+                  enum: [Aceptada, Rechazada]
+                  example: "Aceptada"
+                motivoRechazo:
+                  type: string
+                  maxLength: 255
+                  example: "No contamos con disponibilidad en este momento"
+      responses:
+        '200':
+          description: Solicitud respondida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Solicitud aceptada exitosamente"
+                  data:
+                    $ref: '#/components/schemas/SolicitudAlianza'
+        '400':
+          description: Estado inválido o solicitud no en estado Pendiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: No tienes permisos para responder esta solicitud
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Solicitud no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── SOLICITUDES DE ALIANZA (LADO DOCTOR) ─────────────────────────────────────
+
+  /doctores/solicitudes-alianza:
+    post:
+      summary: Doctor envía solicitud de alianza a un centro de salud
+      tags:
+        - Doctores
+        - SolicitudesAlianza
+      security:
+        - bearerAuth: []
+      description: |
+        El doctor autenticado envía una solicitud de alianza a un centro de salud.
+        
+        **Reglas:**
+        - No puede existir una solicitud Pendiente o Aceptada entre el mismo doctor y centro
+        - El centro recibirá la solicitud y será el único que puede aceptarla o rechazarla
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - destinatarioId
+              properties:
+                destinatarioId:
+                  type: integer
+                  description: ID (usuarioId) del centro de salud al que se envía la solicitud
+                  example: 10
+                mensaje:
+                  type: string
+                  maxLength: 255
+                  example: "Me gustaría colaborar en su centro de salud"
+      responses:
+        '201':
+          description: Solicitud enviada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Solicitud de alianza enviada exitosamente"
+                  data:
+                    $ref: '#/components/schemas/SolicitudAlianza'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Ya existe una alianza o solicitud pendiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      summary: Listar solicitudes de alianza del doctor
+      tags:
+        - Doctores
+        - SolicitudesAlianza
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna todas las solicitudes de alianza del doctor autenticado, tanto las que el doctor inició como las que recibió de centros.
+        Ordenadas de más reciente a más antigua.
+      responses:
+        '200':
+          description: Lista de solicitudes de alianza
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SolicitudAlianza'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /doctores/solicitudes-alianza/{id}:
+    put:
+      summary: Doctor responde a una solicitud de alianza (iniciada por el centro)
+      tags:
+        - Doctores
+        - SolicitudesAlianza
+      security:
+        - bearerAuth: []
+      description: |
+        El doctor acepta o rechaza una solicitud que **inició un centro de salud**.
+        
+        **Reglas:**
+        - Solo se pueden responder solicitudes en estado `Pendiente`
+        - Solo puede responder el doctor destinatario (el que no inició)
+        - Al rechazar, `motivoRechazo` es obligatorio
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la solicitud de alianza
+          example: 3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - estado
+              properties:
+                estado:
+                  type: string
+                  enum: [Aceptada, Rechazada]
+                  example: "Aceptada"
+                motivoRechazo:
+                  type: string
+                  maxLength: 255
+                  example: "No puedo comprometerme en este momento"
+      responses:
+        '200':
+          description: Solicitud respondida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Solicitud aceptada exitosamente"
+                  data:
+                    $ref: '#/components/schemas/SolicitudAlianza'
+        '400':
+          description: Estado inválido o solicitud no en estado Pendiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: No tienes permisos para responder esta solicitud
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Solicitud no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   # --- EXPERIENCIAS LABORALES ENDPOINTS ---
   /experiencias-laborales:
@@ -13615,6 +14294,176 @@ components:
                 nombre:
                   type: string
                   example: "República Dominicana"
+
+    CentroSaludPerfil:
+      type: object
+      properties:
+        usuarioId:
+          type: integer
+          example: 42
+        nombreComercial:
+          type: string
+          example: "Clínica del Centro"
+        rnc:
+          type: string
+          nullable: true
+          example: "4-12345-6"
+        estadoVerificacion:
+          type: string
+          example: "Aprobado"
+        estado:
+          type: string
+          example: "Activo"
+        sitio_web:
+          type: string
+          nullable: true
+          example: "https://clinicadelcentro.com"
+        descripcion:
+          type: string
+          nullable: true
+          example: "Centro médico especializado en atención primaria"
+        foto_perfil:
+          type: string
+          nullable: true
+          example: "https://cdn.supabase.com/centros-salud/42/foto_perfil.jpg"
+        creadoEn:
+          type: string
+          format: date-time
+        actualizadoEn:
+          type: string
+          format: date-time
+          nullable: true
+        usuario:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 42
+            email:
+              type: string
+              example: "clinica@example.com"
+            telefono:
+              type: string
+              nullable: true
+              example: "+1-809-123-4567"
+            fotoPerfil:
+              type: string
+              nullable: true
+        tipoCentro:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            nombre:
+              type: string
+              example: "Clínica"
+        ubicacion:
+          $ref: '#/components/schemas/UbicacionDetalle'
+
+    UbicacionDetalle:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 15
+        direccion:
+          type: string
+          example: "Calle Principal 123"
+        codigoPostal:
+          type: string
+          nullable: true
+          example: "10109"
+        estado:
+          type: string
+          example: "Activo"
+        barrio:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 5
+            nombre:
+              type: string
+              example: "Los Prados"
+            seccion:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 2
+                nombre:
+                  type: string
+                  example: "Centro"
+        subBarrio:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+              example: 3
+            nombre:
+              type: string
+              example: "Zona Norte"
+
+    SolicitudAlianza:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 7
+        doctorId:
+          type: integer
+          example: 5
+        centroSaludId:
+          type: integer
+          example: 42
+        mensaje:
+          type: string
+          nullable: true
+          example: "Nos gustaría contar con su colaboración"
+        estado:
+          type: string
+          enum: [Pendiente, Aceptada, Rechazada]
+          example: "Pendiente"
+        motivoRechazo:
+          type: string
+          nullable: true
+          example: null
+        iniciadaPor:
+          type: string
+          enum: [Doctor, Centro]
+          example: "Centro"
+          description: Indica quién inició la solicitud de alianza
+        creadoEn:
+          type: string
+          format: date-time
+          example: "2026-02-21T03:30:00Z"
+        actualizadoEn:
+          type: string
+          format: date-time
+          nullable: true
+        doctor:
+          type: object
+          properties:
+            usuarioId:
+              type: integer
+              example: 5
+            nombre:
+              type: string
+              example: "Carlos"
+            apellido:
+              type: string
+              example: "Pérez"
+        centroSalud:
+          type: object
+          properties:
+            usuarioId:
+              type: integer
+              example: 42
+            nombreComercial:
+              type: string
+              example: "Clínica del Centro"
 
     ErrorResponse:
       type: object
