@@ -39,6 +39,8 @@ export interface CrearServicioDto {
     precio: number;
     duracionMinutos: number;
     maxPacientesDia?: number;
+    /** Presencial | Teleconsulta | Mixta */
+    modalidad: 'Presencial' | 'Teleconsulta' | 'Mixta';
     /** Sedes (centros o ubicaciones) donde se impartirá el servicio */
     sedes?: SedeServicioDto[];
 }
@@ -53,6 +55,8 @@ export interface ActualizarServicioDto {
     precio?: number;
     duracionMinutos?: number;
     maxPacientesDia?: number;
+    /** Presencial | Teleconsulta | Mixta */
+    modalidad?: 'Presencial' | 'Teleconsulta' | 'Mixta';
     estado?: string;
     /** Nuevas sedes a agregar con sus horarios */
     sedesAgregar?: SedeServicioDto[];
@@ -66,6 +70,7 @@ export interface ActualizarServicioDto {
 export interface FiltrosServicioDto {
     especialidadId?: number;
     tipoServicioId?: number;
+    modalidad?: string;
     estado?: string;
     precioMin?: number;
     precioMax?: number;

@@ -14,7 +14,8 @@ class GestionarServiciosUseCase {
         this.validarImagenes(imagenes);
         if (dto.sedes)
             this.validarSedes(dto.sedes);
-        const servicio = await this.servicioRepository.crear(doctorId, dto.tipoServicioId, dto.especialidadId, dto.nombre.trim(), dto.descripcion?.trim() ?? null, dto.precio, dto.duracionMinutos, dto.maxPacientesDia ?? null, dto.sedes);
+        this.validarModalidad(dto.modalidad);
+        const servicio = await this.servicioRepository.crear(doctorId, dto.tipoServicioId, dto.especialidadId, dto.nombre.trim(), dto.descripcion?.trim() ?? null, dto.precio, dto.duracionMinutos, dto.maxPacientesDia ?? null, dto.modalidad, dto.sedes);
         if (imagenes.length > 0) {
             await this.subirYGuardarImagenes(servicio.id, doctorId, imagenes);
         }
@@ -70,6 +71,8 @@ class GestionarServiciosUseCase {
             throw new Error('No se puede modificar un servicio eliminado');
         if (dto.sedesAgregar)
             this.validarSedes(dto.sedesAgregar);
+        if (dto.modalidad)
+            this.validarModalidad(dto.modalidad);
         if (dto.estado !== undefined && !['Activo', 'Inactivo'].includes(dto.estado)) {
             throw new Error('Estado inválido. Valores permitidos: Activo, Inactivo');
         }
@@ -81,6 +84,7 @@ class GestionarServiciosUseCase {
             precio: dto.precio,
             duracionMinutos: dto.duracionMinutos,
             maxPacientesDia: dto.maxPacientesDia,
+            modalidad: dto.modalidad,
             estado: dto.estado,
             sedesAgregar: dto.sedesAgregar,
             sedesEliminar: dto.sedesEliminar,
@@ -165,6 +169,12 @@ class GestionarServiciosUseCase {
                 existentes.push({ inicio: inicioMin, fin: finMin, nombre: h.nombre });
                 rangosPorDia.set(h.diaSemana, existentes);
             }
+        }
+    }
+    validarModalidad(modalidad) {
+        const permitidos = ['Presencial', 'Teleconsulta', 'Mixta'];
+        if (!permitidos.includes(modalidad)) {
+            throw new Error(`Modalidad inválida. Valores permitidos: ${permitidos.join(', ')}`);
         }
     }
     validarFormatoHorario(h) {

@@ -180,10 +180,9 @@ tsyringe_1.container.register(UbicacionValidator_1.UbicacionValidator, {
 });
 tsyringe_1.container.register(HorarioValidator_1.HorarioValidator, {
     useFactory: () => {
-        const ubicacionesRepository = tsyringe_1.container.resolve('UbicacionesRepository');
         const usuarioRepository = tsyringe_1.container.resolve('UsuarioRepository');
         const horariosRepository = tsyringe_1.container.resolve('HorariosRepository');
-        return new HorarioValidator_1.HorarioValidator(ubicacionesRepository, usuarioRepository, horariosRepository);
+        return new HorarioValidator_1.HorarioValidator(usuarioRepository, horariosRepository);
     }
 });
 tsyringe_1.container.register(ValidadorServicioHorario_1.ValidadorServicioHorario, {

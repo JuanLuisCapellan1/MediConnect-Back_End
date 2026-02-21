@@ -239,10 +239,9 @@ container.register(UbicacionValidator, {
 
 container.register(HorarioValidator, {
   useFactory: () => {
-    const ubicacionesRepository = container.resolve<IUbicacionesRepository>('UbicacionesRepository');
     const usuarioRepository = container.resolve<IUsuarioRepository>('UsuarioRepository');
     const horariosRepository = container.resolve<IHorariosRepository>('HorariosRepository');
-    return new HorarioValidator(ubicacionesRepository, usuarioRepository, horariosRepository);
+    return new HorarioValidator(usuarioRepository, horariosRepository);
   }
 });
 

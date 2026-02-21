@@ -11,8 +11,7 @@ export interface IHorariosRepository {
     nombre: string,
     diaSemana: number,
     horaInicio: Date,
-    horaFin: Date,
-    ubicacionId: number
+    horaFin: Date
   ): Promise<Horario>;
 
   listarTodos(): Promise<Horario[]>;
@@ -30,7 +29,6 @@ export interface IHorariosRepository {
     diaSemana?: number,
     horaInicio?: Date,
     horaFin?: Date,
-    ubicacionId?: number,
     estado?: string
   ): Promise<Horario>;
 

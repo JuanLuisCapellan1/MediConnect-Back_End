@@ -15,6 +15,7 @@ export class Servicio {
         public readonly duracionMinutos: number,
         public readonly maxPacientesDia: number | null,
         public readonly calificacionPromedio: number | null,
+        public readonly modalidad: string,
         public readonly estado: string,
         public readonly creadoEn: Date,
         public readonly actualizadoEn: Date | null,

@@ -18,7 +18,7 @@ class PrismaHorariosRepository {
         this.prisma = prisma;
         this.redis = redis;
     }
-    async crear(doctorId, nombre, diaSemana, horaInicio, horaFin, ubicacionId) {
+    async crear(doctorId, nombre, diaSemana, horaInicio, horaFin) {
         try {
             const creado = await this.prisma.horario.create({
                 data: {
@@ -27,7 +27,6 @@ class PrismaHorariosRepository {
                     diaSemana,
                     horaInicio,
                     horaFin,
-                    ubicacionId,
                     estado: 'Activo'
                 }
             });
@@ -51,7 +50,7 @@ class PrismaHorariosRepository {
         const cached = await this.redis.get(this.CACHE_KEY);
         if (cached) {
             const horariosData = JSON.parse(cached);
-            return horariosData.map((h) => new Horario_1.Horario(h.id, h.doctorId, h.nombre, h.diaSemana, new Date(h.horaInicio), new Date(h.horaFin), h.ubicacionId, h.estado, new Date(h.creadoEn)));
+            return horariosData.map((h) => new Horario_1.Horario(h.id, h.doctorId, h.nombre, h.diaSemana, new Date(h.horaInicio), new Date(h.horaFin), h.estado, new Date(h.creadoEn)));
         }
         // 2. Si no hay caché, buscar en DB
         const horariosOrm = await this.prisma.horario.findMany({
@@ -70,7 +69,7 @@ class PrismaHorariosRepository {
         const cached = await this.redis.get(cacheKey);
         if (cached) {
             const horariosData = JSON.parse(cached);
-            return horariosData.map((h) => new Horario_1.Horario(h.id, h.doctorId, h.nombre, h.diaSemana, new Date(h.horaInicio), new Date(h.horaFin), h.ubicacionId, h.estado, new Date(h.creadoEn)));
+            return horariosData.map((h) => new Horario_1.Horario(h.id, h.doctorId, h.nombre, h.diaSemana, new Date(h.horaInicio), new Date(h.horaFin), h.estado, new Date(h.creadoEn)));
         }
         // 2. Si no hay caché, buscar en DB
         const horariosOrm = await this.prisma.horario.findMany({
@@ -92,7 +91,7 @@ class PrismaHorariosRepository {
         const cached = await this.redis.get(cacheKey);
         if (cached) {
             const horariosData = JSON.parse(cached);
-            return horariosData.map((h) => new Horario_1.Horario(h.id, h.doctorId, h.nombre, h.diaSemana, new Date(h.horaInicio), new Date(h.horaFin), h.ubicacionId, h.estado, new Date(h.creadoEn)));
+            return horariosData.map((h) => new Horario_1.Horario(h.id, h.doctorId, h.nombre, h.diaSemana, new Date(h.horaInicio), new Date(h.horaFin), h.estado, new Date(h.creadoEn)));
         }
         // 2. Si no hay caché, buscar en DB
         const horariosOrm = await this.prisma.horario.findMany({
@@ -114,7 +113,7 @@ class PrismaHorariosRepository {
             return null;
         return this.mapToDomain(horario);
     }
-    async actualizar(id, doctorId, nombre, diaSemana, horaInicio, horaFin, ubicacionId, estado) {
+    async actualizar(id, doctorId, nombre, diaSemana, horaInicio, horaFin, estado) {
         try {
             // Obtener el horario existente para saber qué caché invalidar
             const horarioExistente = await this.prisma.horario.findUnique({
@@ -134,8 +133,6 @@ class PrismaHorariosRepository {
                 dataActualizar.horaInicio = horaInicio;
             if (horaFin !== undefined)
                 dataActualizar.horaFin = horaFin;
-            if (ubicacionId !== undefined)
-                dataActualizar.ubicacion = { connect: { id: ubicacionId } };
             if (estado !== undefined)
                 dataActualizar.estado = estado;
             const actualizado = await this.prisma.horario.update({
@@ -190,7 +187,7 @@ class PrismaHorariosRepository {
         const cached = await this.redis.get(cacheKey);
         if (cached) {
             const horariosData = JSON.parse(cached);
-            return horariosData.map((h) => new Horario_1.Horario(h.id, h.doctorId, h.nombre, h.diaSemana, new Date(h.horaInicio), new Date(h.horaFin), h.ubicacionId, h.estado, new Date(h.creadoEn)));
+            return horariosData.map((h) => new Horario_1.Horario(h.id, h.doctorId, h.nombre, h.diaSemana, new Date(h.horaInicio), new Date(h.horaFin), h.estado, new Date(h.creadoEn)));
         }
         // 2. Si no hay caché, buscar en DB
         const horariosOrm = await this.prisma.horario.findMany({
@@ -220,7 +217,7 @@ class PrismaHorariosRepository {
         return Boolean(conflicto);
     }
     mapToDomain(horario) {
-        return new Horario_1.Horario(horario.id, horario.doctorId, horario.nombre, horario.diaSemana, horario.horaInicio, horario.horaFin, horario.ubicacionId, horario.estado, horario.creadoEn);
+        return new Horario_1.Horario(horario.id, horario.doctorId, horario.nombre, horario.diaSemana, horario.horaInicio, horario.horaFin, horario.estado, horario.creadoEn);
     }
 }
 exports.PrismaHorariosRepository = PrismaHorariosRepository;

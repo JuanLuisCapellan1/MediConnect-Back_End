@@ -22,7 +22,7 @@ class ServiciosController {
                 res.status(401).json({ success: false, message: 'No autenticado' });
                 return;
             }
-            const { tipoServicioId, especialidadId, nombre, descripcion, precio, duracionMinutos, maxPacientesDia } = req.body;
+            const { tipoServicioId, especialidadId, nombre, descripcion, precio, duracionMinutos, maxPacientesDia, modalidad } = req.body;
             if (!tipoServicioId || isNaN(Number(tipoServicioId))) {
                 res.status(400).json({ success: false, message: 'El campo tipoServicioId es requerido y debe ser numérico' });
                 return;
@@ -43,6 +43,10 @@ class ServiciosController {
                 res.status(400).json({ success: false, message: 'El campo duracionMinutos es requerido y debe ser un número positivo' });
                 return;
             }
+            if (!modalidad || !['Presencial', 'Teleconsulta', 'Mixta'].includes(modalidad)) {
+                res.status(400).json({ success: false, message: 'El campo modalidad es requerido. Valores válidos: Presencial, Teleconsulta, Mixta' });
+                return;
+            }
             // `sedes` puede llegar como string JSON, objeto, o array en multipart/form-data
             const sedes = this.parseSedes(req.body.sedes);
             const dto = {
@@ -53,6 +57,7 @@ class ServiciosController {
                 precio: Number(precio),
                 duracionMinutos: Number(duracionMinutos),
                 maxPacientesDia: maxPacientesDia !== undefined ? Number(maxPacientesDia) : undefined,
+                modalidad,
                 sedes
             };
             const archivos = req.files ?? [];
@@ -185,6 +190,7 @@ class ServiciosController {
                 precio: req.body.precio !== undefined ? Number(req.body.precio) : undefined,
                 duracionMinutos: req.body.duracionMinutos !== undefined ? Number(req.body.duracionMinutos) : undefined,
                 maxPacientesDia: req.body.maxPacientesDia !== undefined ? Number(req.body.maxPacientesDia) : undefined,
+                modalidad: req.body.modalidad,
                 estado: req.body.estado,
                 // Nuevas sedes con sus horarios (JSON o string JSON)
                 sedesAgregar: this.parseSedes(req.body.sedesAgregar),
@@ -421,6 +427,8 @@ class ServiciosController {
             filtros.especialidadId = Number(req.query.especialidadId);
         if (req.query.tipoServicioId)
             filtros.tipoServicioId = Number(req.query.tipoServicioId);
+        if (req.query.modalidad)
+            filtros.modalidad = String(req.query.modalidad);
         if (req.query.estado)
             filtros.estado = String(req.query.estado);
         if (req.query.precioMin)

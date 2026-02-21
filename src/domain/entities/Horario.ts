@@ -11,8 +11,7 @@ export class Horario {
     public readonly diaSemana: number,
     public readonly horaInicio: Date,
     public readonly horaFin: Date,
-    public readonly ubicacionId: number,
     public readonly estado: string,
     public readonly creadoEn: Date
-  ) {}
+  ) { }
 }

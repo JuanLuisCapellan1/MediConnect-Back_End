@@ -80,6 +80,7 @@ export class PrismaServicioRepository implements IServicioRepository {
         precio: number,
         duracionMinutos: number,
         maxPacientesDia: number | null,
+        modalidad: string,
         sedes?: SedeServicioDto[]
     ): Promise<Servicio> {
         const p = this.prisma as any;
@@ -98,6 +99,7 @@ export class PrismaServicioRepository implements IServicioRepository {
                     precio,
                     duracionMinutos,
                     maxPacientesDia,
+                    modalidad,
                     estado: 'Activo',
                     id_ubicacion: sedeUbicacion?.ubicacionId ?? null
                 }
@@ -194,6 +196,7 @@ export class PrismaServicioRepository implements IServicioRepository {
             if (datos.precio !== undefined) dataUpdate.precio = datos.precio;
             if (datos.duracionMinutos !== undefined) dataUpdate.duracionMinutos = datos.duracionMinutos;
             if (datos.maxPacientesDia !== undefined) dataUpdate.maxPacientesDia = datos.maxPacientesDia;
+            if (datos.modalidad !== undefined) dataUpdate.modalidad = datos.modalidad;
             if (datos.estado !== undefined) dataUpdate.estado = datos.estado;
 
             // Si hay nueva sede de ubicacion, actualizar id_ubicacion en servicio
@@ -377,6 +380,7 @@ export class PrismaServicioRepository implements IServicioRepository {
             s.nombre, s.descripcion ?? null,
             Number(s.precio), s.duracionMinutos, s.maxPacientesDia ?? null,
             s.calificacionPromedio != null ? Number(s.calificacionPromedio) : null,
+            s.modalidad ?? 'Presencial',
             s.estado, s.creadoEn, s.actualizadoEn ?? null
         );
     }
@@ -388,6 +392,7 @@ export class PrismaServicioRepository implements IServicioRepository {
             s.nombre, s.descripcion ?? null,
             Number(s.precio), s.duracionMinutos, s.maxPacientesDia ?? null,
             s.calificacionPromedio != null ? Number(s.calificacionPromedio) : null,
+            s.modalidad ?? 'Presencial',
             s.estado, s.creadoEn, s.actualizadoEn ?? null,
             imagenes,
             s.doctor,

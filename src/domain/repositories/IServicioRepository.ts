@@ -8,6 +8,7 @@ import { SedeServicioDto } from '../../application/dtos/ServicioDtos';
 export interface FiltrosServicio {
     especialidadId?: number;
     tipoServicioId?: number;
+    modalidad?: string;
     estado?: string;
     precioMin?: number;
     precioMax?: number;
@@ -23,6 +24,7 @@ export interface IServicioRepository {
         precio: number,
         duracionMinutos: number,
         maxPacientesDia: number | null,
+        modalidad: string,
         sedes?: SedeServicioDto[]
     ): Promise<Servicio>;
 
@@ -41,6 +43,7 @@ export interface IServicioRepository {
             precio?: number;
             duracionMinutos?: number;
             maxPacientesDia?: number;
+            modalidad?: string;
             estado?: string;
             sedesAgregar?: SedeServicioDto[];
             sedesEliminar?: number[];

@@ -14,7 +14,7 @@ export class GestionarHorariosUseCase {
     private horariosRepository: IHorariosRepository,
     private horarioValidator: HorarioValidator,
     private estadoValidator: EstadoValidator
-  ) {}
+  ) { }
 
   async crear(dto: CrearHorarioDto): Promise<Horario> {
     const { horaInicioDate, horaFinDate } = await this.horarioValidator.validarDatosHorario(
@@ -22,8 +22,7 @@ export class GestionarHorariosUseCase {
       dto.nombre,
       dto.diaSemana,
       dto.horaInicio,
-      dto.horaFin,
-      dto.ubicacionId
+      dto.horaFin
     );
 
     return await this.horariosRepository.crear(
@@ -31,8 +30,7 @@ export class GestionarHorariosUseCase {
       dto.nombre.trim(),
       dto.diaSemana,
       horaInicioDate,
-      horaFinDate,
-      dto.ubicacionId
+      horaFinDate
     );
   }
 
@@ -63,7 +61,6 @@ export class GestionarHorariosUseCase {
     const diaSemana = dto.diaSemana ?? existente.diaSemana;
     const horaInicio = dto.horaInicio ?? this.formatearHora(existente.horaInicio);
     const horaFin = dto.horaFin ?? this.formatearHora(existente.horaFin);
-    const ubicacionId = dto.ubicacionId ?? existente.ubicacionId;
 
     if (dto.estado) {
       await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo', 'Eliminado']);
@@ -75,7 +72,6 @@ export class GestionarHorariosUseCase {
       diaSemana,
       horaInicio,
       horaFin,
-      ubicacionId,
       dto.id
     );
 
@@ -86,7 +82,6 @@ export class GestionarHorariosUseCase {
       dto.diaSemana,
       dto.horaInicio ? horaInicioDate : undefined,
       dto.horaFin ? horaFinDate : undefined,
-      dto.ubicacionId,
       dto.estado
     );
   }

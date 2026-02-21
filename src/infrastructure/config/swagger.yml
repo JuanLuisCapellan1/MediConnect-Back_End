@@ -4465,17 +4465,12 @@ paths:
                   type: string
                   example: "12:00"
                   description: Hora de fin en formato HH:mm o HH:mm:ss
-                ubicacionId:
-                  type: integer
-                  example: 2
-                  description: ID de la ubicación donde se atiende
               required:
                 - doctorId
                 - nombre
                 - diaSemana
                 - horaInicio
                 - horaFin
-                - ubicacionId
       responses:
         '201':
           description: Horario creado exitosamente
@@ -4617,10 +4612,6 @@ paths:
                   type: string
                   example: "18:00"
                   description: Hora de fin en formato HH:mm o HH:mm:ss (opcional)
-                ubicacionId:
-                  type: integer
-                  example: 3
-                  description: ID de la ubicación (opcional)
                 estado:
                   type: string
                   enum: ["Activo", "Inactivo", "Eliminado"]
@@ -11661,6 +11652,7 @@ paths:
                 - nombre
                 - precio
                 - duracionMinutos
+                - modalidad
               properties:
                 tipoServicioId:
                   type: integer
@@ -11683,6 +11675,11 @@ paths:
                 maxPacientesDia:
                   type: integer
                   example: 20
+                modalidad:
+                  type: string
+                  enum: [Presencial, Teleconsulta, Mixta]
+                  example: "Presencial"
+                  description: Modalidad de atención del servicio
                 sedes:
                   type: array
                   description: |
@@ -11847,6 +11844,11 @@ paths:
                 maxPacientesDia:
                   type: integer
                   example: 15
+                modalidad:
+                  type: string
+                  enum: [Presencial, Teleconsulta, Mixta]
+                  example: "Teleconsulta"
+                  description: Modalidad de atención del servicio (opcional)
                 estado:
                   type: string
                   enum: [Activo, Inactivo]
@@ -12972,6 +12974,11 @@ components:
           type: number
           nullable: true
           example: 4.5
+        modalidad:
+          type: string
+          enum: [Presencial, Teleconsulta, Mixta]
+          example: "Presencial"
+          description: Modalidad de atención del servicio
         estado:
           type: string
           example: "Activo"
@@ -13365,10 +13372,6 @@ components:
           format: date-time
           example: "2025-01-22T12:00:00Z"
           description: Hora de fin del horario en formato ISO 8601
-        ubicacionId:
-          type: integer
-          example: 2
-          description: ID de la ubicación donde se atiende
         estado:
           type: string
           enum: ["Activo", "Inactivo", "Eliminado"]
@@ -14129,6 +14132,11 @@ components:
           type: number
           nullable: true
           example: 4.5
+        modalidad:
+          type: string
+          enum: [Presencial, Teleconsulta, Mixta]
+          example: "Presencial"
+          description: Modalidad de atención del servicio
         estado:
           type: string
           example: "Activo"

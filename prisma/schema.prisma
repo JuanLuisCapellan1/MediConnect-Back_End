@@ -150,6 +150,8 @@ model Pais {
   codigo_iso    String?       @db.VarChar(2)
   universidades Universidad[]
 
+  @@index([codigo_iso], map: "idx_paises_codigo_iso")
+  @@index([nombre], map: "idx_paises_nombre")
   @@map("paises")
 }
 
@@ -453,13 +455,13 @@ model Horario {
   diaSemana     Int               @map("dia_semana")
   horaInicio    DateTime          @map("hora_inicio") @db.Time(6)
   horaFin       DateTime          @map("hora_fin") @db.Time(6)
-  ubicacionId   Int               @map("id_ubicacion")
+  ubicacionId   Int?              @map("id_ubicacion")
   estado        String            @default("Activo") @db.VarChar(20)
   creadoEn      DateTime          @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn DateTime?         @map("actualizado_en") @db.Timestamptz(6)
   centroSaludId Int?              @map("id_centro_salud")
   centroSalud   CentroSalud?      @relation(fields: [centroSaludId], references: [usuarioId], onUpdate: NoAction)
-  ubicacion     Ubicacion         @relation(fields: [ubicacionId], references: [id])
+  ubicacion     Ubicacion?        @relation(fields: [ubicacionId], references: [id], onDelete: Restrict)
   doctor        Doctor            @relation(fields: [doctorId], references: [usuarioId])
   servicios     ServicioHorario[]
 
@@ -482,6 +484,7 @@ model Servicio {
   creadoEn                DateTime                  @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn           DateTime?                 @map("actualizado_en") @db.Timestamptz(6)
   id_ubicacion            Int?
+  modalidad               String                    @default("Presencial") @db.VarChar(20)
   citas                   Cita[]
   imagenes                ServicioImagen[]
   doctor                  Doctor                    @relation(fields: [doctorId], references: [usuarioId])
