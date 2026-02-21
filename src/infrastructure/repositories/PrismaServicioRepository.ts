@@ -79,6 +79,7 @@ export class PrismaServicioRepository implements IServicioRepository {
         descripcion: string | null,
         precio: number,
         duracionMinutos: number,
+        sesiones: number,
         maxPacientesDia: number | null,
         modalidad: string,
         sedes?: SedeServicioDto[]
@@ -98,6 +99,7 @@ export class PrismaServicioRepository implements IServicioRepository {
                     descripcion,
                     precio,
                     duracionMinutos,
+                    sesiones,
                     maxPacientesDia,
                     modalidad,
                     estado: 'Activo',
@@ -195,6 +197,7 @@ export class PrismaServicioRepository implements IServicioRepository {
             if (datos.descripcion !== undefined) dataUpdate.descripcion = datos.descripcion;
             if (datos.precio !== undefined) dataUpdate.precio = datos.precio;
             if (datos.duracionMinutos !== undefined) dataUpdate.duracionMinutos = datos.duracionMinutos;
+            if (datos.sesiones !== undefined) dataUpdate.sesiones = datos.sesiones;
             if (datos.maxPacientesDia !== undefined) dataUpdate.maxPacientesDia = datos.maxPacientesDia;
             if (datos.modalidad !== undefined) dataUpdate.modalidad = datos.modalidad;
             if (datos.estado !== undefined) dataUpdate.estado = datos.estado;

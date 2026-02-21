@@ -22,16 +22,16 @@ const uploadFoto = (0, multer_1.default)({
 // ─── Registro (token opcional) ─────────────────────────────────────────────────
 centrosSaludRouter.post('/completar-perfil', autenticacion_1.autenticarJWTOpcional, upload.fields([{ name: 'certificadoSanitario', maxCount: 1 }, { name: 'fotoPerfil', maxCount: 1 }]), (req, res) => controller.completarPerfil(req, res));
 // ─── Perfil ────────────────────────────────────────────────────────────────────
-centrosSaludRouter.get('/mi-perfil', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('CentroSalud'), (req, res) => controller.obtenerPerfil(req, res));
-centrosSaludRouter.put('/mi-perfil', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('CentroSalud'), (req, res) => controller.actualizarPerfil(req, res));
-centrosSaludRouter.put('/mi-perfil/foto', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('CentroSalud'), uploadFoto.fields([{ name: 'fotoPerfil', maxCount: 1 }]), (req, res) => controller.actualizarFoto(req, res));
+centrosSaludRouter.get('/mi-perfil', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Centro'), (req, res) => controller.obtenerPerfil(req, res));
+centrosSaludRouter.put('/mi-perfil', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Centro'), (req, res) => controller.actualizarPerfil(req, res));
+centrosSaludRouter.put('/mi-perfil/foto', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Centro'), uploadFoto.fields([{ name: 'fotoPerfil', maxCount: 1 }]), (req, res) => controller.actualizarFoto(req, res));
 // ─── Ubicación ─────────────────────────────────────────────────────────────────
-centrosSaludRouter.get('/mi-ubicacion', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('CentroSalud'), (req, res) => controller.obtenerUbicacion(req, res));
-centrosSaludRouter.put('/mi-ubicacion', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('CentroSalud'), (req, res) => controller.actualizarUbicacion(req, res));
+centrosSaludRouter.get('/mi-ubicacion', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Centro'), (req, res) => controller.obtenerUbicacion(req, res));
+centrosSaludRouter.put('/mi-ubicacion', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Centro'), (req, res) => controller.actualizarUbicacion(req, res));
 // ─── Doctores asociados ────────────────────────────────────────────────────────
-centrosSaludRouter.get('/mis-doctores', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('CentroSalud'), (req, res) => controller.listarDoctores(req, res));
+centrosSaludRouter.get('/mis-doctores', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Centro'), (req, res) => controller.listarDoctores(req, res));
 // ─── Solicitudes de alianza (lado Centro) ─────────────────────────────────────
-centrosSaludRouter.post('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('CentroSalud'), (req, res) => controller.enviarSolicitud(req, res));
-centrosSaludRouter.get('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('CentroSalud'), (req, res) => controller.listarSolicitudes(req, res));
-centrosSaludRouter.put('/solicitudes-alianza/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('CentroSalud'), (req, res) => controller.responderSolicitud(req, res));
+centrosSaludRouter.post('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Centro'), (req, res) => controller.enviarSolicitud(req, res));
+centrosSaludRouter.get('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Centro'), (req, res) => controller.listarSolicitudes(req, res));
+centrosSaludRouter.put('/solicitudes-alianza/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Centro'), (req, res) => controller.responderSolicitud(req, res));
 exports.default = centrosSaludRouter;

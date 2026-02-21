@@ -1738,7 +1738,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -1845,6 +1845,28 @@ paths:
             type: integer
             example: 1
           description: ID de la provincia
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Provincia obtenida exitosamente
@@ -2010,6 +2032,28 @@ paths:
             enum: ["Activo", "Inactivo", "Eliminado"]
             example: "Activo"
           description: Estado de las provincias a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Provincias encontradas
@@ -2058,6 +2102,28 @@ paths:
             enum: ["Activo", "Inactivo", "Eliminado"]
             example: "Activo"
           description: Estado de las provincias a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Provincias obtenidas exitosamente
@@ -2095,6 +2161,29 @@ paths:
       tags:
         - Municipios
       description: Obtiene una lista de todos los municipios con estado activo o inactivo.
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Municipios obtenidos exitosamente
@@ -2192,6 +2281,28 @@ paths:
             type: integer
             example: 1
           description: ID del municipio
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Municipio obtenido exitosamente
@@ -2353,6 +2464,28 @@ paths:
             type: integer
             example: 1
           description: ID de la provincia
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Municipios obtenidos exitosamente
@@ -2412,6 +2545,28 @@ paths:
             enum: ["Activo", "Inactivo", "Eliminado"]
             example: "Activo"
           description: Estado de los municipios a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Municipios encontrados
@@ -2457,6 +2612,28 @@ paths:
             enum: ["Activo", "Inactivo", "Eliminado"]
             example: "Activo"
           description: Estado de los municipios a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Municipios obtenidos exitosamente
@@ -2494,6 +2671,29 @@ paths:
       tags:
         - DistritosMunicipales
       description: Obtiene una lista de todos los distritos municipales con estado activo o inactivo.
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Distritos municipales obtenidos exitosamente
@@ -2591,6 +2791,28 @@ paths:
             type: integer
             example: 1
           description: ID del distrito municipal
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Distrito municipal obtenido exitosamente
@@ -2752,6 +2974,28 @@ paths:
             type: integer
             example: 1
           description: ID del municipio
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Distritos municipales obtenidos exitosamente
@@ -2811,6 +3055,28 @@ paths:
             enum: ["Activo", "Inactivo", "Eliminado"]
             example: "Activo"
           description: Estado de los distritos a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Distritos municipales encontrados
@@ -2856,6 +3122,28 @@ paths:
             enum: ["Activo", "Inactivo", "Eliminado"]
             example: "Activo"
           description: Estado de los distritos a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Distritos municipales obtenidos exitosamente
@@ -2893,6 +3181,29 @@ paths:
       tags:
         - Secciones
       description: Obtiene una lista de todas las secciones. Cada sección está asociada a al menos un distrito municipal o municipio (o ambos).
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Secciones obtenidas exitosamente
@@ -2995,6 +3306,28 @@ paths:
             type: integer
             example: 1
           description: ID de la sección
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Sección obtenida exitosamente
@@ -3162,6 +3495,28 @@ paths:
             type: integer
             example: 1
           description: ID del distrito municipal
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Secciones obtenidas exitosamente
@@ -3221,6 +3576,28 @@ paths:
             enum: ["Activo", "Inactivo", "Eliminado"]
             example: "Activo"
           description: Estado de las secciones a buscar (opcional)
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Sección encontrada
@@ -3267,6 +3644,28 @@ paths:
             enum: ["Activo", "Inactivo", "Eliminado"]
             example: "Activo"
           description: Estado de las secciones a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Secciones obtenidas exitosamente
@@ -3304,6 +3703,29 @@ paths:
       tags:
         - Barrios
       description: Obtiene una lista de todos los barrios con estado activo o inactivo.
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Barrios obtenidos exitosamente
@@ -3400,6 +3822,28 @@ paths:
             type: integer
             example: 1
           description: ID del barrio
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Barrio obtenido exitosamente
@@ -3560,6 +4004,28 @@ paths:
             type: integer
             example: 5
           description: ID de la sección
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Barrios de la sección obtenidos exitosamente
@@ -3619,6 +4085,28 @@ paths:
             enum: ["Activo", "Inactivo", "Eliminado"]
             example: "Activo"
           description: Estado de los barrios a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Barrios encontrados exitosamente
@@ -3664,6 +4152,28 @@ paths:
             enum: ["Activo", "Inactivo", "Eliminado"]
             example: "Activo"
           description: Estado de los barrios a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: Barrios obtenidos exitosamente
@@ -3745,6 +4255,29 @@ paths:
       tags:
         - SubBarrios
       description: Obtiene una lista de todos los SubBarrios no eliminados.
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: SubBarrios obtenidos exitosamente
@@ -3771,6 +4304,28 @@ paths:
             type: integer
             example: 1
           description: ID del SubBarrio
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: SubBarrio obtenido exitosamente
@@ -3904,6 +4459,28 @@ paths:
             type: integer
             example: 3
           description: ID del barrio
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: SubBarrios del barrio obtenidos exitosamente
@@ -3944,6 +4521,28 @@ paths:
             enum: ["Activo", "Inactivo", "Eliminado", "Todos"]
             example: "Activo"
           description: Estado de los SubBarrios a buscar (use "Todos" para obtener todos los estados)
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: SubBarrios encontrados exitosamente
@@ -3977,6 +4576,28 @@ paths:
             enum: ["Activo", "Inactivo", "Eliminado"]
             example: "Activo"
           description: Estado de los SubBarrios a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por coma (ej: nombre)"
       responses:
         '200':
           description: SubBarrios obtenidos exitosamente
@@ -4385,7 +5006,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -4844,7 +5465,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -5001,7 +5622,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -5536,7 +6157,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -5861,7 +6482,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -6803,7 +7424,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -8260,7 +8881,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -8866,7 +9487,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -10290,7 +10911,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -10862,7 +11483,7 @@ paths:
           in: query
           schema:
             type: string
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
           example: "en"
         - name: source
           in: query
@@ -12095,7 +12716,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -12175,7 +12796,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -12351,6 +12972,11 @@ paths:
                 duracionMinutos:
                   type: integer
                   example: 30
+                  description: "Duración de cada slot en minutos"
+                sesiones:
+                  type: integer
+                  example: 1
+                  description: "Número de slots que ocupa el servicio. Ej: si duracionMinutos=30 y sesiones=2, el servicio dura 1h."
                 maxPacientesDia:
                   type: integer
                   example: 20
@@ -12520,6 +13146,11 @@ paths:
                 duracionMinutos:
                   type: integer
                   example: 45
+                  description: "Duración de cada slot en minutos"
+                sesiones:
+                  type: integer
+                  example: 2
+                  description: "Número de slots que ocupa el servicio"
                 maxPacientesDia:
                   type: integer
                   example: 15
@@ -12982,7 +13613,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -13100,7 +13731,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -13279,7 +13910,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -13400,7 +14031,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -13554,7 +14185,7 @@ paths:
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática (activa la traducción)
+          description: "Idioma destino para traducción automática (activa la traducción)"
         - name: source
           in: query
           required: false
@@ -13645,6 +14276,11 @@ components:
         duracionMinutos:
           type: integer
           example: 30
+          description: "Duración de cada slot en minutos"
+        sesiones:
+          type: integer
+          example: 1
+          description: "Número de slots que ocupa el servicio. Ej: si duracionMinutos=30 y sesiones=2, el servicio dura 1h."
         maxPacientesDia:
           type: integer
           nullable: true

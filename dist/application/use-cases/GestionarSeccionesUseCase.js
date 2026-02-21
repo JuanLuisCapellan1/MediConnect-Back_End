@@ -36,6 +36,9 @@ let GestionarSeccionesUseCase = class GestionarSeccionesUseCase {
     async obtenerPorDistrito(distritoMunicipalId, estado) {
         return await this.seccionesRepository.obtenerPorDistrito(distritoMunicipalId, estado);
     }
+    async obtenerPorMunicipio(municipioId, estado) {
+        return await this.seccionesRepository.obtenerPorMunicipio(municipioId, estado);
+    }
     async buscarPorNombre(nombre, distritoMunicipalId, estado) {
         const seccion = await this.seccionesRepository.buscarPorNombre(nombre, distritoMunicipalId, estado);
         if (!seccion) {

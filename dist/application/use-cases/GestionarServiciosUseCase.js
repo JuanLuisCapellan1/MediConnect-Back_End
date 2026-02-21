@@ -15,7 +15,7 @@ class GestionarServiciosUseCase {
         if (dto.sedes)
             this.validarSedes(dto.sedes);
         this.validarModalidad(dto.modalidad);
-        const servicio = await this.servicioRepository.crear(doctorId, dto.tipoServicioId, dto.especialidadId, dto.nombre.trim(), dto.descripcion?.trim() ?? null, dto.precio, dto.duracionMinutos, dto.maxPacientesDia ?? null, dto.modalidad, dto.sedes);
+        const servicio = await this.servicioRepository.crear(doctorId, dto.tipoServicioId, dto.especialidadId, dto.nombre.trim(), dto.descripcion?.trim() ?? null, dto.precio, dto.duracionMinutos, dto.sesiones ?? 1, dto.maxPacientesDia ?? null, dto.modalidad, dto.sedes);
         if (imagenes.length > 0) {
             await this.subirYGuardarImagenes(servicio.id, doctorId, imagenes);
         }
@@ -83,6 +83,7 @@ class GestionarServiciosUseCase {
             descripcion: dto.descripcion?.trim(),
             precio: dto.precio,
             duracionMinutos: dto.duracionMinutos,
+            sesiones: dto.sesiones,
             maxPacientesDia: dto.maxPacientesDia,
             modalidad: dto.modalidad,
             estado: dto.estado,

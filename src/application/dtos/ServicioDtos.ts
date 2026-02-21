@@ -38,6 +38,12 @@ export interface CrearServicioDto {
     descripcion?: string;
     precio: number;
     duracionMinutos: number;
+    /**
+     * Número de slots que ocupa el servicio.
+     * Ej: si la duración del slot es 30min y sesiones=2 → el servicio dura 1h.
+     * @default 1
+     */
+    sesiones?: number;
     maxPacientesDia?: number;
     /** Presencial | Teleconsulta | Mixta */
     modalidad: 'Presencial' | 'Teleconsulta' | 'Mixta';
@@ -54,6 +60,8 @@ export interface ActualizarServicioDto {
     descripcion?: string;
     precio?: number;
     duracionMinutos?: number;
+    /** Número de slots que ocupa el servicio. @default 1 */
+    sesiones?: number;
     maxPacientesDia?: number;
     /** Presencial | Teleconsulta | Mixta */
     modalidad?: 'Presencial' | 'Teleconsulta' | 'Mixta';

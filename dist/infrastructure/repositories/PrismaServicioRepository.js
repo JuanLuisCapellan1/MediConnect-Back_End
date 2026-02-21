@@ -61,7 +61,7 @@ class PrismaServicioRepository {
         this.CACHE_TTL = 3600;
     }
     // ─── Crear ──────────────────────────────────────────────────────────────
-    async crear(doctorId, tipoServicioId, especialidadId, nombre, descripcion, precio, duracionMinutos, maxPacientesDia, modalidad, sedes) {
+    async crear(doctorId, tipoServicioId, especialidadId, nombre, descripcion, precio, duracionMinutos, sesiones, maxPacientesDia, modalidad, sedes) {
         const p = this.prisma;
         const creado = await p.$transaction(async (tx) => {
             // Determinar si hay sede con ubicacionId para asignarla al servicio
@@ -75,6 +75,7 @@ class PrismaServicioRepository {
                     descripcion,
                     precio,
                     duracionMinutos,
+                    sesiones,
                     maxPacientesDia,
                     modalidad,
                     estado: 'Activo',
@@ -170,6 +171,8 @@ class PrismaServicioRepository {
                 dataUpdate.precio = datos.precio;
             if (datos.duracionMinutos !== undefined)
                 dataUpdate.duracionMinutos = datos.duracionMinutos;
+            if (datos.sesiones !== undefined)
+                dataUpdate.sesiones = datos.sesiones;
             if (datos.maxPacientesDia !== undefined)
                 dataUpdate.maxPacientesDia = datos.maxPacientesDia;
             if (datos.modalidad !== undefined)

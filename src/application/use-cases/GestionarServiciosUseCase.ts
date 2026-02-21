@@ -44,6 +44,7 @@ export class GestionarServiciosUseCase {
             dto.descripcion?.trim() ?? null,
             dto.precio,
             dto.duracionMinutos,
+            dto.sesiones ?? 1,
             dto.maxPacientesDia ?? null,
             dto.modalidad,
             dto.sedes
@@ -110,6 +111,7 @@ export class GestionarServiciosUseCase {
             descripcion: dto.descripcion?.trim(),
             precio: dto.precio,
             duracionMinutos: dto.duracionMinutos,
+            sesiones: dto.sesiones,
             maxPacientesDia: dto.maxPacientesDia,
             modalidad: dto.modalidad,
             estado: dto.estado,

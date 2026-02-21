@@ -23,6 +23,7 @@ export interface IServicioRepository {
         descripcion: string | null,
         precio: number,
         duracionMinutos: number,
+        sesiones: number,
         maxPacientesDia: number | null,
         modalidad: string,
         sedes?: SedeServicioDto[]
@@ -42,6 +43,7 @@ export interface IServicioRepository {
             descripcion?: string;
             precio?: number;
             duracionMinutos?: number;
+            sesiones?: number;
             maxPacientesDia?: number;
             modalidad?: string;
             estado?: string;
