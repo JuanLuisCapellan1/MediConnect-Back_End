@@ -7,6 +7,7 @@ const express_1 = require("express");
 const multer_1 = __importDefault(require("multer"));
 const DoctorController_1 = require("../controllers/DoctorController");
 const DoctorIdiomaController_1 = require("../controllers/DoctorIdiomaController");
+const DoctorEspecialidadController_1 = require("../controllers/DoctorEspecialidadController");
 const autenticacion_1 = require("../middlewares/autenticacion");
 const roleMiddleware_1 = require("../middlewares/roleMiddleware");
 const TranslationMiddleware_1 = require("../middlewares/TranslationMiddleware");
@@ -15,6 +16,7 @@ const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage()
 const router = (0, express_1.Router)();
 const doctorController = new DoctorController_1.DoctorController();
 const doctorIdiomaController = new DoctorIdiomaController_1.DoctorIdiomaController();
+const doctorEspecialidadController = new DoctorEspecialidadController_1.DoctorEspecialidadController();
 /**
  * GET /doctores
  * Listar doctores (solo Admin)
@@ -67,6 +69,26 @@ router.patch('/idiomas/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1
  * Eliminar un idioma del doctor autenticado
  */
 router.delete('/idiomas/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorIdiomaController.eliminar(req, res));
+/**
+ * GET /doctores/especialidades
+ * Listar especialidades del doctor autenticado
+ */
+router.get('/especialidades', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorEspecialidadController.obtener(req, res));
+/**
+ * PUT /doctores/especialidades
+ * Reemplazar configuración completa de especialidades
+ */
+router.put('/especialidades', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorEspecialidadController.actualizar(req, res));
+/**
+ * PATCH /doctores/especialidades/:id_especialidad
+ * Cambiar cuál especialidad es la principal
+ */
+router.patch('/especialidades/:id_especialidad', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorEspecialidadController.cambiarPrincipal(req, res));
+/**
+ * DELETE /doctores/especialidades/:id_especialidad
+ * Eliminar una especialidad secundaria
+ */
+router.delete('/especialidades/:id_especialidad', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorEspecialidadController.eliminar(req, res));
 /**
  * GET /doctores/:id
  * Obtener doctor por ID (solo Admin)

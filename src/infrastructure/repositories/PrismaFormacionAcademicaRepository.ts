@@ -38,8 +38,10 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
                 universidad: {
                     select: {
                         nombre: true,
+                        paisId: true,
                         pais: {
                             select: {
+                                id: true,
                                 nombre: true,
                             },
                         },
@@ -69,8 +71,10 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
                 universidad: {
                     select: {
                         nombre: true,
+                        paisId: true,
                         pais: {
                             select: {
+                                id: true,
                                 nombre: true,
                             },
                         },
@@ -142,8 +146,10 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
                     universidad: {
                         select: {
                             nombre: true,
+                            paisId: true,
                             pais: {
                                 select: {
+                                    id: true,
                                     nombre: true,
                                 },
                             },
@@ -195,8 +201,10 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
                     universidad: {
                         select: {
                             nombre: true,
+                            paisId: true,
                             pais: {
                                 select: {
+                                    id: true,
                                     nombre: true,
                                 },
                             },
@@ -270,8 +278,10 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
                 universidad: {
                     select: {
                         nombre: true,
+                        paisId: true,
                         pais: {
                             select: {
+                                id: true,
                                 nombre: true,
                             },
                         },
@@ -361,13 +371,17 @@ export class PrismaFormacionAcademicaRepository implements IFormacionAcademicaRe
             data.estado,
             data.creadoEn,
             data.fecha_finalizacion,
-            data.en_curso,
+            data.enCurso ?? data.en_curso,
             data.actualizadoEn,
             // Mapear objetos relacionados si existen
             data.universidad
                 ? {
                     nombre: data.universidad.nombre,
-                    pais: { nombre: data.universidad.pais.nombre },
+                    paisId: data.universidad.paisId,
+                    pais: {
+                        id: data.universidad.pais.id,
+                        nombre: data.universidad.pais.nombre,
+                    },
                 }
                 : undefined
         );

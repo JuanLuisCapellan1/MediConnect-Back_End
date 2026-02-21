@@ -11,6 +11,6 @@ export class FormacionAcademica {
         public readonly enCurso?: boolean,
         public readonly actualizadoEn?: Date,
         // Objetos relacionados opcionales
-        public readonly universidad?: { nombre: string; pais: { nombre: string } }
+        public readonly universidad?: { nombre: string; paisId: number; pais: { id: number; nombre: string } }
     ) { }
 }

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { DoctorController } from '../controllers/DoctorController';
 import { DoctorIdiomaController } from '../controllers/DoctorIdiomaController';
+import { DoctorEspecialidadController } from '../controllers/DoctorEspecialidadController';
 import { autenticarJWT } from '../middlewares/autenticacion';
 import { requireRole } from '../middlewares/roleMiddleware';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
@@ -12,6 +13,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
 const doctorController = new DoctorController();
 const doctorIdiomaController = new DoctorIdiomaController();
+const doctorEspecialidadController = new DoctorEspecialidadController();
 
 /**
  * GET /doctores
@@ -127,6 +129,50 @@ router.delete(
     autenticarJWT,
     requireRole('Doctor'),
     (req, res) => doctorIdiomaController.eliminar(req, res)
+);
+
+/**
+ * GET /doctores/especialidades
+ * Listar especialidades del doctor autenticado
+ */
+router.get(
+    '/especialidades',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => doctorEspecialidadController.obtener(req, res)
+);
+
+/**
+ * PUT /doctores/especialidades
+ * Reemplazar configuración completa de especialidades
+ */
+router.put(
+    '/especialidades',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => doctorEspecialidadController.actualizar(req, res)
+);
+
+/**
+ * PATCH /doctores/especialidades/:id_especialidad
+ * Cambiar cuál especialidad es la principal
+ */
+router.patch(
+    '/especialidades/:id_especialidad',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => doctorEspecialidadController.cambiarPrincipal(req, res)
+);
+
+/**
+ * DELETE /doctores/especialidades/:id_especialidad
+ * Eliminar una especialidad secundaria
+ */
+router.delete(
+    '/especialidades/:id_especialidad',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => doctorEspecialidadController.eliminar(req, res)
 );
 
 /**

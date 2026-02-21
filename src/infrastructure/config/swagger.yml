@@ -8400,6 +8400,206 @@ paths:
         '500':
           description: Error interno del servidor
 
+  /doctores/especialidades:
+    get:
+      summary: Obtener especialidades del doctor autenticado
+      tags:
+        - Doctores
+      description: |
+        Retorna todas las especialidades activas del doctor autenticado,
+        ordenadas con la principal primero.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Especialidades obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EspecialidadDoctor'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '500':
+          description: Error interno del servidor
+
+    put:
+      summary: Reemplazar especialidades del doctor
+      tags:
+        - Doctores
+      description: |
+        Reemplaza **toda** la configuración de especialidades del doctor en una
+        transacción atómica:
+        - Elimina lógicamente las que ya no estén en la nueva lista.
+        - Crea las que sean nuevas.
+        - Actualiza `es_principal` en todas.
+
+        **Regla:** La especialidad principal no puede aparecer también en
+        `ids_especialidades_secundarias`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id_especialidad_principal
+              properties:
+                id_especialidad_principal:
+                  type: integer
+                  description: ID de la especialidad que será la principal
+                  example: 2
+                ids_especialidades_secundarias:
+                  type: array
+                  items:
+                    type: integer
+                  description: IDs de las especialidades secundarias (puede estar vacío)
+                  example: [3, 5]
+      responses:
+        '200':
+          description: Especialidades actualizadas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Especialidades actualizadas exitosamente."
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EspecialidadDoctor'
+        '400':
+          description: |
+            Solicitud inválida — falta `id_especialidad_principal` o la
+            especialidad principal aparece también en secundarias
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '404':
+          description: Una o más especialidades del catálogo no encontradas
+        '500':
+          description: Error interno del servidor
+
+  /doctores/especialidades/{id_especialidad}:
+    patch:
+      summary: Cambiar la especialidad principal del doctor
+      tags:
+        - Doctores
+      description: |
+        Cambia cuál especialidad es la principal del doctor.
+        La especialidad anterior principal pasa automáticamente a ser secundaria.
+
+        Si la especialidad indicada ya es la principal, no realiza ningún cambio
+        y retorna la lista actual.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id_especialidad
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la especialidad que pasará a ser principal
+          example: 3
+      responses:
+        '200':
+          description: Especialidad principal actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Especialidad principal actualizada exitosamente."
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EspecialidadDoctor'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '404':
+          description: La especialidad no está asociada al doctor o no está activa
+        '500':
+          description: Error interno del servidor
+
+    delete:
+      summary: Eliminar una especialidad secundaria del doctor
+      tags:
+        - Doctores
+      description: |
+        Elimina lógicamente una especialidad **secundaria** del doctor.
+
+        **Restricción:** No se puede eliminar la especialidad principal directamente.
+        Primero hay que designar otra como principal con `PATCH`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id_especialidad
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la especialidad secundaria a eliminar
+          example: 5
+      responses:
+        '200':
+          description: Especialidad eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Especialidad eliminada exitosamente."
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '404':
+          description: La especialidad no está asociada al doctor o no está activa
+        '409':
+          description: No se puede eliminar la especialidad principal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "No puedes eliminar la especialidad principal. Primero asigna otra especialidad como principal."
+        '500':
+          description: Error interno del servidor
+
   # --- ACCIONES (REVISIÓN DE DOCUMENTOS) ENDPOINTS ---
   /acciones/pendientes:
     get:
@@ -14099,6 +14299,37 @@ components:
         actualizadoEn:
           type: string
           format: date-time
+
+    EspecialidadDoctor:
+      type: object
+      description: Especialidad asociada a un doctor con su rol (principal o secundaria)
+      properties:
+        id_especialidad:
+          type: integer
+          example: 2
+        nombre:
+          type: string
+          description: Nombre de la especialidad
+          example: "Cardiología"
+        descripcion:
+          type: string
+          nullable: true
+          description: Descripción de la especialidad
+          example: "Especialidad médica que estudia el corazón y sus enfermedades."
+        es_principal:
+          type: boolean
+          description: Indica si esta especialidad es la principal del doctor
+          example: true
+        estado:
+          type: string
+          example: "Activo"
+        creado_en:
+          type: string
+          format: date-time
+        actualizado_en:
+          type: string
+          format: date-time
+          nullable: true
 
     Pais:
       type: object

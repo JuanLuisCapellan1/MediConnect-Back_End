@@ -247,6 +247,7 @@ model Ubicacion {
   barrio          Barrio                   @relation(fields: [barrioId], references: [id])
   subBarrio       SubBarrio?               @relation(fields: [subBarrioId], references: [id])
 
+  @@index([puntoGeografico], map: "idx_ubicaciones_geom", type: Gist)
   @@map("ubicaciones")
 }
 

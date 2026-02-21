@@ -37,11 +37,6 @@ export class PrismaPaisRepository implements IPaisRepository {
 
         const pais = await this.prisma.pais.findUnique({
             where: { id },
-            include: {
-                universidades: {
-                    where: { estado: 'Activo' },
-                },
-            },
         });
 
         if (pais) {
@@ -95,11 +90,6 @@ export class PrismaPaisRepository implements IPaisRepository {
                 skip: (pagina - 1) * limite,
                 take: limite,
                 orderBy: { nombre: 'asc' },
-                include: {
-                    universidades: {
-                        where: { estado: 'Activo' },
-                    },
-                },
             }),
             this.prisma.pais.count({ where }),
         ]);
@@ -124,11 +114,6 @@ export class PrismaPaisRepository implements IPaisRepository {
                 nombre: pais.nombre,
                 codigo_iso: pais.codigo_iso,
                 estado: pais.estado,
-            },
-            include: {
-                universidades: {
-                    where: { estado: 'Activo' },
-                },
             },
         });
 
