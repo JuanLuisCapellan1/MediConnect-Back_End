@@ -12,8 +12,8 @@ class GestionarHorariosUseCase {
         this.estadoValidator = estadoValidator;
     }
     async crear(dto) {
-        const { horaInicioDate, horaFinDate } = await this.horarioValidator.validarDatosHorario(dto.doctorId, dto.nombre, dto.diaSemana, dto.horaInicio, dto.horaFin, dto.ubicacionId);
-        return await this.horariosRepository.crear(dto.doctorId, dto.nombre.trim(), dto.diaSemana, horaInicioDate, horaFinDate, dto.ubicacionId);
+        const { horaInicioDate, horaFinDate } = await this.horarioValidator.validarDatosHorario(dto.doctorId, dto.nombre, dto.diaSemana, dto.horaInicio, dto.horaFin);
+        return await this.horariosRepository.crear(dto.doctorId, dto.nombre.trim(), dto.diaSemana, horaInicioDate, horaFinDate);
     }
     async listarTodos() {
         return await this.horariosRepository.listarTodos();
@@ -37,12 +37,11 @@ class GestionarHorariosUseCase {
         const diaSemana = dto.diaSemana ?? existente.diaSemana;
         const horaInicio = dto.horaInicio ?? this.formatearHora(existente.horaInicio);
         const horaFin = dto.horaFin ?? this.formatearHora(existente.horaFin);
-        const ubicacionId = dto.ubicacionId ?? existente.ubicacionId;
         if (dto.estado) {
             await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo', 'Eliminado']);
         }
-        const { horaInicioDate, horaFinDate } = await this.horarioValidator.validarDatosHorario(doctorId, nombre, diaSemana, horaInicio, horaFin, ubicacionId, dto.id);
-        return await this.horariosRepository.actualizar(dto.id, dto.doctorId, dto.nombre?.trim(), dto.diaSemana, dto.horaInicio ? horaInicioDate : undefined, dto.horaFin ? horaFinDate : undefined, dto.ubicacionId, dto.estado);
+        const { horaInicioDate, horaFinDate } = await this.horarioValidator.validarDatosHorario(doctorId, nombre, diaSemana, horaInicio, horaFin, dto.id);
+        return await this.horariosRepository.actualizar(dto.id, dto.doctorId, dto.nombre?.trim(), dto.diaSemana, dto.horaInicio ? horaInicioDate : undefined, dto.horaFin ? horaFinDate : undefined, dto.estado);
     }
     async eliminar(id) {
         return await this.horariosRepository.eliminar(id);

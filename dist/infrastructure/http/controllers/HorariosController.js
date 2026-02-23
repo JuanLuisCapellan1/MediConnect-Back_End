@@ -18,10 +18,9 @@ class HorariosController {
      */
     async crear(req, res) {
         try {
-            const { doctorId, nombre, diaSemana, horaInicio, horaFin, ubicacionId } = req.body;
+            const { doctorId, nombre, diaSemana, horaInicio, horaFin } = req.body;
             const doctorIdNum = Number(doctorId);
             const diaSemanaNum = Number(diaSemana);
-            const ubicacionIdNum = Number(ubicacionId);
             if (!doctorId || isNaN(doctorIdNum)) {
                 res.status(400).json({ success: false, message: 'El campo doctorId es requerido y debe ser numérico' });
                 return;
@@ -42,17 +41,12 @@ class HorariosController {
                 res.status(400).json({ success: false, message: 'El campo horaFin es requerido y debe ser string' });
                 return;
             }
-            if (!ubicacionId || isNaN(ubicacionIdNum)) {
-                res.status(400).json({ success: false, message: 'El campo ubicacionId es requerido y debe ser numérico' });
-                return;
-            }
             const dto = {
                 doctorId: doctorIdNum,
                 nombre,
                 diaSemana: diaSemanaNum,
                 horaInicio,
-                horaFin,
-                ubicacionId: ubicacionIdNum
+                horaFin
             };
             const horario = await this.gestionarHorariosUseCase.crear(dto);
             res.status(201).json({
@@ -161,7 +155,6 @@ class HorariosController {
                 diaSemana: req.body.diaSemana !== undefined ? Number(req.body.diaSemana) : undefined,
                 horaInicio: req.body.horaInicio,
                 horaFin: req.body.horaFin,
-                ubicacionId: req.body.ubicacionId !== undefined ? Number(req.body.ubicacionId) : undefined,
                 estado: req.body.estado
             };
             const horarioActualizado = await this.gestionarHorariosUseCase.actualizar(dto);

@@ -44,11 +44,6 @@ let PrismaPaisRepository = class PrismaPaisRepository {
             return JSON.parse(cached);
         const pais = await this.prisma.pais.findUnique({
             where: { id },
-            include: {
-                universidades: {
-                    where: { estado: 'Activo' },
-                },
-            },
         });
         if (pais) {
             const entidad = new Pais_1.Pais(pais);
@@ -91,11 +86,6 @@ let PrismaPaisRepository = class PrismaPaisRepository {
                 skip: (pagina - 1) * limite,
                 take: limite,
                 orderBy: { nombre: 'asc' },
-                include: {
-                    universidades: {
-                        where: { estado: 'Activo' },
-                    },
-                },
             }),
             this.prisma.pais.count({ where }),
         ]);
@@ -116,11 +106,6 @@ let PrismaPaisRepository = class PrismaPaisRepository {
                 nombre: pais.nombre,
                 codigo_iso: pais.codigo_iso,
                 estado: pais.estado,
-            },
-            include: {
-                universidades: {
-                    where: { estado: 'Activo' },
-                },
             },
         });
         // Invalidar caché del registro específico y del listado

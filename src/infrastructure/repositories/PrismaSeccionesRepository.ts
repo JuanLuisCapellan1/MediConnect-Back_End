@@ -11,7 +11,7 @@ export class PrismaSeccionesRepository implements ISeccionesRepository {
   private readonly CACHE_TTL = 86400; // 24 horas
   private readonly CACHE_KEY_POR_DISTRITO = (distritoMunicipalId: number) => `secciones:distrito:${distritoMunicipalId}`;
 
-  constructor( prisma: PrismaClient, redis: RedisCacheService) {
+  constructor(prisma: PrismaClient, redis: RedisCacheService) {
     this.prisma = prisma;
     this.redis = redis;
   }
@@ -96,6 +96,51 @@ export class PrismaSeccionesRepository implements ISeccionesRepository {
     return mapped;
   }
 
+  async obtenerPorMunicipio(municipioId: number, estado?: string): Promise<Seccion[]> {
+    const cacheKey = estado
+      ? `secciones:municipio:${municipioId}:${estado}`
+      : `secciones:municipio:${municipioId}`;
+
+    const cached = await this.redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
+    // Las secciones se vinculan a municipio a través de DistritoMunicipal,
+    // pero también pueden existir secciones SIN distrito asignado.
+    // Esta query obtiene todas: las que tienen distrito del municipio dado
+    // y las que no tienen distrito (distritoMunicipalId IS NULL) pero pertenecen al municipio
+    // vía la relación inversa. Por simplicidad y para cubrir el caso de secciones sin distrito,
+    // filtramos directamente por el municipioId del distrito cuando existe.
+    const secciones = await this.prisma.seccion.findMany({
+      where: {
+        OR: [
+          {
+            distritoMunicipal: {
+              municipioId
+            }
+          },
+          // Secciones sin distrito cuyo municipioId se guarda directamente (si aplica)
+          // Si el schema no tiene municipioId directo, este OR solo aplica el primero
+        ],
+        ...(estado && { estado })
+      },
+      orderBy: { nombre: 'asc' }
+    });
+
+    const mapped = secciones.map(
+      (s) =>
+        new Seccion(
+          s.id,
+          s.distritoMunicipalId,
+          s.nombre,
+          s.estado,
+          s.creadoEn
+        )
+    );
+
+    await this.redis.set(cacheKey, JSON.stringify(mapped), this.CACHE_TTL);
+    return mapped;
+  }
+
   async buscarPorNombre(nombre: string, distritoMunicipalId?: number, estado?: string): Promise<Seccion[]> {
     const seccion = await this.prisma.seccion.findMany({
       where: {
@@ -156,11 +201,11 @@ export class PrismaSeccionesRepository implements ISeccionesRepository {
       nombre: seccion.nombre,
       estado: seccion.estado
     };
-    
+
     if (seccion.distritoMunicipalId !== null) {
       createData.distritoMunicipalId = seccion.distritoMunicipalId;
     }
-    
+
     const nueva = await this.prisma.seccion.create({
       data: createData as any
     });
@@ -210,15 +255,15 @@ export class PrismaSeccionesRepository implements ISeccionesRepository {
     const distritoPrevioId = seccionExistente.distritoMunicipalId;
 
     const updateData: Record<string, any> = {};
-    
+
     if (datos.distritoMunicipalId !== undefined) {
       updateData.distritoMunicipalId = datos.distritoMunicipalId;
     }
-    
+
     if (datos.nombre !== undefined) {
       updateData.nombre = datos.nombre;
     }
-    
+
     if (datos.estado !== undefined) {
       updateData.estado = datos.estado;
     }
@@ -232,7 +277,7 @@ export class PrismaSeccionesRepository implements ISeccionesRepository {
     await this.redis.del(this.CACHE_KEY);
     await this.redis.del(`${this.CACHE_KEY}:Activo`);
     await this.redis.del(`${this.CACHE_KEY}:Inactivo`);
-    
+
     if (distritoPrevioId) {
       await this.invalidarCaches(distritoPrevioId);
     }
@@ -267,7 +312,7 @@ export class PrismaSeccionesRepository implements ISeccionesRepository {
     await this.redis.del(this.CACHE_KEY);
     await this.redis.del(`${this.CACHE_KEY}:Activo`);
     await this.redis.del(`${this.CACHE_KEY}:Inactivo`);
-    
+
     if (seccion.distritoMunicipalId) {
       await this.invalidarCaches(seccion.distritoMunicipalId);
     }

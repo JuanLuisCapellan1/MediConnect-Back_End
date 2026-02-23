@@ -69,6 +69,26 @@ class SeccionesController {
             this.manejarError(error, res);
         }
     }
+    async obtenerPorMunicipio(req, res) {
+        try {
+            const municipioId = parseInt(String(req.params.municipioId));
+            if (isNaN(municipioId) || municipioId <= 0) {
+                res.status(400).json({ success: false, message: 'El municipioId debe ser un número positivo' });
+                return;
+            }
+            const { estado } = req.query;
+            const secciones = await this.gestionarSeccionesUseCase.obtenerPorMunicipio(municipioId, typeof estado === 'string' ? estado : undefined);
+            res.status(200).json({
+                success: true,
+                data: secciones,
+                count: secciones.length,
+                message: 'Secciones del municipio obtenidas exitosamente'
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
     async buscarPorNombre(req, res) {
         try {
             const { nombre, distritoMunicipalId } = req.query;

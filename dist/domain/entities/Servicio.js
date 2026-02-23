@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Servicio = void 0;
 class Servicio {
-    constructor(id, doctorId, tipoServicioId, especialidadId, nombre, descripcion, precio, duracionMinutos, maxPacientesDia, calificacionPromedio, estado, creadoEn, actualizadoEn, 
+    constructor(id, doctorId, tipoServicioId, especialidadId, nombre, descripcion, precio, duracionMinutos, maxPacientesDia, calificacionPromedio, modalidad, estado, creadoEn, actualizadoEn, 
     // Relaciones opcionales
     imagenes, doctor, especialidad, tipoServicio, 
     /** Horarios — cada uno lleva día, hora, ubicación y opcionalmente centro */
@@ -21,6 +21,7 @@ class Servicio {
         this.duracionMinutos = duracionMinutos;
         this.maxPacientesDia = maxPacientesDia;
         this.calificacionPromedio = calificacionPromedio;
+        this.modalidad = modalidad;
         this.estado = estado;
         this.creadoEn = creadoEn;
         this.actualizadoEn = actualizadoEn;

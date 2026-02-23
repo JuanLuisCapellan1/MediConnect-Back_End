@@ -28,8 +28,7 @@ export class PrismaHorariosRepository implements IHorariosRepository {
     nombre: string,
     diaSemana: number,
     horaInicio: Date,
-    horaFin: Date,
-    ubicacionId: number
+    horaFin: Date
   ): Promise<Horario> {
     try {
       const creado = await this.prisma.horario.create({
@@ -39,7 +38,6 @@ export class PrismaHorariosRepository implements IHorariosRepository {
           diaSemana,
           horaInicio,
           horaFin,
-          ubicacionId,
           estado: 'Activo'
         }
       });
@@ -73,7 +71,6 @@ export class PrismaHorariosRepository implements IHorariosRepository {
           h.diaSemana,
           new Date(h.horaInicio),
           new Date(h.horaFin),
-          h.ubicacionId,
           h.estado,
           new Date(h.creadoEn)
         )
@@ -110,7 +107,6 @@ export class PrismaHorariosRepository implements IHorariosRepository {
           h.diaSemana,
           new Date(h.horaInicio),
           new Date(h.horaFin),
-          h.ubicacionId,
           h.estado,
           new Date(h.creadoEn)
         )
@@ -150,7 +146,6 @@ export class PrismaHorariosRepository implements IHorariosRepository {
           h.diaSemana,
           new Date(h.horaInicio),
           new Date(h.horaFin),
-          h.ubicacionId,
           h.estado,
           new Date(h.creadoEn)
         )
@@ -188,7 +183,6 @@ export class PrismaHorariosRepository implements IHorariosRepository {
     diaSemana?: number,
     horaInicio?: Date,
     horaFin?: Date,
-    ubicacionId?: number,
     estado?: string
   ): Promise<Horario> {
     try {
@@ -208,7 +202,6 @@ export class PrismaHorariosRepository implements IHorariosRepository {
       if (diaSemana !== undefined) dataActualizar.diaSemana = diaSemana;
       if (horaInicio !== undefined) dataActualizar.horaInicio = horaInicio;
       if (horaFin !== undefined) dataActualizar.horaFin = horaFin;
-      if (ubicacionId !== undefined) dataActualizar.ubicacion = { connect: { id: ubicacionId } };
       if (estado !== undefined) dataActualizar.estado = estado;
 
       const actualizado = await this.prisma.horario.update({
@@ -283,7 +276,6 @@ export class PrismaHorariosRepository implements IHorariosRepository {
           h.diaSemana,
           new Date(h.horaInicio),
           new Date(h.horaFin),
-          h.ubicacionId,
           h.estado,
           new Date(h.creadoEn)
         )
@@ -337,7 +329,6 @@ export class PrismaHorariosRepository implements IHorariosRepository {
       horario.diaSemana,
       horario.horaInicio,
       horario.horaFin,
-      horario.ubicacionId,
       horario.estado,
       horario.creadoEn
     );

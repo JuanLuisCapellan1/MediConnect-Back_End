@@ -34,6 +34,7 @@ export class GestionarServiciosUseCase {
     async crear(doctorId: number, dto: CrearServicioDto, imagenes: ImagenUpload[] = []): Promise<Servicio> {
         this.validarImagenes(imagenes);
         if (dto.sedes) this.validarSedes(dto.sedes);
+        this.validarModalidad(dto.modalidad);
 
         const servicio = await this.servicioRepository.crear(
             doctorId,
@@ -43,7 +44,9 @@ export class GestionarServiciosUseCase {
             dto.descripcion?.trim() ?? null,
             dto.precio,
             dto.duracionMinutos,
+            dto.sesiones ?? 1,
             dto.maxPacientesDia ?? null,
+            dto.modalidad,
             dto.sedes
         );
 
@@ -95,6 +98,7 @@ export class GestionarServiciosUseCase {
         if (existente.estado === 'Eliminado') throw new Error('No se puede modificar un servicio eliminado');
 
         if (dto.sedesAgregar) this.validarSedes(dto.sedesAgregar);
+        if (dto.modalidad) this.validarModalidad(dto.modalidad);
 
         if (dto.estado !== undefined && !['Activo', 'Inactivo'].includes(dto.estado)) {
             throw new Error('Estado inválido. Valores permitidos: Activo, Inactivo');
@@ -107,7 +111,9 @@ export class GestionarServiciosUseCase {
             descripcion: dto.descripcion?.trim(),
             precio: dto.precio,
             duracionMinutos: dto.duracionMinutos,
+            sesiones: dto.sesiones,
             maxPacientesDia: dto.maxPacientesDia,
+            modalidad: dto.modalidad,
             estado: dto.estado,
             sedesAgregar: dto.sedesAgregar,
             sedesEliminar: dto.sedesEliminar,
@@ -201,6 +207,13 @@ export class GestionarServiciosUseCase {
                 existentes.push({ inicio: inicioMin, fin: finMin, nombre: h.nombre });
                 rangosPorDia.set(h.diaSemana, existentes);
             }
+        }
+    }
+
+    private validarModalidad(modalidad: string): void {
+        const permitidos = ['Presencial', 'Teleconsulta', 'Mixta'];
+        if (!permitidos.includes(modalidad)) {
+            throw new Error(`Modalidad inválida. Valores permitidos: ${permitidos.join(', ')}`);
         }
     }
 

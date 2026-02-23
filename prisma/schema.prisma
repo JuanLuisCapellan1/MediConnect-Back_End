@@ -150,6 +150,8 @@ model Pais {
   codigo_iso    String?       @db.VarChar(2)
   universidades Universidad[]
 
+  @@index([codigo_iso], map: "idx_paises_codigo_iso")
+  @@index([nombre], map: "idx_paises_nombre")
   @@map("paises")
 }
 
@@ -247,6 +249,7 @@ model Ubicacion {
   barrio          Barrio                   @relation(fields: [barrioId], references: [id])
   subBarrio       SubBarrio?               @relation(fields: [subBarrioId], references: [id])
 
+  @@index([puntoGeografico], map: "idx_ubicaciones_geom", type: Gist)
   @@map("ubicaciones")
 }
 
@@ -257,7 +260,6 @@ model Especialidad {
   estado      String               @default("Activo") @db.VarChar(20)
   creadoEn    DateTime             @default(now()) @map("creado_en") @db.Timestamptz(6)
   doctores    DoctorEspecialidad[]
-  formaciones FormacionAcademica[]
   servicios   Servicio[]
 
   @@map("especialidades")
@@ -334,20 +336,22 @@ model TipoSeguro {
 }
 
 model FormacionAcademica {
-  id                 Int          @id @default(autoincrement()) @map("id_formacion")
-  doctorId           Int          @map("id_doctor")
-  universidadId      Int          @map("id_universidad")
-  especialidadId     Int          @map("id_especialidad")
-  fecha_inicio       DateTime     @db.Date
-  fecha_finalizacion DateTime?    @db.Date
-  estado             String       @default("Activo") @db.VarChar(20)
-  creadoEn           DateTime     @default(now()) @map("creado_en") @db.Timestamptz(6)
-  actualizadoEn      DateTime?    @map("actualizado_en") @db.Timestamptz(6)
-  doctor             Doctor       @relation(fields: [doctorId], references: [usuarioId])
-  especialidad       Especialidad @relation(fields: [especialidadId], references: [id])
-  universidad        Universidad  @relation(fields: [universidadId], references: [id])
+  id                 Int         @id @default(autoincrement()) @map("id_formacion")
+  doctorId           Int         @map("id_doctor")
+  universidadId      Int         @map("id_universidad")
+  fecha_inicio       DateTime    @db.Date
+  fecha_finalizacion DateTime?   @db.Date
+  estado             String      @default("Activo") @db.VarChar(20)
+  creadoEn           DateTime    @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn      DateTime?   @map("actualizado_en") @db.Timestamptz(6)
+  nombre             String      @default("Sin especificar") @db.VarChar(150)
+  enCurso           Boolean     @default(false) @map("en_curso")
+  doctor             Doctor      @relation(fields: [doctorId], references: [usuarioId])
+  universidad        Universidad @relation(fields: [universidadId], references: [id])
 
-  @@unique([doctorId, universidadId, especialidadId], map: "uq_formacion_detalle_nuevo")
+  @@unique([doctorId, universidadId, nombre], map: "uq_formacion_detalle_nuevo")
+  @@index([doctorId, estado, enCurso], map: "idx_formaciones_doctor_activas")
+  @@index([universidadId], map: "idx_formaciones_universidad")
   @@map("formaciones_academicas")
 }
 
@@ -376,6 +380,7 @@ model SolicitudAlianza {
   motivoRechazo String?     @map("motivo_rechazo")
   creadoEn      DateTime    @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn DateTime?   @map("actualizado_en") @db.Timestamptz(6)
+  iniciadaPor   String      @default("Centro") @map("iniciada_por") @db.VarChar(10)
   centroSalud   CentroSalud @relation(fields: [centroSaludId], references: [usuarioId])
   doctor        Doctor      @relation(fields: [doctorId], references: [usuarioId])
 
@@ -451,13 +456,13 @@ model Horario {
   diaSemana     Int               @map("dia_semana")
   horaInicio    DateTime          @map("hora_inicio") @db.Time(6)
   horaFin       DateTime          @map("hora_fin") @db.Time(6)
-  ubicacionId   Int               @map("id_ubicacion")
+  ubicacionId   Int?              @map("id_ubicacion")
   estado        String            @default("Activo") @db.VarChar(20)
   creadoEn      DateTime          @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn DateTime?         @map("actualizado_en") @db.Timestamptz(6)
   centroSaludId Int?              @map("id_centro_salud")
   centroSalud   CentroSalud?      @relation(fields: [centroSaludId], references: [usuarioId], onUpdate: NoAction)
-  ubicacion     Ubicacion         @relation(fields: [ubicacionId], references: [id])
+  ubicacion     Ubicacion?        @relation(fields: [ubicacionId], references: [id], onDelete: Restrict)
   doctor        Doctor            @relation(fields: [doctorId], references: [usuarioId])
   servicios     ServicioHorario[]
 
@@ -480,6 +485,8 @@ model Servicio {
   creadoEn                DateTime                  @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn           DateTime?                 @map("actualizado_en") @db.Timestamptz(6)
   id_ubicacion            Int?
+  modalidad               String                    @default("Presencial") @db.VarChar(20)
+  sesiones                Int                       @default(1)
   citas                   Cita[]
   imagenes                ServicioImagen[]
   doctor                  Doctor                    @relation(fields: [doctorId], references: [usuarioId])

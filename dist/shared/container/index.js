@@ -180,10 +180,9 @@ tsyringe_1.container.register(UbicacionValidator_1.UbicacionValidator, {
 });
 tsyringe_1.container.register(HorarioValidator_1.HorarioValidator, {
     useFactory: () => {
-        const ubicacionesRepository = tsyringe_1.container.resolve('UbicacionesRepository');
         const usuarioRepository = tsyringe_1.container.resolve('UsuarioRepository');
         const horariosRepository = tsyringe_1.container.resolve('HorariosRepository');
-        return new HorarioValidator_1.HorarioValidator(ubicacionesRepository, usuarioRepository, horariosRepository);
+        return new HorarioValidator_1.HorarioValidator(usuarioRepository, horariosRepository);
     }
 });
 tsyringe_1.container.register(ValidadorServicioHorario_1.ValidadorServicioHorario, {
@@ -353,6 +352,29 @@ tsyringe_1.container.register('CentroSaludRepository', {
         const prismaClient = tsyringe_1.container.resolve('PrismaClient');
         const redisCache = tsyringe_1.container.resolve(RedisCacheService_1.RedisCacheService);
         return new PrismaCentroSaludRepository_1.PrismaCentroSaludRepository(prismaClient, redisCache);
+    }
+});
+const PrismaSolicitudAlianzaRepository_1 = require("../../infrastructure/repositories/PrismaSolicitudAlianzaRepository");
+const GestionarCentroSaludUseCase_1 = require("../../application/use-cases/GestionarCentroSaludUseCase");
+const GestionarSolicitudesAlianzaUseCase_1 = require("../../application/use-cases/GestionarSolicitudesAlianzaUseCase");
+tsyringe_1.container.register('SolicitudAlianzaRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        return new PrismaSolicitudAlianzaRepository_1.PrismaSolicitudAlianzaRepository(prismaClient);
+    }
+});
+tsyringe_1.container.register(GestionarCentroSaludUseCase_1.GestionarCentroSaludUseCase, {
+    useFactory: () => {
+        const centroRepo = tsyringe_1.container.resolve('CentroSaludRepository');
+        const supabase = tsyringe_1.container.resolve(SupabaseStorageService_1.SupabaseStorageService);
+        return new GestionarCentroSaludUseCase_1.GestionarCentroSaludUseCase(centroRepo, supabase);
+    }
+});
+tsyringe_1.container.register(GestionarSolicitudesAlianzaUseCase_1.GestionarSolicitudesAlianzaUseCase, {
+    useFactory: () => {
+        const solicitudRepo = tsyringe_1.container.resolve('SolicitudAlianzaRepository');
+        const centroRepo = tsyringe_1.container.resolve('CentroSaludRepository');
+        return new GestionarSolicitudesAlianzaUseCase_1.GestionarSolicitudesAlianzaUseCase(solicitudRepo, centroRepo);
     }
 });
 tsyringe_1.container.register('IExperienciaLaboralRepository', {
@@ -717,7 +739,7 @@ tsyringe_1.container.register(CentrosSaludController_1.CentrosSaludController, {
     useFactory: () => {
         const completarPerfilUseCase = tsyringe_1.container.resolve(CompletarPerfilCentroSaludUseCase_1.CompletarPerfilCentroSaludUseCase);
         const registrarCentroUseCase = tsyringe_1.container.resolve(RegistrarCentroUseCase_1.RegistrarCentroUseCase);
-        return new CentrosSaludController_1.CentrosSaludController(completarPerfilUseCase, registrarCentroUseCase);
+        return new CentrosSaludController_1.CentrosSaludController(completarPerfilUseCase, registrarCentroUseCase, tsyringe_1.container.resolve(GestionarCentroSaludUseCase_1.GestionarCentroSaludUseCase), tsyringe_1.container.resolve(GestionarSolicitudesAlianzaUseCase_1.GestionarSolicitudesAlianzaUseCase));
     }
 });
 tsyringe_1.container.register(RefreshAccessTokenUseCase_1.RefreshAccessTokenUseCase, {

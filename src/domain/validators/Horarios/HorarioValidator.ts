@@ -4,7 +4,6 @@
  */
 
 import { inject, injectable } from 'tsyringe';
-import { IUbicacionesRepository } from '../../repositories/IUbicacionesRepository';
 import { IUsuarioRepository } from '../../repositories/IUsuarioRepository';
 import { IHorariosRepository } from '../../repositories/IHorariosRepository';
 import { HorarioConflictoError } from '../../errors/Horarios/HorarioConflictoError';
@@ -12,10 +11,9 @@ import { HorarioConflictoError } from '../../errors/Horarios/HorarioConflictoErr
 @injectable()
 export class HorarioValidator {
   constructor(
-    @inject('UbicacionesRepository') private ubicacionesRepository: IUbicacionesRepository,
     @inject('UsuarioRepository') private usuarioRepository: IUsuarioRepository,
     @inject('HorariosRepository') private horariosRepository: IHorariosRepository
-  ) {}
+  ) { }
 
   /**
    * Valida datos base del horario y devuelve las horas parseadas.
@@ -26,7 +24,6 @@ export class HorarioValidator {
     diaSemana: number,
     horaInicio: string,
     horaFin: string,
-    ubicacionId: number,
     excluirId?: number
   ): Promise<{ horaInicioDate: Date; horaFinDate: Date }> {
     if (!doctorId || doctorId <= 0) {
@@ -45,10 +42,6 @@ export class HorarioValidator {
       throw new Error('El día de la semana debe estar entre 0 y 6');
     }
 
-    if (!ubicacionId || ubicacionId <= 0) {
-      throw new Error('El ID de la ubicación es requerido y debe ser válido');
-    }
-
     const usuario = await this.usuarioRepository.buscarPorId(doctorId);
     if (!usuario || !usuario.esDoctor()) {
       throw new Error(`El usuario con ID ${doctorId} no es un Doctor válido`);
@@ -56,11 +49,6 @@ export class HorarioValidator {
 
     if (!usuario.esActivo()) {
       throw new Error(`El doctor con ID ${doctorId} no está activo`);
-    }
-
-    const ubicacion = await this.ubicacionesRepository.buscarPorId(ubicacionId);
-    if (!ubicacion || ubicacion.estado !== 'Activo') {
-      throw new Error(`La ubicación con ID ${ubicacionId} no es válida o está inactiva`);
     }
 
     const horaInicioDate = this.parseHora(horaInicio);

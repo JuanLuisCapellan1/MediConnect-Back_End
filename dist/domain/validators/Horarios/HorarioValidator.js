@@ -20,15 +20,14 @@ exports.HorarioValidator = void 0;
 const tsyringe_1 = require("tsyringe");
 const HorarioConflictoError_1 = require("../../errors/Horarios/HorarioConflictoError");
 let HorarioValidator = class HorarioValidator {
-    constructor(ubicacionesRepository, usuarioRepository, horariosRepository) {
-        this.ubicacionesRepository = ubicacionesRepository;
+    constructor(usuarioRepository, horariosRepository) {
         this.usuarioRepository = usuarioRepository;
         this.horariosRepository = horariosRepository;
     }
     /**
      * Valida datos base del horario y devuelve las horas parseadas.
      */
-    async validarDatosHorario(doctorId, nombre, diaSemana, horaInicio, horaFin, ubicacionId, excluirId) {
+    async validarDatosHorario(doctorId, nombre, diaSemana, horaInicio, horaFin, excluirId) {
         if (!doctorId || doctorId <= 0) {
             throw new Error('El ID del doctor es requerido y debe ser válido');
         }
@@ -41,19 +40,12 @@ let HorarioValidator = class HorarioValidator {
         if (diaSemana === undefined || diaSemana < 0 || diaSemana > 6) {
             throw new Error('El día de la semana debe estar entre 0 y 6');
         }
-        if (!ubicacionId || ubicacionId <= 0) {
-            throw new Error('El ID de la ubicación es requerido y debe ser válido');
-        }
         const usuario = await this.usuarioRepository.buscarPorId(doctorId);
         if (!usuario || !usuario.esDoctor()) {
             throw new Error(`El usuario con ID ${doctorId} no es un Doctor válido`);
         }
         if (!usuario.esActivo()) {
             throw new Error(`El doctor con ID ${doctorId} no está activo`);
-        }
-        const ubicacion = await this.ubicacionesRepository.buscarPorId(ubicacionId);
-        if (!ubicacion || ubicacion.estado !== 'Activo') {
-            throw new Error(`La ubicación con ID ${ubicacionId} no es válida o está inactiva`);
         }
         const horaInicioDate = this.parseHora(horaInicio);
         const horaFinDate = this.parseHora(horaFin);
@@ -83,8 +75,7 @@ let HorarioValidator = class HorarioValidator {
 exports.HorarioValidator = HorarioValidator;
 exports.HorarioValidator = HorarioValidator = __decorate([
     (0, tsyringe_1.injectable)(),
-    __param(0, (0, tsyringe_1.inject)('UbicacionesRepository')),
-    __param(1, (0, tsyringe_1.inject)('UsuarioRepository')),
-    __param(2, (0, tsyringe_1.inject)('HorariosRepository')),
-    __metadata("design:paramtypes", [Object, Object, Object])
+    __param(0, (0, tsyringe_1.inject)('UsuarioRepository')),
+    __param(1, (0, tsyringe_1.inject)('HorariosRepository')),
+    __metadata("design:paramtypes", [Object, Object])
 ], HorarioValidator);

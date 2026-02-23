@@ -10,7 +10,6 @@
  * @property diaSemana - Día de la semana (0=Domingo, 1=Lunes, ..., 6=Sábado)
  * @property horaInicio - Hora de inicio en formato HH:mm o HH:mm:ss
  * @property horaFin - Hora de fin en formato HH:mm o HH:mm:ss
- * @property ubicacionId - ID de la ubicación (requerido)
  */
 export interface CrearHorarioDto {
   doctorId: number;
@@ -18,7 +17,6 @@ export interface CrearHorarioDto {
   diaSemana: number;
   horaInicio: string;
   horaFin: string;
-  ubicacionId: number;
 }
 
 /**
@@ -29,7 +27,6 @@ export interface CrearHorarioDto {
  * @property diaSemana - Día de la semana (0-6) (opcional)
  * @property horaInicio - Hora de inicio (HH:mm o HH:mm:ss) (opcional)
  * @property horaFin - Hora de fin (HH:mm o HH:mm:ss) (opcional)
- * @property ubicacionId - ID de la ubicación (opcional)
  * @property estado - Estado (Activo, Inactivo, Eliminado) (opcional)
  */
 export interface ActualizarHorarioDto {
@@ -39,6 +36,5 @@ export interface ActualizarHorarioDto {
   diaSemana?: number;
   horaInicio?: string;
   horaFin?: string;
-  ubicacionId?: number;
   estado?: string;
 }

@@ -19,7 +19,7 @@ export class SeccionesController {
         typeof estado === 'string' ? estado : undefined
       );
       res.status(200).json({
-        success : true,
+        success: true,
         data: secciones,
         count: secciones.length,
         message: 'Secciones obtenidas exitosamente'
@@ -66,9 +66,8 @@ export class SeccionesController {
   async obtenerPorDistrito(req: Request, res: Response): Promise<void> {
     try {
       const { distritoMunicipalId } = req.params;
-
       const { estado } = req.params;
-      
+
       const secciones = await this.gestionarSeccionesUseCase.obtenerPorDistrito(
         parseInt(distritoMunicipalId as string),
         typeof estado === 'string' ? estado : undefined
@@ -81,6 +80,29 @@ export class SeccionesController {
         message: 'Secciones del distrito municipal obtenidas exitosamente'
       });
 
+    } catch (error) {
+      this.manejarError(error, res);
+    }
+  }
+
+  async obtenerPorMunicipio(req: Request, res: Response): Promise<void> {
+    try {
+      const municipioId = parseInt(String(req.params.municipioId));
+      if (isNaN(municipioId) || municipioId <= 0) {
+        res.status(400).json({ success: false, message: 'El municipioId debe ser un número positivo' });
+        return;
+      }
+      const { estado } = req.query;
+      const secciones = await this.gestionarSeccionesUseCase.obtenerPorMunicipio(
+        municipioId,
+        typeof estado === 'string' ? estado : undefined
+      );
+      res.status(200).json({
+        success: true,
+        data: secciones,
+        count: secciones.length,
+        message: 'Secciones del municipio obtenidas exitosamente'
+      });
     } catch (error) {
       this.manejarError(error, res);
     }
@@ -99,7 +121,7 @@ export class SeccionesController {
         return;
       }
 
-      if(distritoMunicipalId && (isNaN(parseInt(distritoMunicipalId as string)) || parseInt(distritoMunicipalId as string) <= 0) ) {
+      if (distritoMunicipalId && (isNaN(parseInt(distritoMunicipalId as string)) || parseInt(distritoMunicipalId as string) <= 0)) {
         res.status(400).json({
           success: false,
           message: 'El parámetro distritoMunicipalId debe ser un número positivo'
@@ -107,7 +129,7 @@ export class SeccionesController {
         return;
       }
 
-      if(!estado || (typeof estado === 'string' && estado.trim().length === 0)) {
+      if (!estado || (typeof estado === 'string' && estado.trim().length === 0)) {
         res.status(400).json({
           success: false,
           message: 'El parámetro estado es requerido'
@@ -173,7 +195,7 @@ export class SeccionesController {
         return;
       }
 
-      if(dto.distritoMunicipalId && (isNaN(dto.distritoMunicipalId) || dto.distritoMunicipalId <= 0) ) {
+      if (dto.distritoMunicipalId && (isNaN(dto.distritoMunicipalId) || dto.distritoMunicipalId <= 0)) {
         res.status(400).json({
           success: false,
           message: 'El parámetro distritoMunicipalId debe ser un número positivo'
@@ -198,7 +220,7 @@ export class SeccionesController {
       const { id } = req.params;
       const dto: ActualizarSeccionDto = req.body;
 
-      if(isNaN(parseInt(id as string)) || parseInt(id as string) <= 0) {
+      if (isNaN(parseInt(id as string)) || parseInt(id as string) <= 0) {
         res.status(400).json({
           success: false,
           message: 'El ID debe ser un número positivo'
@@ -206,7 +228,7 @@ export class SeccionesController {
         return;
       }
 
-      if(dto.distritoMunicipalId && (isNaN(dto.distritoMunicipalId) || dto.distritoMunicipalId <= 0) ) {
+      if (dto.distritoMunicipalId && (isNaN(dto.distritoMunicipalId) || dto.distritoMunicipalId <= 0)) {
         res.status(400).json({
           success: false,
           message: 'El parámetro distritoMunicipalId debe ser un número positivo'
@@ -233,7 +255,7 @@ export class SeccionesController {
     try {
       const { id } = req.params;
 
-      if(isNaN(parseInt(id as string)) || parseInt(id as string) <= 0) {
+      if (isNaN(parseInt(id as string)) || parseInt(id as string) <= 0) {
         res.status(400).json({
           success: false,
           message: 'El ID debe ser un número positivo'
@@ -258,22 +280,22 @@ export class SeccionesController {
      * @param error - El error lanzado
      * @param res - Response de Express
      */
-    private manejarError(error: any, res: Response): void {
-      if (error instanceof SeccionYaExisteError) {
-        res.status(409).json({
-          success: false,
-          message: error.message
-        });
-      } else if (error instanceof VerificarValor) {
-        res.status(400).json({
-          success: false,
-          message: error.message
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          message: error.message || 'Error interno del servidor'
-        });
-      }
+  private manejarError(error: any, res: Response): void {
+    if (error instanceof SeccionYaExisteError) {
+      res.status(409).json({
+        success: false,
+        message: error.message
+      });
+    } else if (error instanceof VerificarValor) {
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Error interno del servidor'
+      });
     }
+  }
 }
