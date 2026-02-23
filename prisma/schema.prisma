@@ -206,16 +206,18 @@ model Seccion {
 }
 
 model Barrio {
-  id          Int         @id @default(autoincrement()) @map("id_barrio")
-  seccionId   Int         @map("id_seccion")
-  nombre      String      @db.VarChar(80)
-  estado      String      @default("Activo") @db.VarChar(20)
-  creadoEn    DateTime    @default(now()) @map("creado_en") @db.Timestamptz(6)
-  seccion     Seccion     @relation(fields: [seccionId], references: [id])
+  id          Int                      @id @default(autoincrement()) @map("id_barrio")
+  seccionId   Int                      @map("id_seccion")
+  nombre      String                   @db.VarChar(80)
+  estado      String                   @default("Activo") @db.VarChar(20)
+  creadoEn    DateTime                 @default(now()) @map("creado_en") @db.Timestamptz(6)
+  geom        Unsupported("geometry")?
+  seccion     Seccion                  @relation(fields: [seccionId], references: [id])
   subBarrios  SubBarrio[]
   ubicaciones Ubicacion[]
 
   @@unique([seccionId, nombre])
+  @@index([geom], map: "idx_barrios_geom", type: Gist)
   @@map("barrios")
 }
 
@@ -317,6 +319,7 @@ model SeguroMedico {
   urlImage  String?          @map("url_image")
   estado    String           @default("Activo") @db.VarChar(20)
   creadoEn  DateTime         @default(now()) @map("creado_en") @db.Timestamptz(6)
+  citas     Cita[]
   doctores  DoctorSeguro[]
   pacientes PacienteSeguro[]
 
@@ -329,6 +332,7 @@ model TipoSeguro {
   descripcion String?
   estado      String           @default("Activo") @db.VarChar(20)
   creadoEn    DateTime         @default(now()) @map("creado_en") @db.Timestamptz(6)
+  citas       Cita[]
   doctores    DoctorSeguro[]
   pacientes   PacienteSeguro[]
 
@@ -345,7 +349,7 @@ model FormacionAcademica {
   creadoEn           DateTime    @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn      DateTime?   @map("actualizado_en") @db.Timestamptz(6)
   nombre             String      @default("Sin especificar") @db.VarChar(150)
-  enCurso           Boolean     @default(false) @map("en_curso")
+  enCurso            Boolean     @default(false) @map("en_curso")
   doctor             Doctor      @relation(fields: [doctorId], references: [usuarioId])
   universidad        Universidad @relation(fields: [universidadId], references: [id])
 
@@ -461,6 +465,7 @@ model Horario {
   creadoEn      DateTime          @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn DateTime?         @map("actualizado_en") @db.Timestamptz(6)
   centroSaludId Int?              @map("id_centro_salud")
+  citas         Cita[]
   centroSalud   CentroSalud?      @relation(fields: [centroSaludId], references: [usuarioId], onUpdate: NoAction)
   ubicacion     Ubicacion?        @relation(fields: [ubicacionId], references: [id], onDelete: Restrict)
   doctor        Doctor            @relation(fields: [doctorId], references: [usuarioId])
@@ -526,26 +531,35 @@ model ServicioHorario {
 }
 
 model Cita {
-  id              Int                @id @default(autoincrement()) @map("id_cita")
-  servicioId      Int                @map("id_servicio")
-  pacienteId      Int                @map("id_usuario")
-  fechaInicio     DateTime           @map("fecha_hora_inicio") @db.Timestamptz(6)
-  fechaFin        DateTime           @map("fecha_hora_fin") @db.Timestamptz(6)
-  ubicacionId     Int?               @map("id_ubicacion")
-  totalAPagar     Decimal            @map("total_a_pagar") @db.Decimal(10, 2)
-  motivoConsulta  String?            @map("motivo_consulta_paciente") @db.VarChar(200)
-  comentario      String?            @db.VarChar(200)
-  estado          String             @default("Programada") @db.VarChar(20)
-  creadoEn        DateTime           @default(now()) @map("creado_en") @db.Timestamptz(6)
-  actualizadoEn   DateTime?          @map("actualizado_en") @db.Timestamptz(6)
-  doctorUsuarioId Int?               @map("id_doctor")
-  doctor          Doctor?            @relation("DoctorCita", fields: [doctorUsuarioId], references: [usuarioId])
-  servicio        Servicio           @relation(fields: [servicioId], references: [id])
-  ubicacion       Ubicacion?         @relation(fields: [ubicacionId], references: [id])
-  paciente        Paciente           @relation(fields: [pacienteId], references: [usuarioId])
-  historial       HistorialConsulta?
-  logTeleconsulta LogTeleconsulta[]
-  resena          Resena?
+  id                Int                @id @default(autoincrement()) @map("id_cita")
+  servicioId        Int                @map("id_servicio")
+  pacienteId        Int                @map("id_usuario")
+  fechaInicio       DateTime           @map("fecha_hora_inicio") @db.Timestamptz(6)
+  fechaFin          DateTime           @map("fecha_hora_fin") @db.Timestamptz(6)
+  ubicacionId       Int?               @map("id_ubicacion")
+  totalAPagar       Decimal            @map("total_a_pagar") @db.Decimal(10, 2)
+  motivoConsulta    String?            @map("motivo_consulta_paciente") @db.VarChar(200)
+  comentario        String?            @db.VarChar(200)
+  estado            String             @default("Programada") @db.VarChar(20)
+  creadoEn          DateTime           @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn     DateTime?          @map("actualizado_en") @db.Timestamptz(6)
+  doctorUsuarioId   Int?               @map("id_doctor")
+  numPacientes      Int                @default(1) @map("num_pacientes")
+  seguroId          Int?               @map("id_seguro")
+  tipoSeguroId      Int?               @map("id_tipo_seguro")
+  modalidad         String             @default("Presencial") @db.VarChar(30)
+  horarioId         Int?               @map("id_horario")
+  motivoCancelacion String?            @map("motivo_cancelacion") @db.VarChar(255)
+  doctor            Doctor?            @relation("DoctorCita", fields: [doctorUsuarioId], references: [usuarioId])
+  servicio          Servicio           @relation(fields: [servicioId], references: [id])
+  ubicacion         Ubicacion?         @relation(fields: [ubicacionId], references: [id])
+  paciente          Paciente           @relation(fields: [pacienteId], references: [usuarioId])
+  horario           Horario?           @relation(fields: [horarioId], references: [id], onUpdate: NoAction, map: "fk_citas_horario")
+  seguro            SeguroMedico?      @relation(fields: [seguroId], references: [id], onUpdate: NoAction, map: "fk_citas_seguro")
+  tipoSeguro        TipoSeguro?        @relation(fields: [tipoSeguroId], references: [id], onUpdate: NoAction, map: "fk_citas_tipo_seguro")
+  historial         HistorialConsulta?
+  logTeleconsulta   LogTeleconsulta[]
+  resena            Resena?
 
   @@map("citas")
 }

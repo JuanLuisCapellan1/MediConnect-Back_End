@@ -34,6 +34,7 @@ import ServiciosRoutes from './ServiciosRoutes';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 import { translationRateLimitMiddleware } from '../middlewares/TranslationRateLimiter';
 import DoctorIdiomasRoutes from './DoctorIdiomasRoutes';
+import CitasRoutes from './CitasRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -132,5 +133,8 @@ router.use('/tipos-seguros', TiposSegurosRoutes);
 
 // Rutas de Servicios
 router.use('/servicios', ServiciosRoutes);
+
+// Rutas de Citas
+router.use('/citas', CitasRoutes);
 
 export default router;

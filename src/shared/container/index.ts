@@ -1070,4 +1070,33 @@ container.register(GestionarServiciosUseCase, {
   }
 });
 
+// ===== CITAS =====
+import { ICitaRepository } from '../../domain/repositories/ICitaRepository';
+import { PrismaCitaRepository } from '../../infrastructure/repositories/PrismaCitaRepository';
+import { GestionarCitasUseCase } from '../../application/use-cases/GestionarCitasUseCase';
+import { CitaController } from '../../infrastructure/http/controllers/CitaController';
+
+container.register<ICitaRepository>('CitaRepository', {
+  useFactory: () => {
+    const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+    return new PrismaCitaRepository(prismaClient);
+  }
+});
+
+container.register(GestionarCitasUseCase, {
+  useFactory: () => {
+    const citaRepo = container.resolve<ICitaRepository>('CitaRepository');
+    const doctorRepo = container.resolve<IDoctorRepository>('DoctorRepository');
+    const pacienteRepo = container.resolve<IPacienteRepository>('PacienteRepository');
+    return new GestionarCitasUseCase(citaRepo, doctorRepo, pacienteRepo);
+  }
+});
+
+container.register(CitaController, {
+  useFactory: () => {
+    const useCase = container.resolve(GestionarCitasUseCase);
+    return new CitaController(useCase);
+  }
+});
+
 export { container };

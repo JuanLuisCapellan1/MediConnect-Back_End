@@ -4204,7 +4204,145 @@ paths:
         '500':
           description: Error interno del servidor
 
+  # --- BARRIOS ENDPOINTS GEOESPACIALES ---
+  /barrios/geo/punto:
+    get:
+      summary: Buscar barrio por coordenadas
+      tags:
+        - Barrios
+      description: >
+        Dado un punto geográfico expresado como longitud y latitud (en grados decimales, SRID 4326),
+        devuelve el barrio activo cuyo polígono contiene ese punto utilizando la función PostGIS `ST_Contains`.
+      parameters:
+        - name: longitud
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            example: -69.9312
+          description: "Longitud del punto (entre -180 y 180)"
+        - name: latitud
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+            example: 18.4861
+          description: "Latitud del punto (entre -90 y 90)"
+      responses:
+        '200':
+          description: Barrio encontrado para las coordenadas dadas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Barrio'
+                  message:
+                    type: string
+                    example: Barrio encontrado exitosamente para las coordenadas dadas
+        '400':
+          description: Parámetros faltantes o inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ningún barrio contiene el punto dado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /barrios/geo/{id}:
+    get:
+      summary: Obtener geometría (polígono) de un barrio
+      tags:
+        - Barrios
+      description: >
+        Dado el ID de un barrio, devuelve todos sus datos más el campo `geom` con la geometría
+        completa del polígono en formato GeoJSON (producida por `ST_AsGeoJSON`).
+        Si el barrio no tiene geometría cargada, el campo `geom` será `null`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del barrio
+      responses:
+        '200':
+          description: Geometría del barrio obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      seccionId:
+                        type: integer
+                        example: 3
+                      nombre:
+                        type: string
+                        example: Los Prados
+                      estado:
+                        type: string
+                        example: Activo
+                      creadoEn:
+                        type: string
+                        format: date-time
+                      geom:
+                        description: Geometría del barrio en formato GeoJSON (null si no tiene geometría cargada)
+                        nullable: true
+                        type: object
+                        properties:
+                          type:
+                            type: string
+                            example: Polygon
+                          coordinates:
+                            type: array
+                            items:
+                              type: array
+                              items:
+                                type: array
+                                items:
+                                  type: number
+                  message:
+                    type: string
+                    example: Geometría del barrio obtenida exitosamente
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Barrio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
   /subBarrios:
+
     post:
       summary: Crear un nuevo SubBarrio
       tags:
@@ -8250,7 +8388,568 @@ paths:
         '500':
           description: Error interno del servidor
 
+  # --- CITAS ENDPOINTS ---
+  /citas:
+    post:
+      summary: Agendar una cita
+      tags:
+        - Citas
+      description: |
+        Permite a un **Paciente** agendar una nueva cita médica.
+
+        **Validaciones realizadas:**
+        - El servicio debe existir y estar Activo
+        - El horario debe pertenecer al servicio seleccionado
+        - Si se proporciona seguro, este debe estar activo en el paciente Y el doctor debe aceptarlo
+        - No debe existir otra cita activa del doctor en el mismo rango de fecha/hora
+        - `totalAPagar` se calcula automáticamente como `precio × numPacientes`
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - servicioId
+                - horarioId
+                - fechaInicio
+                - fechaFin
+                - modalidad
+              properties:
+                servicioId:
+                  type: integer
+                  example: 1
+                horarioId:
+                  type: integer
+                  example: 2
+                fechaInicio:
+                  type: string
+                  format: date-time
+                  example: "2026-03-10T09:00:00Z"
+                fechaFin:
+                  type: string
+                  format: date-time
+                  example: "2026-03-10T09:30:00Z"
+                modalidad:
+                  type: string
+                  enum: ["Presencial", "Virtual", "Domicilio"]
+                  example: "Presencial"
+                numPacientes:
+                  type: integer
+                  default: 1
+                  example: 2
+                seguroId:
+                  type: integer
+                  nullable: true
+                  example: 1
+                tipoSeguroId:
+                  type: integer
+                  nullable: true
+                  example: 3
+                motivoConsulta:
+                  type: string
+                  example: "Dolor de cabeza persistente desde hace 3 días"
+      responses:
+        '201':
+          description: Cita agendada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CitaDetalle'
+        '400':
+          description: |
+            Datos inválidos. Posibles causas:
+            - Servicio inactivo o inexistente
+            - Horario no disponible para ese servicio
+            - Paciente no tiene el seguro seleccionado
+            - Doctor no acepta el seguro seleccionado
+            - Conflicto de horario con otra cita
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Paciente)
+        '500':
+          description: Error interno del servidor
+
+    get:
+      summary: Listar citas del paciente
+      tags:
+        - Citas
+      description: Obtiene todas las citas del paciente autenticado con soporte para filtros y paginación.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: estado
+          in: query
+          description: Filtrar por estado de la cita
+          schema:
+            type: string
+            enum: ["Programada", "En Progreso", "Completada", "Cancelada", "Reprogramada"]
+        - name: fechaDesde
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: fechaHasta
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Listado de citas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CitaDetalle'
+                  paginacion:
+                    $ref: '#/components/schemas/Paginacion'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Paciente)
+        '500':
+          description: Error interno del servidor
+
+  /citas/historial:
+    get:
+      summary: Historial de consultas del paciente
+      tags:
+        - Citas
+      description: Obtiene el historial completo de consultas del paciente (solo citas Completadas con diagnóstico registrado).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Historial obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HistorialConsulta'
+                  paginacion:
+                    $ref: '#/components/schemas/Paginacion'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Paciente)
+        '500':
+          description: Error interno del servidor
+
+  /citas/doctor:
+    get:
+      summary: Listar citas del doctor
+      tags:
+        - Citas
+      description: Obtiene todas las citas del doctor autenticado con soporte para filtros y paginación.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: ["Programada", "En Progreso", "Completada", "Cancelada", "Reprogramada"]
+        - name: fechaDesde
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: fechaHasta
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Listado de citas del doctor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CitaDetalle'
+                  paginacion:
+                    $ref: '#/components/schemas/Paginacion'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '500':
+          description: Error interno del servidor
+
+  /citas/{id}:
+    get:
+      summary: Obtener detalle de una cita
+      tags:
+        - Citas
+      description: Obtiene el detalle completo de una cita. El Paciente solo puede ver sus citas y el Doctor las suyas.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Cita obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/CitaDetalle'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (la cita no te pertenece)
+        '404':
+          description: Cita no encontrada
+        '500':
+          description: Error interno del servidor
+
+    patch:
+      summary: Editar cita (Paciente)
+      tags:
+        - Citas
+      description: |
+        Permite al paciente editar su cita.
+        **Solo si la cita está en estado `Programada`.**
+        Todos los campos son opcionales. El `totalAPagar` se recalcula automáticamente si cambia el servicio o `numPacientes`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                servicioId:
+                  type: integer
+                horarioId:
+                  type: integer
+                fechaInicio:
+                  type: string
+                  format: date-time
+                fechaFin:
+                  type: string
+                  format: date-time
+                modalidad:
+                  type: string
+                  enum: ["Presencial", "Virtual", "Domicilio"]
+                numPacientes:
+                  type: integer
+                seguroId:
+                  type: integer
+                  nullable: true
+                tipoSeguroId:
+                  type: integer
+                  nullable: true
+                motivoConsulta:
+                  type: string
+      responses:
+        '200':
+          description: Cita actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/CitaDetalle'
+                  message:
+                    type: string
+        '400':
+          description: La cita no está en estado Programada o datos inválidos
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Paciente y ser dueño de la cita)
+        '404':
+          description: Cita no encontrada
+        '500':
+          description: Error interno del servidor
+
+  /citas/{id}/cancelar:
+    patch:
+      summary: Cancelar una cita
+      tags:
+        - Citas
+      description: |
+        Cancela una cita. Disponible para **Paciente** y **Doctor**.
+        - Solo se pueden cancelar citas en estado `Programada` o `Reprogramada`.
+        - El motivo de cancelación es **obligatorio**.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - motivoCancelacion
+              properties:
+                motivoCancelacion:
+                  type: string
+                  example: "Surgió un imprevisto personal"
+      responses:
+        '200':
+          description: Cita cancelada exitosamente
+        '400':
+          description: Estado inválido para cancelar o motivo faltante
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado
+        '404':
+          description: Cita no encontrada
+        '500':
+          description: Error interno del servidor
+
+  /citas/{id}/reprogramar:
+    patch:
+      summary: Reprogramar una cita (Doctor)
+      tags:
+        - Citas
+      description: |
+        Permite al **Doctor** reprogramar una cita a un nuevo horario y fecha.
+        - Solo citas en estado `Programada` o `Reprogramada`.
+        - El estado cambia a `Reprogramada`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - horarioId
+                - fechaInicio
+                - fechaFin
+              properties:
+                horarioId:
+                  type: integer
+                  example: 3
+                fechaInicio:
+                  type: string
+                  format: date-time
+                  example: "2026-03-15T10:00:00Z"
+                fechaFin:
+                  type: string
+                  format: date-time
+                  example: "2026-03-15T10:30:00Z"
+      responses:
+        '200':
+          description: Cita reprogramada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/CitaDetalle'
+                  message:
+                    type: string
+        '400':
+          description: Estado inválido para reprogramar
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor y ser el doctor de la cita)
+        '404':
+          description: Cita no encontrada
+        '500':
+          description: Error interno del servidor
+
+  /citas/{id}/diagnosticar:
+    post:
+      summary: Diagnosticar una cita (Doctor)
+      tags:
+        - Citas
+      description: |
+        Permite al **Doctor** registrar el diagnóstico de la consulta y marca la cita como **Completada**.
+        - Disponible para citas en estado `Programada`, `En Progreso` o `Reprogramada`.
+        - Crea o actualiza el `HistorialConsulta` asociado a la cita.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - resumen
+                - diagnostico
+              properties:
+                resumen:
+                  type: string
+                  example: "Paciente acude por dolor de cabeza persistente de 3 días de evolución."
+                diagnostico:
+                  type: string
+                  example: "Migraña tensional"
+                tratamiento:
+                  type: string
+                  example: "Ibuprofeno 400mg cada 8h por 5 días, reposo relativo"
+                observacion:
+                  type: string
+                  example: "Regresar si el dolor persiste más de 7 días"
+      responses:
+        '200':
+          description: Diagnóstico registrado y cita marcada como Completada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/HistorialConsulta'
+                  message:
+                    type: string
+                    example: "Diagnóstico registrado. Cita marcada como Completada."
+        '400':
+          description: Estado de cita inválido para diagnosticar o campos requeridos faltantes
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor y ser el doctor de la cita)
+        '404':
+          description: Cita no encontrada
+        '500':
+          description: Error interno del servidor
+
+  /citas/{id}/historial:
+    get:
+      summary: Historial de una cita específica
+      tags:
+        - Citas
+      description: Obtiene el historial clínico de una cita específica. Disponible para el Paciente y el Doctor de esa cita.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Historial obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/HistorialConsulta'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado
+        '404':
+          description: Cita o historial no encontrado
+        '500':
+          description: Error interno del servidor
+
   /doctores:
+
     get:
       summary: Listar doctores
       tags:
@@ -15733,7 +16432,173 @@ components:
           format: date-time
           nullable: true
 
+    CitaDetalle:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        estado:
+          type: string
+          enum: ["Programada", "En Progreso", "Completada", "Cancelada", "Reprogramada"]
+          example: "Programada"
+        fechaInicio:
+          type: string
+          format: date-time
+        fechaFin:
+          type: string
+          format: date-time
+        modalidad:
+          type: string
+          example: "Presencial"
+        numPacientes:
+          type: integer
+          example: 1
+        totalAPagar:
+          type: number
+          example: 1500.00
+        motivoConsulta:
+          type: string
+          nullable: true
+        motivoCancelacion:
+          type: string
+          nullable: true
+        paciente:
+          type: object
+          properties:
+            nombre:
+              type: string
+            apellido:
+              type: string
+            usuario:
+              type: object
+              properties:
+                email:
+                  type: string
+                fotoPerfil:
+                  type: string
+                  nullable: true
+        doctor:
+          type: object
+          properties:
+            nombre:
+              type: string
+            apellido:
+              type: string
+            usuario:
+              type: object
+              properties:
+                email:
+                  type: string
+                fotoPerfil:
+                  type: string
+                  nullable: true
+        servicio:
+          type: object
+          properties:
+            nombre:
+              type: string
+            precio:
+              type: number
+            duracionMinutos:
+              type: integer
+            modalidad:
+              type: string
+            especialidad:
+              type: object
+              properties:
+                nombre:
+                  type: string
+            tipoServicio:
+              type: object
+              properties:
+                nombre:
+                  type: string
+        horario:
+          type: object
+          nullable: true
+          properties:
+            nombre:
+              type: string
+            diaSemana:
+              type: integer
+            horaInicio:
+              type: string
+            horaFin:
+              type: string
+        seguro:
+          type: object
+          nullable: true
+          properties:
+            nombre:
+              type: string
+            urlImage:
+              type: string
+              nullable: true
+        tipoSeguro:
+          type: object
+          nullable: true
+          properties:
+            nombre:
+              type: string
+        creadoEn:
+          type: string
+          format: date-time
+
+    HistorialConsulta:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        citaId:
+          type: integer
+          example: 5
+        resumen:
+          type: string
+          example: "Paciente acude por dolor de cabeza persistente."
+        diagnostico:
+          type: string
+          example: "Migraña tensional"
+        tratamiento:
+          type: string
+          nullable: true
+          example: "Ibuprofeno 400mg cada 8h"
+        observacion:
+          type: string
+          nullable: true
+          example: "Regresar si persiste más de 7 días"
+        creadoEn:
+          type: string
+          format: date-time
+        cita:
+          type: object
+          properties:
+            fechaInicio:
+              type: string
+              format: date-time
+            modalidad:
+              type: string
+            doctor:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                apellido:
+                  type: string
+            servicio:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                especialidad:
+                  type: object
+                  properties:
+                    nombre:
+                      type: string
+
     Doctor:
+
       type: object
       properties:
         id:
