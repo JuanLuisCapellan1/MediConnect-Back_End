@@ -15,12 +15,12 @@ const doctorIdiomaController = new DoctorIdiomaController();
 
 /**
  * GET /doctores
- * Listar doctores (solo Admin)
+ * Listar doctores (Admin: todos; Paciente: solo activos y verificados)
  */
 router.get(
     '/',
     autenticarJWT,
-    requireRole('Admin'),
+    requireRole('Admin', 'Paciente'),
     (req, res) => doctorController.listar(req, res)
 );
 
@@ -130,13 +130,25 @@ router.delete(
 );
 
 /**
+ * POST /doctores/comparar
+ * Comparar hasta 4 doctores (solo Paciente)
+ * Body: { ids: number[] }
+ */
+router.post(
+    '/comparar',
+    autenticarJWT,
+    requireRole('Paciente'),
+    (req, res) => doctorController.compararDoctores(req, res)
+);
+
+/**
  * GET /doctores/:id
- * Obtener doctor por ID (solo Admin)
+ * Obtener doctor por ID (Admin: datos completos; Paciente: perfil público sin documentos)
  */
 router.get(
     '/:id',
     autenticarJWT,
-    requireRole('Admin'),
+    requireRole('Admin', 'Paciente'),
     (req, res) => doctorController.obtenerPorId(req, res)
 );
 

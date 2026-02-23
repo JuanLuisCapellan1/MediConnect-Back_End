@@ -6,8 +6,37 @@ import { ActualizarPacienteDto, FiltroPacientesDto } from '../../application/dto
 export class PrismaPacienteRepository implements IPacienteRepository {
     constructor(private prisma: PrismaClient) { }
 
-    private mapearEntidad(data: any): Paciente {
-        return new Paciente(
+    /** Include completo utilizado en todos los métodos de lectura */
+    private get pacienteInclude() {
+        return {
+            usuario: {
+                select: {
+                    email: true,
+                    telefono: true,
+                    fotoPerfil: true,
+                    rol: true,
+                },
+            },
+            seguros: {
+                where: { estado: { not: 'Eliminado' } },
+                include: {
+                    seguro: true,
+                    tipoSeguro: true,
+                },
+                orderBy: { creadoEn: 'desc' as const },
+            },
+            caracteristicas: {
+                where: { estado: { not: 'Eliminado' } },
+                include: {
+                    condicion: true,
+                },
+                orderBy: { registradoEn: 'desc' as const },
+            },
+        };
+    }
+
+    private mapearEntidad(data: any): any {
+        const base = new Paciente(
             data.usuarioId,
             data.usuarioId,
             data.nombre,
@@ -25,21 +54,22 @@ export class PrismaPacienteRepository implements IPacienteRepository {
             data.creadoEn,
             data.actualizadoEn
         );
+
+        return {
+            ...base,
+            email: data.usuario?.email ?? null,
+            telefono: data.usuario?.telefono ?? null,
+            fotoPerfil: data.usuario?.fotoPerfil ?? null,
+            rol: data.usuario?.rol ?? null,
+            seguros: data.seguros ?? [],
+            condicionesMedicas: data.caracteristicas ?? [],
+        };
     }
 
-    async obtenerPorId(id: number): Promise<Paciente | null> {
+    async obtenerPorId(id: number): Promise<any | null> {
         const paciente = await this.prisma.paciente.findUnique({
             where: { usuarioId: id },
-            include: {
-                usuario: {
-                    select: {
-                        email: true,
-                        telefono: true,
-                        fotoPerfil: true,
-                    },
-                },
-                ubicacion: true,
-            },
+            include: this.pacienteInclude,
         });
 
         return paciente ? this.mapearEntidad(paciente) : null;
@@ -84,16 +114,7 @@ export class PrismaPacienteRepository implements IPacienteRepository {
                 skip,
                 take: limite,
                 orderBy: { creadoEn: 'desc' },
-                include: {
-                    usuario: {
-                        select: {
-                            email: true,
-                            telefono: true,
-                            fotoPerfil: true,
-                        },
-                    },
-                    ubicacion: true,
-                },
+                include: this.pacienteInclude,
             }),
             this.prisma.paciente.count({ where }),
         ]);
@@ -130,16 +151,7 @@ export class PrismaPacienteRepository implements IPacienteRepository {
         const pacienteActualizado = await this.prisma.paciente.update({
             where: { usuarioId },
             data: dataToUpdate,
-            include: {
-                usuario: {
-                    select: {
-                        email: true,
-                        telefono: true,
-                        fotoPerfil: true,
-                    },
-                },
-                ubicacion: true,
-            },
+            include: this.pacienteInclude,
         });
 
         return this.mapearEntidad(pacienteActualizado);

@@ -218,6 +218,56 @@ export class PrismaDoctorRepository implements IDoctorRepository {
         return doctor;
     }
 
+    /**
+     * Compara hasta 4 doctores por sus IDs,
+     * devolviendo el perfil público completo de cada uno.
+     */
+    async compararDoctores(ids: number[]): Promise<any[]> {
+        const doctores = await this.prisma.doctor.findMany({
+            where: {
+                usuarioId: { in: ids },
+                estado: 'Activo',
+                estadoVerificacion: 'Aprobado',
+            },
+            include: {
+                usuario: {
+                    select: {
+                        email: true,
+                        telefono: true,
+                        fotoPerfil: true,
+                    },
+                },
+                ubicacion: true,
+                especialidades: {
+                    include: { especialidades: true },
+                },
+                experiencias: {
+                    where: { estado: 'Activo' },
+                    orderBy: { creadoEn: 'desc' },
+                },
+                formaciones: {
+                    where: { estado: 'Activo' },
+                    orderBy: { creadoEn: 'desc' },
+                },
+                horarios: {
+                    where: { estado: 'Activo' },
+                    orderBy: { diaSemana: 'asc' },
+                },
+                servicios: {
+                    where: { estado: 'Activo' },
+                },
+                segurosAceptados: {
+                    include: { seguro: true, tipoSeguro: true },
+                },
+                idiomas: {
+                    where: { estado: 'Activo' },
+                },
+            },
+        });
+
+        return doctores;
+    }
+
     async obtenerTodos(filtros: FiltroDoctoresDto): Promise<{ datos: Doctor[]; total: number }> {
         const pagina = filtros.pagina || 1;
         const limite = filtros.limite || 10;

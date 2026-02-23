@@ -6,6 +6,7 @@ export interface IDoctorRepository {
     obtenerPorUsuarioId(usuarioId: number): Promise<Doctor | null>;
     obtenerPerfilCompleto(usuarioId: number): Promise<any | null>;
     obtenerTodos(filtros: FiltroDoctoresDto): Promise<{ datos: Doctor[]; total: number }>;
+    compararDoctores(ids: number[]): Promise<any[]>;
     actualizar(usuarioId: number, datos: ActualizarDoctorDto): Promise<Doctor>;
     eliminar(usuarioId: number): Promise<void>;
     existePorExequatur(exequatur: string, excluirUsuarioId?: number): Promise<boolean>;

@@ -70,6 +70,16 @@ export class GestionarDoctoresUseCase {
         await this.doctorRepository.eliminar(usuarioId);
     }
 
+    async compararDoctores(ids: number[]): Promise<any[]> {
+        if (!ids || ids.length === 0) {
+            throw new Error('Debe proporcionar al menos un ID de doctor.');
+        }
+        if (ids.length > 4) {
+            throw new Error('Solo se pueden comparar hasta 4 doctores a la vez.');
+        }
+        return await this.doctorRepository.compararDoctores(ids);
+    }
+
     private normalizarEstado(estado: string): string {
         if (!estado) return estado;
         return estado.charAt(0).toUpperCase() + estado.slice(1).toLowerCase();

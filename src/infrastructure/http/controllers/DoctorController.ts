@@ -24,23 +24,31 @@ export class DoctorController {
     async listar(req: Request, res: Response): Promise<Response> {
         try {
             const useCase = container.resolve(GestionarDoctoresUseCase);
+            const esPaciente = (req as any).user?.rol === 'Paciente';
 
             const getString = (value: any): string | undefined => {
                 if (Array.isArray(value)) return value[0] as string;
                 return value as string | undefined;
             };
 
-            const filtros = {
+            const filtros: any = {
                 nombre: getString(req.query.nombre),
                 apellido: getString(req.query.apellido),
-                estado: getString(req.query.estado),
-                estadoVerificacion: getString(req.query.estadoVerificacion),
                 genero: getString(req.query.genero),
                 nacionalidad: getString(req.query.nacionalidad),
                 especialidadId: req.query.especialidadId ? parseInt(req.query.especialidadId as string) : undefined,
                 pagina: req.query.pagina ? parseInt(req.query.pagina as string) : undefined,
                 limite: req.query.limite ? parseInt(req.query.limite as string) : undefined,
             };
+
+            if (esPaciente) {
+                // Los pacientes solo ven doctores activos y verificados
+                filtros.estado = 'Activo';
+                filtros.estadoVerificacion = 'Aprobado';
+            } else {
+                filtros.estado = getString(req.query.estado);
+                filtros.estadoVerificacion = getString(req.query.estadoVerificacion);
+            }
 
             const resultado = await useCase.listar(filtros);
 
@@ -63,8 +71,29 @@ export class DoctorController {
         try {
             const useCase = container.resolve(GestionarDoctoresUseCase);
             const id = parseInt(req.params.id as string);
+            const esPaciente = (req as any).user?.rol === 'Paciente';
 
-            const doctor = await useCase.obtenerPorId(id);
+            if (isNaN(id)) {
+                return res.status(400).json({ success: false, message: 'ID inválido.' });
+            }
+
+            // Para pacientes usamos obtenerPerfilCompleto (datos públicos)
+            // Para admins también está bien, ya que tiene más info
+            const doctor = esPaciente
+                ? await useCase['doctorRepository'].obtenerPerfilCompleto(id)
+                : await useCase.obtenerPorId(id);
+
+            if (!doctor) {
+                return res.status(404).json({ success: false, message: 'Doctor no encontrado.' });
+            }
+
+            // Si es paciente, ocultamos datos sensibles
+            if (esPaciente) {
+                delete doctor.documentos;
+                delete doctor.comentarioVerificacion;
+                delete doctor.estadoAccionVerificacion;
+                delete doctor.fechaResolucionVerificacion;
+            }
 
             return res.status(200).json({
                 success: true,
@@ -278,6 +307,47 @@ export class DoctorController {
                 message: 'Doctor eliminado exitosamente.',
             });
         } catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+
+    /**
+     * POST /doctores/comparar
+     * Compara hasta 4 doctores seleccionados por el paciente.
+     * Body: { ids: number[] }
+     */
+    async compararDoctores(req: Request, res: Response): Promise<Response> {
+        try {
+            const useCase = container.resolve(GestionarDoctoresUseCase);
+            const { ids } = req.body;
+
+            if (!Array.isArray(ids) || ids.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El campo "ids" debe ser un arreglo con al menos un ID de doctor.',
+                });
+            }
+
+            const idsNumericos = ids.map((id: any) => parseInt(id)).filter((id: number) => !isNaN(id));
+
+            if (idsNumericos.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Los IDs proporcionados no son válidos.',
+                });
+            }
+
+            const doctores = await useCase.compararDoctores(idsNumericos);
+
+            return res.status(200).json({
+                success: true,
+                total: doctores.length,
+                data: doctores,
+            });
+        } catch (error: any) {
+            if (error.message?.includes('Solo se pueden comparar')) {
+                return res.status(400).json({ success: false, message: error.message });
+            }
             return this.manejarError(error, res);
         }
     }

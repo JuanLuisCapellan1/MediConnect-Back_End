@@ -311,7 +311,33 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
     const usuario = await prisma.usuario.findUnique({
       where: { id },
       include: {
-        paciente: true,
+        paciente: {
+          include: {
+            usuario: {
+              select: {
+                email: true,
+                telefono: true,
+                fotoPerfil: true,
+                rol: true,
+              },
+            },
+            seguros: {
+              where: { estado: { not: 'Eliminado' } },
+              include: {
+                seguro: true,
+                tipoSeguro: true,
+              },
+              orderBy: { creadoEn: 'desc' },
+            },
+            caracteristicas: {
+              where: { estado: { not: 'Eliminado' } },
+              include: {
+                condicion: true,
+              },
+              orderBy: { registradoEn: 'desc' },
+            },
+          },
+        },
         doctor: {
           include: {
             usuario: {
