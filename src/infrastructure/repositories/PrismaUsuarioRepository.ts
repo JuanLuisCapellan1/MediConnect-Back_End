@@ -155,7 +155,6 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
         data: {
           direccion: data.ubicacion.direccion,
           barrioId: Number(data.ubicacion.id_barrio),
-          subBarrioId: data.ubicacion.id_sub_barrio ? Number(data.ubicacion.id_sub_barrio) : null,
           estado: 'Activo',
           creadoEn: new Date(),
         },
@@ -831,7 +830,6 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
           data: {
             direccion: data.ubicacion.direccion,
             barrioId: Number(data.ubicacion.id_barrio),
-            subBarrioId: data.ubicacion.id_sub_barrio ? Number(data.ubicacion.id_sub_barrio) : null,
             estado: 'Activo',
             creadoEn: new Date(),
           },

@@ -104,42 +104,50 @@ export class PrismaSeccionesRepository implements ISeccionesRepository {
     const cached = await this.redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
-    // Las secciones se vinculan a municipio a través de DistritoMunicipal,
-    // pero también pueden existir secciones SIN distrito asignado.
-    // Esta query obtiene todas: las que tienen distrito del municipio dado
-    // y las que no tienen distrito (distritoMunicipalId IS NULL) pero pertenecen al municipio
-    // vía la relación inversa. Por simplicidad y para cubrir el caso de secciones sin distrito,
-    // filtramos directamente por el municipioId del distrito cuando existe.
-    const secciones = await this.prisma.seccion.findMany({
-      where: {
-        OR: [
-          {
-            distritoMunicipal: {
-              municipioId
-            }
-          },
-          // Secciones sin distrito cuyo municipioId se guarda directamente (si aplica)
-          // Si el schema no tiene municipioId directo, este OR solo aplica el primero
-        ],
-        ...(estado && { estado })
-      },
-      orderBy: { nombre: 'asc' }
-    });
+    // Usa raw query para cubrir ambas rutas:
+    //  1. Secciones cuyo distrito → municipio coincide
+    //  2. Secciones con id_municipio directo (sin distrito asignado)
+    type RawSeccion = {
+      id_seccion: number;
+      id_distrito_municipal: number | null;
+      nombre: string;
+      estado: string;
+      creado_en: Date;
+    };
+
+    const estadoFilter = estado ? `AND s.estado = '${estado}'` : '';
+
+    const secciones = await this.prisma.$queryRawUnsafe<RawSeccion[]>(`
+      SELECT DISTINCT
+        s.id_seccion,
+        s.id_distrito_municipal,
+        s.nombre,
+        s.estado,
+        s.creado_en
+      FROM secciones s
+      LEFT JOIN distritos_municipales dm
+        ON dm.id_distrito_municipal = s.id_distrito_municipal
+      WHERE
+        (dm.id_municipio = $1 OR s.id_municipio = $1)
+        ${estadoFilter}
+      ORDER BY s.nombre ASC
+    `, municipioId);
 
     const mapped = secciones.map(
       (s) =>
         new Seccion(
-          s.id,
-          s.distritoMunicipalId,
+          s.id_seccion,
+          s.id_distrito_municipal,
           s.nombre,
           s.estado,
-          s.creadoEn
+          s.creado_en
         )
     );
 
     await this.redis.set(cacheKey, JSON.stringify(mapped), this.CACHE_TTL);
     return mapped;
   }
+
 
   async buscarPorNombre(nombre: string, distritoMunicipalId?: number, estado?: string): Promise<Seccion[]> {
     const seccion = await this.prisma.seccion.findMany({

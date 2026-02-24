@@ -8,7 +8,6 @@ import { IMunicipiosRepository } from '../../domain/repositories/IMunicipiosRepo
 import { IDistritosMunicipalesRepository } from '../../domain/repositories/IDistritosMunicipalesRepository';
 import { ISeccionesRepository } from '../../domain/repositories/ISeccionesRepository';
 import { IBarriosRepository } from '../../domain/repositories/IBarriosRepository';
-import { ISubBarriosRepository } from '../../domain/repositories/ISubBarriosRepository';
 import { IUbicacionesRepository } from '../../domain/repositories/IUbicacionesRepository';
 import { IHorariosRepository } from '../../domain/repositories/IHorariosRepository';
 import { IServicioHorarioRepository } from '../../domain/repositories/IServicioHorarioRepository';
@@ -48,7 +47,6 @@ import { PrismaMunicipiosRepository } from '../../infrastructure/repositories/Pr
 import { PrismaDistritosMunicipalesRepository } from '../../infrastructure/repositories/PrismaDistritosMunicipalesRepository';
 import { PrismaSeccionesRepository } from '../../infrastructure/repositories/PrismaSeccionesRepository';
 import { PrismaBarriosRepository } from '../../infrastructure/repositories/PrismaBarriosRepository';
-import { PrismaSubBarriosRepository } from '../../infrastructure/repositories/PrismaSubBarriosRepository';
 import { PrismaUbicacionesRepository } from '../../infrastructure/repositories/PrismaUbicacionesRepository';
 import { PrismaHorariosRepository } from '../../infrastructure/repositories/PrismaHorariosRepository';
 import { PrismaServicioHorarioRepository } from '../../infrastructure/repositories/PrismaServicioHorarioRepository';
@@ -92,7 +90,6 @@ import { MunicipioValidator } from '../../domain/validators/Municipios/Municipio
 import { DistritoMunicipalValidator } from '../../domain/validators/DistritosMunicipales/DistritoMunicipalValidator';
 import { SeccionValidator } from '../../domain/validators/Secciones/SeccionValidator';
 import { BarrioValidator } from '../../domain/validators/Barrios/BarrioValidator';
-import { SubBarrioValidator } from '../../domain/validators/SubBarrios/SubBarrioValidator';
 import { UbicacionValidator } from '../../domain/validators/Ubicaciones/UbicacionValidator';
 import { HorarioValidator } from '../../domain/validators/Horarios/HorarioValidator';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
@@ -113,7 +110,6 @@ import { GestionarProvinciasUseCase } from '../../application/use-cases/Gestiona
 import { GestionarMunicipiosUseCase } from '../../application/use-cases/GestionarMunicipiosUseCase';
 import { GestionarDistritosMunicipalesUseCase } from '../../application/use-cases/GestionarDistritosMunicipalesUseCase';
 import { GestionarBarriosUseCase } from '../../application/use-cases/GestionarBarriosUseCase';
-import { GestionarSubBarriosUseCase } from '../../application/use-cases/GestionarSubBarriosUseCase';
 import { GestionarUbicacionesUseCase } from '../../application/use-cases/GestionarUbicacionesUseCase';
 import { GestionarHorariosUseCase } from '../../application/use-cases/GestionarHorariosUseCase';
 import { GestionarSeccionesUseCase } from '../../application/use-cases/GestionarSeccionesUseCase';
@@ -221,19 +217,11 @@ container.register(BarrioValidator, {
   }
 });
 
-container.register(SubBarrioValidator, {
-  useFactory: () => {
-    const subBarriosRepository = container.resolve<ISubBarriosRepository>('SubBarriosRepository');
-    const barriosRepository = container.resolve<IBarriosRepository>('BarriosRepository');
-    return new SubBarrioValidator(subBarriosRepository, barriosRepository);
-  }
-});
 
 container.register(UbicacionValidator, {
   useFactory: () => {
     const barriosRepository = container.resolve<IBarriosRepository>('BarriosRepository');
-    const subBarriosRepository = container.resolve<ISubBarriosRepository>('SubBarriosRepository');
-    return new UbicacionValidator(barriosRepository, subBarriosRepository);
+    return new UbicacionValidator(barriosRepository);
   }
 });
 
@@ -378,16 +366,6 @@ container.register<IBarriosRepository>(
   }
 );
 
-container.register<ISubBarriosRepository>(
-  'SubBarriosRepository',
-  {
-    useFactory: () => {
-      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
-      const redisCache = container.resolve(RedisCacheService);
-      return new PrismaSubBarriosRepository(prismaClient, redisCache);
-    }
-  }
-);
 
 container.register<IUbicacionesRepository>(
   'UbicacionesRepository',
@@ -691,14 +669,6 @@ container.register(GestionarBarriosUseCase, {
   }
 });
 
-container.register(GestionarSubBarriosUseCase, {
-  useFactory: () => {
-    const subBarriosRepository = container.resolve<ISubBarriosRepository>('SubBarriosRepository');
-    const subBarrioValidator = container.resolve(SubBarrioValidator);
-    const estadoValidator = container.resolve(EstadoValidator);
-    return new GestionarSubBarriosUseCase(subBarriosRepository, subBarrioValidator, estadoValidator);
-  }
-});
 
 container.register(GestionarUbicacionesUseCase, {
   useFactory: () => {

@@ -26,8 +26,6 @@ tags:
     description: Endpoints para gestionar secciones
   - name: Barrios
     description: Endpoints para gestionar barrios
-  - name: SubBarrios
-    description: Endpoints para gestionar SubBarrios
   - name: Ubicaciones
     description: Endpoints para gestionar ubicaciones
   - name: Horarios
@@ -3547,6 +3545,61 @@ paths:
         '500':
           description: Error interno del servidor
 
+  /secciones/por-municipio/{municipioId}:
+    get:
+      summary: Listar secciones por municipio
+      tags:
+        - Secciones
+      description: >
+        Obtiene todas las secciones que pertenecen a un municipio específico.
+        Incluye tanto secciones vinculadas al municipio a través de un distrito municipal
+        como secciones que tienen relación directa con el municipio (sin distrito intermedio).
+      parameters:
+        - name: municipioId
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+          description: ID del municipio
+        - name: estado
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [Activo, Inactivo, Eliminado]
+            example: Activo
+          description: Filtrar por estado (opcional)
+      responses:
+        '200':
+          description: Secciones obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Seccion'
+                  count:
+                    type: integer
+                    example: 8
+                  message:
+                    type: string
+                    example: Secciones del municipio obtenidas exitosamente
+        '400':
+          description: ID de municipio inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
   /secciones/por-nombre:
     get:
       summary: Buscar secciones por nombre en un distrito o municipio
@@ -3950,7 +4003,7 @@ paths:
       summary: Eliminar un barrio
       tags:
         - Barrios
-      description: Elimina (soft delete) un barrio, marcándolo como eliminado. No se puede eliminar si tiene sub-barrios u ubicaciones asociadas.
+      description: Elimina (soft delete) un barrio, marcándolo como eliminado. No se puede eliminar si tiene ubicaciones asociadas.
       parameters:
         - name: id
           in: path
@@ -4213,6 +4266,8 @@ paths:
       description: >
         Dado un punto geográfico expresado como longitud y latitud (en grados decimales, SRID 4326),
         devuelve el barrio activo cuyo polígono contiene ese punto utilizando la función PostGIS `ST_Contains`.
+        La respuesta incluye el polígono completo del barrio (`geom`) en formato GeoJSON, junto con
+        la cadena geográfica completa (sección, distrito, municipio, provincia).
       parameters:
         - name: longitud
           in: query
@@ -4246,6 +4301,9 @@ paths:
                   message:
                     type: string
                     example: Barrio encontrado exitosamente para las coordenadas dadas
+                  description:
+                    type: string
+                    example: "El campo data.geom contiene el polígono completo del barrio en formato GeoJSON (Polygon/MultiPolygon)"
         '400':
           description: Parámetros faltantes o inválidos
           content:
@@ -4341,426 +4399,12 @@ paths:
         '500':
           description: Error interno del servidor
 
-  /subBarrios:
-
-    post:
-      summary: Crear un nuevo SubBarrio
-      tags:
-        - SubBarrios
-      description: Crea un nuevo SubBarrio en un barrio específico. El nombre debe ser único dentro del barrio.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - barrioId
-                - nombre
-              properties:
-                barrioId:
-                  type: integer
-                  example: 3
-                  description: ID del barrio al que pertenece el SubBarrio
-                nombre:
-                  type: string
-                  example: "Sub Barrio A"
-                  description: Nombre del SubBarrio (máximo 80 caracteres)
-      responses:
-        '201':
-          description: SubBarrio creado exitosamente
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubBarrio'
-        '400':
-          description: Datos inválidos o barrioId inexistente
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: El nombre del SubBarrio ya existe en el barrio
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-
-    get:
-      summary: Listar todos los SubBarrios
-      tags:
-        - SubBarrios
-      description: Obtiene una lista de todos los SubBarrios no eliminados.
-      parameters:
-        - name: target
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "en"
-          description: "Idioma destino para traducción automática (activa la traducción)"
-        - name: source
-          in: query
-          required: false
-          schema:
-            type: string
-            default: "es"
-          example: "es"
-          description: Idioma origen para traducción automática
-        - name: translate_fields
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "nombre"
-          description: "Campos a traducir separados por coma (ej: nombre)"
-      responses:
-        '200':
-          description: SubBarrios obtenidos exitosamente
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/SubBarrio'
-        '500':
-          description: Error interno del servidor
-
-  /subBarrios/{id}:
-    get:
-      summary: Obtener un SubBarrio por ID
-      tags:
-        - SubBarrios
-      description: Obtiene un SubBarrio específico por su ID.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            example: 1
-          description: ID del SubBarrio
-        - name: target
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "en"
-          description: "Idioma destino para traducción automática (activa la traducción)"
-        - name: source
-          in: query
-          required: false
-          schema:
-            type: string
-            default: "es"
-          example: "es"
-          description: Idioma origen para traducción automática
-        - name: translate_fields
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "nombre"
-          description: "Campos a traducir separados por coma (ej: nombre)"
-      responses:
-        '200':
-          description: SubBarrio obtenido exitosamente
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubBarrio'
-        '400':
-          description: ID inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: SubBarrio no encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-
-    put:
-      summary: Actualizar un SubBarrio
-      tags:
-        - SubBarrios
-      description: Actualiza un SubBarrio existente. Al menos uno de los campos opcionales debe ser proporcionado.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            example: 1
-          description: ID del SubBarrio a actualizar
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                barrioId:
-                  type: integer
-                  example: 5
-                  description: Nuevo ID de barrio (opcional)
-                nombre:
-                  type: string
-                  example: "Sub Barrio B"
-                  description: Nuevo nombre (opcional)
-                estado:
-                  type: string
-                  enum: ["Activo", "Inactivo", "Eliminado"]
-                  example: "Activo"
-                  description: Nuevo estado (opcional)
-              description: Al menos uno de los campos (barrioId, nombre o estado) debe ser proporcionado
-      responses:
-        '200':
-          description: SubBarrio actualizado exitosamente
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubBarrio'
-        '400':
-          description: Datos inválidos o campos insuficientes
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: SubBarrio no encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: El nombre del SubBarrio ya existe en el nuevo barrio
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-
-    delete:
-      summary: Eliminar un SubBarrio
-      tags:
-        - SubBarrios
-      description: Elimina (soft delete) un SubBarrio, marcándolo como eliminado. No se puede eliminar si tiene ubicaciones asociadas.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            example: 1
-          description: ID del SubBarrio a eliminar
-      responses:
-        '200':
-          description: SubBarrio eliminado exitosamente
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubBarrio'
-        '400':
-          description: ID inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: SubBarrio no encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor o el SubBarrio tiene dependencias
-
-  /subBarrios/barrio/{barrioId}:
-    get:
-      summary: Listar SubBarrios de un barrio
-      tags:
-        - SubBarrios
-      description: Obtiene todos los SubBarrios que pertenecen a un barrio específico.
-      parameters:
-        - name: barrioId
-          in: path
-          required: true
-          schema:
-            type: integer
-            example: 3
-          description: ID del barrio
-        - name: target
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "en"
-          description: "Idioma destino para traducción automática (activa la traducción)"
-        - name: source
-          in: query
-          required: false
-          schema:
-            type: string
-            default: "es"
-          example: "es"
-          description: Idioma origen para traducción automática
-        - name: translate_fields
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "nombre"
-          description: "Campos a traducir separados por coma (ej: nombre)"
-      responses:
-        '200':
-          description: SubBarrios del barrio obtenidos exitosamente
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/SubBarrio'
-        '400':
-          description: ID de barrio inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-
-  /subBarrios/nombre/{nombre}/{estado}:
-    get:
-      summary: Buscar SubBarrios por nombre y estado
-      tags:
-        - SubBarrios
-      description: Busca SubBarrios por nombre (búsqueda parcial) y opcionalmente filtra por estado.
-      parameters:
-        - name: nombre
-          in: path
-          required: true
-          schema:
-            type: string
-            example: "Sub"
-          description: Nombre del SubBarrio a buscar (búsqueda parcial)
-        - name: estado
-          in: path
-          required: true
-          schema:
-            type: string
-            enum: ["Activo", "Inactivo", "Eliminado", "Todos"]
-            example: "Activo"
-          description: Estado de los SubBarrios a buscar (use "Todos" para obtener todos los estados)
-        - name: target
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "en"
-          description: "Idioma destino para traducción automática (activa la traducción)"
-        - name: source
-          in: query
-          required: false
-          schema:
-            type: string
-            default: "es"
-          example: "es"
-          description: Idioma origen para traducción automática
-        - name: translate_fields
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "nombre"
-          description: "Campos a traducir separados por coma (ej: nombre)"
-      responses:
-        '200':
-          description: SubBarrios encontrados exitosamente
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/SubBarrio'
-        '400':
-          description: Parámetros inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-
-  /subBarrios/estado/{estado}:
-    get:
-      summary: Listar SubBarrios por estado
-      tags:
-        - SubBarrios
-      description: Obtiene todos los SubBarrios que tienen un estado específico.
-      parameters:
-        - name: estado
-          in: path
-          required: true
-          schema:
-            type: string
-            enum: ["Activo", "Inactivo", "Eliminado"]
-            example: "Activo"
-          description: Estado de los SubBarrios a buscar
-        - name: target
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "en"
-          description: "Idioma destino para traducción automática (activa la traducción)"
-        - name: source
-          in: query
-          required: false
-          schema:
-            type: string
-            default: "es"
-          example: "es"
-          description: Idioma origen para traducción automática
-        - name: translate_fields
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "nombre"
-          description: "Campos a traducir separados por coma (ej: nombre)"
-      responses:
-        '200':
-          description: SubBarrios obtenidos exitosamente
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/SubBarrio'
-        '400':
-          description: Estado inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-
-  # --- UBICACIONES ENDPOINTS ---
   /ubicaciones:
     post:
       summary: Crear una nueva Ubicacion
       tags:
         - Ubicaciones
-      description: Crea una nueva ubicación asociada a un barrio y opcionalmente a un subbarrio.
+      description: Crea una nueva ubicación asociada a un barrio.
       requestBody:
         required: true
         content:
@@ -4776,11 +4420,6 @@ paths:
                   type: string
                   example: "Calle Principal 123"
                   description: Dirección de la ubicación
-                subBarrioId:
-                  type: integer
-                  nullable: true
-                  example: 1
-                  description: ID del subbarrio (opcional)
                 codigoPostal:
                   type: string
                   nullable: true
@@ -4879,11 +4518,6 @@ paths:
                   type: integer
                   example: 2
                   description: ID del barrio (opcional)
-                subBarrioId:
-                  type: integer
-                  nullable: true
-                  example: 2
-                  description: ID del subbarrio (opcional)
                 direccion:
                   type: string
                   example: "Calle Nueva 456"
@@ -4989,37 +4623,6 @@ paths:
                   $ref: '#/components/schemas/Ubicacion'
         '400':
           description: ID de barrio inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-
-  /ubicaciones/subbarrio/{subBarrioId}:
-    get:
-      summary: Listar ubicaciones de un subbarrio
-      tags:
-        - Ubicaciones
-      description: Obtiene todas las ubicaciones que pertenecen a un subbarrio específico.
-      parameters:
-        - name: subBarrioId
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: ID del subbarrio
-      responses:
-        '200':
-          description: Ubicaciones del subbarrio obtenidas exitosamente
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Ubicacion'
-        '400':
-          description: ID de subbarrio inválido
           content:
             application/json:
               schema:
@@ -10851,7 +10454,7 @@ paths:
         - CentrosSalud
       security:
         - bearerAuth: []
-      description: Retorna la ubicación actual del centro de salud con barrio, sub-barrio y sección.
+      description: Retorna la ubicación actual del centro de salud con barrio y sección.
       responses:
         '200':
           description: Ubicación obtenida exitosamente
@@ -10889,11 +10492,6 @@ paths:
                   type: integer
                   example: 12
                   description: ID del nuevo barrio
-                subBarrioId:
-                  type: integer
-                  nullable: true
-                  example: 3
-                  description: ID del sub-barrio (null para quitar)
                 direccion:
                   type: string
                   maxLength: 255
@@ -15436,28 +15034,6 @@ components:
           format: date-time
           example: "2025-01-22T10:30:00Z"
 
-    SubBarrio:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        barrioId:
-          type: integer
-          example: 3
-          description: ID del barrio al que pertenece el SubBarrio
-        nombre:
-          type: string
-          example: "Sub Barrio A"
-        estado:
-          type: string
-          enum: ["Activo", "Inactivo", "Eliminado"]
-          example: "Activo"
-        creadoEn:
-          type: string
-          format: date-time
-          example: "2025-01-22T10:30:00Z"
-
     UsuarioDetallado:
       type: object
       description: Usuario autenticado con información básica y perfil asociado según el rol.
@@ -15500,11 +15076,6 @@ components:
           type: integer
           example: 2
           description: ID del barrio al que pertenece la ubicación
-        subBarrioId:
-          type: integer
-          nullable: true
-          example: 1
-          description: ID del subbarrio al que pertenece la ubicación (puede ser null)
         direccion:
           type: string
           example: "Calle Principal 123"
@@ -15901,16 +15472,6 @@ components:
                 nombre:
                   type: string
                   example: "Centro"
-        subBarrio:
-          type: object
-          nullable: true
-          properties:
-            id:
-              type: integer
-              example: 3
-            nombre:
-              type: string
-              example: "Zona Norte"
 
     SolicitudAlianza:
       type: object

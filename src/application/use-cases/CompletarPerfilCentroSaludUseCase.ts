@@ -37,7 +37,7 @@ export class CompletarPerfilCentroSaludUseCase {
     private centroSaludValidator: CentroSaludValidator,
     @inject(UbicacionValidator)
     private ubicacionValidator: UbicacionValidator
-  ) {}
+  ) { }
 
   /**
    * Completa el perfil de un centro de salud con archivos
@@ -73,8 +73,7 @@ export class CompletarPerfilCentroSaludUseCase {
     // Validar ubicación
     await this.ubicacionValidator.validarCreacion(
       dto.barrioId,
-      dto.direccion,
-      dto.subBarrioId
+      dto.direccion
     );
 
     if (dto.codigoPostal) {
@@ -134,7 +133,6 @@ export class CompletarPerfilCentroSaludUseCase {
             where: { id: centroExistente.ubicacionId },
             data: {
               barrioId: dto.barrioId,
-              subBarrioId: dto.subBarrioId ?? null,
               direccion: dto.direccion.trim(),
               codigoPostal: dto.codigoPostal ? dto.codigoPostal.trim() : null,
               estado: 'Activo',
@@ -145,7 +143,6 @@ export class CompletarPerfilCentroSaludUseCase {
           ubicacion = await tx.ubicacion.create({
             data: {
               barrioId: dto.barrioId,
-              subBarrioId: dto.subBarrioId ?? null,
               direccion: dto.direccion.trim(),
               codigoPostal: dto.codigoPostal ? dto.codigoPostal.trim() : null,
               estado: 'Activo',

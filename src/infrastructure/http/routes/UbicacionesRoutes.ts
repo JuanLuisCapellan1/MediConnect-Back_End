@@ -13,7 +13,7 @@ const ubicacionesController = container.resolve(UbicacionesController);
 /**
  * @route POST /ubicaciones
  * @description Crea una nueva Ubicacion
- * @body {barrioId: number, direccion: string, subBarrioId?: number, codigoPostal?: string}
+ * @body {barrioId: number, direccion: string, codigoPostal?: string, puntoGeografico?: string}
  * @returns {Ubicacion} La ubicación creada
  */
 router.post('/', (req, res) => ubicacionesController.crear(req, res));
@@ -33,15 +33,6 @@ router.get('/', (req, res) => ubicacionesController.listarTodas(req, res));
  */
 router.get('/barrio/:barrioId', (req, res) => ubicacionesController.listarPorBarrio(req, res));
 
-/**
- * @route GET /ubicaciones/subbarrio/:subBarrioId
- * @description Lista Ubicaciones de un SubBarrio específico
- * @param {number} subBarrioId - ID del subbarrio
- * @returns {Ubicacion[]} Array de ubicaciones del subbarrio
- */
-router.get('/subbarrio/:subBarrioId', (req, res) =>
-  ubicacionesController.listarPorSubBarrio(req, res)
-);
 
 /**
  * @route GET /ubicaciones/buscar/direccion/:direccion
@@ -85,7 +76,7 @@ router.get('/:id', (req, res) => ubicacionesController.buscarPorId(req, res));
  * @route PUT /ubicaciones/:id
  * @description Actualiza una Ubicacion existente
  * @param {number} id - ID de la ubicación
- * @body {barrioId?: number, subBarrioId?: number, direccion?: string, codigoPostal?: string, estado?: string}
+ * @body {barrioId?: number, direccion?: string, codigoPostal?: string, estado?: string, puntoGeografico?: string}
  * @returns {Ubicacion} La ubicación actualizada
  */
 router.put('/:id', (req, res) => ubicacionesController.actualizar(req, res));

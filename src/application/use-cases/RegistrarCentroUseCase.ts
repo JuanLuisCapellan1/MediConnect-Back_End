@@ -113,7 +113,6 @@ export class RegistrarCentroUseCase {
         data: {
           direccion: dto.direccion,
           barrioId: dto.barrioId,
-          subBarrioId: dto.subBarrioId ?? null,
           estado: 'Activo',
           creadoEn: new Date(),
         },

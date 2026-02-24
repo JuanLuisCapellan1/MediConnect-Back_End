@@ -20,7 +20,6 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
             barrio: {
               include: { seccion: true }
             },
-            subBarrio: true,
           }
         },
       }
@@ -47,7 +46,7 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
       include: {
         usuario: { select: { id: true, email: true, telefono: true, fotoPerfil: true } },
         tipoCentro: true,
-        ubicacion: { include: { barrio: { include: { seccion: true } }, subBarrio: true } }
+        ubicacion: { include: { barrio: { include: { seccion: true } } } }
       }
     });
   }
@@ -71,7 +70,6 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
         ubicacion: {
           include: {
             barrio: { include: { seccion: true } },
-            subBarrio: true,
           }
         }
       }
@@ -81,7 +79,6 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
 
   async actualizarUbicacion(usuarioId: number, datos: {
     barrioId?: number;
-    subBarrioId?: number | null;
     direccion?: string;
     codigoPostal?: string | null;
   }): Promise<any> {
@@ -93,7 +90,6 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
 
     const dataUpdate: any = {};
     if (datos.barrioId !== undefined) dataUpdate.barrioId = datos.barrioId;
-    if (datos.subBarrioId !== undefined) dataUpdate.subBarrioId = datos.subBarrioId;
     if (datos.direccion !== undefined) dataUpdate.direccion = datos.direccion;
     if (datos.codigoPostal !== undefined) dataUpdate.codigoPostal = datos.codigoPostal;
 
@@ -102,7 +98,6 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
       data: dataUpdate,
       include: {
         barrio: { include: { seccion: true } },
-        subBarrio: true,
       }
     });
   }

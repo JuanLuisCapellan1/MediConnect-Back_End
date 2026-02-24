@@ -184,15 +184,7 @@ export class PrismaBarriosRepository implements IBarriosRepository {
       throw new Error(`Barrio con ID ${id} no encontrado`);
     }
 
-    // Validar que no tenga sub-barrios o ubicaciones
-    const tieneSubBarrios = await this.prisma.subBarrio.count({
-      where: { barrioId: id }
-    });
-
-    if (tieneSubBarrios > 0) {
-      throw new Error(`No se puede eliminar el barrio porque tiene ${tieneSubBarrios} sub-barrio(s) asociado(s)`);
-    }
-
+    // Validar que no tenga ubicaciones asociadas
     const tieneUbicaciones = await this.prisma.ubicacion.count({
       where: { barrioId: id }
     });
@@ -230,6 +222,7 @@ export class PrismaBarriosRepository implements IBarriosRepository {
       barrio_nombre: string;
       barrio_estado: string;
       creado_en: Date;
+      geom_json: string | null;
       // Sección
       seccion_id: number;
       seccion_nombre: string;
@@ -255,6 +248,9 @@ export class PrismaBarriosRepository implements IBarriosRepository {
         b.nombre            AS barrio_nombre,
         b.estado            AS barrio_estado,
         b.creado_en,
+        ST_AsGeoJSON(
+          ST_Transform(ST_SetSRID(b.geom, 32619), 4326)
+        )::text             AS geom_json,
         s.id_seccion        AS seccion_id,
         s.nombre            AS seccion_nombre,
         s.estado            AS seccion_estado,
@@ -298,7 +294,7 @@ export class PrismaBarriosRepository implements IBarriosRepository {
       raw.barrio_nombre,
       raw.barrio_estado,
       raw.creado_en,
-      null, // sin geom en este endpoint
+      raw.geom_json ? JSON.parse(raw.geom_json) : null,
       { id: raw.seccion_id, nombre: raw.seccion_nombre, estado: raw.seccion_estado },
       raw.dm_id ? { id: raw.dm_id, nombre: raw.dm_nombre!, estado: raw.dm_estado! } : null,
       raw.municipio_id ? { id: raw.municipio_id, nombre: raw.municipio_nombre!, estado: raw.municipio_estado! } : null,

@@ -213,7 +213,6 @@ model Barrio {
   creadoEn    DateTime                 @default(now()) @map("creado_en") @db.Timestamptz(6)
   geom        Unsupported("geometry")?
   seccion     Seccion                  @relation(fields: [seccionId], references: [id])
-  subBarrios  SubBarrio[]
   ubicaciones Ubicacion[]
 
   @@unique([seccionId, nombre])
@@ -221,22 +220,9 @@ model Barrio {
   @@map("barrios")
 }
 
-model SubBarrio {
-  id          Int         @id @default(autoincrement()) @map("id_sub_barrio")
-  barrioId    Int         @map("id_barrio")
-  nombre      String      @db.VarChar(80)
-  estado      String      @default("Activo") @db.VarChar(20)
-  creadoEn    DateTime    @default(now()) @map("creado_en") @db.Timestamptz(6)
-  barrio      Barrio      @relation(fields: [barrioId], references: [id])
-  ubicaciones Ubicacion[]
-
-  @@map("sub_barrios")
-}
-
 model Ubicacion {
   id              Int                      @id @default(autoincrement()) @map("id_ubicacion")
   barrioId        Int                      @map("id_barrio")
-  subBarrioId     Int?                     @map("id_sub_barrio")
   direccion       String                   @db.VarChar(255)
   codigoPostal    String?                  @map("codigo_postal") @db.VarChar(10)
   puntoGeografico Unsupported("geometry")? @map("punto_geografico")
@@ -249,7 +235,6 @@ model Ubicacion {
   pacientes       Paciente[]
   servicios       Servicio[]
   barrio          Barrio                   @relation(fields: [barrioId], references: [id])
-  subBarrio       SubBarrio?               @relation(fields: [subBarrioId], references: [id])
 
   @@index([puntoGeografico], map: "idx_ubicaciones_geom", type: Gist)
   @@map("ubicaciones")
