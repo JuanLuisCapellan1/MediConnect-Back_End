@@ -441,6 +441,15 @@ export class PrismaServicioRepository implements IServicioRepository {
         const imagenes = s.imagenes?.map((i: any) => this.mapImagenToDomain(i));
         // Las ubicaciones vienen de la tabla puente servicios_ubicaciones
         const ubicacionesArray = s.servicios_ubicaciones?.map((su: any) => su.ubicacion).filter(Boolean);
+        // Formatear horaInicio/horaFin de cada horario a HH:mm
+        const horarios = s.horarios?.map((sh: any) => ({
+            ...sh,
+            horario: sh.horario ? {
+                ...sh.horario,
+                horaInicio: this.dateAHHMM(sh.horario.horaInicio),
+                horaFin: this.dateAHHMM(sh.horario.horaFin)
+            } : sh.horario
+        }));
         return new Servicio(
             s.id, s.doctorId, s.tipoServicioId, s.especialidadId,
             s.nombre, s.descripcion ?? null,
@@ -452,7 +461,7 @@ export class PrismaServicioRepository implements IServicioRepository {
             s.doctor,
             s.especialidad,
             s.tipoServicio,
-            s.horarios,
+            horarios,
             s.servicios_centros_salud,
             s.id_ubicacion ?? null,
             ubicacionesArray?.length ? ubicacionesArray : null
@@ -461,5 +470,14 @@ export class PrismaServicioRepository implements IServicioRepository {
 
     private mapImagenToDomain(img: any): ServicioImagen {
         return new ServicioImagen(img.id, img.servicioId, img.url, img.orden, img.estado, img.creadoEn);
+    }
+
+    /** Convierte un Date (o string ISO) al formato "HH:mm" */
+    private dateAHHMM(value: Date | string | null): string | null {
+        if (!value) return null;
+        const d = value instanceof Date ? value : new Date(value);
+        const hh = String(d.getUTCHours()).padStart(2, '0');
+        const mm = String(d.getUTCMinutes()).padStart(2, '0');
+        return `${hh}:${mm}`;
     }
 }

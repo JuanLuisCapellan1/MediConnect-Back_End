@@ -59,8 +59,8 @@ export class GestionarHorariosUseCase {
     const doctorId = dto.doctorId ?? existente.doctorId;
     const nombre = dto.nombre ?? existente.nombre;
     const diasSemana = dto.diasSemana ?? existente.dias;
-    const horaInicio = dto.horaInicio ?? this.formatearHora(existente.horaInicio);
-    const horaFin = dto.horaFin ?? this.formatearHora(existente.horaFin);
+    const horaInicio = dto.horaInicio ?? existente.horaInicio;
+    const horaFin = dto.horaFin ?? existente.horaFin;
 
     if (dto.estado) {
       await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo', 'Eliminado']);

@@ -8,8 +8,8 @@ export class Horario {
     public readonly id: number,
     public readonly doctorId: number,
     public readonly nombre: string,
-    public readonly horaInicio: Date,
-    public readonly horaFin: Date,
+    public readonly horaInicio: string,
+    public readonly horaFin: string,
     public readonly estado: string,
     public readonly creadoEn: Date,
     /** Array de días de la semana (1=Lunes…7=Domingo), poblado desde horarios_dias */

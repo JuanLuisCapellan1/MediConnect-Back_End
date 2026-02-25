@@ -255,11 +255,20 @@ export class PrismaHorariosRepository implements IHorariosRepository {
       horario.id,
       horario.doctorId,
       horario.nombre,
-      horario.horaInicio,
-      horario.horaFin,
+      this.dateAHHMM(horario.horaInicio),
+      this.dateAHHMM(horario.horaFin),
       horario.estado,
       horario.creadoEn,
       dias
     );
+  }
+
+  /** Convierte un Date (o string ISO) al formato "HH:mm" */
+  private dateAHHMM(value: Date | string | null | undefined): string {
+    if (!value) return '';
+    const d = value instanceof Date ? value : new Date(value);
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
   }
 }
