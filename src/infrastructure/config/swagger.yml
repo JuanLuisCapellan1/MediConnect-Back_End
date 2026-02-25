@@ -10236,6 +10236,11 @@ paths:
                 sitioWeb:
                   type: string
                   description: Sitio web del centro (opcional)
+                descripcion:
+                  type: string
+                  description: Descripción del centro de salud (máximo 1000 caracteres)
+                  example: "Centro médico especializado en atención primaria y medicina familiar, con más de 10 años de experiencia."
+                  maxLength: 1000
                 tipoCentroId:
                   type: number
                   description: ID del tipo de centro de salud
