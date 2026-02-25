@@ -4862,14 +4862,106 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: Conflicto de horario (se superpone con otro existente)
+        '500':
+          description: Error interno del servidor
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
+
+
+  /horarios/verificar-conflictos:
+    post:
+      summary: Verificar conflictos entre horarios
+      tags:
+        - Horarios
+      security:
+        - bearerAuth: []
+      description: |
+        Compara un conjunto de horarios (por ID) y detecta si hay solapamientos entre ellos.
+
+        Dos horarios **conflictúan** si comparten al menos un día de la semana Y sus
+        rangos horarios se solapan. El doctor puede tener horarios que se superponen;
+        este endpoint permite verificarlo antes de asignarlos a un servicio.
+
+        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - horarioIds
+              properties:
+                horarioIds:
+                  type: array
+                  items:
+                    type: integer
+                  minItems: 2
+                  example: [1, 2, 3]
+                  description: IDs de los horarios a comparar (mínimo 2)
+      responses:
+        '200':
+          description: Resultado de la verificación de conflictos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      conflicto:
+                        type: boolean
+                        example: true
+                        description: true si existe al menos un conflicto
+                      mensaje:
+                        type: string
+                        example: "Se encontraron 1 conflicto(s) entre los horarios seleccionados."
+                      detalles:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            horario1Id:
+                              type: integer
+                              example: 1
+                            horario2Id:
+                              type: integer
+                              example: 2
+                            diasConflicto:
+                              type: array
+                              items:
+                                type: integer
+                              example: [1, 3]
+                              description: Días (1=Lunes…7=Domingo) donde se produce el solapamiento
+                            mensaje:
+                              type: string
+                              example: '"Bloque Matutino" (08:00-12:00) y "Turno Mañana" (10:00-14:00) se solapan en: Lunes, Miércoles.'
+        '400':
+          description: Datos inválidos o menos de 2 IDs proporcionados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Uno o más horarios no encontrados
           content:
             application/json:
               schema:

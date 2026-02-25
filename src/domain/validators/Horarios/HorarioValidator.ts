@@ -71,18 +71,6 @@ export class HorarioValidator {
       throw new Error('La hora de fin debe ser mayor a la hora de inicio');
     }
 
-    const conflicto = await this.horariosRepository.existeConflicto(
-      doctorId,
-      diasUnicos,
-      horaInicioDate,
-      horaFinDate,
-      excluirId
-    );
-
-    if (conflicto) {
-      throw new HorarioConflictoError();
-    }
-
     return { horaInicioDate, horaFinDate };
   }
 

@@ -257,6 +257,38 @@ export class HorariosController {
     }
   }
 
+  /**
+   * POST /horarios/verificar-conflictos
+   * Recibe { horarioIds: number[] } y devuelve si hay conflictos entre ellos.
+   */
+  async verificarConflictos(req: Request, res: Response): Promise<void> {
+    try {
+      const { horarioIds } = req.body;
+
+      if (!Array.isArray(horarioIds) || horarioIds.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'El campo horarioIds debe ser un array con al menos 2 IDs de horarios.'
+        });
+        return;
+      }
+
+      const ids = (horarioIds as any[]).map(Number).filter(n => !isNaN(n) && n > 0);
+      if (ids.length < 2) {
+        res.status(400).json({
+          success: false,
+          message: 'Se necesitan al menos 2 IDs de horarios válidos para comparar.'
+        });
+        return;
+      }
+
+      const resultado = await this.gestionarHorariosUseCase.verificarConflictos(ids);
+      res.status(200).json({ success: true, data: resultado });
+    } catch (error) {
+      this.manejarError(error, res);
+    }
+  }
+
   private manejarError(error: unknown, res: Response, statusCode: number = 400): void {
     if (error instanceof HorarioConflictoError || error instanceof VerificarValor) {
       res.status(400).json({ success: false, message: error.message });
