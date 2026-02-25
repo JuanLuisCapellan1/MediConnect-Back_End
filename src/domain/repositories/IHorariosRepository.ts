@@ -9,7 +9,7 @@ export interface IHorariosRepository {
   crear(
     doctorId: number,
     nombre: string,
-    diaSemana: number,
+    diasSemana: number[],
     horaInicio: Date,
     horaFin: Date
   ): Promise<Horario>;
@@ -26,7 +26,7 @@ export interface IHorariosRepository {
     id: number,
     doctorId?: number,
     nombre?: string,
-    diaSemana?: number,
+    diasSemana?: number[],
     horaInicio?: Date,
     horaFin?: Date,
     estado?: string
@@ -38,7 +38,7 @@ export interface IHorariosRepository {
 
   existeConflicto(
     doctorId: number,
-    diaSemana: number,
+    diasSemana: number[],
     horaInicio: Date,
     horaFin: Date,
     excluirId?: number

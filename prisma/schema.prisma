@@ -69,6 +69,7 @@ model Paciente {
   caracteristicas                 CaracteristicaEspecial[]
   citas                           Cita[]
   doctoresFavoritos               DoctorFavorito[]
+  grupos_citas                    grupos_citas[]
   historiales                     HistorialConsulta[]
   ubicacion                       Ubicacion?               @relation(fields: [ubicacionId], references: [id])
   usuario                         Usuario                  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
@@ -228,13 +229,14 @@ model Ubicacion {
   puntoGeografico Unsupported("geometry")? @map("punto_geografico")
   estado          String                   @default("Activo") @db.VarChar(20)
   creadoEn        DateTime                 @default(now()) @map("creado_en") @db.Timestamptz(6)
-  centrosSalud    CentroSalud[]
-  citas           Cita[]
-  doctores        Doctor[]
-  horarios        Horario[]
-  pacientes       Paciente[]
-  servicios       Servicio[]
-  barrio          Barrio                   @relation(fields: [barrioId], references: [id])
+  centrosSalud          CentroSalud[]
+  citas                 Cita[]
+  doctores              Doctor[]
+  horarios              Horario[]
+  pacientes             Paciente[]
+  servicios             Servicio[]
+  servicios_ubicaciones servicios_ubicaciones[]
+  barrio                Barrio                   @relation(fields: [barrioId], references: [id])
 
   @@index([puntoGeografico], map: "idx_ubicaciones_geom", type: Gist)
   @@map("ubicaciones")
@@ -442,7 +444,6 @@ model Horario {
   id            Int               @id @default(autoincrement()) @map("id_horario")
   doctorId      Int               @map("id_usuario")
   nombre        String            @db.VarChar(100)
-  diaSemana     Int               @map("dia_semana")
   horaInicio    DateTime          @map("hora_inicio") @db.Time(6)
   horaFin       DateTime          @map("hora_fin") @db.Time(6)
   ubicacionId   Int?              @map("id_ubicacion")
@@ -451,12 +452,13 @@ model Horario {
   actualizadoEn DateTime?         @map("actualizado_en") @db.Timestamptz(6)
   centroSaludId Int?              @map("id_centro_salud")
   citas         Cita[]
+  grupos_citas  grupos_citas[]
   centroSalud   CentroSalud?      @relation(fields: [centroSaludId], references: [usuarioId], onUpdate: NoAction)
   ubicacion     Ubicacion?        @relation(fields: [ubicacionId], references: [id], onDelete: Restrict)
   doctor        Doctor            @relation(fields: [doctorId], references: [usuarioId])
+  horarios_dias horarios_dias[]
   servicios     ServicioHorario[]
 
-  @@unique([doctorId, diaSemana, horaInicio], map: "uq_horario_conflicto")
   @@map("horarios")
 }
 
@@ -478,12 +480,14 @@ model Servicio {
   modalidad               String                    @default("Presencial") @db.VarChar(20)
   sesiones                Int                       @default(1)
   citas                   Cita[]
+  grupos_citas            grupos_citas[]
   imagenes                ServicioImagen[]
   doctor                  Doctor                    @relation(fields: [doctorId], references: [usuarioId])
   especialidad            Especialidad              @relation(fields: [especialidadId], references: [id])
   tipoServicio            TipoServicio              @relation(fields: [tipoServicioId], references: [id])
   ubicaciones             Ubicacion?                @relation(fields: [id_ubicacion], references: [id], onUpdate: NoAction)
   servicios_centros_salud servicios_centros_salud[]
+  servicios_ubicaciones   servicios_ubicaciones[]
   horarios                ServicioHorario[]
 
   @@map("servicios")
@@ -535,7 +539,9 @@ model Cita {
   modalidad         String             @default("Presencial") @db.VarChar(30)
   horarioId         Int?               @map("id_horario")
   motivoCancelacion String?            @map("motivo_cancelacion") @db.VarChar(255)
+  id_grupo          Int?
   doctor            Doctor?            @relation("DoctorCita", fields: [doctorUsuarioId], references: [usuarioId])
+  grupos_citas      grupos_citas?      @relation(fields: [id_grupo], references: [id_grupo], onUpdate: NoAction)
   servicio          Servicio           @relation(fields: [servicioId], references: [id])
   ubicacion         Ubicacion?         @relation(fields: [ubicacionId], references: [id])
   paciente          Paciente           @relation(fields: [pacienteId], references: [usuarioId])
@@ -546,6 +552,7 @@ model Cita {
   logTeleconsulta   LogTeleconsulta[]
   resena            Resena?
 
+  @@index([id_grupo], map: "idx_citas_grupo")
   @@map("citas")
 }
 
@@ -813,4 +820,43 @@ model servicios_centros_salud {
 
   @@id([id_servicio, id_centro_salud])
   @@index([id_servicio], map: "idx_servicios_centros_servicio")
+}
+
+model grupos_citas {
+  id_grupo     Int       @id @default(autoincrement())
+  id_paciente  Int
+  id_servicio  Int
+  id_horario   Int
+  descripcion  String?   @db.VarChar(200)
+  fecha_inicio DateTime  @db.Date
+  fecha_fin    DateTime? @db.Date
+  estado       String    @default("Activo") @db.VarChar(20)
+  creado_en    DateTime  @default(now()) @db.Timestamptz(6)
+  citas        Cita[]
+  horarios     Horario   @relation(fields: [id_horario], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pacientes    Paciente  @relation(fields: [id_paciente], references: [usuarioId], onDelete: Cascade, onUpdate: NoAction)
+  servicios    Servicio  @relation(fields: [id_servicio], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model horarios_dias {
+  id_horario Int
+  dia_semana Int
+  horarios   Horario @relation(fields: [id_horario], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([id_horario, dia_semana])
+}
+
+/// Tabla puente entre servicios y ubicaciones (M:N)
+model servicios_ubicaciones {
+  id_servicio  Int
+  id_ubicacion Int
+  estado       String   @default("Activo") @db.VarChar(20)
+  creado_en    DateTime @default(now()) @db.Timestamptz(6)
+  servicio     Servicio  @relation(fields: [id_servicio],  references: [id],  onDelete: Cascade, onUpdate: NoAction)
+  ubicacion    Ubicacion @relation(fields: [id_ubicacion], references: [id],  onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([id_servicio, id_ubicacion])
+  @@index([id_servicio], map: "idx_servicios_ubicaciones_servicio")
+  @@map("servicios_ubicaciones")
 }

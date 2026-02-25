@@ -9,8 +9,6 @@ import {
     CrearServicioDto,
     ActualizarServicioDto,
     FiltrosServicioDto,
-    SedeServicioDto,
-    HorarioSedeDto
 } from '../dtos/ServicioDtos';
 
 const MAX_IMAGENES = 10;
@@ -33,7 +31,6 @@ export class GestionarServiciosUseCase {
     // ─── Crear ────────────────────────────────────────────────────────────────
     async crear(doctorId: number, dto: CrearServicioDto, imagenes: ImagenUpload[] = []): Promise<Servicio> {
         this.validarImagenes(imagenes);
-        if (dto.sedes) this.validarSedes(dto.sedes);
         this.validarModalidad(dto.modalidad);
 
         const servicio = await this.servicioRepository.crear(
@@ -47,7 +44,9 @@ export class GestionarServiciosUseCase {
             dto.sesiones ?? 1,
             dto.maxPacientesDia ?? null,
             dto.modalidad,
-            dto.sedes
+            dto.centroSaludIds,
+            dto.ubicacionIds,
+            dto.horarioIds
         );
 
         if (imagenes.length > 0) {
@@ -78,7 +77,6 @@ export class GestionarServiciosUseCase {
         return this.servicioRepository.listarPorDoctor(doctorId, f);
     }
 
-    /** Obtiene todos los servicios ofrecidos en un centro de salud */
     async listarPorCentro(centroId: number, filtros?: FiltrosServicioDto): Promise<Servicio[]> {
         const f: FiltrosServicio = {};
         if (filtros?.especialidadId) f.especialidadId = filtros.especialidadId;
@@ -89,7 +87,6 @@ export class GestionarServiciosUseCase {
         return this.servicioRepository.listarPorCentro(centroId, f);
     }
 
-
     // ─── Actualizar ───────────────────────────────────────────────────────────
     async actualizar(dto: ActualizarServicioDto, doctorId: number): Promise<Servicio> {
         const existente = await this.servicioRepository.buscarPorId(dto.id);
@@ -97,7 +94,6 @@ export class GestionarServiciosUseCase {
         if (existente.doctorId !== doctorId) throw new Error('No tienes permiso para modificar este servicio');
         if (existente.estado === 'Eliminado') throw new Error('No se puede modificar un servicio eliminado');
 
-        if (dto.sedesAgregar) this.validarSedes(dto.sedesAgregar);
         if (dto.modalidad) this.validarModalidad(dto.modalidad);
 
         if (dto.estado !== undefined && !['Activo', 'Inactivo'].includes(dto.estado)) {
@@ -115,15 +111,18 @@ export class GestionarServiciosUseCase {
             maxPacientesDia: dto.maxPacientesDia,
             modalidad: dto.modalidad,
             estado: dto.estado,
-            sedesAgregar: dto.sedesAgregar,
-            sedesEliminar: dto.sedesEliminar,
+            centroSaludIdsAgregar: dto.centroSaludIdsAgregar,
+            centroSaludIdsEliminar: dto.centroSaludIdsEliminar,
+            ubicacionIdsAgregar: dto.ubicacionIdsAgregar,
+            ubicacionIdsEliminar: dto.ubicacionIdsEliminar,
+            horarioIdsAgregar: dto.horarioIdsAgregar,
             horariosEliminar: dto.horariosEliminar
         });
     }
 
     // ─── Eliminar / Desactivar ────────────────────────────────────────────────
     async eliminar(id: number, doctorId: number): Promise<Servicio> {
-        const s = await this._verificarPropiedad(id, doctorId);
+        await this._verificarPropiedad(id, doctorId);
         return this.servicioRepository.eliminar(id);
     }
 
@@ -157,77 +156,11 @@ export class GestionarServiciosUseCase {
     }
 
     // ─── Validaciones ─────────────────────────────────────────────────────────
-
-    /**
-     * Valida el array de sedes:
-     * - Cada sede tiene centroSaludId XOR ubicacionId (no ambos, no ninguno)
-     * - Cada sede tiene al menos un horario
-     * - Cada horario tiene horaInicio < horaFin
-     * - No hay horarios que se solapen dentro del mismo diaSemana en el conjunto total
-     */
-    private validarSedes(sedes: SedeServicioDto[]): void {
-        if (sedes.length === 0) return;
-
-        // Mapa por dia para detectar choques entre todas las sedes del request
-        const rangosPorDia = new Map<number, Array<{ inicio: number; fin: number; nombre: string }>>();
-
-        for (const sede of sedes) {
-            const tieneCentro = sede.centroSaludId !== undefined && sede.centroSaludId !== null;
-            const tieneUbicacion = sede.ubicacionId !== undefined && sede.ubicacionId !== null;
-
-            if (tieneCentro && tieneUbicacion) {
-                throw new Error('Cada sede debe tener centroSaludId O ubicacionId, no ambos');
-            }
-            if (!tieneCentro && !tieneUbicacion) {
-                throw new Error('Cada sede debe especificar centroSaludId o ubicacionId');
-            }
-            if (!sede.horarios || sede.horarios.length === 0) {
-                const label = tieneCentro ? `centro ${sede.centroSaludId}` : `ubicación ${sede.ubicacionId}`;
-                throw new Error(`La sede (${label}) debe tener al menos un horario`);
-            }
-
-            for (const h of sede.horarios) {
-                this.validarFormatoHorario(h);
-                const inicioMin = this.horaAMinutos(h.horaInicio);
-                const finMin = this.horaAMinutos(h.horaFin);
-
-                if (inicioMin >= finMin) {
-                    throw new Error(`El horario "${h.nombre}" tiene horaInicio >= horaFin`);
-                }
-
-                const existentes = rangosPorDia.get(h.diaSemana) ?? [];
-                for (const r of existentes) {
-                    if (inicioMin < r.fin && finMin > r.inicio) {
-                        throw new Error(
-                            `El horario "${h.nombre}" (día ${h.diaSemana} ${h.horaInicio}-${h.horaFin}) ` +
-                            `choca con "${r.nombre}"`
-                        );
-                    }
-                }
-                existentes.push({ inicio: inicioMin, fin: finMin, nombre: h.nombre });
-                rangosPorDia.set(h.diaSemana, existentes);
-            }
-        }
-    }
-
     private validarModalidad(modalidad: string): void {
         const permitidos = ['Presencial', 'Teleconsulta', 'Mixta'];
         if (!permitidos.includes(modalidad)) {
             throw new Error(`Modalidad inválida. Valores permitidos: ${permitidos.join(', ')}`);
         }
-    }
-
-    private validarFormatoHorario(h: HorarioSedeDto): void {
-        const re = /^([01]\d|2[0-3]):([0-5]\d)$/;
-        if (!re.test(h.horaInicio)) throw new Error(`horaInicio inválida: "${h.horaInicio}" (usa HH:MM)`);
-        if (!re.test(h.horaFin)) throw new Error(`horaFin inválida: "${h.horaFin}" (usa HH:MM)`);
-        if (h.diaSemana < 1 || h.diaSemana > 7) throw new Error(`diaSemana inválido: ${h.diaSemana} (1-7)`);
-        if (!h.nombre?.trim()) throw new Error('El nombre del horario es requerido');
-    }
-
-    private horaAMinutos(hora: string): number {
-        const [h, m] = hora.split(':').map(Number);
-        return h * 60 + m;
     }
 
     private validarImagenes(imgs: ImagenUpload[]): void {

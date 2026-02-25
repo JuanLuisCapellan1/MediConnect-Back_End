@@ -14,7 +14,7 @@ import { ServicioHorarioYaExisteError } from '../../domain/errors/ServiciosHorar
 import { ServicioHorarioNoEncontradoError } from '../../domain/errors/ServiciosHorarios/ServicioHorarioNoEncontradoError';
 
 export class PrismaServicioHorarioRepository implements IServicioHorarioRepository {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   /**
    * Mapea los datos de Prisma a la entidad ServicioHorario con relaciones
@@ -34,7 +34,7 @@ export class PrismaServicioHorarioRepository implements IServicioHorarioReposito
       horario: data.horario ? {
         id: data.horario.id,
         nombre: data.horario.nombre,
-        diaSemana: data.horario.diaSemana,
+        diasSemana: (data.horario.horarios_dias ?? []).map((hd: any) => hd.dia_semana),
         horaInicio: data.horario.horaInicio,
         horaFin: data.horario.horaFin,
         estado: data.horario.estado,
@@ -95,10 +95,12 @@ export class PrismaServicioHorarioRepository implements IServicioHorarioReposito
           select: {
             id: true,
             nombre: true,
-            diaSemana: true,
             horaInicio: true,
             horaFin: true,
             estado: true,
+          },
+          include: {
+            horarios_dias: { select: { dia_semana: true } },
           },
         },
       },
@@ -125,10 +127,12 @@ export class PrismaServicioHorarioRepository implements IServicioHorarioReposito
           select: {
             id: true,
             nombre: true,
-            diaSemana: true,
             horaInicio: true,
             horaFin: true,
             estado: true,
+          },
+          include: {
+            horarios_dias: { select: { dia_semana: true } },
           },
         },
       },
@@ -158,10 +162,12 @@ export class PrismaServicioHorarioRepository implements IServicioHorarioReposito
           select: {
             id: true,
             nombre: true,
-            diaSemana: true,
             horaInicio: true,
             horaFin: true,
             estado: true,
+          },
+          include: {
+            horarios_dias: { select: { dia_semana: true } },
           },
         },
       },
@@ -201,10 +207,12 @@ export class PrismaServicioHorarioRepository implements IServicioHorarioReposito
             select: {
               id: true,
               nombre: true,
-              diaSemana: true,
               horaInicio: true,
               horaFin: true,
               estado: true,
+            },
+            include: {
+              horarios_dias: { select: { dia_semana: true } },
             },
           },
         },
@@ -341,7 +349,7 @@ export class PrismaServicioHorarioRepository implements IServicioHorarioReposito
    */
   async servicioExiste(servicioId: number): Promise<boolean> {
     const resultado = await this.prisma.servicio.findFirst({
-      where: { 
+      where: {
         id: servicioId,
         estado: 'Activo'
       },

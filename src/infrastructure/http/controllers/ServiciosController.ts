@@ -55,10 +55,6 @@ export class ServiciosController {
                 return;
             }
 
-            // `sedes` puede llegar como string JSON, objeto, o array en multipart/form-data
-            const sedes = this.parseSedes(req.body.sedes);
-
-
             const dto: CrearServicioDto = {
                 tipoServicioId: Number(tipoServicioId),
                 especialidadId: Number(especialidadId),
@@ -68,7 +64,9 @@ export class ServiciosController {
                 duracionMinutos: Number(duracionMinutos),
                 maxPacientesDia: maxPacientesDia !== undefined ? Number(maxPacientesDia) : undefined,
                 modalidad,
-                sedes
+                centroSaludIds: this.parseIds(req.body.centroSaludIds),
+                ubicacionIds: this.parseIds(req.body.ubicacionIds),
+                horarioIds: this.parseIds(req.body.horarioIds)
             };
 
             const archivos = (req.files as Express.Multer.File[]) ?? [];
@@ -210,11 +208,11 @@ export class ServiciosController {
                 maxPacientesDia: req.body.maxPacientesDia !== undefined ? Number(req.body.maxPacientesDia) : undefined,
                 modalidad: req.body.modalidad,
                 estado: req.body.estado,
-                // Nuevas sedes con sus horarios (JSON o string JSON)
-                sedesAgregar: this.parseSedes(req.body.sedesAgregar),
-                // IDs de centros a desactivar
-                sedesEliminar: this.parseIds(req.body.sedesEliminar),
-                // IDs de horarios existentes a desactivar
+                centroSaludIdsAgregar: this.parseIds(req.body.centroSaludIdsAgregar),
+                centroSaludIdsEliminar: this.parseIds(req.body.centroSaludIdsEliminar),
+                ubicacionIdsAgregar: this.parseIds(req.body.ubicacionIdsAgregar),
+                ubicacionIdsEliminar: this.parseIds(req.body.ubicacionIdsEliminar),
+                horarioIdsAgregar: this.parseIds(req.body.horarioIdsAgregar),
                 horariosEliminar: this.parseIds(req.body.horariosEliminar)
             };
 
@@ -367,81 +365,44 @@ export class ServiciosController {
 
     /** Parsea IDs que pueden venir como array JSON, string CSV o array de strings */
     private parseIds(value: any): number[] | undefined {
+        const valid = (n: number) => !isNaN(n) && n > 0;
         if (value === undefined || value === null) return undefined;
         if (Array.isArray(value)) {
-            const nums = value.map(Number).filter(n => !isNaN(n));
+            const nums = value.map(Number).filter(valid);
             return nums.length ? nums : undefined;
         }
         if (typeof value === 'string') {
-            const nums = value.split(',').map(s => Number(s.trim())).filter(n => !isNaN(n));
-            return nums.length ? nums : undefined;
-        }
-        return undefined;
-    }
-
-    /**
-     * Parsea el campo `sedes` que puede llegar de múltiples formas en multipart/form-data:
-     *   1. Ya parseado como array u objeto (Express lo resolvió)
-     *   2. String JSON válido: '[{...},{...}]'
-     *   3. Array de strings (múltiples -F sedes=...): cada elemento se parsea y se une
-     *   4. Un solo objeto JSON: '{...}' → se envuelve en array
-     *   5. Objetos concatenados sin array: '{...},{...}' → se envuelve en '[...]'
-     */
-    private parseSedes(value: any): any[] | undefined {
-        if (value === undefined || value === null) return undefined;
-
-        // Ya es un array de objetos
-        if (Array.isArray(value)) {
-            // Puede ser string[] (múltiples -F fields) o ya objetos
-            const result: any[] = [];
-            for (const item of value) {
-                if (typeof item === 'string') {
-                    const parsed = this.tryParseSedesString(item);
-                    if (parsed) result.push(...(Array.isArray(parsed) ? parsed : [parsed]));
-                } else if (item && typeof item === 'object') {
-                    result.push(item);
+            const trimmed = value.trim();
+            if (!trimmed) return undefined;      // string vacío → nada
+            // Intenta parsear como JSON array primero
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) {
+                    const nums = parsed.map(Number).filter(valid);
+                    return nums.length ? nums : undefined;
                 }
-            }
-            return result.length > 0 ? result : undefined;
+                if (typeof parsed === 'number' && valid(parsed)) return [parsed];
+            } catch { /* continuar */ }
+            // Fallback: CSV
+            const nums = trimmed.split(',').map(s => Number(s.trim())).filter(valid);
+            return nums.length ? nums : undefined;
         }
-
-        // Es un objeto JS ya parseado
-        if (typeof value === 'object') return [value];
-
-        // Es un string
-        if (typeof value === 'string') {
-            const parsed = this.tryParseSedesString(value);
-            if (!parsed) return undefined;
-            return Array.isArray(parsed) ? parsed : [parsed];
-        }
-
+        if (typeof value === 'number' && valid(value)) return [value];
         return undefined;
     }
 
-    /**
-     * Intenta parsear un string como JSON de sedes.
-     * Estrategias: directo → envuelto en [...] → cada elemento separado por '},{'.
-     */
-    private tryParseSedesString(str: string): any | undefined {
-        const s = str.trim();
-        if (!s) return undefined;
-
-        // Intento 1: parseo directo (ya es JSON válido: array u objeto)
-        try { return JSON.parse(s); } catch { /* continuar */ }
-
-        // Intento 2: envolver en array ('{...}' o '{...},{...}')
-        try { return JSON.parse(`[${s}]`); } catch { /* continuar */ }
-
-        return undefined;
-    }
-
-    /** Parsea un campo JSON genérico (no sedes) */
-    private parseJsonField(value: any): any {
+    /** Parsea un campo JSON genérico (array de objetos) */
+    private parseJsonField(value: any): any[] | undefined {
         if (value === undefined || value === null) return undefined;
+        if (Array.isArray(value)) return value.length ? value : undefined;
         if (typeof value === 'string') {
-            try { return JSON.parse(value); } catch { return undefined; }
+            try {
+                const parsed = JSON.parse(value);
+                return Array.isArray(parsed) ? parsed : [parsed];
+            } catch { return undefined; }
         }
-        return value;
+        if (typeof value === 'object') return [value];
+        return undefined;
     }
 
 

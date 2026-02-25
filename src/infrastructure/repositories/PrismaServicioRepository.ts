@@ -12,7 +12,6 @@ import { PrismaClient } from '@prisma/client';
 import { Servicio } from '../../domain/entities/Servicio';
 import { ServicioImagen } from '../../domain/entities/ServicioImagen';
 import { IServicioRepository, FiltrosServicio } from '../../domain/repositories/IServicioRepository';
-import { SedeServicioDto } from '../../application/dtos/ServicioDtos';
 import { RedisCacheService } from '../external-services/RedisCacheService';
 
 // ─── Includes reutilizables ──────────────────────────────────────────────────
@@ -33,6 +32,19 @@ const CENTROS_INCLUDE = {
     }
 } as const;
 
+const UBICACIONES_INCLUDE = {
+    where: { estado: 'Activo' },
+    include: {
+        ubicacion: {
+            select: {
+                id: true,
+                direccion: true,
+                barrio: { select: { nombre: true } }
+            }
+        }
+    }
+} as const;
+
 const HORARIOS_INCLUDE = {
     where: { estado: 'Activo' },
     include: {
@@ -40,12 +52,12 @@ const HORARIOS_INCLUDE = {
             select: {
                 id: true,
                 nombre: true,
-                diaSemana: true,
                 horaInicio: true,
                 horaFin: true,
                 centroSaludId: true,
                 centroSalud: { select: { usuarioId: true, nombreComercial: true } },
-                ubicacion: { select: { id: true, direccion: true, barrio: { select: { nombre: true } } } }
+                ubicacion: { select: { id: true, direccion: true, barrio: { select: { nombre: true } } } },
+                horarios_dias: { select: { dia_semana: true } }
             }
         }
     }
@@ -82,13 +94,19 @@ export class PrismaServicioRepository implements IServicioRepository {
         sesiones: number,
         maxPacientesDia: number | null,
         modalidad: string,
-        sedes?: SedeServicioDto[]
+        centroSaludIds?: number[],
+        ubicacionIds?: number[],
+        horarioIds?: number[]
     ): Promise<Servicio> {
         const p = this.prisma as any;
 
         const creado = await p.$transaction(async (tx: any) => {
-            // Determinar si hay sede con ubicacionId para asignarla al servicio
-            const sedeUbicacion = sedes?.find(s => s.ubicacionId && !s.centroSaludId);
+            // Obtener ubicacionId del perfil del doctor para asignar al campo directo del servicio
+            const doctor = await tx.doctor.findUnique({
+                where: { usuarioId: doctorId },
+                select: { ubicacionId: true }
+            });
+            const doctorUbicacionId = doctor?.ubicacionId ?? null;
 
             const servicio = await tx.servicio.create({
                 data: {
@@ -103,12 +121,23 @@ export class PrismaServicioRepository implements IServicioRepository {
                     maxPacientesDia,
                     modalidad,
                     estado: 'Activo',
-                    id_ubicacion: sedeUbicacion?.ubicacionId ?? null
+                    id_ubicacion: doctorUbicacionId
                 }
             });
 
-            if (sedes && sedes.length > 0) {
-                await this._procesarSedes(tx, servicio.id, doctorId, sedes);
+            // Registrar centros de salud
+            if (centroSaludIds?.length) {
+                await this._procesarCentros(tx, servicio.id, centroSaludIds);
+            }
+
+            // Registrar ubicaciones (tabla puente servicios_ubicaciones)
+            if (ubicacionIds?.length) {
+                await this._procesarUbicaciones(tx, servicio.id, ubicacionIds);
+            }
+
+            // Vincular horarios existentes al servicio
+            if (horarioIds?.length) {
+                await this._vincularHorarios(tx, servicio.id, doctorId, horarioIds);
             }
 
             return servicio;
@@ -128,7 +157,7 @@ export class PrismaServicioRepository implements IServicioRepository {
                 doctor: { include: { usuario: { select: { id: true, email: true, fotoPerfil: true } } } },
                 especialidad: true,
                 tipoServicio: true,
-                ubicaciones: { select: { id: true, direccion: true, barrio: { select: { nombre: true } } } },
+                servicios_ubicaciones: UBICACIONES_INCLUDE,
                 servicios_centros_salud: CENTROS_INCLUDE,
                 horarios: HORARIOS_INCLUDE
             }
@@ -202,18 +231,17 @@ export class PrismaServicioRepository implements IServicioRepository {
             if (datos.modalidad !== undefined) dataUpdate.modalidad = datos.modalidad;
             if (datos.estado !== undefined) dataUpdate.estado = datos.estado;
 
-            // Si hay nueva sede de ubicacion, actualizar id_ubicacion en servicio
-            if (datos.sedesAgregar?.length) {
-                const sedeUbicacion = datos.sedesAgregar.find((s: any) => s.ubicacionId && !s.centroSaludId);
-                if (sedeUbicacion) dataUpdate.id_ubicacion = sedeUbicacion.ubicacionId;
+            // Si se agregan ubicaciones propias, actualizar id_ubicacion con la primera
+            if (datos.ubicacionIdsAgregar?.length) {
+                dataUpdate.id_ubicacion = datos.ubicacionIdsAgregar[0];
             }
 
             await tx.servicio.update({ where: { id }, data: dataUpdate });
 
-            // Desactivar sedes (centros)
-            if (datos.sedesEliminar?.length) {
+            // Desactivar centros de salud
+            if (datos.centroSaludIdsEliminar?.length) {
                 await tx.servicios_centros_salud.updateMany({
-                    where: { id_servicio: id, id_centro_salud: { in: datos.sedesEliminar } },
+                    where: { id_servicio: id, id_centro_salud: { in: datos.centroSaludIdsEliminar } },
                     data: { estado: 'Inactivo' }
                 });
             }
@@ -230,9 +258,21 @@ export class PrismaServicioRepository implements IServicioRepository {
                 });
             }
 
-            // Agregar nuevas sedes
-            if (datos.sedesAgregar?.length) {
-                await this._procesarSedes(tx, id, doctorId, datos.sedesAgregar);
+            // Agregar nuevos centros, ubicaciones y vincular horarios existentes
+            if (datos.centroSaludIdsAgregar?.length) {
+                await this._procesarCentros(tx, id, datos.centroSaludIdsAgregar);
+            }
+            if (datos.ubicacionIdsAgregar?.length) {
+                await this._procesarUbicaciones(tx, id, datos.ubicacionIdsAgregar);
+            }
+            if (datos.ubicacionIdsEliminar?.length) {
+                await tx.servicios_ubicaciones.updateMany({
+                    where: { id_servicio: id, id_ubicacion: { in: datos.ubicacionIdsEliminar } },
+                    data: { estado: 'Inactivo' }
+                });
+            }
+            if (datos.horarioIdsAgregar?.length) {
+                await this._vincularHorarios(tx, id, doctorId, datos.horarioIdsAgregar!);
             }
         });
 
@@ -282,64 +322,62 @@ export class PrismaServicioRepository implements IServicioRepository {
         return p.servicioImagen.count({ where: { servicioId, estado: 'Activo' } });
     }
 
-    // ─── Helper: Procesar sedes ───────────────────────────────────────────────
-    private async _procesarSedes(
+    // ─── Helper: Registrar centros y ubicaciones ───────────────────────────────
+    private async _procesarCentros(
+        tx: any,
+        servicioId: number,
+        centroSaludIds: number[]
+    ): Promise<void> {
+        for (const centroId of centroSaludIds) {
+            await tx.servicios_centros_salud.upsert({
+                where: { id_servicio_id_centro_salud: { id_servicio: servicioId, id_centro_salud: centroId } },
+                create: { id_servicio: servicioId, id_centro_salud: centroId, estado: 'Activo' },
+                update: { estado: 'Activo' }
+            });
+        }
+    }
+
+    // ─── Helper: Registrar ubicaciones (M:N) ────────────────────────────────
+    private async _procesarUbicaciones(
+        tx: any,
+        servicioId: number,
+        ubicacionIds: number[]
+    ): Promise<void> {
+        for (const ubicId of ubicacionIds) {
+            // Verificar que la ubicación existe
+            const existe = await tx.ubicacion.findUnique({ where: { id: ubicId }, select: { id: true } });
+            if (!existe) throw new Error(`Ubicación con ID ${ubicId} no existe en la base de datos`);
+
+            await tx.servicios_ubicaciones.upsert({
+                where: { id_servicio_id_ubicacion: { id_servicio: servicioId, id_ubicacion: ubicId } },
+                create: { id_servicio: servicioId, id_ubicacion: ubicId, estado: 'Activo' },
+                update: { estado: 'Activo' }
+            });
+        }
+    }
+
+    // ─── Helper: Vincular horarios existentes al servicio ───────────────────────
+    private async _vincularHorarios(
         tx: any,
         servicioId: number,
         doctorId: number,
-        sedes: SedeServicioDto[]
+        horarioIds: number[]
     ): Promise<void> {
-        for (const sede of sedes) {
-            let ubicacionId: number;
-            const centroSaludId = sede.centroSaludId ?? null;
-
-            if (sede.centroSaludId) {
-                // Registrar relación servicio ↔ centro
-                await tx.servicios_centros_salud.upsert({
-                    where: {
-                        id_servicio_id_centro_salud: { id_servicio: servicioId, id_centro_salud: sede.centroSaludId }
-                    },
-                    create: { id_servicio: servicioId, id_centro_salud: sede.centroSaludId, estado: 'Activo' },
-                    update: { estado: 'Activo' }
-                });
-
-                // Obtener la ubicación del centro
-                const centro = await tx.centroSalud.findUnique({
-                    where: { usuarioId: sede.centroSaludId },
-                    select: { ubicacionId: true }
-                });
-                if (!centro) throw new Error(`Centro de salud con ID ${sede.centroSaludId} no encontrado`);
-                ubicacionId = centro.ubicacionId;
-
-            } else if (sede.ubicacionId) {
-                // Verificar que la ubicación existe antes de usarla
-                const ubicacion = await tx.ubicacion.findUnique({ where: { id: sede.ubicacionId }, select: { id: true } });
-                if (!ubicacion) throw new Error(`Ubicación con ID ${sede.ubicacionId} no encontrada. Verifica que el ID sea correcto.`);
-                ubicacionId = sede.ubicacionId;
-
-            } else {
-                throw new Error('Sede sin centroSaludId ni ubicacionId');
+        for (const horarioId of horarioIds) {
+            // Verificar que el horario existe y pertenece al doctor
+            const horario = await tx.horario.findFirst({
+                where: { id: horarioId, doctorId, estado: 'Activo' },
+                select: { id: true }
+            });
+            if (!horario) {
+                throw new Error(`Horario con ID ${horarioId} no encontrado o no pertenece al doctor`);
             }
-
-            // Crear cada horario de la sede
-            for (const h of sede.horarios) {
-                const horario = await tx.horario.create({
-                    data: {
-                        doctorId,
-                        nombre: h.nombre.trim(),
-                        diaSemana: h.diaSemana,
-                        horaInicio: horaADate(h.horaInicio),
-                        horaFin: horaADate(h.horaFin),
-                        ubicacionId,
-                        centroSaludId,
-                        estado: 'Activo'
-                    }
-                });
-
-                await tx.servicioHorario.create({
-                    data: { servicioId, horarioId: horario.id, estado: 'Activo' }
-                });
-            }
+            // Upsert para evitar duplicados
+            await tx.servicioHorario.upsert({
+                where: { servicioId_horarioId: { servicioId, horarioId } },
+                create: { servicioId, horarioId, estado: 'Activo' },
+                update: { estado: 'Activo' }
+            });
         }
     }
 
@@ -355,6 +393,17 @@ export class PrismaServicioRepository implements IServicioRepository {
             if (filtros?.precioMin !== undefined) where.precio.gte = filtros.precioMin;
             if (filtros?.precioMax !== undefined) where.precio.lte = filtros.precioMax;
         }
+        if (filtros?.diaSemana !== undefined) {
+            where.horarios = {
+                some: {
+                    estado: 'Activo',
+                    horario: {
+                        estado: 'Activo',
+                        horarios_dias: { some: { dia_semana: filtros.diaSemana } }
+                    }
+                }
+            };
+        }
         return where;
     }
 
@@ -363,7 +412,7 @@ export class PrismaServicioRepository implements IServicioRepository {
             imagenes: { where: { estado: 'Activo' }, orderBy: { orden: 'asc' }, take: 1 },
             especialidad: { select: { id: true, nombre: true } },
             tipoServicio: { select: { id: true, nombre: true } },
-            ubicaciones: { select: { id: true, direccion: true, barrio: { select: { nombre: true } } } },
+            servicios_ubicaciones: UBICACIONES_INCLUDE,
             servicios_centros_salud: {
                 where: { estado: 'Activo' },
                 include: {
@@ -390,6 +439,8 @@ export class PrismaServicioRepository implements IServicioRepository {
 
     private mapToDomainCompleto(s: any): Servicio {
         const imagenes = s.imagenes?.map((i: any) => this.mapImagenToDomain(i));
+        // Las ubicaciones vienen de la tabla puente servicios_ubicaciones
+        const ubicacionesArray = s.servicios_ubicaciones?.map((su: any) => su.ubicacion).filter(Boolean);
         return new Servicio(
             s.id, s.doctorId, s.tipoServicioId, s.especialidadId,
             s.nombre, s.descripcion ?? null,
@@ -404,7 +455,7 @@ export class PrismaServicioRepository implements IServicioRepository {
             s.horarios,
             s.servicios_centros_salud,
             s.id_ubicacion ?? null,
-            s.ubicaciones
+            ubicacionesArray?.length ? ubicacionesArray : null
         );
     }
 

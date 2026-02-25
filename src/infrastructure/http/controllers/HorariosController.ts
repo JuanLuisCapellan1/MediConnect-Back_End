@@ -22,22 +22,21 @@ export class HorariosController {
    */
   async crear(req: Request, res: Response): Promise<void> {
     try {
-      const { doctorId, nombre, diaSemana, horaInicio, horaFin } = req.body;
-
-      const doctorIdNum = Number(doctorId);
-      const diaSemanaNum = Number(diaSemana);
-            if (!doctorId || isNaN(doctorIdNum)) {
-        res.status(400).json({ success: false, message: 'El campo doctorId es requerido y debe ser numérico' });
+      const doctorId = req.user?.userId;
+      if (!doctorId) {
+        res.status(401).json({ success: false, message: 'No autenticado' });
         return;
       }
+
+      const { nombre, diasSemana, horaInicio, horaFin } = req.body;
 
       if (!nombre || typeof nombre !== 'string') {
         res.status(400).json({ success: false, message: 'El campo nombre es requerido y debe ser string' });
         return;
       }
 
-      if (diaSemana === undefined || isNaN(diaSemanaNum)) {
-        res.status(400).json({ success: false, message: 'El campo diaSemana es requerido y debe ser numérico' });
+      if (!Array.isArray(diasSemana) || diasSemana.length === 0) {
+        res.status(400).json({ success: false, message: 'El campo diasSemana es requerido y debe ser un array con al menos un día (1=Lunes…7=Domingo)' });
         return;
       }
 
@@ -52,9 +51,9 @@ export class HorariosController {
       }
 
       const dto: CrearHorarioDto = {
-        doctorId: doctorIdNum,
+        doctorId,
         nombre,
-        diaSemana: diaSemanaNum,
+        diasSemana: diasSemana.map(Number),
         horaInicio,
         horaFin
       };
@@ -168,11 +167,19 @@ export class HorariosController {
         return;
       }
 
+      const doctorId = req.user?.userId;
+      if (!doctorId) {
+        res.status(401).json({ success: false, message: 'No autenticado' });
+        return;
+      }
+
       const dto: ActualizarHorarioDto = {
         id,
-        doctorId: req.body.doctorId !== undefined ? Number(req.body.doctorId) : undefined,
+        doctorId,
         nombre: req.body.nombre,
-        diaSemana: req.body.diaSemana !== undefined ? Number(req.body.diaSemana) : undefined,
+        diasSemana: Array.isArray(req.body.diasSemana)
+          ? req.body.diasSemana.map(Number)
+          : undefined,
         horaInicio: req.body.horaInicio,
         horaFin: req.body.horaFin,
         estado: req.body.estado
@@ -201,7 +208,13 @@ export class HorariosController {
         return;
       }
 
-      const horarioEliminado = await this.gestionarHorariosUseCase.eliminar(id);
+      const doctorId = req.user?.userId;
+      if (!doctorId) {
+        res.status(401).json({ success: false, message: 'No autenticado' });
+        return;
+      }
+
+      const horarioEliminado = await this.gestionarHorariosUseCase.eliminar(id, doctorId);
       res.status(200).json({
         success: true,
         data: horarioEliminado,

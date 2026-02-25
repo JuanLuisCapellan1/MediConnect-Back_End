@@ -400,8 +400,11 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
               where: {
                 estado: 'Activo',
               },
+              include: {
+                horarios_dias: { select: { dia_semana: true } },
+              },
               orderBy: {
-                diaSemana: 'asc',
+                creadoEn: 'asc',
               },
             },
             servicios: {
@@ -426,7 +429,7 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
         },
         centroSalud: true,
       },
-    });
+    }) as any;
 
     // If doctor exists, fetch general verification comment and process documents
     if (usuario?.doctor) {

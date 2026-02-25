@@ -3,7 +3,6 @@
  */
 import { Servicio } from '../entities/Servicio';
 import { ServicioImagen } from '../entities/ServicioImagen';
-import { SedeServicioDto } from '../../application/dtos/ServicioDtos';
 
 export interface FiltrosServicio {
     especialidadId?: number;
@@ -12,6 +11,7 @@ export interface FiltrosServicio {
     estado?: string;
     precioMin?: number;
     precioMax?: number;
+    diaSemana?: number;
 }
 
 export interface IServicioRepository {
@@ -26,12 +26,13 @@ export interface IServicioRepository {
         sesiones: number,
         maxPacientesDia: number | null,
         modalidad: string,
-        sedes?: SedeServicioDto[]
+        centroSaludIds?: number[],
+        ubicacionIds?: number[],
+        horarioIds?: number[]
     ): Promise<Servicio>;
 
     buscarPorId(id: number): Promise<Servicio | null>;
     listarPorDoctor(doctorId: number, filtros?: FiltrosServicio): Promise<Servicio[]>;
-    /** Obtener todos los servicios ofrecidos en un centro de salud */
     listarPorCentro(centroId: number, filtros?: FiltrosServicio): Promise<Servicio[]>;
 
     actualizar(
@@ -47,8 +48,11 @@ export interface IServicioRepository {
             maxPacientesDia?: number;
             modalidad?: string;
             estado?: string;
-            sedesAgregar?: SedeServicioDto[];
-            sedesEliminar?: number[];
+            centroSaludIdsAgregar?: number[];
+            centroSaludIdsEliminar?: number[];
+            ubicacionIdsAgregar?: number[];
+            ubicacionIdsEliminar?: number[];
+            horarioIdsAgregar?: number[];
             horariosEliminar?: number[];
         }
     ): Promise<Servicio>;

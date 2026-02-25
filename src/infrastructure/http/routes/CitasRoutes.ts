@@ -99,4 +99,40 @@ router.post(
     (req, res) => ctrl().diagnosticar(req, res)
 );
 
+// ──────────────────────────────────────────────────
+// RUTAS DE GRUPOS DE CITAS RECURRENTES
+// ──────────────────────────────────────────────────
+
+// POST /citas/recurrentes — Paciente agenda cita recurrente
+router.post(
+    '/recurrentes',
+    autenticarJWT,
+    requireRole('Paciente'),
+    (req, res) => ctrl().agendarRecurrente(req, res)
+);
+
+// GET /citas/grupos — Paciente lista sus grupos de citas
+router.get(
+    '/grupos',
+    autenticarJWT,
+    requireRole('Paciente'),
+    (req, res) => ctrl().listarMisGrupos(req, res)
+);
+
+// GET /citas/grupos/:grupoId — Ver un grupo específico (Paciente o Doctor)
+router.get(
+    '/grupos/:grupoId',
+    autenticarJWT,
+    requireRole('Paciente', 'Doctor'),
+    (req, res) => ctrl().verGrupo(req, res)
+);
+
+// DELETE /citas/grupos/:grupoId — Cancelar grupo (Paciente o Doctor)
+router.delete(
+    '/grupos/:grupoId',
+    autenticarJWT,
+    requireRole('Paciente', 'Doctor'),
+    (req, res) => ctrl().cancelarGrupo(req, res)
+);
+
 export default router;

@@ -156,8 +156,11 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                     where: {
                         estado: 'Activo',
                     },
+                    include: {
+                        horarios_dias: { select: { dia_semana: true } },
+                    },
                     orderBy: {
-                        diaSemana: 'asc',
+                        creadoEn: 'asc',
                     },
                 },
                 servicios: {
@@ -251,7 +254,10 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                 },
                 horarios: {
                     where: { estado: 'Activo' },
-                    orderBy: { diaSemana: 'asc' },
+                    include: {
+                        horarios_dias: { select: { dia_semana: true } },
+                    },
+                    orderBy: { creadoEn: 'asc' },
                 },
                 servicios: {
                     where: { estado: 'Activo' },

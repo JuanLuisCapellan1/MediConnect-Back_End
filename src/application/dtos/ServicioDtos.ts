@@ -1,34 +1,6 @@
 /**
  * ServicioDtos.ts
- *
- * Flujo de creación:
- *   Paso 1 → campos básicos (nombre, especialidad, tipo, precio, duración, imágenes)
- *   Paso 2 → sedes: cada sede es un centro de salud O una ubicación propia,
- *             con sus horarios. Un mismo servicio puede tener múltiples centros.
  */
-
-// ─── Horario por sede ─────────────────────────────────────────────────────────
-export interface HorarioSedeDto {
-    /** Nombre descriptivo, ej. "Lunes mañana - Clínica A" */
-    nombre: string;
-    /** 1=Lunes … 7=Domingo */
-    diaSemana: number;
-    /** Hora de inicio "HH:MM" */
-    horaInicio: string;
-    /** Hora de fin "HH:MM" */
-    horaFin: string;
-}
-
-// ─── Sede ─────────────────────────────────────────────────────────────────────
-/**
- * Sede donde se imparte el servicio.
- * `centroSaludId` y `ubicacionId` son mutuamente excluyentes.
- */
-export interface SedeServicioDto {
-    centroSaludId?: number;
-    ubicacionId?: number;
-    horarios: HorarioSedeDto[];
-}
 
 // ─── Crear ────────────────────────────────────────────────────────────────────
 export interface CrearServicioDto {
@@ -38,17 +10,16 @@ export interface CrearServicioDto {
     descripcion?: string;
     precio: number;
     duracionMinutos: number;
-    /**
-     * Número de slots que ocupa el servicio.
-     * Ej: si la duración del slot es 30min y sesiones=2 → el servicio dura 1h.
-     * @default 1
-     */
     sesiones?: number;
     maxPacientesDia?: number;
     /** Presencial | Teleconsulta | Mixta */
     modalidad: 'Presencial' | 'Teleconsulta' | 'Mixta';
-    /** Sedes (centros o ubicaciones) donde se impartirá el servicio */
-    sedes?: SedeServicioDto[];
+    /** IDs de centros de salud donde se ofrecerá el servicio */
+    centroSaludIds?: number[];
+    /** IDs de ubicaciones donde se ofrecerá el servicio */
+    ubicacionIds?: number[];
+    /** IDs de horarios ya existentes del doctor a vincular al servicio */
+    horarioIds?: number[];
 }
 
 // ─── Actualizar ───────────────────────────────────────────────────────────────
@@ -60,17 +31,22 @@ export interface ActualizarServicioDto {
     descripcion?: string;
     precio?: number;
     duracionMinutos?: number;
-    /** Número de slots que ocupa el servicio. @default 1 */
     sesiones?: number;
     maxPacientesDia?: number;
     /** Presencial | Teleconsulta | Mixta */
     modalidad?: 'Presencial' | 'Teleconsulta' | 'Mixta';
     estado?: string;
-    /** Nuevas sedes a agregar con sus horarios */
-    sedesAgregar?: SedeServicioDto[];
-    /** IDs (centroSaludId) de sedes a desactivar */
-    sedesEliminar?: number[];
-    /** IDs de horarios existentes del servicio a desactivar */
+    /** IDs de centros de salud a agregar */
+    centroSaludIdsAgregar?: number[];
+    /** IDs de centros de salud a desactivar */
+    centroSaludIdsEliminar?: number[];
+    /** IDs de ubicaciones a agregar */
+    ubicacionIdsAgregar?: number[];
+    /** IDs de ubicaciones a desactivar */
+    ubicacionIdsEliminar?: number[];
+    /** IDs de horarios existentes a vincular al servicio */
+    horarioIdsAgregar?: number[];
+    /** IDs de vínculos servicioHorario a desactivar */
     horariosEliminar?: number[];
 }
 
@@ -82,4 +58,5 @@ export interface FiltrosServicioDto {
     estado?: string;
     precioMin?: number;
     precioMax?: number;
+    diaSemana?: number;
 }

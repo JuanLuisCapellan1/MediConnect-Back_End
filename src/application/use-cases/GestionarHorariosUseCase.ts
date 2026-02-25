@@ -1,6 +1,6 @@
 /**
  * GestionarHorariosUseCase.ts
- * Casos de uso para la gestión de Horarios
+ * Casos de uso para la gestión de Horarios con diasSemana[]
  */
 
 import { Horario } from '../../domain/entities/Horario';
@@ -20,7 +20,7 @@ export class GestionarHorariosUseCase {
     const { horaInicioDate, horaFinDate } = await this.horarioValidator.validarDatosHorario(
       dto.doctorId,
       dto.nombre,
-      dto.diaSemana,
+      dto.diasSemana,
       dto.horaInicio,
       dto.horaFin
     );
@@ -28,7 +28,7 @@ export class GestionarHorariosUseCase {
     return await this.horariosRepository.crear(
       dto.doctorId,
       dto.nombre.trim(),
-      dto.diaSemana,
+      dto.diasSemana,
       horaInicioDate,
       horaFinDate
     );
@@ -58,7 +58,7 @@ export class GestionarHorariosUseCase {
 
     const doctorId = dto.doctorId ?? existente.doctorId;
     const nombre = dto.nombre ?? existente.nombre;
-    const diaSemana = dto.diaSemana ?? existente.diaSemana;
+    const diasSemana = dto.diasSemana ?? existente.dias;
     const horaInicio = dto.horaInicio ?? this.formatearHora(existente.horaInicio);
     const horaFin = dto.horaFin ?? this.formatearHora(existente.horaFin);
 
@@ -69,7 +69,7 @@ export class GestionarHorariosUseCase {
     const { horaInicioDate, horaFinDate } = await this.horarioValidator.validarDatosHorario(
       doctorId,
       nombre,
-      diaSemana,
+      diasSemana,
       horaInicio,
       horaFin,
       dto.id
@@ -79,14 +79,17 @@ export class GestionarHorariosUseCase {
       dto.id,
       dto.doctorId,
       dto.nombre?.trim(),
-      dto.diaSemana,
+      dto.diasSemana,
       dto.horaInicio ? horaInicioDate : undefined,
       dto.horaFin ? horaFinDate : undefined,
       dto.estado
     );
   }
 
-  async eliminar(id: number): Promise<Horario> {
+  async eliminar(id: number, doctorId: number): Promise<Horario> {
+    const horario = await this.horariosRepository.buscarPorId(id);
+    if (!horario) throw new Error(`Horario con ID ${id} no encontrado`);
+    if (horario.doctorId !== doctorId) throw new Error('No tienes permiso para eliminar este horario');
     return await this.horariosRepository.eliminar(id);
   }
 

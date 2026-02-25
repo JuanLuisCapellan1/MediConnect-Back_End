@@ -2,6 +2,7 @@ import { injectable, inject } from 'tsyringe';
 import { ICitaRepository } from '../../domain/repositories/ICitaRepository';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
 import { IPacienteRepository } from '../../domain/repositories/IPacienteRepository';
+import { IGrupoCitaRepository } from '../../domain/repositories/IGrupoCitaRepository';
 import {
     CrearCitaDto,
     EditarCitaDto,
@@ -9,6 +10,7 @@ import {
     ReprogramarCitaDto,
     DiagnosticarCitaDto,
     FiltroCitasDto,
+    CrearCitaRecurrenteDto,
 } from '../dtos/CitaDtos';
 
 @injectable()
@@ -16,7 +18,8 @@ export class GestionarCitasUseCase {
     constructor(
         @inject('CitaRepository') private citaRepo: ICitaRepository,
         @inject('DoctorRepository') private doctorRepo: IDoctorRepository,
-        @inject('PacienteRepository') private pacienteRepo: IPacienteRepository
+        @inject('PacienteRepository') private pacienteRepo: IPacienteRepository,
+        @inject('GrupoCitaRepository') private grupoCitaRepo: IGrupoCitaRepository
     ) { }
 
     // ===================================================================
@@ -338,5 +341,151 @@ export class GestionarCitasUseCase {
         filtros: { pagina?: number; limite?: number }
     ): Promise<{ datos: any[]; total: number }> {
         return await this.citaRepo.listarHistorialPaciente(pacienteId, filtros);
+    }
+
+    // ===================================================================
+    // PACIENTE: Agendar cita RECURRENTE
+    // ===================================================================
+    async agendarCitaRecurrente(pacienteId: number, dto: CrearCitaRecurrenteDto): Promise<any> {
+        const { PrismaClient } = await import('@prisma/client');
+        const prisma = new PrismaClient();
+
+        // 1. Validar servicio y horario
+        const servicio = await prisma.servicio.findUnique({
+            where: { id: dto.servicioId },
+            include: {
+                doctor: { include: { segurosAceptados: { where: { estado: 'Activo' } } } },
+                horarios: { where: { estado: 'Activo' }, include: { horario: true } },
+            },
+        });
+
+        if (!servicio || servicio.estado !== 'Activo') {
+            await prisma.$disconnect();
+            throw new Error('El servicio no existe o no está disponible.');
+        }
+
+        const horarioVinculado = servicio.horarios.find((sh: any) => sh.horarioId === dto.horarioId);
+        if (!horarioVinculado) {
+            await prisma.$disconnect();
+            throw new Error('El horario seleccionado no está disponible para este servicio.');
+        }
+
+        // 2. Obtener los días de semana del horario
+        const horarioCompleto = await (prisma as any).horario.findUnique({
+            where: { id: dto.horarioId },
+            include: { horarios_dias: { select: { dia_semana: true } } }
+        });
+
+        if (!horarioCompleto || !horarioCompleto.horarios_dias.length) {
+            await prisma.$disconnect();
+            throw new Error('El horario seleccionado no tiene días de semana configurados.');
+        }
+
+        const diasSemana: number[] = horarioCompleto.horarios_dias.map((d: any) => d.dia_semana);
+        const doctorId = servicio.doctorId;
+        const numPacientes = dto.numPacientes ?? 1;
+        const totalAPagar = parseFloat(servicio.precio.toString()) * numPacientes;
+        const duracion = servicio.duracionMinutos;
+
+        // 3. Calcular fechas de inicio y fin del ciclo
+        const fechaInicioCiclo = new Date(dto.fechaInicio);
+        // Si no hay fecha fin, por defecto 3 meses
+        const fechaFinCiclo = dto.fechaFin
+            ? new Date(dto.fechaFin)
+            : new Date(new Date(dto.fechaInicio).setMonth(new Date(dto.fechaInicio).getMonth() + 3));
+
+        await prisma.$disconnect();
+
+        // 4. Crear el grupo de citas
+        const grupo = await this.grupoCitaRepo.crear({
+            pacienteId,
+            servicioId: dto.servicioId,
+            horarioId: dto.horarioId,
+            fechaInicio: fechaInicioCiclo,
+            fechaFin: fechaFinCiclo,
+            descripcion: dto.descripcion ?? null,
+        });
+
+        // 5. Generar citas individuales para cada ocurrencia
+        const citasCreadas: any[] = [];
+        const horaInicio = new Date(horarioCompleto.horaInicio);
+        const cursor = new Date(fechaInicioCiclo);
+
+        while (cursor <= fechaFinCiclo) {
+            // dia JS: 0=Dom, 1=Lun, …, 6=Sab → transformar a nuestro 1=Lun…7=Dom
+            const diaCursor = cursor.getDay() === 0 ? 7 : cursor.getDay();
+
+            if (diasSemana.includes(diaCursor)) {
+                const fechaCita = new Date(cursor);
+                fechaCita.setUTCHours(horaInicio.getUTCHours(), horaInicio.getUTCMinutes(), 0, 0);
+                const fechaFinCita = new Date(fechaCita.getTime() + duracion * 60 * 1000);
+
+                const cita = await this.citaRepo.crear({
+                    pacienteId,
+                    doctorId,
+                    servicioId: dto.servicioId,
+                    horarioId: dto.horarioId,
+                    fechaInicio: fechaCita,
+                    fechaFin: fechaFinCita,
+                    modalidad: dto.modalidad,
+                    numPacientes,
+                    seguroId: dto.seguroId,
+                    tipoSeguroId: dto.tipoSeguroId,
+                    motivoConsulta: dto.motivoConsulta,
+                    totalAPagar,
+                    grupoId: grupo.id,
+                });
+                citasCreadas.push(cita);
+            }
+            cursor.setDate(cursor.getDate() + 1);
+        }
+
+        return { grupo, citasGeneradas: citasCreadas.length, citas: citasCreadas };
+    }
+
+    // ===================================================================
+    // AMBOS: Ver citas de un grupo
+    // ===================================================================
+    async listarPorGrupo(grupoId: number, usuarioId: number, rol: 'Paciente' | 'Doctor'): Promise<any> {
+        const grupo = await this.grupoCitaRepo.buscarPorId(grupoId);
+        if (!grupo) throw new Error('Grupo de citas no encontrado.');
+
+        if (rol === 'Paciente' && grupo.pacienteId !== usuarioId) {
+            throw new Error('No tienes permisos para ver este grupo.');
+        }
+
+        return grupo;
+    }
+
+    // ===================================================================
+    // PACIENTE/DOCTOR: Cancelar grupo de citas
+    // ===================================================================
+    async cancelarGrupo(
+        grupoId: number,
+        usuarioId: number,
+        rol: 'Paciente' | 'Doctor',
+        motivo: string
+    ): Promise<any> {
+        const grupo = await this.grupoCitaRepo.buscarPorId(grupoId);
+        if (!grupo) throw new Error('Grupo de citas no encontrado.');
+
+        if (rol === 'Paciente' && grupo.pacienteId !== usuarioId) {
+            throw new Error('No tienes permisos para cancelar este grupo.');
+        }
+        if (!['Activo', 'Parcial'].includes(grupo.estado)) {
+            throw new Error('Este grupo ya ha sido cancelado o no está activo.');
+        }
+
+        return await this.grupoCitaRepo.cancelarGrupo(grupoId);
+    }
+
+    // ===================================================================
+    // PACIENTE: Listar sus grupos de citas recurrentes
+    // ===================================================================
+    async listarGruposPaciente(
+        pacienteId: number,
+        filtros: { pagina?: number; limite?: number }
+    ): Promise<{ datos: any[]; total: number }> {
+        return await this.grupoCitaRepo.listarPorPaciente(pacienteId, filtros.pagina, filtros.limite);
     }
 }

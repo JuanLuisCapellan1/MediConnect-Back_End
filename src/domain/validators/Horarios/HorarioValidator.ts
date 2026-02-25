@@ -16,12 +16,13 @@ export class HorarioValidator {
   ) { }
 
   /**
-   * Valida datos base del horario y devuelve las horas parseadas.
+   * Valida datos del horario y devuelve las horas parseadas.
+   * @param diasSemana - Array de días (1=Lunes…7=Domingo), mínimo 1 elemento
    */
   async validarDatosHorario(
     doctorId: number,
     nombre: string,
-    diaSemana: number,
+    diasSemana: number[],
     horaInicio: string,
     horaFin: string,
     excluirId?: number
@@ -38,16 +39,28 @@ export class HorarioValidator {
       throw new Error('El nombre del horario no puede exceder 100 caracteres');
     }
 
-    if (diaSemana === undefined || diaSemana < 0 || diaSemana > 6) {
-      throw new Error('El día de la semana debe estar entre 0 y 6');
+    if (!Array.isArray(diasSemana) || diasSemana.length === 0) {
+      throw new Error('Debe indicar al menos un día de la semana');
+    }
+
+    for (const dia of diasSemana) {
+      if (!Number.isInteger(dia) || dia < 1 || dia > 7) {
+        throw new Error(`Día inválido: ${dia}. Los valores permitidos son 1 (Lunes) a 7 (Domingo)`);
+      }
+    }
+
+    // Evitar duplicados en el array
+    const diasUnicos = [...new Set(diasSemana)];
+    if (diasUnicos.length !== diasSemana.length) {
+      throw new Error('El array diasSemana contiene días duplicados');
     }
 
     const usuario = await this.usuarioRepository.buscarPorId(doctorId);
-    if (!usuario || !usuario.esDoctor()) {
+    if (!usuario || usuario.rol !== 'Doctor') {
       throw new Error(`El usuario con ID ${doctorId} no es un Doctor válido`);
     }
 
-    if (!usuario.esActivo()) {
+    if (usuario.estado !== 'Activo') {
       throw new Error(`El doctor con ID ${doctorId} no está activo`);
     }
 
@@ -60,7 +73,7 @@ export class HorarioValidator {
 
     const conflicto = await this.horariosRepository.existeConflicto(
       doctorId,
-      diaSemana,
+      diasUnicos,
       horaInicioDate,
       horaFinDate,
       excluirId

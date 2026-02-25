@@ -13,6 +13,7 @@ export interface ICitaRepository {
         motivoConsulta?: string;
         totalAPagar: number;
         ubicacionId?: number;
+        grupoId?: number;
     }): Promise<any>;
 
     buscarPorId(id: number): Promise<any | null>;

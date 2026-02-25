@@ -53,6 +53,7 @@ export class PrismaCitaRepository implements ICitaRepository {
         motivoConsulta?: string;
         totalAPagar: number;
         ubicacionId?: number;
+        grupoId?: number;
     }): Promise<any> {
         return await (this.prisma.cita as any).create({
             data: {
@@ -69,6 +70,7 @@ export class PrismaCitaRepository implements ICitaRepository {
                 motivoConsulta: datos.motivoConsulta ?? null,
                 totalAPagar: datos.totalAPagar,
                 ubicacionId: datos.ubicacionId ?? null,
+                id_grupo: datos.grupoId ?? null,
                 estado: 'Programada',
             },
             include: CITA_INCLUDE,

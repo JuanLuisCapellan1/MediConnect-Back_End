@@ -46,3 +46,19 @@ export interface FiltroCitasDto {
     fechaDesde?: string | Date;
     fechaHasta?: string | Date;
 }
+
+/** DTO para crear un grupo de citas recurrentes */
+export interface CrearCitaRecurrenteDto {
+    servicioId: number;
+    horarioId: number;
+    modalidad: 'Presencial' | 'Virtual' | 'Domicilio';
+    /** Fecha de inicio del ciclo recurrente (YYYY-MM-DD) */
+    fechaInicio: string | Date;
+    /** Fecha fin del ciclo (YYYY-MM-DD). Si no se envía, ciclo indefinido de 3 meses */
+    fechaFin?: string | Date;
+    numPacientes?: number;
+    seguroId?: number;
+    tipoSeguroId?: number;
+    motivoConsulta?: string;
+    descripcion?: string;
+}
