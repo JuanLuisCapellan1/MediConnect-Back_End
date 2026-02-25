@@ -35,7 +35,6 @@ export class GestionarServiciosUseCase {
 
         const servicio = await this.servicioRepository.crear(
             doctorId,
-            dto.tipoServicioId,
             dto.especialidadId,
             dto.nombre.trim(),
             dto.descripcion?.trim() ?? null,
@@ -70,7 +69,6 @@ export class GestionarServiciosUseCase {
     async listarPorDoctor(doctorId: number, filtros?: FiltrosServicioDto): Promise<Servicio[]> {
         const f: FiltrosServicio = {};
         if (filtros?.especialidadId) f.especialidadId = filtros.especialidadId;
-        if (filtros?.tipoServicioId) f.tipoServicioId = filtros.tipoServicioId;
         if (filtros?.estado) f.estado = filtros.estado;
         if (filtros?.precioMin !== undefined) f.precioMin = filtros.precioMin;
         if (filtros?.precioMax !== undefined) f.precioMax = filtros.precioMax;
@@ -80,7 +78,6 @@ export class GestionarServiciosUseCase {
     async listarPorCentro(centroId: number, filtros?: FiltrosServicioDto): Promise<Servicio[]> {
         const f: FiltrosServicio = {};
         if (filtros?.especialidadId) f.especialidadId = filtros.especialidadId;
-        if (filtros?.tipoServicioId) f.tipoServicioId = filtros.tipoServicioId;
         if (filtros?.estado) f.estado = filtros.estado;
         if (filtros?.precioMin !== undefined) f.precioMin = filtros.precioMin;
         if (filtros?.precioMax !== undefined) f.precioMax = filtros.precioMax;
@@ -101,7 +98,6 @@ export class GestionarServiciosUseCase {
         }
 
         return this.servicioRepository.actualizar(dto.id, {
-            tipoServicioId: dto.tipoServicioId,
             especialidadId: dto.especialidadId,
             nombre: dto.nombre?.trim(),
             descripcion: dto.descripcion?.trim(),

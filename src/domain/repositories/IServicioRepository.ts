@@ -6,7 +6,6 @@ import { ServicioImagen } from '../entities/ServicioImagen';
 
 export interface FiltrosServicio {
     especialidadId?: number;
-    tipoServicioId?: number;
     modalidad?: string;
     estado?: string;
     precioMin?: number;
@@ -17,7 +16,6 @@ export interface FiltrosServicio {
 export interface IServicioRepository {
     crear(
         doctorId: number,
-        tipoServicioId: number,
         especialidadId: number,
         nombre: string,
         descripcion: string | null,
@@ -38,7 +36,6 @@ export interface IServicioRepository {
     actualizar(
         id: number,
         datos: {
-            tipoServicioId?: number;
             especialidadId?: number;
             nombre?: string;
             descripcion?: string;

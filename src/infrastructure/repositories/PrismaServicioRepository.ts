@@ -85,7 +85,6 @@ export class PrismaServicioRepository implements IServicioRepository {
     // ─── Crear ──────────────────────────────────────────────────────────────
     async crear(
         doctorId: number,
-        tipoServicioId: number,
         especialidadId: number,
         nombre: string,
         descripcion: string | null,
@@ -111,7 +110,6 @@ export class PrismaServicioRepository implements IServicioRepository {
             const servicio = await tx.servicio.create({
                 data: {
                     doctorId,
-                    tipoServicioId,
                     especialidadId,
                     nombre,
                     descripcion,
@@ -156,7 +154,6 @@ export class PrismaServicioRepository implements IServicioRepository {
                 imagenes: { where: { estado: 'Activo' }, orderBy: { orden: 'asc' } },
                 doctor: { include: { usuario: { select: { id: true, email: true, fotoPerfil: true } } } },
                 especialidad: true,
-                tipoServicio: true,
                 servicios_ubicaciones: UBICACIONES_INCLUDE,
                 servicios_centros_salud: CENTROS_INCLUDE,
                 horarios: HORARIOS_INCLUDE
@@ -220,7 +217,6 @@ export class PrismaServicioRepository implements IServicioRepository {
 
         await p.$transaction(async (tx: any) => {
             const dataUpdate: Record<string, any> = { actualizadoEn: new Date() };
-            if (datos.tipoServicioId !== undefined) dataUpdate.tipoServicioId = datos.tipoServicioId;
             if (datos.especialidadId !== undefined) dataUpdate.especialidadId = datos.especialidadId;
             if (datos.nombre !== undefined) dataUpdate.nombre = datos.nombre;
             if (datos.descripcion !== undefined) dataUpdate.descripcion = datos.descripcion;
@@ -385,7 +381,6 @@ export class PrismaServicioRepository implements IServicioRepository {
     private _buildWhere(base: any, filtros?: FiltrosServicio): any {
         const where: any = { ...base };
         if (filtros?.especialidadId) where.especialidadId = filtros.especialidadId;
-        if (filtros?.tipoServicioId) where.tipoServicioId = filtros.tipoServicioId;
         if (filtros?.estado) where.estado = filtros.estado;
         else where.estado = { not: 'Eliminado' };
         if (filtros?.precioMin !== undefined || filtros?.precioMax !== undefined) {
@@ -411,7 +406,6 @@ export class PrismaServicioRepository implements IServicioRepository {
         return {
             imagenes: { where: { estado: 'Activo' }, orderBy: { orden: 'asc' }, take: 1 },
             especialidad: { select: { id: true, nombre: true } },
-            tipoServicio: { select: { id: true, nombre: true } },
             servicios_ubicaciones: UBICACIONES_INCLUDE,
             servicios_centros_salud: {
                 where: { estado: 'Activo' },
@@ -428,7 +422,7 @@ export class PrismaServicioRepository implements IServicioRepository {
     // ─── Mappers ──────────────────────────────────────────────────────────────
     private mapToDomain(s: any): Servicio {
         return new Servicio(
-            s.id, s.doctorId, s.tipoServicioId, s.especialidadId,
+            s.id, s.doctorId, s.especialidadId,
             s.nombre, s.descripcion ?? null,
             Number(s.precio), s.duracionMinutos, s.maxPacientesDia ?? null,
             s.calificacionPromedio != null ? Number(s.calificacionPromedio) : null,
@@ -451,7 +445,7 @@ export class PrismaServicioRepository implements IServicioRepository {
             } : sh.horario
         }));
         return new Servicio(
-            s.id, s.doctorId, s.tipoServicioId, s.especialidadId,
+            s.id, s.doctorId, s.especialidadId,
             s.nombre, s.descripcion ?? null,
             Number(s.precio), s.duracionMinutos, s.maxPacientesDia ?? null,
             s.calificacionPromedio != null ? Number(s.calificacionPromedio) : null,
@@ -460,7 +454,6 @@ export class PrismaServicioRepository implements IServicioRepository {
             imagenes,
             s.doctor,
             s.especialidad,
-            s.tipoServicio,
             horarios,
             s.servicios_centros_salud,
             s.id_ubicacion ?? null,

@@ -4,7 +4,6 @@
 
 // ─── Crear ────────────────────────────────────────────────────────────────────
 export interface CrearServicioDto {
-    tipoServicioId: number;
     especialidadId: number;
     nombre: string;
     descripcion?: string;
@@ -25,7 +24,6 @@ export interface CrearServicioDto {
 // ─── Actualizar ───────────────────────────────────────────────────────────────
 export interface ActualizarServicioDto {
     id: number;
-    tipoServicioId?: number;
     especialidadId?: number;
     nombre?: string;
     descripcion?: string;
@@ -53,7 +51,6 @@ export interface ActualizarServicioDto {
 // ─── Filtros ──────────────────────────────────────────────────────────────────
 export interface FiltrosServicioDto {
     especialidadId?: number;
-    tipoServicioId?: number;
     modalidad?: string;
     estado?: string;
     precioMin?: number;

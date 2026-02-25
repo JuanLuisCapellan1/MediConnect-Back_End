@@ -276,18 +276,6 @@ model TipoCentroSalud {
 
   @@map("tipos_centros_salud")
 }
-
-model TipoServicio {
-  id          Int        @id @default(autoincrement()) @map("id_tipo_servicio")
-  nombre      String     @db.VarChar(80)
-  descripcion String?
-  estado      String     @default("Activo") @db.VarChar(20)
-  creadoEn    DateTime   @default(now()) @map("creado_en") @db.Timestamptz(6)
-  servicios   Servicio[]
-
-  @@map("tipos_servicios")
-}
-
 model CondicionMedica {
   id              Int                      @id @default(autoincrement()) @map("id_condicion")
   nombre          String?                  @unique @db.VarChar(100)
@@ -465,7 +453,6 @@ model Horario {
 model Servicio {
   id                      Int                       @id @default(autoincrement()) @map("id_servicio")
   doctorId                Int                       @map("id_doctor")
-  tipoServicioId          Int                       @map("id_tipo_servicio")
   especialidadId          Int                       @map("id_especialidad")
   nombre                  String                    @db.VarChar(120)
   descripcion             String?
@@ -484,7 +471,6 @@ model Servicio {
   imagenes                ServicioImagen[]
   doctor                  Doctor                    @relation(fields: [doctorId], references: [usuarioId])
   especialidad            Especialidad              @relation(fields: [especialidadId], references: [id])
-  tipoServicio            TipoServicio              @relation(fields: [tipoServicioId], references: [id])
   ubicaciones             Ubicacion?                @relation(fields: [id_ubicacion], references: [id], onUpdate: NoAction)
   servicios_centros_salud servicios_centros_salud[]
   servicios_ubicaciones   servicios_ubicaciones[]

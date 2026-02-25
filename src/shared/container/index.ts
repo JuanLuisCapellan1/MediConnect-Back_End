@@ -11,7 +11,6 @@ import { IBarriosRepository } from '../../domain/repositories/IBarriosRepository
 import { IUbicacionesRepository } from '../../domain/repositories/IUbicacionesRepository';
 import { IHorariosRepository } from '../../domain/repositories/IHorariosRepository';
 import { IServicioHorarioRepository } from '../../domain/repositories/IServicioHorarioRepository';
-import { ITipoServicioRepository } from '../../domain/repositories/ITipoServicioRepository';
 import { IEspecialidadRepository } from '../../domain/repositories/IEspecialidadRepository';
 import { IPacienteRepository } from '../../domain/repositories/IPacienteRepository';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
@@ -50,7 +49,6 @@ import { PrismaBarriosRepository } from '../../infrastructure/repositories/Prism
 import { PrismaUbicacionesRepository } from '../../infrastructure/repositories/PrismaUbicacionesRepository';
 import { PrismaHorariosRepository } from '../../infrastructure/repositories/PrismaHorariosRepository';
 import { PrismaServicioHorarioRepository } from '../../infrastructure/repositories/PrismaServicioHorarioRepository';
-import { PrismaTipoServicioRepository } from '../../infrastructure/repositories/PrismaTipoServicioRepository';
 import { PrismaEspecialidadRepository } from '../../infrastructure/repositories/PrismaEspecialidadRepository';
 import { PrismaPacienteRepository } from '../../infrastructure/repositories/PrismaPacienteRepository';
 import { PrismaDoctorRepository } from '../../infrastructure/repositories/PrismaDoctorRepository';
@@ -94,7 +92,6 @@ import { UbicacionValidator } from '../../domain/validators/Ubicaciones/Ubicacio
 import { HorarioValidator } from '../../domain/validators/Horarios/HorarioValidator';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
 import { ValidadorServicioHorario } from '../../domain/validators/ServiciosHorarios/ValidadorServicioHorario';
-import { TipoServicioValidator } from '../../domain/validators/TiposServicios/TipoServicioValidator';
 import { EspecialidadValidator } from '../../domain/validators/Especialidades/EspecialidadValidator';
 import { PacienteValidator } from '../../domain/validators/Pacientes/PacienteValidator';
 import { DoctorValidator } from '../../domain/validators/Doctores/DoctorValidator';
@@ -123,7 +120,6 @@ import { RegistrarPacienteUseCase } from '../../application/use-cases/RegistrarP
 import { LoginGoogleUseCase } from '../../application/use-cases/LoginGoogleUseCase';
 import { LoginUseCase } from '../../application/use-cases/LoginUseCase';
 // UseCases de tu compañero
-import { GestionarTiposServiciosUseCase } from '../../application/use-cases/GestionarTiposServiciosUseCase';
 import { GestionarEspecialidadesUseCase } from '../../application/use-cases/GestionarEspecialidadesUseCase';
 import { GestionarPacientesUseCase } from '../../application/use-cases/GestionarPacientesUseCase';
 import { GestionarDoctoresUseCase } from '../../application/use-cases/GestionarDoctoresUseCase';
@@ -239,12 +235,6 @@ container.register(ValidadorServicioHorario, {
   }
 });
 
-container.register(TipoServicioValidator, {
-  useFactory: () => {
-    const repo = container.resolve<ITipoServicioRepository>('TipoServicioRepository');
-    return new TipoServicioValidator(repo);
-  }
-});
 
 container.register(EspecialidadValidator, {
   useFactory: () => {
@@ -399,15 +389,6 @@ container.register<IServicioHorarioRepository>(
   }
 );
 
-container.register<ITipoServicioRepository>(
-  'TipoServicioRepository',
-  {
-    useFactory: () => {
-      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
-      return new PrismaTipoServicioRepository(prismaClient);
-    }
-  }
-);
 
 container.register<IEspecialidadRepository>(
   'EspecialidadRepository',
@@ -756,14 +737,6 @@ container.register(LoginUseCase, {
   }
 });
 
-container.register(GestionarTiposServiciosUseCase, {
-  useFactory: () => {
-    const repo = container.resolve<ITipoServicioRepository>('TipoServicioRepository');
-    const validator = container.resolve(TipoServicioValidator);
-    const estadoValidator = container.resolve(EstadoValidator);
-    return new GestionarTiposServiciosUseCase(repo, validator, estadoValidator);
-  }
-});
 
 container.register(GestionarEspecialidadesUseCase, {
   useFactory: () => {

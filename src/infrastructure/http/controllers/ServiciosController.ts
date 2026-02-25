@@ -27,12 +27,8 @@ export class ServiciosController {
                 return;
             }
 
-            const { tipoServicioId, especialidadId, nombre, descripcion, precio, duracionMinutos, maxPacientesDia, modalidad } = req.body;
+            const { especialidadId, nombre, descripcion, precio, duracionMinutos, maxPacientesDia, modalidad } = req.body;
 
-            if (!tipoServicioId || isNaN(Number(tipoServicioId))) {
-                res.status(400).json({ success: false, message: 'El campo tipoServicioId es requerido y debe ser numérico' });
-                return;
-            }
             if (!especialidadId || isNaN(Number(especialidadId))) {
                 res.status(400).json({ success: false, message: 'El campo especialidadId es requerido y debe ser numérico' });
                 return;
@@ -56,7 +52,6 @@ export class ServiciosController {
             }
 
             const dto: CrearServicioDto = {
-                tipoServicioId: Number(tipoServicioId),
                 especialidadId: Number(especialidadId),
                 nombre,
                 descripcion,
@@ -199,7 +194,6 @@ export class ServiciosController {
 
             const dto: ActualizarServicioDto = {
                 id,
-                tipoServicioId: req.body.tipoServicioId !== undefined ? Number(req.body.tipoServicioId) : undefined,
                 especialidadId: req.body.especialidadId !== undefined ? Number(req.body.especialidadId) : undefined,
                 nombre: req.body.nombre,
                 descripcion: req.body.descripcion,
@@ -409,7 +403,6 @@ export class ServiciosController {
     private parseFiltros(req: Request): FiltrosServicioDto {
         const filtros: FiltrosServicioDto = {};
         if (req.query.especialidadId) filtros.especialidadId = Number(req.query.especialidadId);
-        if (req.query.tipoServicioId) filtros.tipoServicioId = Number(req.query.tipoServicioId);
         if (req.query.modalidad) filtros.modalidad = String(req.query.modalidad);
         if (req.query.estado) filtros.estado = String(req.query.estado);
         if (req.query.precioMin) filtros.precioMin = Number(req.query.precioMin);
@@ -453,8 +446,7 @@ export class ServiciosController {
             return 'La especialidad especificada no existe. Verifica el especialidadId.';
         }
         if (raw.includes('id_tipo_servicio') || raw.includes('tipos_servicios')) {
-            return 'El tipo de servicio especificado no existe. Verifica el tipoServicioId.';
         }
-        return 'Uno de los IDs proporcionados no existe en la base de datos. Verifica centroSaludId, ubicacionId, especialidadId y tipoServicioId.';
+        return 'Uno de los IDs proporcionados no existe en la base de datos. Verifica centroSaludId, ubicacionId o especialidadId.';
     }
 }

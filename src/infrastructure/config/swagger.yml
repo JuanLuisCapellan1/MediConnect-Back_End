@@ -32,8 +32,6 @@ tags:
     description: Endpoints para gestionar horarios
   - name: ServiciosHorarios
     description: Endpoints para gestionar relaciones entre servicios y horarios
-  - name: TiposServicios
-    description: Endpoints para gestionar tipos de servicios
   - name: Especialidades
     description: Endpoints para gestionar especialidades médicas
   - name: Pacientes
@@ -5971,336 +5969,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  # --- TIPOS SERVICIOS ENDPOINTS ---
-  /tipos-servicios:
-    get:
-      summary: Listar tipos de servicios
-      tags:
-        - TiposServicios
-      security:
-        - bearerAuth: []
-      description: |
-        Obtiene una lista de tipos de servicios con soporte para paginación y filtros.
-
-        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
-
-        **Traducción Automática:**
-        Este endpoint soporta traducción automática de campos mediante query params.
-        Ejemplo: `/api/tipos-servicios?target=en&translate_fields=nombre,descripcion`
-      parameters:
-        - name: target
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "en"
-          description: "Idioma destino para traducción automática (activa la traducción)"
-        - name: source
-          in: query
-          required: false
-          schema:
-            type: string
-            default: "es"
-          example: "es"
-          description: Idioma origen para traducción automática
-        - name: translate_fields
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "nombre,descripcion"
-          description: Campos a traducir separados por coma
-        - name: nombre
-          in: query
-          description: Filtrar por nombre (búsqueda parcial)
-          schema:
-            type: string
-        - name: estado
-          in: query
-          description: Filtrar por estado (Activo, Inactivo, etc.)
-          schema:
-            type: string
-            enum: ["Activo", "Inactivo", "Eliminado"]
-        - name: pagina
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limite
-          in: query
-          schema:
-            type: integer
-            default: 10
-      responses:
-        '200':
-          description: Tipos de servicios obtenidos exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/TipoServicio'
-                  paginacion:
-                    type: object
-                    properties:
-                      total:
-                        type: integer
-                      pagina:
-                        type: integer
-                      limite:
-                        type: integer
-                      totalPaginas:
-                        type: integer
-        '500':
-          description: Error interno del servidor
-          content:
-             application/json:
-               schema:
-                 $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Token JWT no proporcionado o inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: El usuario no tiene el rol requerido (Doctor o Administrador)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-    post:
-      summary: Crear un nuevo tipo de servicio
-      tags:
-        - TiposServicios
-      security:
-        - bearerAuth: []
-      description: |
-        Crea un nuevo tipo de servicio.
-
-        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - nombre
-              properties:
-                nombre:
-                  type: string
-                descripcion:
-                  type: string
-                estado:
-                  type: string
-      responses:
-        '201':
-          description: Tipo de servicio creado exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    $ref: '#/components/schemas/TipoServicio'
-        '400':
-          description: Datos inválidos
-        '401':
-          description: Token JWT no proporcionado o inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: El usuario no tiene el rol requerido (Doctor o Administrador)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: El tipo de servicio ya existe
-        '500':
-          description: Error interno del servidor
-          content:
-             application/json:
-               schema:
-                 $ref: '#/components/schemas/ErrorResponse'
-
-  /tipos-servicios/{id}:
-    get:
-      summary: Obtener tipo de servicio por ID
-      tags:
-        - TiposServicios
-      security:
-        - bearerAuth: []
-      description: |
-        Obtiene un tipo de servicio por su ID.
-
-        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Tipo de servicio obtenido
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    $ref: '#/components/schemas/TipoServicio'
-        '404':
-          description: Tipo de servicio no encontrado
-        '401':
-          description: Token JWT no proporcionado o inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: El usuario no tiene el rol requerido (Doctor o Administrador)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-          content:
-             application/json:
-               schema:
-                 $ref: '#/components/schemas/ErrorResponse'
-
-    put:
-      summary: Actualizar tipo de servicio
-      tags:
-        - TiposServicios
-      security:
-        - bearerAuth: []
-      description: |
-        Actualiza un tipo de servicio existente.
-
-        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                nombre:
-                  type: string
-                descripcion:
-                  type: string
-                estado:
-                  type: string
-      responses:
-        '200':
-          description: Tipo de servicio actualizado
-          content:
-            application/json:
-              schema:
-                 type: object
-                 properties:
-                    success: 
-                      type: boolean
-                    message: 
-                      type: string
-                    data:
-                      $ref: '#/components/schemas/TipoServicio'
-        '404':
-          description: Tipo de servicio no encontrado
-        '401':
-          description: Token JWT no proporcionado o inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: El usuario no tiene el rol requerido (Doctor o Administrador)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-          content:
-             application/json:
-               schema:
-                 $ref: '#/components/schemas/ErrorResponse'
-
-    delete:
-      summary: Eliminar tipo de servicio
-      tags:
-        - TiposServicios
-      security:
-        - bearerAuth: []
-      description: |
-        Elimina un tipo de servicio.
-
-        **Acceso:** Requiere token JWT. Roles permitidos: `Doctor`, `Administrador`.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Tipo de servicio eliminado
-          content:
-            application/json:
-              schema:
-                 type: object
-                 properties:
-                    success: 
-                      type: boolean
-                    message: 
-                      type: string
-        '404':
-          description: Tipo de servicio no encontrado
-        '401':
-          description: Token JWT no proporcionado o inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: El usuario no tiene el rol requerido (Doctor o Administrador)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-          content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ErrorResponse'
-
-  # --- ESPECIALIDADES ENDPOINTS ---
   /especialidades:
     get:
       summary: Listar especialidades médicas
@@ -13744,36 +13412,37 @@ paths:
             schema:
               type: object
               required:
-                - tipoServicioId
                 - especialidadId
                 - nombre
                 - precio
                 - duracionMinutos
                 - modalidad
               properties:
-                tipoServicioId:
-                  type: integer
-                  example: 2
                 especialidadId:
                   type: integer
                   example: 3
+                  description: ID de la especialidad medica del servicio
                 nombre:
                   type: string
                   example: "Consulta General"
+                  description: Nombre del servicio
                 descripcion:
                   type: string
-                  example: "Consulta médica general de 30 minutos"
+                  example: "Consulta medica general de 30 minutos"
+                  description: Descripcion detallada del servicio
                 precio:
                   type: number
-                  example: 1500.00
+                  format: float
+                  example: 1500
+                  description: Precio del servicio
                 duracionMinutos:
                   type: integer
                   example: 30
-                  description: "Duración de cada slot en minutos"
+                  description: Duracion del servicio en minutos
                 sesiones:
                   type: integer
                   example: 1
-                  description: "Número de slots que ocupa el servicio. Ej: si duracionMinutos=30 y sesiones=2, el servicio dura 1h."
+                  description: "Numero de slots que ocupa el servicio. Ej: si duracionMinutos=30 y sesiones=2, el servicio dura 1h."
                 maxPacientesDia:
                   type: integer
                   example: 20
@@ -13894,29 +13563,31 @@ paths:
             schema:
               type: object
               properties:
-                tipoServicioId:
-                  type: integer
-                  example: 2
                 especialidadId:
                   type: integer
                   example: 3
+                  description: ID de la especialidad medica del servicio (opcional)
                 nombre:
                   type: string
                   example: "Consulta General Actualizada"
+                  description: Nombre del servicio (opcional)
                 descripcion:
                   type: string
-                  example: "Nueva descripción del servicio"
+                  example: "Consulta medica actualizada"
+                  description: Descripcion del servicio (opcional)
                 precio:
                   type: number
-                  example: 1800.00
+                  format: float
+                  example: 2000
+                  description: Precio del servicio (opcional)
                 duracionMinutos:
                   type: integer
                   example: 45
-                  description: "Duración de cada slot en minutos"
+                  description: Duracion del servicio en minutos (opcional)
                 sesiones:
                   type: integer
                   example: 2
-                  description: "Número de slots que ocupa el servicio"
+                  description: "Numero de slots que ocupa el servicio"
                 maxPacientesDia:
                   type: integer
                   example: 15
@@ -14095,11 +13766,6 @@ paths:
             type: integer
           description: Filtrar por especialidad
           example: 3
-        - name: tipoServicioId
-          in: query
-          schema:
-            type: integer
-          description: Filtrar por tipo de servicio
           example: 2
         - name: estado
           in: query
@@ -14169,11 +13835,6 @@ paths:
             type: integer
           description: Filtrar por especialidad
           example: 3
-        - name: tipoServicioId
-          in: query
-          schema:
-            type: integer
-          description: Filtrar por tipo de servicio
           example: 2
         - name: estado
           in: query
@@ -15018,9 +14679,6 @@ components:
         doctorId:
           type: integer
           example: 5
-        tipoServicioId:
-          type: integer
-          example: 2
         especialidadId:
           type: integer
           example: 3
@@ -15507,27 +15165,6 @@ components:
               example: "Activo"
           description: Fecha y hora de creación de la relación
 
-    TipoServicio:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        nombre:
-          type: string
-          example: "Consulta Médica"
-        descripcion:
-          type: string
-          nullable: true
-          example: "Servicio de consulta general"
-        estado:
-          type: string
-          enum: ["Activo", "Inactivo", "Eliminado"]
-          example: "Activo"
-        creadoEn:
-          type: string
-          format: date-time
-          example: "2025-02-02T12:00:00Z"
 
     TipoCentroSalud:
       type: object

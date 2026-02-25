@@ -22,7 +22,6 @@ const CITA_INCLUDE = {
     },
     servicio: {
         include: {
-            tipoServicio: true,
             especialidad: { select: { id: true, nombre: true } },
             imagenes: { where: { estado: 'Activo' }, orderBy: { orden: 'asc' as const } },
         },
@@ -197,7 +196,7 @@ export class PrismaCitaRepository implements ICitaRepository {
                             },
                         },
                         paciente: { include: { usuario: { select: { email: true } } } },
-                        servicio: { include: { especialidad: true, tipoServicio: true } },
+                        servicio: { include: { especialidad: true } },
                         seguro: { select: { nombre: true, urlImage: true } },
                         tipoSeguro: { select: { nombre: true } },
                     },
@@ -230,7 +229,7 @@ export class PrismaCitaRepository implements ICitaRepository {
                                     },
                                 },
                             },
-                            servicio: { include: { especialidad: true, tipoServicio: true } },
+                            servicio: { include: { especialidad: true } },
                             seguro: { select: { nombre: true, urlImage: true } },
                             tipoSeguro: { select: { nombre: true } },
                         },
