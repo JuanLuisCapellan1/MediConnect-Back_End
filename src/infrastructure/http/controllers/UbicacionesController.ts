@@ -52,10 +52,17 @@ export class UbicacionesController {
         });
         return;
       }
-      if (puntoGeografico !== undefined && typeof puntoGeografico !== 'string') {
+      if (puntoGeografico === undefined || puntoGeografico === null) {
         res.status(400).json({
           success: false,
-          error: 'El campo puntoGeografico debe ser string (formato GeoJSON)'
+          error: 'El campo puntoGeografico es requerido'
+        });
+        return;
+      }
+      if (typeof puntoGeografico !== 'object' || Array.isArray(puntoGeografico)) {
+        res.status(400).json({
+          success: false,
+          error: 'El campo puntoGeografico debe ser un objeto GeoJSON Point: {"type":"Point","coordinates":[lon,lat]}'
         });
         return;
       }
@@ -64,7 +71,7 @@ export class UbicacionesController {
         barrioId,
         direccion,
         codigoPostal: codigoPostal || undefined,
-        puntoGeografico: puntoGeografico || undefined,
+        puntoGeografico: JSON.stringify(puntoGeografico),
       };
 
       const ubicacion = await this.gestionarUbicacionesUseCase.crear(dto);
@@ -320,12 +327,14 @@ export class UbicacionesController {
         });
         return;
       }
-      if (puntoGeografico !== undefined && typeof puntoGeografico !== 'string') {
-        res.status(400).json({
-          success: false,
-          error: 'El campo puntoGeografico debe ser string (formato GeoJSON)'
-        });
-        return;
+      if (puntoGeografico !== undefined) {
+        if (typeof puntoGeografico !== 'object' || Array.isArray(puntoGeografico) || puntoGeografico === null) {
+          res.status(400).json({
+            success: false,
+            error: 'El campo puntoGeografico debe ser un objeto GeoJSON Point: {"type":"Point","coordinates":[lon,lat]}'
+          });
+          return;
+        }
       }
 
       const dto: ActualizarUbicacionDto = {
@@ -334,7 +343,7 @@ export class UbicacionesController {
         direccion: direccion || undefined,
         codigoPostal: codigoPostal || undefined,
         estado: estado || undefined,
-        puntoGeografico: puntoGeografico || undefined,
+        puntoGeografico: puntoGeografico ? JSON.stringify(puntoGeografico) : undefined,
       };
 
       const ubicacion = await this.gestionarUbicacionesUseCase.actualizar(dto);
@@ -391,4 +400,101 @@ export class UbicacionesController {
         });
     }
   }
+
+  /**
+   * GET /ubicaciones/mis-ubicaciones - Listar ubicaciones del doctor autenticado
+   */
+  async listarMisUbicaciones(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = (req as any).usuarioId as number;
+
+      if (!doctorId) {
+        res.status(401).json({
+          success: false,
+          error: 'No se pudo identificar al doctor autenticado',
+        });
+        return;
+      }
+
+      const ubicaciones = await this.gestionarUbicacionesUseCase.listarPorDoctor(doctorId);
+      res.status(200).json({
+        success: true,
+        count: ubicaciones.length,
+        data: ubicaciones,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Error al listar ubicaciones del doctor',
+      });
+    }
+  }
+
+  /**
+   * POST /ubicaciones/mis-ubicaciones - Crear ubicación para el doctor autenticado
+   */
+  async crearMiUbicacion(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = (req as any).usuarioId as number;
+
+      if (!doctorId) {
+        res.status(401).json({
+          success: false,
+          error: 'No se pudo identificar al doctor autenticado',
+        });
+        return;
+      }
+
+      const { barrioId, codigoPostal, puntoGeografico, direccion } = req.body;
+
+      if (barrioId === undefined || barrioId === null) {
+        res.status(400).json({ success: false, error: 'El campo barrioId es requerido' });
+        return;
+      }
+      if (isNaN(Number(barrioId))) {
+        res.status(400).json({ success: false, error: 'El campo barrioId debe ser un número' });
+        return;
+      }
+      if (!direccion || typeof direccion !== 'string') {
+        res.status(400).json({ success: false, error: 'El campo direccion es requerido y debe ser string' });
+        return;
+      }
+      if (codigoPostal !== undefined && typeof codigoPostal !== 'string') {
+        res.status(400).json({ success: false, error: 'El campo codigoPostal debe ser string' });
+        return;
+      }
+      if (puntoGeografico === undefined || puntoGeografico === null) {
+        res.status(400).json({ success: false, error: 'El campo puntoGeografico es requerido' });
+        return;
+      }
+      if (typeof puntoGeografico !== 'object' || Array.isArray(puntoGeografico)) {
+        res.status(400).json({ success: false, error: 'El campo puntoGeografico debe ser un objeto GeoJSON Point: {"type":"Point","coordinates":[lon,lat]}' });
+        return;
+      }
+
+      const dto = {
+        barrioId: Number(barrioId),
+        direccion,
+        codigoPostal: codigoPostal || undefined,
+        puntoGeografico: JSON.stringify(puntoGeografico),
+      };
+
+      const ubicacion = await this.gestionarUbicacionesUseCase.crearParaDoctor(doctorId, dto);
+      res.status(201).json({
+        success: true,
+        data: ubicacion,
+        message: 'Ubicación creada y asignada al doctor exitosamente',
+      });
+    } catch (error) {
+      if (error instanceof UbicacionFueraDeRangoError) {
+        res.status(400).json({ success: false, error: error.message });
+        return;
+      }
+      res.status(400).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Error al crear la ubicación',
+      });
+    }
+  }
 }
+

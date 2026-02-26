@@ -4,89 +4,91 @@
  */
 
 import { Router } from 'express';
-import { container } from 'tsyringe';
 import { UbicacionesController } from '../controllers/UbicacionesController';
+import { autenticarJWT } from '../middlewares/autenticacion';
+import { requireRole } from '../middlewares/roleMiddleware';
 
 const router = Router();
-const ubicacionesController = container.resolve(UbicacionesController);
+const controller = new UbicacionesController();
+
+// ─── Rutas autenticadas del doctor (ANTES de las rutas con :id) ───────────────
 
 /**
- * @route POST /ubicaciones
- * @description Crea una nueva Ubicacion
- * @body {barrioId: number, direccion: string, codigoPostal?: string, puntoGeografico?: string}
- * @returns {Ubicacion} La ubicación creada
+ * GET /ubicaciones/mis-ubicaciones
+ * Lista todas las ubicaciones del doctor autenticado (principal + horarios + servicios)
  */
-router.post('/', (req, res) => ubicacionesController.crear(req, res));
-
-/**
- * @route GET /ubicaciones
- * @description Lista todas las Ubicaciones
- * @returns {Ubicacion[]} Array de ubicaciones
- */
-router.get('/', (req, res) => ubicacionesController.listarTodas(req, res));
-
-/**
- * @route GET /ubicaciones/barrio/:barrioId
- * @description Lista Ubicaciones de un barrio específico
- * @param {number} barrioId - ID del barrio
- * @returns {Ubicacion[]} Array de ubicaciones del barrio
- */
-router.get('/barrio/:barrioId', (req, res) => ubicacionesController.listarPorBarrio(req, res));
-
-
-/**
- * @route GET /ubicaciones/buscar/direccion/:direccion
- * @description Busca Ubicaciones por dirección (búsqueda parcial, case-insensitive)
- * @param {string} direccion - Parte de la dirección a buscar
- * @returns {Ubicacion[]} Array de ubicaciones que coinciden
- */
-router.get('/buscar/direccion/:direccion', (req, res) =>
-  ubicacionesController.buscarPorDireccion(req, res)
+router.get(
+    '/mis-ubicaciones',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => controller.listarMisUbicaciones(req, res)
 );
 
 /**
- * @route GET /ubicaciones/buscar/codigopostal/:codigoPostal
- * @description Busca Ubicaciones por código postal
- * @param {string} codigoPostal - Código postal
- * @returns {Ubicacion[]} Array de ubicaciones que coinciden
+ * POST /ubicaciones/mis-ubicaciones
+ * Crea una nueva ubicación y la asigna como ubicación principal del doctor autenticado
  */
-router.get('/buscar/codigopostal/:codigoPostal', (req, res) =>
-  ubicacionesController.buscarPorCodigoPostal(req, res)
+router.post(
+    '/mis-ubicaciones',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => controller.crearMiUbicacion(req, res)
 );
 
-/**
- * @route GET /ubicaciones/buscar/estado/:estado
- * @description Busca Ubicaciones por estado
- * @param {string} estado - Estado a buscar (Activo, Eliminado, etc.)
- * @returns {Ubicacion[]} Array de ubicaciones que coinciden
- */
-router.get('/buscar/estado/:estado', (req, res) =>
-  ubicacionesController.buscarPorEstado(req, res)
-);
+// ─── Rutas públicas ───────────────────────────────────────────────────────────
 
 /**
- * @route GET /ubicaciones/:id
- * @description Busca una Ubicacion por ID
- * @param {number} id - ID de la ubicación
- * @returns {Ubicacion|null} La ubicación encontrada o null
+ * POST /ubicaciones
+ * Crear una nueva ubicación
  */
-router.get('/:id', (req, res) => ubicacionesController.buscarPorId(req, res));
+router.post('/', (req, res) => controller.crear(req, res));
 
 /**
- * @route PUT /ubicaciones/:id
- * @description Actualiza una Ubicacion existente
- * @param {number} id - ID de la ubicación
- * @body {barrioId?: number, direccion?: string, codigoPostal?: string, estado?: string, puntoGeografico?: string}
- * @returns {Ubicacion} La ubicación actualizada
+ * GET /ubicaciones
+ * Listar todas las ubicaciones
  */
-router.put('/:id', (req, res) => ubicacionesController.actualizar(req, res));
+router.get('/', (req, res) => controller.listarTodas(req, res));
 
 /**
- * @route DELETE /ubicaciones/:id
- * @description Elimina una Ubicacion (eliminación lógica)
- * @param {number} id - ID de la ubicación
- * @returns {Ubicacion} La ubicación eliminada
+ * GET /ubicaciones/barrio/:barrioId
+ * Listar ubicaciones por barrio
  */
-router.delete('/:id', (req, res) => ubicacionesController.eliminar(req, res));
+router.get('/barrio/:barrioId', (req, res) => controller.listarPorBarrio(req, res));
+
+/**
+ * GET /ubicaciones/buscar/direccion/:direccion
+ * Buscar ubicaciones por dirección
+ */
+router.get('/buscar/direccion/:direccion', (req, res) => controller.buscarPorDireccion(req, res));
+
+/**
+ * GET /ubicaciones/buscar/codigopostal/:codigoPostal
+ * Buscar ubicaciones por código postal
+ */
+router.get('/buscar/codigopostal/:codigoPostal', (req, res) => controller.buscarPorCodigoPostal(req, res));
+
+/**
+ * GET /ubicaciones/buscar/estado/:estado
+ * Buscar ubicaciones por estado
+ */
+router.get('/buscar/estado/:estado', (req, res) => controller.buscarPorEstado(req, res));
+
+/**
+ * GET /ubicaciones/:id
+ * Buscar ubicación por ID
+ */
+router.get('/:id', (req, res) => controller.buscarPorId(req, res));
+
+/**
+ * PUT /ubicaciones/:id
+ * Actualizar una ubicación
+ */
+router.put('/:id', (req, res) => controller.actualizar(req, res));
+
+/**
+ * DELETE /ubicaciones/:id
+ * Eliminar una ubicación
+ */
+router.delete('/:id', (req, res) => controller.eliminar(req, res));
 
 export default router;

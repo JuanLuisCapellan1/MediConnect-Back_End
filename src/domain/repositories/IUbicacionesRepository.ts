@@ -15,6 +15,7 @@ export interface IUbicacionesRepository {
 
   listarTodas(): Promise<Ubicacion[]>;
   listarPorBarrio(barrioId: number): Promise<Ubicacion[]>;
+  listarPorDoctor(doctorId: number): Promise<Ubicacion[]>;
   buscarPorId(id: number): Promise<Ubicacion | null>;
   buscarPorDireccion(direccion: string): Promise<Ubicacion[]>;
   buscarPorCodigoPostal(codigoPostal: string): Promise<Ubicacion[]>;
@@ -26,6 +27,14 @@ export interface IUbicacionesRepository {
     direccion?: string,
     codigoPostal?: string,
     estado?: string,
+    puntoGeografico?: string
+  ): Promise<Ubicacion>;
+
+  crearParaDoctor(
+    doctorId: number,
+    barrioId: number,
+    direccion: string,
+    codigoPostal?: string,
     puntoGeografico?: string
   ): Promise<Ubicacion>;
 

@@ -246,4 +246,60 @@ export class PrismaUbicacionesRepository implements IUbicacionesRepository {
       WHERE "id_ubicacion" = ${id}
     `;
   }
+
+  async listarPorDoctor(doctorId: number): Promise<Ubicacion[]> {
+    // Obtener IDs únicos de ubicaciones asociadas al doctor:
+    // 1. Ubicación principal del doctor
+    // 2. Ubicaciones de sus horarios
+    // 3. Ubicaciones de sus servicios
+    const doctor = await this.prisma.doctor.findUnique({
+      where: { usuarioId: doctorId },
+      select: { ubicacionId: true },
+    });
+
+    const horarios = await this.prisma.horario.findMany({
+      where: { doctorId, ubicacionId: { not: null }, estado: { not: 'Eliminado' } },
+      select: { ubicacionId: true },
+    });
+
+    const servicios = await this.prisma.servicio.findMany({
+      where: { doctorId, id_ubicacion: { not: null }, estado: { not: 'Eliminado' } },
+      select: { id_ubicacion: true },
+    });
+
+    const idsSet = new Set<number>();
+    if (doctor?.ubicacionId) idsSet.add(doctor.ubicacionId);
+    horarios.forEach(h => { if (h.ubicacionId) idsSet.add(h.ubicacionId); });
+    servicios.forEach(s => { if (s.id_ubicacion) idsSet.add(s.id_ubicacion); });
+
+    if (idsSet.size === 0) return [];
+
+    const ids = Array.from(idsSet);
+    const ubicaciones = await this.prisma.ubicacion.findMany({
+      where: { id: { in: ids }, estado: { not: 'Eliminado' } },
+      orderBy: { id: 'asc' },
+    });
+
+    const puntos = await this.leerPuntosGeograficosMultiples(ubicaciones.map(u => u.id));
+    return ubicaciones.map(u => this.toEntity(u, puntos.get(u.id) ?? null));
+  }
+
+  async crearParaDoctor(
+    doctorId: number,
+    barrioId: number,
+    direccion: string,
+    codigoPostal?: string,
+    puntoGeografico?: string
+  ): Promise<Ubicacion> {
+    // Crear la ubicación
+    const nueva = await this.crear(barrioId, direccion, codigoPostal, puntoGeografico);
+
+    // Asignar como ubicación principal del doctor
+    await this.prisma.doctor.update({
+      where: { usuarioId: doctorId },
+      data: { ubicacionId: nueva.id },
+    });
+
+    return nueva;
+  }
 }

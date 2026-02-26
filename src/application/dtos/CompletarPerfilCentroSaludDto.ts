@@ -55,32 +55,10 @@ export class CompletarPerfilCentroSaludDto {
   @Transform(({ value }) => Number(value))
   tipoCentroId!: number;
 
-  // Ubicación
-  @IsNotEmpty({ message: 'La dirección es requerida' })
-  @IsString({ message: 'La dirección debe ser texto' })
-  @MinLength(5, { message: 'La dirección debe tener al menos 5 caracteres' })
-  @MaxLength(255, { message: 'La dirección no puede exceder 255 caracteres' })
-  direccion!: string;
-
-  @IsNotEmpty({ message: 'El barrio es requerido' })
-  @IsNumber({}, { message: 'El barrio debe ser un número' })
-  @IsPositive({ message: 'El barrio debe ser un ID válido' })
+  // Ubicación — ID de una ubicación ya existente en el sistema (obligatorio)
+  @IsNotEmpty({ message: 'El ID de ubicación es requerido' })
+  @IsNumber({}, { message: 'ubicacionId debe ser un número' })
+  @IsPositive({ message: 'ubicacionId debe ser un ID válido' })
   @Transform(({ value }) => Number(value))
-  barrioId!: number;
-
-  @IsOptional()
-  @IsNumber({}, { message: 'El sub-barrio debe ser un número' })
-  @IsPositive({ message: 'El sub-barrio debe ser un ID válido' })
-  @Transform(({ value }) => (value ? Number(value) : undefined))
-  subBarrioId?: number;
-
-  @IsOptional()
-  @Transform(({ value }) => (value === '' ? undefined : value))
-  @IsString({ message: 'El código postal debe ser texto' })
-  @MaxLength(20, { message: 'El código postal no puede exceder 20 caracteres' })
-  codigoPostal?: string;
-
-  @IsOptional()
-  @IsString({ message: 'El punto geográfico debe ser GeoJSON' })
-  puntoGeografico?: string;
+  ubicacionId!: number;
 }

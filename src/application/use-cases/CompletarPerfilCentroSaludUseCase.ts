@@ -71,17 +71,9 @@ export class CompletarPerfilCentroSaludUseCase {
     }
 
     // Validar ubicación
-    await this.ubicacionValidator.validarCreacion(
-      dto.barrioId,
-      dto.direccion
-    );
-
-    if (dto.codigoPostal) {
-      this.ubicacionValidator.validarCodigoPostal(dto.codigoPostal);
-    }
-
-    if (dto.puntoGeografico) {
-      this.ubicacionValidator.validarPuntoGeografico(dto.puntoGeografico);
+    const ubicacionExistente = await this.ubicacionesRepository.buscarPorId(dto.ubicacionId);
+    if (!ubicacionExistente) {
+      throw new Error(`La ubicación con ID ${dto.ubicacionId} no existe o está eliminada`);
     }
 
     // Validar datos con validadores
@@ -124,40 +116,10 @@ export class CompletarPerfilCentroSaludUseCase {
 
     try {
       const resultado = await this.prisma.$transaction(async (tx) => {
-        // 3a. Crear o actualizar ubicación
-        let ubicacion: any;
-
-        if (centroExistente.ubicacionId) {
-          // Actualizar ubicación existente
-          ubicacion = await tx.ubicacion.update({
-            where: { id: centroExistente.ubicacionId },
-            data: {
-              barrioId: dto.barrioId,
-              direccion: dto.direccion.trim(),
-              codigoPostal: dto.codigoPostal ? dto.codigoPostal.trim() : null,
-              estado: 'Activo',
-            },
-          });
-        } else {
-          // Crear ubicación nueva
-          ubicacion = await tx.ubicacion.create({
-            data: {
-              barrioId: dto.barrioId,
-              direccion: dto.direccion.trim(),
-              codigoPostal: dto.codigoPostal ? dto.codigoPostal.trim() : null,
-              estado: 'Activo',
-            },
-          });
-        }
-
-        // Si se proporcionó un punto geográfico, guardar usando raw SQL
-        if (dto.puntoGeografico) {
-          await tx.$executeRaw`
-            UPDATE "ubicaciones" 
-            SET "punto_geografico" = ST_SetSRID(ST_GeomFromGeoJSON(${dto.puntoGeografico}::jsonb), 4326)
-            WHERE "id_ubicacion" = ${ubicacion.id}
-          `;
-        }
+        // 3a. Usar la ubicación existente
+        const ub = await this.ubicacionesRepository.buscarPorId(dto.ubicacionId);
+        if (!ub) throw new Error(`La ubicación con ID ${dto.ubicacionId} no existe`);
+        const ubicacionId = dto.ubicacionId;
 
         // 3b. Actualizar el CentroSalud con los datos completos
         const centroActualizado = await tx.centroSalud.update({
@@ -166,7 +128,7 @@ export class CompletarPerfilCentroSaludUseCase {
             nombreComercial: dto.nombreComercial.trim(),
             ...(dto.rnc && { rnc: dto.rnc.trim() }),
             tipoCentroId: dto.tipoCentroId,
-            ubicacionId: ubicacion.id,
+            ubicacionId: ubicacionId,
             sitio_web: dto.sitioWeb ? dto.sitioWeb.trim() : null,
             descripcion: dto.descripcion ? dto.descripcion.trim() : null,
             certificacion_sanitaria: certificadoUrl,
@@ -213,7 +175,7 @@ export class CompletarPerfilCentroSaludUseCase {
             tipoAccionId: tipoAccion.id,
             emisorId: usuarioId,
             detalle: `Solicitud de aprobación del centro de salud: ${dto.nombreComercial}`,
-            comentarioEmisor: `Centro ubicado en ${dto.direccion}. RNC: ${dto.rnc}`,
+            comentarioEmisor: `Ubicación ID: ${dto.ubicacionId}. RNC: ${dto.rnc}`,
             fechaEmision: new Date(),
             fechaVencimiento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
             estado: 'Pendiente',

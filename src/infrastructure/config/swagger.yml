@@ -4402,13 +4402,17 @@ paths:
       summary: Crear una nueva Ubicacion
       tags:
         - Ubicaciones
-      description: Crea una nueva ubicación asociada a un barrio.
+      description: Crea una nueva ubicación asociada a un barrio. El punto geográfico es **obligatorio**.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - barrioId
+                - direccion
+                - puntoGeografico
               properties:
                 barrioId:
                   type: integer
@@ -4424,13 +4428,24 @@ paths:
                   example: "28001"
                   description: Código postal (opcional, máximo 10 caracteres)
                 puntoGeografico:
-                  type: string
-                  nullable: true
-                  example: '{"type": "Point", "coordinates": [-70.1234, 18.5678]}'
-                  description: Coordenadas geográficas en formato GeoJSON Point (opcional)
-              required:
-                - barrioId
-                - direccion
+                  type: object
+                  description: Coordenadas geográficas en formato GeoJSON Point (**obligatorio**)
+                  required:
+                    - type
+                    - coordinates
+                  properties:
+                    type:
+                      type: string
+                      enum: [Point]
+                      example: Point
+                    coordinates:
+                      type: array
+                      items:
+                        type: number
+                      minItems: 2
+                      maxItems: 2
+                      example: [-70.1234, 18.5678]
+                      description: "[longitud, latitud]"
       responses:
         '201':
           description: Ubicación creada exitosamente
@@ -4715,6 +4730,144 @@ paths:
                   $ref: '#/components/schemas/Ubicacion'
         '400':
           description: Estado inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+  /ubicaciones/mis-ubicaciones:
+    get:
+      summary: Listar mis ubicaciones (Doctor)
+      tags:
+        - Ubicaciones
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna todas las ubicaciones asociadas al doctor autenticado:
+        - Ubicación principal (`doctores.id_ubicacion`)
+        - Ubicaciones referenciadas en sus **horarios** activos
+        - Ubicaciones referenciadas en sus **servicios** activos
+
+        **Acceso:** Requiere token JWT con rol `Doctor`.
+      responses:
+        '200':
+          description: Ubicaciones del doctor obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  count:
+                    type: integer
+                    example: 2
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Ubicacion'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+
+    post:
+      summary: Crear ubicación para el doctor autenticado
+      tags:
+        - Ubicaciones
+      security:
+        - bearerAuth: []
+      description: |
+        Crea una nueva ubicación en la tabla `ubicaciones` y la asigna automáticamente
+        como la **ubicación principal** del doctor autenticado (`doctores.id_ubicacion`).
+
+        **Acceso:** Requiere token JWT con rol `Doctor`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - barrioId
+                - direccion
+                - puntoGeografico
+              properties:
+                barrioId:
+                  type: integer
+                  example: 1
+                  description: ID del barrio donde se ubica
+                direccion:
+                  type: string
+                  example: "Av. Independencia 456, Piso 3"
+                  description: Dirección completa de la ubicación
+                codigoPostal:
+                  type: string
+                  nullable: true
+                  example: "10101"
+                  description: Código postal (opcional, máximo 10 caracteres)
+                puntoGeografico:
+                  type: object
+                  description: Coordenadas geográficas en formato GeoJSON Point (**obligatorio**)
+                  required:
+                    - type
+                    - coordinates
+                  properties:
+                    type:
+                      type: string
+                      enum: [Point]
+                      example: Point
+                    coordinates:
+                      type: array
+                      items:
+                        type: number
+                      minItems: 2
+                      maxItems: 2
+                      example: [-69.9012, 18.4861]
+                      description: "[longitud, latitud]"
+      responses:
+        '201':
+          description: Ubicación creada y asignada al doctor exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Ubicacion'
+                  message:
+                    type: string
+                    example: "Ubicación creada y asignada al doctor exitosamente"
+        '400':
+          description: Datos inválidos o campos requeridos faltantes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token JWT no proporcionado o inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no tiene el rol requerido (Doctor)
           content:
             application/json:
               schema:
@@ -10189,7 +10342,7 @@ paths:
         **Proceso:**
         1. Sube el certificado sanitario a Supabase (secure-documents)
         2. Sube la foto de perfil si se proporciona (public-assets)
-        3. Crea/actualiza la ubicación del centro
+        3. Vincula la ubicación existente al centro
         4. Actualiza datos del centro de salud
         5. Crea una acción de revisión para administrador
       security:
@@ -10205,13 +10358,12 @@ paths:
                 - nombreComercial
                 - telefono
                 - tipoCentroId
-                - direccion
-                - barrioId
+                - ubicacionId
                 - certificadoSanitario
               properties:
                 password:
                   type: string
-                  description: Contraseña para la cuenta del centro de salud (8-100 caracteres, requerida)
+                  description: Contraseña para la cuenta del centro de salud (8-100 caracteres)
                   example: "ContrasenaSegura123!"
                 nombreComercial:
                   type: string
@@ -10223,7 +10375,7 @@ paths:
                   example: "4-12345-6"
                 telefono:
                   type: string
-                  description: Teléfono de contacto (10-20 caracteres)
+                  description: Teléfono de contacto
                   example: "+1-809-123-4567"
                 sitioWeb:
                   type: string
@@ -10231,23 +10383,15 @@ paths:
                 descripcion:
                   type: string
                   description: Descripción del centro de salud (máximo 1000 caracteres)
-                  example: "Centro médico especializado en atención primaria y medicina familiar, con más de 10 años de experiencia."
                   maxLength: 1000
                 tipoCentroId:
                   type: number
                   description: ID del tipo de centro de salud
                   example: 1
-                direccion:
-                  type: string
-                  description: Dirección del centro (5-255 caracteres)
-                  example: "Calle Principal 123"
-                barrioId:
+                ubicacionId:
                   type: number
-                  description: ID del barrio
-                  example: 5
-                codigoPostal:
-                  type: string
-                  description: Código postal (opcional)
+                  description: ID de la ubicación existente a vincular con el centro (**obligatorio**)
+                  example: 42
                 certificadoSanitario:
                   type: string
                   format: binary

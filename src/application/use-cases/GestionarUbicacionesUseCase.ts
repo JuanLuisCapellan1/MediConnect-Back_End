@@ -89,4 +89,29 @@ export class GestionarUbicacionesUseCase {
   async eliminar(id: number): Promise<Ubicacion> {
     return await this.repository.eliminar(id);
   }
+
+  async listarPorDoctor(doctorId: number): Promise<Ubicacion[]> {
+    return await this.repository.listarPorDoctor(doctorId);
+  }
+
+  async crearParaDoctor(doctorId: number, dto: CrearUbicacionDto): Promise<Ubicacion> {
+    await this.validator.validarCreacion(dto.barrioId, dto.direccion);
+
+    if (dto.codigoPostal) {
+      this.validator.validarCodigoPostal(dto.codigoPostal);
+    }
+
+    if (dto.puntoGeografico) {
+      this.validator.validarPuntoGeografico(dto.puntoGeografico);
+    }
+
+    return await this.repository.crearParaDoctor(
+      doctorId,
+      dto.barrioId,
+      dto.direccion,
+      dto.codigoPostal,
+      dto.puntoGeografico
+    );
+  }
 }
+

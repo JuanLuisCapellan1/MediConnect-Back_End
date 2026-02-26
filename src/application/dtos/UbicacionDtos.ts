@@ -7,7 +7,7 @@ export interface CrearUbicacionDto {
   barrioId: number;
   direccion: string;
   codigoPostal?: string;
-  puntoGeografico?: string; // GeoJSON: {"type":"Point","coordinates":[lon,lat]}
+  puntoGeografico: string; // GeoJSON: {"type":"Point","coordinates":[lon,lat]} — OBLIGATORIO
 }
 
 export interface ActualizarUbicacionDto {
