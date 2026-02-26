@@ -95,7 +95,7 @@ export class PrismaDoctorRepository implements IDoctorRepository {
      * Retorna los datos sin mapear a la entidad para incluir toda la información
      */
     async obtenerPerfilCompleto(usuarioId: number): Promise<any | null> {
-        const doctor = await this.prisma.doctor.findUnique({
+        const doctor = await (this.prisma.doctor as any).findUnique({
             where: { usuarioId },
             include: {
                 usuario: {
@@ -106,7 +106,7 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                         emailVerificado: true,
                     },
                 },
-                ubicacion: true,
+                ubicaciones: true,
                 especialidades: {
                     include: {
                         especialidades: true,
@@ -226,7 +226,7 @@ export class PrismaDoctorRepository implements IDoctorRepository {
      * devolviendo el perfil público completo de cada uno.
      */
     async compararDoctores(ids: number[]): Promise<any[]> {
-        const doctores = await this.prisma.doctor.findMany({
+        const doctores = await (this.prisma.doctor as any).findMany({
             where: {
                 usuarioId: { in: ids },
                 estado: 'Activo',
@@ -240,7 +240,7 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                         fotoPerfil: true,
                     },
                 },
-                ubicacion: true,
+                ubicaciones: true,
                 especialidades: {
                     include: { especialidades: true },
                 },

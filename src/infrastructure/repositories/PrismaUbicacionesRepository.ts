@@ -16,7 +16,7 @@ export class PrismaUbicacionesRepository implements IUbicacionesRepository {
     @inject('RedisCacheService') private cache: RedisCacheService
   ) { }
 
-  private toEntity(u: any, puntoGeografico: string | null = null): Ubicacion {
+  private toEntity(u: any, puntoGeografico: object | null = null): Ubicacion {
     return new Ubicacion(
       u.id,
       u.barrioId,
@@ -207,31 +207,35 @@ export class PrismaUbicacionesRepository implements IUbicacionesRepository {
     ]);
   }
 
-  private async leerPuntoGeografico(id: number): Promise<string | null> {
+  private async leerPuntoGeografico(id: number): Promise<object | null> {
     try {
-      const resultado = await this.prisma.$queryRaw<Array<{ punto_geografico: string }>>`
+      const resultado = await this.prisma.$queryRaw<Array<{ punto_geografico: string | null }>>`
         SELECT ST_AsGeoJSON("punto_geografico") as punto_geografico
         FROM "ubicaciones"
         WHERE "id_ubicacion" = ${id}
       `;
-      return resultado?.[0]?.punto_geografico ?? null;
+      const raw = resultado?.[0]?.punto_geografico;
+      if (!raw) return null;
+      try { return JSON.parse(raw); } catch { return null; }
     } catch {
       return null;
     }
   }
 
-  private async leerPuntosGeograficosMultiples(ids: number[]): Promise<Map<number, string | null>> {
-    const resultado = new Map<number, string | null>();
+  private async leerPuntosGeograficosMultiples(ids: number[]): Promise<Map<number, object | null>> {
+    const resultado = new Map<number, object | null>();
     if (ids.length === 0) return resultado;
     ids.forEach(id => resultado.set(id, null));
     try {
-      const puntos = await this.prisma.$queryRaw<Array<{ id_ubicacion: number; punto_geografico: string }>>`
+      const puntos = await this.prisma.$queryRaw<Array<{ id_ubicacion: number; punto_geografico: string | null }>>`
         SELECT "id_ubicacion", ST_AsGeoJSON("punto_geografico") as punto_geografico
         FROM "ubicaciones"
         WHERE "id_ubicacion" = ANY(${ids}::integer[])
       `;
       puntos.forEach(p => {
-        if (p.punto_geografico) resultado.set(p.id_ubicacion, p.punto_geografico);
+        if (p.punto_geografico) {
+          try { resultado.set(p.id_ubicacion, JSON.parse(p.punto_geografico)); } catch { /* ignorar */ }
+        }
       });
     } catch {
       // retornar mapa con null en caso de error
@@ -248,40 +252,16 @@ export class PrismaUbicacionesRepository implements IUbicacionesRepository {
   }
 
   async listarPorDoctor(doctorId: number): Promise<Ubicacion[]> {
-    // Obtener IDs únicos de ubicaciones asociadas al doctor:
-    // 1. Ubicación principal del doctor
-    // 2. Ubicaciones de sus horarios
-    // 3. Ubicaciones de sus servicios
-    const doctor = await this.prisma.doctor.findUnique({
-      where: { usuarioId: doctorId },
-      select: { ubicacionId: true },
-    });
-
-    const horarios = await this.prisma.horario.findMany({
-      where: { doctorId, ubicacionId: { not: null }, estado: { not: 'Eliminado' } },
-      select: { ubicacionId: true },
-    });
-
-    const servicios = await this.prisma.servicio.findMany({
-      where: { doctorId, id_ubicacion: { not: null }, estado: { not: 'Eliminado' } },
-      select: { id_ubicacion: true },
-    });
-
-    const idsSet = new Set<number>();
-    if (doctor?.ubicacionId) idsSet.add(doctor.ubicacionId);
-    horarios.forEach(h => { if (h.ubicacionId) idsSet.add(h.ubicacionId); });
-    servicios.forEach(s => { if (s.id_ubicacion) idsSet.add(s.id_ubicacion); });
-
-    if (idsSet.size === 0) return [];
-
-    const ids = Array.from(idsSet);
-    const ubicaciones = await this.prisma.ubicacion.findMany({
-      where: { id: { in: ids }, estado: { not: 'Eliminado' } },
+    // Una sola query: todas las ubicaciones donde id_doctor = doctorId
+    const ubicaciones = await (this.prisma.ubicacion as any).findMany({
+      where: { id_doctor: doctorId, estado: { not: 'Eliminado' } },
       orderBy: { id: 'asc' },
     });
 
-    const puntos = await this.leerPuntosGeograficosMultiples(ubicaciones.map(u => u.id));
-    return ubicaciones.map(u => this.toEntity(u, puntos.get(u.id) ?? null));
+    if (ubicaciones.length === 0) return [];
+
+    const puntos = await this.leerPuntosGeograficosMultiples((ubicaciones as any[]).map((u: any) => u.id));
+    return (ubicaciones as any[]).map((u: any) => this.toEntity(u, puntos.get(u.id) ?? null));
   }
 
   async crearParaDoctor(
@@ -291,15 +271,40 @@ export class PrismaUbicacionesRepository implements IUbicacionesRepository {
     codigoPostal?: string,
     puntoGeografico?: string
   ): Promise<Ubicacion> {
-    // Crear la ubicación
-    const nueva = await this.crear(barrioId, direccion, codigoPostal, puntoGeografico);
+    // Crear la ubicación con id_doctor asignado directamente
+    const nueva = await this.crearConDoctor(doctorId, barrioId, direccion, codigoPostal, puntoGeografico);
+    return nueva;
+  }
 
-    // Asignar como ubicación principal del doctor
-    await this.prisma.doctor.update({
-      where: { usuarioId: doctorId },
-      data: { ubicacionId: nueva.id },
+  private async crearConDoctor(
+    doctorId: number,
+    barrioId: number,
+    direccion: string,
+    codigoPostal?: string,
+    puntoGeografico?: string
+  ): Promise<Ubicacion> {
+    const nueva = await (this.prisma.ubicacion as any).create({
+      data: {
+        barrioId,
+        direccion,
+        codigoPostal: codigoPostal ?? null,
+        estado: 'Activo',
+        id_doctor: doctorId,
+      },
     });
 
-    return nueva;
+    if (puntoGeografico) {
+      await this.prisma.$executeRaw`
+        UPDATE "ubicaciones"
+        SET "punto_geografico" = ST_SetSRID(ST_GeomFromGeoJSON(${puntoGeografico}::jsonb), 4326)
+        WHERE "id_ubicacion" = ${nueva.id}
+      `;
+    }
+
+    const punto = puntoGeografico
+      ? await this.leerPuntoGeografico(nueva.id)
+      : null;
+
+    return this.toEntity(nueva, punto);
   }
 }

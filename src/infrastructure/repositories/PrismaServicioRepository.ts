@@ -100,13 +100,6 @@ export class PrismaServicioRepository implements IServicioRepository {
         const p = this.prisma as any;
 
         const creado = await p.$transaction(async (tx: any) => {
-            // Obtener ubicacionId del perfil del doctor para asignar al campo directo del servicio
-            const doctor = await tx.doctor.findUnique({
-                where: { usuarioId: doctorId },
-                select: { ubicacionId: true }
-            });
-            const doctorUbicacionId = doctor?.ubicacionId ?? null;
-
             const servicio = await tx.servicio.create({
                 data: {
                     doctorId,
@@ -119,7 +112,8 @@ export class PrismaServicioRepository implements IServicioRepository {
                     maxPacientesDia,
                     modalidad,
                     estado: 'Activo',
-                    id_ubicacion: doctorUbicacionId
+                    // id_ubicacion se asigna con la primera ubicación si se proporciona
+                    id_ubicacion: ubicacionIds?.length ? ubicacionIds[0] : null
                 }
             });
 

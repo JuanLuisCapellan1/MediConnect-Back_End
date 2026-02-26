@@ -165,7 +165,6 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
       await tx.doctor.create({
         data: {
           usuarioId: usuario.id,
-          ubicacionId: ubicacion.id,
           nombre: data.doctor.nombre,
           apellido: data.doctor.apellido,
           tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
@@ -307,7 +306,7 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
   }
 
   async buscarPerfilDetalladoPorId(id: number): Promise<any | null> {
-    const usuario = await prisma.usuario.findUnique({
+    const usuario = await (prisma.usuario as any).findUnique({
       where: { id },
       include: {
         paciente: {
@@ -347,7 +346,7 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
                 emailVerificado: true,
               },
             },
-            ubicacion: true,
+            ubicaciones: true,
             formaciones: {
               where: {
                 estado: 'Activo',
@@ -829,15 +828,16 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
       // 2. CREAR UBICACIÓN (OPCIONAL)
       let ubicacionId: number | null = null;
       if (data.ubicacion) {
-        const ubicacion = await tx.ubicacion.create({
+        const ubicacion = await (tx.ubicacion as any).create({
           data: {
             direccion: data.ubicacion.direccion,
             barrioId: Number(data.ubicacion.id_barrio),
             estado: 'Activo',
             creadoEn: new Date(),
+            id_doctor: usuario.id,
           },
         });
-        ubicacionId = ubicacion.id;
+        // ubicacionId ya no está en Doctor — la ubicación referencia al doctor
       }
 
       // 3. CREAR O REACTIVAR PERFIL DOCTOR
@@ -852,7 +852,6 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
         await tx.doctor.update({
           where: { usuarioId: usuario.id },
           data: {
-            ubicacionId: ubicacionId,
             nombre: data.doctor.nombre,
             apellido: data.doctor.apellido,
             tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
@@ -872,7 +871,6 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
         await tx.doctor.create({
           data: {
             usuarioId: usuario.id,
-            ubicacionId: ubicacionId,
             nombre: data.doctor.nombre,
             apellido: data.doctor.apellido,
             tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
