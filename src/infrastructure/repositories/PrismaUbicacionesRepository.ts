@@ -24,7 +24,8 @@ export class PrismaUbicacionesRepository implements IUbicacionesRepository {
       u.estado,
       u.creadoEn ?? new Date(u.creado_en ?? u.creadoEn),
       u.codigoPostal ?? null,
-      puntoGeografico
+      puntoGeografico,
+      u.nombre ?? null
     );
   }
 
@@ -32,14 +33,16 @@ export class PrismaUbicacionesRepository implements IUbicacionesRepository {
     barrioId: number,
     direccion: string,
     codigoPostal?: string,
-    puntoGeografico?: string
+    puntoGeografico?: string,
+    nombre?: string
   ): Promise<Ubicacion> {
     try {
-      const ubicacion = await this.prisma.ubicacion.create({
+      const ubicacion = await (this.prisma.ubicacion as any).create({
         data: {
           barrioId,
           direccion: direccion.trim(),
           codigoPostal: codigoPostal ? codigoPostal.trim() : null,
+          nombre: nombre ? nombre.trim() : null,
           estado: 'Activo',
         },
       });
@@ -140,7 +143,8 @@ export class PrismaUbicacionesRepository implements IUbicacionesRepository {
     direccion?: string,
     codigoPostal?: string,
     estado?: string,
-    puntoGeografico?: string
+    puntoGeografico?: string,
+    nombre?: string
   ): Promise<Ubicacion> {
     try {
       const existente = await this.prisma.ubicacion.findUnique({ where: { id } });
@@ -151,6 +155,7 @@ export class PrismaUbicacionesRepository implements IUbicacionesRepository {
       if (codigoPostal !== undefined) data.codigoPostal = codigoPostal ? codigoPostal.trim() : null;
       if (barrioId !== undefined) data.barrioId = barrioId;
       if (estado !== undefined) data.estado = estado;
+      if (nombre !== undefined) data.nombre = nombre ? nombre.trim() : null;
 
       const actualizada = await this.prisma.ubicacion.update({ where: { id }, data });
 
@@ -269,10 +274,10 @@ export class PrismaUbicacionesRepository implements IUbicacionesRepository {
     barrioId: number,
     direccion: string,
     codigoPostal?: string,
-    puntoGeografico?: string
+    puntoGeografico?: string,
+    nombre?: string
   ): Promise<Ubicacion> {
-    // Crear la ubicación con id_doctor asignado directamente
-    const nueva = await this.crearConDoctor(doctorId, barrioId, direccion, codigoPostal, puntoGeografico);
+    const nueva = await this.crearConDoctor(doctorId, barrioId, direccion, codigoPostal, puntoGeografico, nombre);
     return nueva;
   }
 
@@ -281,13 +286,15 @@ export class PrismaUbicacionesRepository implements IUbicacionesRepository {
     barrioId: number,
     direccion: string,
     codigoPostal?: string,
-    puntoGeografico?: string
+    puntoGeografico?: string,
+    nombre?: string
   ): Promise<Ubicacion> {
     const nueva = await (this.prisma.ubicacion as any).create({
       data: {
         barrioId,
         direccion,
         codigoPostal: codigoPostal ?? null,
+        nombre: nombre ? nombre.trim() : null,
         estado: 'Activo',
         id_doctor: doctorId,
       },

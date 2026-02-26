@@ -228,6 +228,7 @@ model Ubicacion {
   estado                String                   @default("Activo") @db.VarChar(20)
   creadoEn              DateTime                 @default(now()) @map("creado_en") @db.Timestamptz(6)
   id_doctor             Int?
+  nombre                String?                  @db.VarChar(120)
   centrosSalud          CentroSalud[]
   citas                 Cita[]
   horarios              Horario[]

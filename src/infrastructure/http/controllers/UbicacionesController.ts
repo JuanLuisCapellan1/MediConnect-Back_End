@@ -21,7 +21,7 @@ export class UbicacionesController {
    */
   async crear(req: Request, res: Response): Promise<void> {
     try {
-      const { barrioId, direccion, subBarrioId, codigoPostal, puntoGeografico } = req.body;
+      const { barrioId, direccion, subBarrioId, codigoPostal, puntoGeografico, nombre } = req.body;
 
       // Validación de entrada
       if (barrioId === undefined || barrioId === null) {
@@ -43,6 +43,10 @@ export class UbicacionesController {
           success: false,
           error: 'El campo direccion es requerido y debe ser string'
         });
+        return;
+      }
+      if (nombre !== undefined && typeof nombre !== 'string') {
+        res.status(400).json({ success: false, error: 'El campo nombre debe ser string' });
         return;
       }
       if (codigoPostal !== undefined && typeof codigoPostal !== 'string') {
@@ -70,6 +74,7 @@ export class UbicacionesController {
       const dto: CrearUbicacionDto = {
         barrioId,
         direccion,
+        nombre: nombre || undefined,
         codigoPostal: codigoPostal || undefined,
         puntoGeografico: JSON.stringify(puntoGeografico),
       };
@@ -293,7 +298,7 @@ export class UbicacionesController {
         return;
       }
 
-      const { barrioId, subBarrioId, direccion, codigoPostal, estado, puntoGeografico } = req.body;
+      const { barrioId, subBarrioId, direccion, codigoPostal, estado, puntoGeografico, nombre } = req.body;
 
       // Validación de entrada
       if (
@@ -311,6 +316,10 @@ export class UbicacionesController {
           success: false,
           error: 'El campo direccion debe ser string'
         });
+        return;
+      }
+      if (nombre !== undefined && typeof nombre !== 'string') {
+        res.status(400).json({ success: false, error: 'El campo nombre debe ser string' });
         return;
       }
       if (codigoPostal !== undefined && typeof codigoPostal !== 'string') {
@@ -341,6 +350,7 @@ export class UbicacionesController {
         id,
         barrioId: barrioId || undefined,
         direccion: direccion || undefined,
+        nombre: nombre !== undefined ? nombre : undefined,
         codigoPostal: codigoPostal || undefined,
         estado: estado || undefined,
         puntoGeografico: puntoGeografico ? JSON.stringify(puntoGeografico) : undefined,
@@ -445,7 +455,7 @@ export class UbicacionesController {
         return;
       }
 
-      const { barrioId, codigoPostal, puntoGeografico, direccion } = req.body;
+      const { barrioId, codigoPostal, puntoGeografico, direccion, nombre } = req.body;
 
       if (barrioId === undefined || barrioId === null) {
         res.status(400).json({ success: false, error: 'El campo barrioId es requerido' });
@@ -457,6 +467,10 @@ export class UbicacionesController {
       }
       if (!direccion || typeof direccion !== 'string') {
         res.status(400).json({ success: false, error: 'El campo direccion es requerido y debe ser string' });
+        return;
+      }
+      if (nombre !== undefined && typeof nombre !== 'string') {
+        res.status(400).json({ success: false, error: 'El campo nombre debe ser string' });
         return;
       }
       if (codigoPostal !== undefined && typeof codigoPostal !== 'string') {
@@ -475,6 +489,7 @@ export class UbicacionesController {
       const dto = {
         barrioId: Number(barrioId),
         direccion,
+        nombre: nombre || undefined,
         codigoPostal: codigoPostal || undefined,
         puntoGeografico: JSON.stringify(puntoGeografico),
       };

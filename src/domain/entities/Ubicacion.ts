@@ -9,6 +9,7 @@ export class Ubicacion {
   readonly barrioId: number;
   readonly direccion: string;
   readonly codigoPostal: string | null;
+  readonly nombre: string | null;
   readonly puntoGeografico: object | null;
   readonly estado: string;
   readonly creadoEn: Date;
@@ -20,13 +21,15 @@ export class Ubicacion {
     estado: string,
     creadoEn: Date,
     codigoPostal: string | null = null,
-    puntoGeografico: object | null = null
+    puntoGeografico: object | null = null,
+    nombre: string | null = null
   ) {
     this.id = id;
     this.barrioId = barrioId;
     this.direccion = direccion;
     this.codigoPostal = codigoPostal;
     this.puntoGeografico = puntoGeografico;
+    this.nombre = nombre;
     this.estado = estado;
     this.creadoEn = creadoEn;
   }

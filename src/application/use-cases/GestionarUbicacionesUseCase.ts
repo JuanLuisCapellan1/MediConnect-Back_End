@@ -30,7 +30,8 @@ export class GestionarUbicacionesUseCase {
       dto.barrioId,
       dto.direccion,
       dto.codigoPostal,
-      dto.puntoGeografico
+      dto.puntoGeografico,
+      dto.nombre
     );
   }
 
@@ -82,7 +83,8 @@ export class GestionarUbicacionesUseCase {
       dto.direccion,
       dto.codigoPostal,
       dto.estado,
-      dto.puntoGeografico
+      dto.puntoGeografico,
+      dto.nombre
     );
   }
 
@@ -110,7 +112,8 @@ export class GestionarUbicacionesUseCase {
       dto.barrioId,
       dto.direccion,
       dto.codigoPostal,
-      dto.puntoGeografico
+      dto.puntoGeografico,
+      dto.nombre
     );
   }
 }

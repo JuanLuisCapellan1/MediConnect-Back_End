@@ -1,6 +1,6 @@
 /**
  * IUbicacionesRepository.ts
- * Interfaz del repositorio para Ubicaciones — sin subBarrioId tras eliminar sub_barrios
+ * Interfaz del repositorio para Ubicaciones
  */
 
 import { Ubicacion } from '../entities/Ubicacion';
@@ -10,7 +10,8 @@ export interface IUbicacionesRepository {
     barrioId: number,
     direccion: string,
     codigoPostal?: string,
-    puntoGeografico?: string
+    puntoGeografico?: string,
+    nombre?: string
   ): Promise<Ubicacion>;
 
   listarTodas(): Promise<Ubicacion[]>;
@@ -27,7 +28,8 @@ export interface IUbicacionesRepository {
     direccion?: string,
     codigoPostal?: string,
     estado?: string,
-    puntoGeografico?: string
+    puntoGeografico?: string,
+    nombre?: string
   ): Promise<Ubicacion>;
 
   crearParaDoctor(
@@ -35,7 +37,8 @@ export interface IUbicacionesRepository {
     barrioId: number,
     direccion: string,
     codigoPostal?: string,
-    puntoGeografico?: string
+    puntoGeografico?: string,
+    nombre?: string
   ): Promise<Ubicacion>;
 
   eliminar(id: number): Promise<Ubicacion>;

@@ -4745,10 +4745,8 @@ paths:
       security:
         - bearerAuth: []
       description: |
-        Retorna todas las ubicaciones asociadas al doctor autenticado:
-        - Ubicación principal (`doctores.id_ubicacion`)
-        - Ubicaciones referenciadas en sus **horarios** activos
-        - Ubicaciones referenciadas en sus **servicios** activos
+        Retorna todas las ubicaciones asociadas al doctor autenticado a través
+        del campo `id_doctor` en la tabla `ubicaciones`.
 
         **Acceso:** Requiere token JWT con rol `Doctor`.
       responses:
@@ -4814,6 +4812,11 @@ paths:
                   type: string
                   example: "Av. Independencia 456, Piso 3"
                   description: Dirección completa de la ubicación
+                nombre:
+                  type: string
+                  nullable: true
+                  example: "Consultorio Principal"
+                  description: Nombre descriptivo de la ubicación (opcional, máximo 120 caracteres)
                 codigoPostal:
                   type: string
                   nullable: true
@@ -15179,6 +15182,11 @@ components:
           type: string
           example: "Calle Principal 123"
           description: Dirección de la ubicación
+        nombre:
+          type: string
+          nullable: true
+          example: "Consultorio Norte"
+          description: Nombre descriptivo de la ubicación (puede ser null)
         codigoPostal:
           type: string
           nullable: true
@@ -15189,10 +15197,22 @@ components:
           enum: ["Activo", "Inactivo", "Eliminado"]
           example: "Activo"
         puntoGeografico:
-          type: string
+          type: object
           nullable: true
-          example: '{"type": "Point", "coordinates": [-70.1234, 18.5678]}'
-          description: Coordenadas geográficas en formato GeoJSON Point (opcional). Formato - latitude entre -90 y 90, longitude entre -180 y 180.
+          description: Coordenadas geográficas en formato GeoJSON Point (puede ser null)
+          properties:
+            type:
+              type: string
+              enum: [Point]
+              example: Point
+            coordinates:
+              type: array
+              items:
+                type: number
+              minItems: 2
+              maxItems: 2
+              example: [-70.1234, 18.5678]
+              description: "[longitud, latitud]"
         creadoEn:
           type: string
           format: date-time
