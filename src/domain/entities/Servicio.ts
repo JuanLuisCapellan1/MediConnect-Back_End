@@ -28,6 +28,8 @@ export class Servicio {
         public readonly centros?: any[],
         /** Ubicación personalizada (cuando no se usa un centro de salud) */
         public readonly ubicacionId?: number | null,
-        public readonly ubicacion?: any
+        public readonly ubicacion?: any,
+        /** Últimas reseñas del servicio */
+        public readonly resenas?: any[]
     ) { }
 }

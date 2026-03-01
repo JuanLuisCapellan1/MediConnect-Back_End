@@ -173,6 +173,26 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                         seguro: true,
                     },
                 },
+                resenas: {
+                    where: { estado: 'Publicada' },
+                    orderBy: { creadoEn: 'desc' },
+                    take: 5,
+                    select: {
+                        id: true,
+                        calificacion: true,
+                        comentario: true,
+                        creadoEn: true,
+                        servicioId: true,
+                        servicio: { select: { id: true, nombre: true } },
+                        paciente: {
+                            select: {
+                                nombre: true,
+                                apellido: true,
+                                usuario: { select: { fotoPerfil: true } }
+                            }
+                        }
+                    }
+                },
             },
         });
 
@@ -267,6 +287,26 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                 },
                 idiomas: {
                     where: { estado: 'Activo' },
+                },
+                resenas: {
+                    where: { estado: 'Publicada' },
+                    orderBy: { creadoEn: 'desc' },
+                    take: 5,
+                    select: {
+                        id: true,
+                        calificacion: true,
+                        comentario: true,
+                        creadoEn: true,
+                        servicioId: true,
+                        servicio: { select: { id: true, nombre: true } },
+                        paciente: {
+                            select: {
+                                nombre: true,
+                                apellido: true,
+                                usuario: { select: { fotoPerfil: true } }
+                            }
+                        }
+                    }
                 },
             },
         });

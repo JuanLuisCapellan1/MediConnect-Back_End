@@ -150,7 +150,25 @@ export class PrismaServicioRepository implements IServicioRepository {
                 especialidad: true,
                 servicios_ubicaciones: UBICACIONES_INCLUDE,
                 servicios_centros_salud: CENTROS_INCLUDE,
-                horarios: HORARIOS_INCLUDE
+                horarios: HORARIOS_INCLUDE,
+                resenas: {
+                    where: { estado: 'Publicada' },
+                    orderBy: { creadoEn: 'desc' },
+                    take: 5,
+                    select: {
+                        id: true,
+                        calificacion: true,
+                        comentario: true,
+                        creadoEn: true,
+                        paciente: {
+                            select: {
+                                nombre: true,
+                                apellido: true,
+                                usuario: { select: { fotoPerfil: true } }
+                            }
+                        }
+                    }
+                }
             }
         });
         if (!s) return null;
@@ -409,7 +427,25 @@ export class PrismaServicioRepository implements IServicioRepository {
                     }
                 }
             },
-            horarios: HORARIOS_INCLUDE
+            horarios: HORARIOS_INCLUDE,
+            resenas: {
+                where: { estado: 'Publicada' },
+                orderBy: { creadoEn: 'desc' },
+                take: 3,
+                select: {
+                    id: true,
+                    calificacion: true,
+                    comentario: true,
+                    creadoEn: true,
+                    paciente: {
+                        select: {
+                            nombre: true,
+                            apellido: true,
+                            usuario: { select: { fotoPerfil: true } }
+                        }
+                    }
+                }
+            }
         };
     }
 
@@ -451,7 +487,8 @@ export class PrismaServicioRepository implements IServicioRepository {
             horarios,
             s.servicios_centros_salud,
             s.id_ubicacion ?? null,
-            ubicacionesArray?.length ? ubicacionesArray : null
+            ubicacionesArray?.length ? ubicacionesArray : null,
+            s.resenas ?? undefined
         );
     }
 

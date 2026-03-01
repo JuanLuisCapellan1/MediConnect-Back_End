@@ -1053,3 +1053,29 @@ container.register(CitaController, {
 });
 
 export { container };
+// ===== RESEÑAS =====
+import { IResenaRepository } from '../../domain/repositories/IResenaRepository';
+import { PrismaResenaRepository } from '../../infrastructure/repositories/PrismaResenaRepository';
+import { GestionarResenasUseCase } from '../../application/use-cases/GestionarResenasUseCase';
+import { ResenaController } from '../../infrastructure/http/controllers/ResenaController';
+
+container.register<IResenaRepository>('ResenaRepository', {
+  useFactory: () => {
+    const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+    return new PrismaResenaRepository(prismaClient);
+  }
+});
+
+container.register(GestionarResenasUseCase, {
+  useFactory: () => {
+    const resenaRepo = container.resolve<IResenaRepository>('ResenaRepository');
+    return new GestionarResenasUseCase(resenaRepo);
+  }
+});
+
+container.register(ResenaController, {
+  useFactory: () => {
+    const useCase = container.resolve(GestionarResenasUseCase);
+    return new ResenaController(useCase);
+  }
+});

@@ -33,6 +33,7 @@ import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 import { translationRateLimitMiddleware } from '../middlewares/TranslationRateLimiter';
 import DoctorIdiomasRoutes from './DoctorIdiomasRoutes';
 import CitasRoutes from './CitasRoutes';
+import ResenasRoutes from './ResenasRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -131,5 +132,8 @@ router.use('/servicios', ServiciosRoutes);
 
 // Rutas de Citas
 router.use('/citas', CitasRoutes);
+
+// Rutas de Reseñas
+router.use('/resenas', ResenasRoutes);
 
 export default router;
