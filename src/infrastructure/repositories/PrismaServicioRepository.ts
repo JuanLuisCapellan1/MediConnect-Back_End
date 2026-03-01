@@ -8,7 +8,7 @@
  *   ubicacionId   → establece servicios.id_ubicacion + usa directamente en el horario
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { Servicio } from '../../domain/entities/Servicio';
 import { ServicioImagen } from '../../domain/entities/ServicioImagen';
 import { IServicioRepository, FiltrosServicio } from '../../domain/repositories/IServicioRepository';
@@ -172,6 +172,7 @@ export class PrismaServicioRepository implements IServicioRepository {
             }
         });
         if (!s) return null;
+        await this._enrichUbicacionesConCoordenadas([s]);
         return this.mapToDomainCompleto(s);
     }
 
@@ -197,9 +198,12 @@ export class PrismaServicioRepository implements IServicioRepository {
 
         const resultado = servicios.map((s: any) => this.mapToDomainCompleto(s));
         if (!hayFiltros) {
+            await this._enrichUbicacionesConCoordenadas(servicios);
             await this.redis.set(this.CACHE_KEY(doctorId), JSON.stringify(servicios), this.CACHE_TTL);
+        } else {
+            await this._enrichUbicacionesConCoordenadas(servicios);
         }
-        return resultado;
+        return servicios.map((s: any) => this.mapToDomainCompleto(s));
     }
 
     // ─── Listar por centro ──────────────────────────────────────────────────
@@ -216,6 +220,7 @@ export class PrismaServicioRepository implements IServicioRepository {
             include: this._listInclude(),
             orderBy: { creadoEn: 'desc' }
         });
+        await this._enrichUbicacionesConCoordenadas(servicios);
         return servicios.map((s: any) => this.mapToDomainCompleto(s));
     }
 
@@ -503,5 +508,53 @@ export class PrismaServicioRepository implements IServicioRepository {
         const hh = String(d.getUTCHours()).padStart(2, '0');
         const mm = String(d.getUTCMinutes()).padStart(2, '0');
         return `${hh}:${mm}`;
+    }
+
+    /**
+     * Enriquece los servicios con las coordenadas (latitud/longitud) de sus ubicaciones
+     * usando una query raw de PostGIS (ST_Y = latitud, ST_X = longitud).
+     */
+    private async _enrichUbicacionesConCoordenadas(servicios: any[]): Promise<void> {
+        // Recolectar todos los IDs de ubicaciones de los servicios
+        const ubicacionIds: number[] = [];
+        for (const s of servicios) {
+            for (const su of s.servicios_ubicaciones ?? []) {
+                if (su.ubicacion?.id) ubicacionIds.push(su.ubicacion.id);
+            }
+        }
+        if (ubicacionIds.length === 0) return;
+
+        // Query raw: obtener lat/lng de cada ubicación
+        const rows = await this.prisma.$queryRaw<{ id: number; latitud: number; longitud: number }[]>`
+            SELECT
+                id_ubicacion           AS id,
+                ST_Y(punto_geografico) AS latitud,
+                ST_X(punto_geografico) AS longitud
+            FROM ubicaciones
+            WHERE id_ubicacion IN (${Prisma.join(ubicacionIds)})
+              AND punto_geografico IS NOT NULL
+        `;
+
+        // Crear mapa id → coordenadas
+        const coordsMap = new Map<number, { latitud: number; longitud: number }>();
+        for (const row of rows) {
+            coordsMap.set(Number(row.id), {
+                latitud: Number(row.latitud),
+                longitud: Number(row.longitud)
+            });
+        }
+
+        // Mergear coordenadas en los objetos ubicacion
+        for (const s of servicios) {
+            for (const su of s.servicios_ubicaciones ?? []) {
+                if (su.ubicacion?.id) {
+                    const coords = coordsMap.get(su.ubicacion.id);
+                    if (coords) {
+                        su.ubicacion.latitud = coords.latitud;
+                        su.ubicacion.longitud = coords.longitud;
+                    }
+                }
+            }
+        }
     }
 }
