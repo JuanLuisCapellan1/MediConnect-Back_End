@@ -244,48 +244,80 @@ export class PrismaServicioRepository implements IServicioRepository {
             if (datos.modalidad !== undefined) dataUpdate.modalidad = datos.modalidad;
             if (datos.estado !== undefined) dataUpdate.estado = datos.estado;
 
-            // Si se agregan ubicaciones propias, actualizar id_ubicacion con la primera
-            if (datos.ubicacionIdsAgregar?.length) {
-                dataUpdate.id_ubicacion = datos.ubicacionIdsAgregar[0];
+            // Actualizar id_ubicacion con el primer ID de la nueva lista (si se proporciona)
+            if (datos.ubicacionIds?.length) {
+                dataUpdate.id_ubicacion = datos.ubicacionIds[0];
+            } else if (datos.ubicacionIds !== undefined) {
+                // Array vacío explícito → limpiar la ubicación principal
+                dataUpdate.id_ubicacion = null;
             }
 
             await tx.servicio.update({ where: { id }, data: dataUpdate });
 
-            // Desactivar centros de salud
-            if (datos.centroSaludIdsEliminar?.length) {
+            // ── Centros de salud: set completo ──────────────────────────────
+            if (datos.centroSaludIds !== undefined) {
+                const nuevosIds: number[] = datos.centroSaludIds ?? [];
+
+                // Desactivar los que ya no están en la nueva lista
                 await tx.servicios_centros_salud.updateMany({
-                    where: { id_servicio: id, id_centro_salud: { in: datos.centroSaludIdsEliminar } },
+                    where: {
+                        id_servicio: id,
+                        estado: 'Activo',
+                        ...(nuevosIds.length
+                            ? { id_centro_salud: { notIn: nuevosIds } }
+                            : {})
+                    },
                     data: { estado: 'Inactivo' }
                 });
+
+                // Activar / crear los nuevos
+                if (nuevosIds.length) {
+                    await this._procesarCentros(tx, id, nuevosIds);
+                }
             }
 
-            // Desactivar horarios específicos
-            if (datos.horariosEliminar?.length) {
-                await tx.servicioHorario.updateMany({
-                    where: { servicioId: id, horarioId: { in: datos.horariosEliminar } },
-                    data: { estado: 'Inactivo' }
-                });
-                await tx.horario.updateMany({
-                    where: { id: { in: datos.horariosEliminar } },
-                    data: { estado: 'Inactivo' }
-                });
-            }
+            // ── Ubicaciones: set completo ────────────────────────────────────
+            if (datos.ubicacionIds !== undefined) {
+                const nuevosIds: number[] = datos.ubicacionIds ?? [];
 
-            // Agregar nuevos centros, ubicaciones y vincular horarios existentes
-            if (datos.centroSaludIdsAgregar?.length) {
-                await this._procesarCentros(tx, id, datos.centroSaludIdsAgregar);
-            }
-            if (datos.ubicacionIdsAgregar?.length) {
-                await this._procesarUbicaciones(tx, id, datos.ubicacionIdsAgregar);
-            }
-            if (datos.ubicacionIdsEliminar?.length) {
+                // Desactivar las que ya no están en la nueva lista
                 await tx.servicios_ubicaciones.updateMany({
-                    where: { id_servicio: id, id_ubicacion: { in: datos.ubicacionIdsEliminar } },
+                    where: {
+                        id_servicio: id,
+                        estado: 'Activo',
+                        ...(nuevosIds.length
+                            ? { id_ubicacion: { notIn: nuevosIds } }
+                            : {})
+                    },
                     data: { estado: 'Inactivo' }
                 });
+
+                // Activar / crear las nuevas
+                if (nuevosIds.length) {
+                    await this._procesarUbicaciones(tx, id, nuevosIds);
+                }
             }
-            if (datos.horarioIdsAgregar?.length) {
-                await this._vincularHorarios(tx, id, doctorId, datos.horarioIdsAgregar!);
+
+            // ── Horarios: set completo ───────────────────────────────────────
+            if (datos.horarioIds !== undefined) {
+                const nuevosIds: number[] = datos.horarioIds ?? [];
+
+                // Desactivar los vínculos que ya no están en la nueva lista
+                await tx.servicioHorario.updateMany({
+                    where: {
+                        servicioId: id,
+                        estado: 'Activo',
+                        ...(nuevosIds.length
+                            ? { horarioId: { notIn: nuevosIds } }
+                            : {})
+                    },
+                    data: { estado: 'Inactivo' }
+                });
+
+                // Vincular / activar los nuevos
+                if (nuevosIds.length) {
+                    await this._vincularHorarios(tx, id, doctorId, nuevosIds);
+                }
             }
         });
 

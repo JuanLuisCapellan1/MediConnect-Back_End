@@ -107,12 +107,9 @@ export class GestionarServiciosUseCase {
             maxPacientesDia: dto.maxPacientesDia,
             modalidad: dto.modalidad,
             estado: dto.estado,
-            centroSaludIdsAgregar: dto.centroSaludIdsAgregar,
-            centroSaludIdsEliminar: dto.centroSaludIdsEliminar,
-            ubicacionIdsAgregar: dto.ubicacionIdsAgregar,
-            ubicacionIdsEliminar: dto.ubicacionIdsEliminar,
-            horarioIdsAgregar: dto.horarioIdsAgregar,
-            horariosEliminar: dto.horariosEliminar
+            centroSaludIds: dto.centroSaludIds,
+            ubicacionIds: dto.ubicacionIds,
+            horarioIds: dto.horarioIds
         });
     }
 

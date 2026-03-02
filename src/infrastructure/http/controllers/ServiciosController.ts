@@ -202,12 +202,9 @@ export class ServiciosController {
                 maxPacientesDia: req.body.maxPacientesDia !== undefined ? Number(req.body.maxPacientesDia) : undefined,
                 modalidad: req.body.modalidad,
                 estado: req.body.estado,
-                centroSaludIdsAgregar: this.parseIds(req.body.centroSaludIdsAgregar),
-                centroSaludIdsEliminar: this.parseIds(req.body.centroSaludIdsEliminar),
-                ubicacionIdsAgregar: this.parseIds(req.body.ubicacionIdsAgregar),
-                ubicacionIdsEliminar: this.parseIds(req.body.ubicacionIdsEliminar),
-                horarioIdsAgregar: this.parseIds(req.body.horarioIdsAgregar),
-                horariosEliminar: this.parseIds(req.body.horariosEliminar)
+                centroSaludIds: this.parseIds(req.body.centroSaludIds),
+                ubicacionIds: this.parseIds(req.body.ubicacionIds),
+                horarioIds: this.parseIds(req.body.horarioIds)
             };
 
             const actualizado = await this.gestionarServiciosUseCase.actualizar(dto, doctorId);

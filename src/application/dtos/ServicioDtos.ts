@@ -34,18 +34,12 @@ export interface ActualizarServicioDto {
     /** Presencial | Teleconsulta | Mixta */
     modalidad?: 'Presencial' | 'Teleconsulta' | 'Mixta';
     estado?: string;
-    /** IDs de centros de salud a agregar */
-    centroSaludIdsAgregar?: number[];
-    /** IDs de centros de salud a desactivar */
-    centroSaludIdsEliminar?: number[];
-    /** IDs de ubicaciones a agregar */
-    ubicacionIdsAgregar?: number[];
-    /** IDs de ubicaciones a desactivar */
-    ubicacionIdsEliminar?: number[];
-    /** IDs de horarios existentes a vincular al servicio */
-    horarioIdsAgregar?: number[];
-    /** IDs de vínculos servicioHorario a desactivar */
-    horariosEliminar?: number[];
+    /** IDs finales de centros de salud que deben quedar activos en el servicio */
+    centroSaludIds?: number[];
+    /** IDs finales de ubicaciones que deben quedar activas en el servicio */
+    ubicacionIds?: number[];
+    /** IDs finales de horarios que deben quedar vinculados al servicio */
+    horarioIds?: number[];
 }
 
 // ─── Filtros ──────────────────────────────────────────────────────────────────

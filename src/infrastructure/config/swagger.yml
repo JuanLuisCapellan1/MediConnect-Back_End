@@ -13692,9 +13692,17 @@ paths:
       summary: Actualizar un servicio
       tags:
         - Servicios
-      description: |
+      description: |-
         Actualiza los datos de un servicio. Solo el doctor propietario puede modificarlo.
         Todos los campos son opcionales (PATCH semántico).
+
+        **Centros, ubicaciones y horarios — semántica declarativa:**
+        Envía el array con los IDs **finales** que deben quedar activos. El sistema se encarga del diff:
+        - IDs que estaban y **no aparecen** → se desactivan automáticamente.
+        - IDs que no estaban y **sí aparecen** → se crean o reactivan.
+        - Array vacío `[]` → desactiva todos los registros de ese grupo.
+        - Omitir el campo → no se toca ese grupo (sin cambios).
+
         **Acceso:** Doctor
       security:
         - bearerAuth: []
@@ -13749,44 +13757,34 @@ paths:
                   type: string
                   enum: [Activo, Inactivo]
                   example: "Activo"
-                centroSaludIdsAgregar:
+                centroSaludIds:
                   type: array
                   items:
                     type: integer
-                  example: [3]
-                  description: IDs de centros de salud a agregar al servicio
-                centroSaludIdsEliminar:
+                  example: [1, 3]
+                  description: |-
+                    IDs finales de centros de salud que deben quedar activos en el servicio.
+                    Los centros que no aparezcan en la lista serán desactivados automáticamente.
+                    Envía `[]` para desactivar todos. Omite el campo para no hacer cambios.
+                ubicacionIds:
                   type: array
                   items:
                     type: integer
-                  example: [1]
-                  description: IDs de centros de salud a desactivar del servicio
-                ubicacionIdsAgregar:
-                  type: array
-                  items:
-                    type: integer
-                  example: []
-                  description: IDs de ubicaciones propias a agregar
-                ubicacionIdsEliminar:
-                  type: array
-                  items:
-                    type: integer
-                  example: []
-                  description: IDs de ubicaciones propias a desactivar
-                horarioIdsAgregar:
+                  example: [5]
+                  description: |-
+                    IDs finales de ubicaciones propias del doctor que deben quedar activas en el servicio.
+                    Las ubicaciones que no aparezcan en la lista serán desactivadas automáticamente.
+                    Envía `[]` para desactivar todas. Omite el campo para no hacer cambios.
+                horarioIds:
                   type: array
                   items:
                     type: integer
                   example: [8, 9]
-                  description: |
-                    IDs de horarios ya creados por el doctor a vincular al servicio.
+                  description: |-
+                    IDs finales de horarios del doctor que deben quedar vinculados al servicio.
+                    Los vínculos que no aparezcan en la lista serán desactivados automáticamente.
                     El sistema verifica que cada ID pertenezca al doctor y esté Activo.
-                horariosEliminar:
-                  type: array
-                  items:
-                    type: integer
-                  description: IDs de horarios existentes del servicio a desactivar.
-                  example: [10, 15]
+                    Envía `[]` para desvincular todos. Omite el campo para no hacer cambios.
       responses:
         '200':
           description: Servicio actualizado exitosamente

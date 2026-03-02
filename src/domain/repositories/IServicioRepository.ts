@@ -45,12 +45,9 @@ export interface IServicioRepository {
             maxPacientesDia?: number;
             modalidad?: string;
             estado?: string;
-            centroSaludIdsAgregar?: number[];
-            centroSaludIdsEliminar?: number[];
-            ubicacionIdsAgregar?: number[];
-            ubicacionIdsEliminar?: number[];
-            horarioIdsAgregar?: number[];
-            horariosEliminar?: number[];
+            centroSaludIds?: number[];
+            ubicacionIds?: number[];
+            horarioIds?: number[];
         }
     ): Promise<Servicio>;
 
