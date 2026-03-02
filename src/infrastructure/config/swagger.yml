@@ -8002,7 +8002,10 @@ paths:
       summary: Listar citas del paciente
       tags:
         - Citas
-      description: Obtiene todas las citas del paciente autenticado con soporte para filtros y paginación.
+      description: |-
+        Obtiene todas las citas del paciente autenticado con soporte para filtros y paginación.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=motivoConsulta,comentario` para traducir campos de texto.
       security:
         - bearerAuth: []
       parameters:
@@ -8032,6 +8035,28 @@ paths:
           schema:
             type: integer
             default: 10
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática (activa la traducción)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "motivoConsulta,comentario"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Listado de citas
@@ -8061,7 +8086,10 @@ paths:
       summary: Historial de consultas del paciente
       tags:
         - Citas
-      description: Obtiene el historial completo de consultas del paciente (solo citas Completadas con diagnóstico registrado).
+      description: |-
+        Obtiene el historial completo de consultas del paciente (solo citas Completadas con diagnóstico registrado).
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=diagnostico,tratamiento,resumen` para traducir el historial clínico.
       security:
         - bearerAuth: []
       parameters:
@@ -8075,6 +8103,28 @@ paths:
           schema:
             type: integer
             default: 10
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "diagnostico,tratamiento,resumen"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Historial obtenido exitosamente
@@ -8103,7 +8153,10 @@ paths:
       summary: Listar citas del doctor
       tags:
         - Citas
-      description: Obtiene todas las citas del doctor autenticado con soporte para filtros y paginación.
+      description: |-
+        Obtiene todas las citas del doctor autenticado con soporte para filtros y paginación.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=motivoConsulta,comentario` para traducir campos de texto.
       security:
         - bearerAuth: []
       parameters:
@@ -8132,6 +8185,28 @@ paths:
           schema:
             type: integer
             default: 10
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "motivoConsulta,comentario"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Listado de citas del doctor
@@ -8160,7 +8235,10 @@ paths:
       summary: Obtener detalle de una cita
       tags:
         - Citas
-      description: Obtiene el detalle completo de una cita. El Paciente solo puede ver sus citas y el Doctor las suyas.
+      description: |-
+        Obtiene el detalle completo de una cita. El Paciente solo puede ver sus citas y el Doctor las suyas.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=motivoConsulta,comentario` para traducir campos de texto.
       security:
         - bearerAuth: []
       parameters:
@@ -8170,6 +8248,28 @@ paths:
           schema:
             type: integer
           example: 1
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "motivoConsulta,comentario"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Cita obtenida exitosamente
@@ -8441,7 +8541,10 @@ paths:
       summary: Historial de una cita específica
       tags:
         - Citas
-      description: Obtiene el historial clínico de una cita específica. Disponible para el Paciente y el Doctor de esa cita.
+      description: |-
+        Obtiene el historial clínico de una cita específica. Disponible para el Paciente y el Doctor de esa cita.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=diagnostico,tratamiento,resumen,observacion` para traducir el historial.
       security:
         - bearerAuth: []
       parameters:
@@ -8451,6 +8554,28 @@ paths:
           schema:
             type: integer
           example: 1
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "diagnostico,tratamiento,resumen,observacion"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Historial obtenido exitosamente
@@ -8574,7 +8699,10 @@ paths:
       summary: Listar mis grupos de citas recurrentes (Paciente)
       tags:
         - Citas
-      description: Obtiene todos los grupos de citas recurrentes del paciente autenticado.
+      description: |-
+        Obtiene todos los grupos de citas recurrentes del paciente autenticado.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=descripcion` para traducir campos de texto.
       security:
         - bearerAuth: []
       parameters:
@@ -8588,6 +8716,28 @@ paths:
           schema:
             type: integer
             default: 10
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "descripcion"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Grupos obtenidos exitosamente
@@ -8616,7 +8766,10 @@ paths:
       summary: Ver detalle de un grupo de citas
       tags:
         - Citas
-      description: Obtiene el detalle de un grupo de citas recurrentes, incluyendo todas las citas generadas.
+      description: |-
+        Obtiene el detalle de un grupo de citas recurrentes, incluyendo todas las citas generadas.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=descripcion` para traducir campos de texto.
       security:
         - bearerAuth: []
       parameters:
@@ -8626,6 +8779,28 @@ paths:
           schema:
             type: integer
           example: 1
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "descripcion"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Grupo obtenido exitosamente
@@ -13655,10 +13830,12 @@ paths:
       summary: Obtener detalle completo de un servicio
       tags:
         - Servicios
-      description: |
+      description: |-
         Retorna el detalle completo de un servicio incluyendo doctor, especialidad,
-        tipo de servicio, horarios disponibles y todas las imágenes.
+        horarios disponibles y todas las imágenes.
         **Acceso:** Doctor, Administrador, Paciente
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=nombre,descripcion` para traducir campos de texto.
       security:
         - bearerAuth: []
       parameters:
@@ -13668,6 +13845,28 @@ paths:
           schema:
             type: integer
           example: 10
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Detalle del servicio
@@ -13894,10 +14093,12 @@ paths:
       summary: Listar servicios de un doctor
       tags:
         - Servicios
-      description: |
+      description: |-
         Retorna la lista de servicios activos (no eliminados) de un doctor.
-        Soporta filtros opcionales por especialidad, tipo de servicio, estado y rango de precio.
+        Soporta filtros opcionales por especialidad, estado y rango de precio.
         **Acceso:** Doctor, Administrador, Paciente
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=nombre,descripcion` para traducir campos de texto.
       security:
         - bearerAuth: []
       parameters:
@@ -13913,7 +14114,6 @@ paths:
             type: integer
           description: Filtrar por especialidad
           example: 3
-          example: 2
         - name: estado
           in: query
           schema:
@@ -13933,6 +14133,28 @@ paths:
             type: number
           description: Precio máximo
           example: 3000
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Lista de servicios del doctor
@@ -13961,11 +14183,13 @@ paths:
       summary: Listar servicios de un centro de salud
       tags:
         - Servicios
-      description: |
+      description: |-
         Retorna todos los servicios ofrecidos en un centro de salud específico.
         Los servicios se vinculan al centro a través de la tabla `servicios_centros_salud`.
-        Soporta filtros opcionales por especialidad, tipo de servicio, estado y rango de precio.
+        Soporta filtros opcionales por especialidad, estado y rango de precio.
         **Acceso:** Doctor, Administrador, Paciente
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=nombre,descripcion` para traducir campos de texto.
       security:
         - bearerAuth: []
       parameters:
@@ -13982,7 +14206,6 @@ paths:
             type: integer
           description: Filtrar por especialidad
           example: 3
-          example: 2
         - name: estado
           in: query
           schema:
@@ -14002,6 +14225,28 @@ paths:
             type: number
           description: Precio máximo
           example: 3000
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Lista de servicios del centro de salud
@@ -14888,9 +15133,35 @@ paths:
       summary: Mis reseñas
       tags:
         - Reseñas
-      description: Devuelve todas las reseñas que el paciente autenticado ha escrito.
+      description: |-
+        Devuelve todas las reseñas que el paciente autenticado ha escrito.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=comentario` para traducir el comentario.
       security:
         - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "comentario"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Lista de reseñas del paciente.
@@ -14918,7 +15189,10 @@ paths:
       summary: Reseñas de un servicio
       tags:
         - Reseñas
-      description: Lista paginada de reseñas publicadas de un servicio específico. Endpoint público.
+      description: |-
+        Lista paginada de reseñas publicadas de un servicio específico. Endpoint público.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=comentario` para traducir el comentario.
       parameters:
         - name: servicioId
           in: path
@@ -14938,6 +15212,28 @@ paths:
             type: integer
             default: 10
           description: Resultados por página.
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "comentario"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Reseñas del servicio.
@@ -14961,7 +15257,10 @@ paths:
       summary: Reseñas de un doctor
       tags:
         - Reseñas
-      description: Lista paginada de reseñas publicadas de todos los servicios de un doctor. Endpoint público.
+      description: |-
+        Lista paginada de reseñas publicadas de todos los servicios de un doctor. Endpoint público.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=comentario` para traducir el comentario.
       parameters:
         - name: doctorId
           in: path
@@ -14981,6 +15280,28 @@ paths:
             type: integer
             default: 10
           description: Resultados por página.
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "comentario"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Reseñas del doctor.
