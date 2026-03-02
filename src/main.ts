@@ -10,6 +10,14 @@ dotenv.config();
   return this.toString();
 };
 
+// Fix para serialización de Decimal (Prisma) en JSON
+// Evita el formato interno {"s":1,"e":3,"d":[...]} y devuelve un número normal
+import { Decimal } from '@prisma/client/runtime/library';
+(Decimal.prototype as any).toJSON = function () {
+  return parseFloat(this.toString());
+};
+
+
 import './shared/container'; // Configuración del contenedor de inyección
 import express from 'express';
 import { createServer } from 'http';

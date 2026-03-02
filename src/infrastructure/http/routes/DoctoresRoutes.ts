@@ -5,6 +5,7 @@ import { DoctorController } from '../controllers/DoctorController';
 import { DoctorIdiomaController } from '../controllers/DoctorIdiomaController';
 import { DoctorEspecialidadController } from '../controllers/DoctorEspecialidadController';
 import { CentrosSaludController } from '../controllers/CentrosSaludController';
+import { CitaController } from '../controllers/CitaController';
 import { autenticarJWT } from '../middlewares/autenticacion';
 import { requireRole } from '../middlewares/roleMiddleware';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
@@ -209,6 +210,41 @@ router.put(
     requireRole('Doctor'),
     (req, res) => container.resolve(CentrosSaludController).doctorResponderSolicitud(req, res)
 );
+
+// ─── Periodos de Inactividad del Doctor (antes de /:id) ─────────────
+/**
+ * POST /doctores/inactividad
+ * Doctor registra un período de inactividad y cancela citas en ese rango
+ */
+router.post(
+    '/inactividad',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => container.resolve(CitaController).registrarInactividad(req, res)
+);
+
+/**
+ * GET /doctores/inactividad
+ * Doctor lista sus periodos de inactividad
+ */
+router.get(
+    '/inactividad',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => container.resolve(CitaController).listarInactividades(req, res)
+);
+
+/**
+ * DELETE /doctores/inactividad/:periodoId
+ * Doctor cancela un periodo de inactividad propio
+ */
+router.delete(
+    '/inactividad/:periodoId',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => container.resolve(CitaController).cancelarInactividad(req, res)
+);
+
 
 /**
  * GET /doctores/:id

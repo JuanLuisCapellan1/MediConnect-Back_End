@@ -6,133 +6,44 @@ import { requireRole } from '../middlewares/roleMiddleware';
 
 const router = Router();
 
-// Lazy factory para el controlador
 const ctrl = () => container.resolve(CitaController);
 
-// ──────────────────────────────────────────────────
-// RUTAS ESTÁTICAS PRIMERO (antes que /:id)
-// ──────────────────────────────────────────────────
+// ── ESTÁTICAS (antes de /:id) ─────────────────────────────────────────
 
 // GET /citas/historial — Historial del paciente
-router.get(
-    '/historial',
-    autenticarJWT,
-    requireRole('Paciente'),
-    (req, res) => ctrl().historialPaciente(req, res)
-);
+router.get('/historial', autenticarJWT, requireRole('Paciente'), (req, res) => ctrl().historialPaciente(req, res));
 
-// GET /citas/doctor — Doctor ve sus citas
-router.get(
-    '/doctor',
-    autenticarJWT,
-    requireRole('Doctor'),
-    (req, res) => ctrl().listarCitasDoctor(req, res)
-);
+// GET /citas/doctor — Doctor lista sus citas
+router.get('/doctor', autenticarJWT, requireRole('Doctor'), (req, res) => ctrl().listarCitasDoctor(req, res));
 
-// ──────────────────────────────────────────────────
+// ── POST /citas ───────────────────────────────────────────────────────
+
 // POST /citas — Paciente agenda una cita
-// ──────────────────────────────────────────────────
-router.post(
-    '/',
-    autenticarJWT,
-    requireRole('Paciente'),
-    (req, res) => ctrl().agendar(req, res)
-);
+router.post('/', autenticarJWT, requireRole('Paciente'), (req, res) => ctrl().agendar(req, res));
+
+// ── LISTAR ────────────────────────────────────────────────────────────
 
 // GET /citas — Paciente lista sus citas
-router.get(
-    '/',
-    autenticarJWT,
-    requireRole('Paciente'),
-    (req, res) => ctrl().listarMisCitas(req, res)
-);
+router.get('/', autenticarJWT, requireRole('Paciente'), (req, res) => ctrl().listarMisCitas(req, res));
 
-// ──────────────────────────────────────────────────
-// RUTAS CON :id
-// ──────────────────────────────────────────────────
+// ── RUTAS CON :id ────────────────────────────────────────────────────
 
 // GET /citas/:id — Detalle (Paciente o Doctor)
-router.get(
-    '/:id',
-    autenticarJWT,
-    requireRole('Paciente', 'Doctor'),
-    (req, res) => ctrl().obtenerDetalle(req, res)
-);
+router.get('/:id', autenticarJWT, requireRole('Paciente', 'Doctor'), (req, res) => ctrl().obtenerDetalle(req, res));
 
-// GET /citas/:id/historial — Historial de una cita (Paciente o Doctor)
-router.get(
-    '/:id/historial',
-    autenticarJWT,
-    requireRole('Paciente', 'Doctor'),
-    (req, res) => ctrl().historialCita(req, res)
-);
+// GET /citas/:id/historial — Historial de una cita
+router.get('/:id/historial', autenticarJWT, requireRole('Paciente', 'Doctor'), (req, res) => ctrl().historialCita(req, res));
 
 // PATCH /citas/:id — Paciente edita su cita
-router.patch(
-    '/:id',
-    autenticarJWT,
-    requireRole('Paciente'),
-    (req, res) => ctrl().editar(req, res)
-);
+router.patch('/:id', autenticarJWT, requireRole('Paciente'), (req, res) => ctrl().editar(req, res));
 
 // PATCH /citas/:id/cancelar — Cancelar (Paciente o Doctor)
-router.patch(
-    '/:id/cancelar',
-    autenticarJWT,
-    requireRole('Paciente', 'Doctor'),
-    (req, res) => ctrl().cancelar(req, res)
-);
+router.patch('/:id/cancelar', autenticarJWT, requireRole('Paciente', 'Doctor'), (req, res) => ctrl().cancelar(req, res));
 
 // PATCH /citas/:id/reprogramar — Doctor reprograma
-router.patch(
-    '/:id/reprogramar',
-    autenticarJWT,
-    requireRole('Doctor'),
-    (req, res) => ctrl().reprogramar(req, res)
-);
+router.patch('/:id/reprogramar', autenticarJWT, requireRole('Doctor'), (req, res) => ctrl().reprogramar(req, res));
 
 // POST /citas/:id/diagnosticar — Doctor diagnostica y completa
-router.post(
-    '/:id/diagnosticar',
-    autenticarJWT,
-    requireRole('Doctor'),
-    (req, res) => ctrl().diagnosticar(req, res)
-);
-
-// ──────────────────────────────────────────────────
-// RUTAS DE GRUPOS DE CITAS RECURRENTES
-// ──────────────────────────────────────────────────
-
-// POST /citas/recurrentes — Paciente agenda cita recurrente
-router.post(
-    '/recurrentes',
-    autenticarJWT,
-    requireRole('Paciente'),
-    (req, res) => ctrl().agendarRecurrente(req, res)
-);
-
-// GET /citas/grupos — Paciente lista sus grupos de citas
-router.get(
-    '/grupos',
-    autenticarJWT,
-    requireRole('Paciente'),
-    (req, res) => ctrl().listarMisGrupos(req, res)
-);
-
-// GET /citas/grupos/:grupoId — Ver un grupo específico (Paciente o Doctor)
-router.get(
-    '/grupos/:grupoId',
-    autenticarJWT,
-    requireRole('Paciente', 'Doctor'),
-    (req, res) => ctrl().verGrupo(req, res)
-);
-
-// DELETE /citas/grupos/:grupoId — Cancelar grupo (Paciente o Doctor)
-router.delete(
-    '/grupos/:grupoId',
-    autenticarJWT,
-    requireRole('Paciente', 'Doctor'),
-    (req, res) => ctrl().cancelarGrupo(req, res)
-);
+router.post('/:id/diagnosticar', autenticarJWT, requireRole('Doctor'), (req, res) => ctrl().diagnosticar(req, res));
 
 export default router;

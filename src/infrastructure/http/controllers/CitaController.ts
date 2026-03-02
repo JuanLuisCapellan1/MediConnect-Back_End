@@ -9,19 +9,45 @@ export class CitaController {
         private citasUseCase: GestionarCitasUseCase
     ) { }
 
+    // ─── SLOTS DISPONIBLES ────────────────────────────────────────────
+    // GET /servicios/:id/slots?fecha=YYYY-MM-DD
+    async slotsDisponibles(req: Request, res: Response): Promise<void> {
+        try {
+            const servicioId = Number(req.params.id);
+            const fecha = req.query.fecha as string;
+
+            if (isNaN(servicioId)) {
+                res.status(400).json({ success: false, message: 'ID de servicio inválido.' });
+                return;
+            }
+            if (!fecha) {
+                res.status(400).json({ success: false, message: 'El parámetro "fecha" es requerido en formato YYYY-MM-DD.' });
+                return;
+            }
+
+            const slots = await this.citasUseCase.obtenerSlotsDisponibles(servicioId, fecha);
+            res.status(200).json({ success: true, fecha, data: slots });
+        } catch (error) { this.manejarError(error, res); }
+    }
+
+    // ─── CITAS ────────────────────────────────────────────────────────
+
     // POST /citas — Paciente agenda una cita
     async agendar(req: Request, res: Response): Promise<void> {
         try {
             const pacienteId = req.user?.userId;
             if (!pacienteId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
 
-            const dto = req.body;
-            if (!dto.servicioId || !dto.horarioId || !dto.fechaInicio || !dto.fechaFin || !dto.modalidad) {
-                res.status(400).json({ success: false, message: 'servicioId, horarioId, fechaInicio, fechaFin y modalidad son requeridos.' });
+            const { servicioId, horarioId, fecha, hora, modalidad } = req.body;
+            if (!servicioId || !horarioId || !fecha || !hora || !modalidad) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Los campos servicioId, horarioId, fecha (YYYY-MM-DD), hora (HH:MM) y modalidad son requeridos.',
+                });
                 return;
             }
 
-            const data = await this.citasUseCase.agendarCita(pacienteId, dto);
+            const data = await this.citasUseCase.agendarCita(pacienteId, req.body);
             res.status(201).json({ success: true, data, message: 'Cita agendada exitosamente.' });
         } catch (error) { this.manejarError(error, res); }
     }
@@ -137,18 +163,21 @@ export class CitaController {
             const citaId = Number(req.params.id);
             if (isNaN(citaId)) { res.status(400).json({ success: false, message: 'ID de cita inválido.' }); return; }
 
-            const { horarioId, fechaInicio, fechaFin } = req.body;
-            if (!horarioId || !fechaInicio || !fechaFin) {
-                res.status(400).json({ success: false, message: 'horarioId, fechaInicio y fechaFin son requeridos.' });
+            const { horarioId, fecha, hora } = req.body;
+            if (!horarioId || !fecha || !hora) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Los campos horarioId, fecha (YYYY-MM-DD) y hora (HH:MM) son requeridos.',
+                });
                 return;
             }
 
-            const data = await this.citasUseCase.reprogramarCita(citaId, doctorId, { horarioId, fechaInicio, fechaFin });
+            const data = await this.citasUseCase.reprogramarCita(citaId, doctorId, { horarioId, fecha, hora });
             res.status(200).json({ success: true, data, message: 'Cita reprogramada exitosamente.' });
         } catch (error) { this.manejarError(error, res); }
     }
 
-    // POST /citas/:id/diagnosticar — Doctor diagnostica y completa la cita
+    // POST /citas/:id/diagnosticar — Doctor diagnostica y completa
     async diagnosticar(req: Request, res: Response): Promise<void> {
         try {
             const doctorId = req.user?.userId;
@@ -203,80 +232,57 @@ export class CitaController {
         } catch (error) { this.manejarError(error, res); }
     }
 
-    // POST /citas/recurrentes — Paciente agenda cita recurrente
-    async agendarRecurrente(req: Request, res: Response): Promise<void> {
-        try {
-            const pacienteId = req.user?.userId;
-            if (!pacienteId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+    // ─── PERIODOS DE INACTIVIDAD ──────────────────────────────────────
 
-            const { servicioId, horarioId, modalidad, fechaInicio } = req.body;
-            if (!servicioId || !horarioId || !modalidad || !fechaInicio) {
-                res.status(400).json({ success: false, message: 'servicioId, horarioId, modalidad y fechaInicio son requeridos.' });
+    // POST /doctor/inactividad — Doctor registra periodo de inactividad
+    async registrarInactividad(req: Request, res: Response): Promise<void> {
+        try {
+            const doctorId = req.user?.userId;
+            if (!doctorId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+
+            const { fechaInicio, horaInicio, fechaFin, horaFin, motivo } = req.body;
+            if (!fechaInicio || !fechaFin) {
+                res.status(400).json({
+                    success: false,
+                    message: 'fechaInicio (YYYY-MM-DD) y fechaFin (YYYY-MM-DD) son requeridos. ' +
+                        'horaInicio y horaFin (HH:MM) son opcionales (por defecto: 00:00 y 23:59).',
+                });
                 return;
             }
 
-            const data = await this.citasUseCase.agendarCitaRecurrente(pacienteId, req.body);
+            const data = await this.citasUseCase.registrarInactividad(doctorId, {
+                fechaInicio, horaInicio, fechaFin, horaFin, motivo,
+            });
             res.status(201).json({
                 success: true,
                 data,
-                message: `Grupo de citas creado. Se generaron ${data.citasGeneradas} citas.`
+                message: `Período de inactividad registrado. ${data.citasCanceladas} cita(s) cancelada(s).`,
             });
         } catch (error) { this.manejarError(error, res); }
     }
 
-    // GET /citas/grupos — Paciente lista sus grupos de citas recurrentes
-    async listarMisGrupos(req: Request, res: Response): Promise<void> {
+    // GET /doctor/inactividad — Doctor lista sus periodos
+    async listarInactividades(req: Request, res: Response): Promise<void> {
         try {
-            const pacienteId = req.user?.userId;
-            if (!pacienteId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+            const doctorId = req.user?.userId;
+            if (!doctorId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
 
-            const pagina = req.query.pagina ? Number(req.query.pagina) : undefined;
-            const limite = req.query.limite ? Number(req.query.limite) : undefined;
-
-            const { datos, total } = await this.citasUseCase.listarGruposPaciente(pacienteId, { pagina, limite });
-            const lim = limite ?? 10;
-            const pag = pagina ?? 1;
-            res.status(200).json({
-                success: true,
-                data: datos,
-                paginacion: { total, pagina: pag, limite: lim, totalPaginas: Math.ceil(total / lim) },
-            });
-        } catch (error) { this.manejarError(error, res); }
-    }
-
-    // GET /citas/grupos/:grupoId — Ver un grupo de citas
-    async verGrupo(req: Request, res: Response): Promise<void> {
-        try {
-            const usuarioId = req.user?.userId;
-            const rol = req.user?.rol as 'Paciente' | 'Doctor';
-            if (!usuarioId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
-
-            const grupoId = Number(req.params.grupoId);
-            if (isNaN(grupoId)) { res.status(400).json({ success: false, message: 'ID de grupo inválido.' }); return; }
-
-            const data = await this.citasUseCase.listarPorGrupo(grupoId, usuarioId, rol);
+            const data = await this.citasUseCase.listarInactividades(doctorId);
             res.status(200).json({ success: true, data });
         } catch (error) { this.manejarError(error, res); }
     }
 
-    // DELETE /citas/grupos/:grupoId — Cancelar todo un grupo de citas
-    async cancelarGrupo(req: Request, res: Response): Promise<void> {
+    // DELETE /doctor/inactividad/:periodoId — Doctor cancela un periodo
+    async cancelarInactividad(req: Request, res: Response): Promise<void> {
         try {
-            const usuarioId = req.user?.userId;
-            const rol = req.user?.rol as 'Paciente' | 'Doctor';
-            if (!usuarioId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+            const doctorId = req.user?.userId;
+            if (!doctorId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
 
-            const grupoId = Number(req.params.grupoId);
-            if (isNaN(grupoId)) { res.status(400).json({ success: false, message: 'ID de grupo inválido.' }); return; }
+            const periodoId = Number(req.params.periodoId);
+            if (isNaN(periodoId)) { res.status(400).json({ success: false, message: 'ID de periodo inválido.' }); return; }
 
-            const { motivoCancelacion } = req.body;
-            if (!motivoCancelacion?.trim()) {
-                res.status(400).json({ success: false, message: 'motivoCancelacion es requerido.' });
-                return;
-            }
-
-            const data = await this.citasUseCase.cancelarGrupo(grupoId, usuarioId, rol, motivoCancelacion);
-            res.status(200).json({ success: true, data, message: 'Grupo de citas cancelado exitosamente.' });
+            const data = await this.citasUseCase.cancelarInactividad(periodoId, doctorId);
+            res.status(200).json({ success: true, data, message: 'Período de inactividad cancelado.' });
         } catch (error) { this.manejarError(error, res); }
     }
 
@@ -293,7 +299,11 @@ export class CitaController {
             msg.includes('no está disponible') || msg.includes('no tiene') ||
             msg.includes('no acepta') || msg.includes('ya tiene una cita') ||
             msg.includes('Solo puedes') || msg.includes('Solo se pueden') ||
-            msg.includes('cancelado') || msg.includes('días de semana')
+            msg.includes('cancelado') || msg.includes('día de la semana') ||
+            msg.includes('franja horaria') || msg.includes('fuera del horario') ||
+            msg.includes('período de inactividad') || msg.includes('fecha de fin') ||
+            msg.includes('ya fue cancelado') || msg.includes('formato') ||
+            msg.includes('YYYY-MM-DD') || msg.includes('HH:MM')
         ) {
             res.status(400).json({ success: false, message: msg }); return;
         }

@@ -5,7 +5,6 @@ export interface ICitaRepository {
         servicioId: number;
         horarioId?: number;
         fechaInicio: Date;
-        fechaFin: Date;
         modalidad: string;
         numPacientes: number;
         seguroId?: number;
@@ -37,7 +36,7 @@ export interface ICitaRepository {
     actualizar(id: number, datos: Partial<{
         horarioId: number;
         fechaInicio: Date;
-        fechaFin: Date;
+        fechaFin: Date | null;
         modalidad: string;
         numPacientes: number;
         seguroId: number | null;
@@ -48,6 +47,8 @@ export interface ICitaRepository {
         motivoCancelacion: string | null;
         ubicacionId: number | null;
     }>): Promise<any>;
+
+    obtenerCitasEnRango(doctorId: number, desde: Date, hasta: Date): Promise<any[]>;
 
     crearHistorial(datos: {
         citaId: number;

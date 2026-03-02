@@ -109,6 +109,7 @@ model Doctor {
   experiencias                  ExperienciaLaboral[]
   formaciones                   FormacionAcademica[]
   horarios                      Horario[]
+  periodos_inactividad          periodos_inactividad[]
   resenas                       Resena[]
   servicios                     Servicio[]
   solicitudesAlianza            SolicitudAlianza[]
@@ -513,7 +514,7 @@ model Cita {
   servicioId        Int                @map("id_servicio")
   pacienteId        Int                @map("id_usuario")
   fechaInicio       DateTime           @map("fecha_hora_inicio") @db.Timestamptz(6)
-  fechaFin          DateTime           @map("fecha_hora_fin") @db.Timestamptz(6)
+  fechaFin          DateTime?          @map("fecha_hora_fin") @db.Timestamptz(6)
   ubicacionId       Int?               @map("id_ubicacion")
   totalAPagar       Decimal            @map("total_a_pagar") @db.Decimal(10, 2)
   motivoConsulta    String?            @map("motivo_consulta_paciente") @db.VarChar(200)
@@ -539,7 +540,7 @@ model Cita {
   tipoSeguro        TipoSeguro?        @relation(fields: [tipoSeguroId], references: [id], onUpdate: NoAction, map: "fk_citas_tipo_seguro")
   historial         HistorialConsulta?
   logTeleconsulta   LogTeleconsulta[]
-  resenas           Resena[]           @relation("ResenasCita")
+  resenas           Resena?            @relation("ResenasCita")
 
   @@index([id_grupo], map: "idx_citas_grupo")
   @@map("citas")
@@ -564,8 +565,7 @@ model HistorialConsulta {
 
 model Resena {
   id            Int       @id @default(autoincrement()) @map("id_resena")
-  servicioId    Int       @map("id_servicio")
-  citaId        Int?      @map("id_cita")
+  citaId        Int?      @unique @map("id_cita")
   pacienteId    Int       @map("id_paciente")
   doctorId      Int       @map("id_doctor")
   calificacion  Int
@@ -573,8 +573,9 @@ model Resena {
   estado        String    @default("Publicada") @db.VarChar(20)
   creadoEn      DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
   actualizadoEn DateTime? @map("actualizado_en") @db.Timestamptz(6)
-  servicio      Servicio  @relation(fields: [servicioId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_resenas_servicio")
+  servicioId    Int       @map("id_servicio")
   cita          Cita?     @relation("ResenasCita", fields: [citaId], references: [id], onUpdate: NoAction, map: "fk_resenas_cita")
+  servicio      Servicio  @relation(fields: [servicioId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_resenas_servicio")
   doctor        Doctor    @relation(fields: [doctorId], references: [usuarioId])
   paciente      Paciente  @relation(fields: [pacienteId], references: [usuarioId])
 
@@ -851,4 +852,20 @@ model servicios_ubicaciones {
   @@id([id_servicio, id_ubicacion], map: "pk_servicios_ubicaciones")
   @@index([id_servicio], map: "idx_servicios_ubicaciones_servicio")
   @@map("servicios_ubicaciones")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model periodos_inactividad {
+  id_periodo     Int       @id @default(autoincrement())
+  id_doctor      Int
+  fecha_inicio   DateTime  @db.Timestamptz(6)
+  fecha_fin      DateTime  @db.Timestamptz(6)
+  motivo         String?   @db.VarChar(255)
+  estado         String    @default("Activo") @db.VarChar(20)
+  creado_en      DateTime  @default(now()) @db.Timestamptz(6)
+  actualizado_en DateTime? @db.Timestamptz(6)
+  doctores       Doctor    @relation(fields: [id_doctor], references: [usuarioId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([id_doctor], map: "idx_inactividad_doctor")
+  @@index([fecha_inicio, fecha_fin], map: "idx_inactividad_fechas")
 }

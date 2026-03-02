@@ -1018,6 +1018,8 @@ import { ICitaRepository } from '../../domain/repositories/ICitaRepository';
 import { PrismaCitaRepository } from '../../infrastructure/repositories/PrismaCitaRepository';
 import { IGrupoCitaRepository } from '../../domain/repositories/IGrupoCitaRepository';
 import { PrismaGrupoCitaRepository } from '../../infrastructure/repositories/PrismaGrupoCitaRepository';
+import { IInactividadRepository } from '../../domain/repositories/IInactividadRepository';
+import { PrismaInactividadRepository } from '../../infrastructure/repositories/PrismaInactividadRepository';
 import { GestionarCitasUseCase } from '../../application/use-cases/GestionarCitasUseCase';
 import { CitaController } from '../../infrastructure/http/controllers/CitaController';
 
@@ -1035,13 +1037,20 @@ container.register<IGrupoCitaRepository>('GrupoCitaRepository', {
   }
 });
 
+container.register<IInactividadRepository>('InactividadRepository', {
+  useFactory: () => {
+    const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+    return new PrismaInactividadRepository(prismaClient);
+  }
+});
+
 container.register(GestionarCitasUseCase, {
   useFactory: () => {
     const citaRepo = container.resolve<ICitaRepository>('CitaRepository');
     const doctorRepo = container.resolve<IDoctorRepository>('DoctorRepository');
     const pacienteRepo = container.resolve<IPacienteRepository>('PacienteRepository');
-    const grupoCitaRepo = container.resolve<IGrupoCitaRepository>('GrupoCitaRepository');
-    return new GestionarCitasUseCase(citaRepo, doctorRepo, pacienteRepo, grupoCitaRepo);
+    const inactividadRepo = container.resolve<IInactividadRepository>('InactividadRepository');
+    return new GestionarCitasUseCase(citaRepo, doctorRepo, pacienteRepo, inactividadRepo);
   }
 });
 

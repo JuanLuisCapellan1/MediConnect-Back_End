@@ -1,8 +1,10 @@
 export interface CrearCitaDto {
     servicioId: number;
     horarioId: number;
-    fechaInicio: string | Date;
-    fechaFin: string | Date;
+    /** Fecha en formato YYYY-MM-DD (ej: "2026-03-10") */
+    fecha: string;
+    /** Hora en formato HH:MM, en zona horaria UTC (ej: "09:00") */
+    hora: string;
     modalidad: 'Presencial' | 'Virtual' | 'Domicilio';
     numPacientes?: number;
     seguroId?: number;
@@ -13,8 +15,8 @@ export interface CrearCitaDto {
 export interface EditarCitaDto {
     servicioId?: number;
     horarioId?: number;
-    fechaInicio?: string | Date;
-    fechaFin?: string | Date;
+    fecha?: string;
+    hora?: string;
     modalidad?: 'Presencial' | 'Virtual' | 'Domicilio';
     numPacientes?: number;
     seguroId?: number | null;
@@ -28,8 +30,10 @@ export interface CancelarCitaDto {
 
 export interface ReprogramarCitaDto {
     horarioId: number;
-    fechaInicio: string | Date;
-    fechaFin: string | Date;
+    /** Fecha en formato YYYY-MM-DD (ej: "2026-03-15") */
+    fecha: string;
+    /** Hora en formato HH:MM (ej: "10:00") */
+    hora: string;
 }
 
 export interface DiagnosticarCitaDto {
@@ -47,18 +51,15 @@ export interface FiltroCitasDto {
     fechaHasta?: string | Date;
 }
 
-/** DTO para crear un grupo de citas recurrentes */
-export interface CrearCitaRecurrenteDto {
-    servicioId: number;
-    horarioId: number;
-    modalidad: 'Presencial' | 'Virtual' | 'Domicilio';
-    /** Fecha de inicio del ciclo recurrente (YYYY-MM-DD) */
-    fechaInicio: string | Date;
-    /** Fecha fin del ciclo (YYYY-MM-DD). Si no se envía, ciclo indefinido de 3 meses */
-    fechaFin?: string | Date;
-    numPacientes?: number;
-    seguroId?: number;
-    tipoSeguroId?: number;
-    motivoConsulta?: string;
-    descripcion?: string;
+/** DTO para que el doctor registre un periodo de inactividad */
+export interface CrearPeriodoInactividadDto {
+    /** Fecha de inicio en formato YYYY-MM-DD */
+    fechaInicio: string;
+    /** Hora de inicio en formato HH:MM (UTC). Por defecto 00:00 si no se envía */
+    horaInicio?: string;
+    /** Fecha de fin en formato YYYY-MM-DD */
+    fechaFin: string;
+    /** Hora de fin en formato HH:MM (UTC). Por defecto 23:59 si no se envía */
+    horaFin?: string;
+    motivo?: string;
 }

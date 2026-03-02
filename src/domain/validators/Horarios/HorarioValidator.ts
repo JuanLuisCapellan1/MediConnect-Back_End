@@ -16,9 +16,9 @@ export class HorarioValidator {
   ) { }
 
   /**
-   * Valida datos del horario y devuelve las horas parseadas.
-   * @param diasSemana - Array de días (1=Lunes…7=Domingo), mínimo 1 elemento
-   */
+ * Valida datos del horario y devuelve las horas parseadas.
+ * @param diasSemana - Array de días (0=Domingo, 1=Lunes … 6=Sábado), mínimo 1 elemento
+ */
   async validarDatosHorario(
     doctorId: number,
     nombre: string,
@@ -44,8 +44,8 @@ export class HorarioValidator {
     }
 
     for (const dia of diasSemana) {
-      if (!Number.isInteger(dia) || dia < 1 || dia > 7) {
-        throw new Error(`Día inválido: ${dia}. Los valores permitidos son 1 (Lunes) a 7 (Domingo)`);
+      if (!Number.isInteger(dia) || dia < 0 || dia > 6) {
+        throw new Error(`Día inválido: ${dia}. Los valores permitidos son 0 (Domingo) a 6 (Sábado)`);
       }
     }
 

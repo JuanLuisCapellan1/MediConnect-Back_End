@@ -11,6 +11,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { container } from 'tsyringe';
 import { ServiciosController } from '../controllers/ServiciosController';
+import { CitaController } from '../controllers/CitaController';
 import { autenticarJWT } from '../middlewares/autenticacion';
 import { requireRole } from '../middlewares/roleMiddleware';
 
@@ -80,6 +81,18 @@ router.get(
     (req, res) => serviciosController.listarPorCentro(req, res)
 );
 
+
+/**
+ * @route GET /servicios/:id/slots
+ * @description Consulta los slots de disponibilidad de un servicio en una fecha (YYYY-MM-DD)
+ * @access Paciente, Doctor, Administrador
+ * IMPORTANTE: debe ir antes de /:id
+ */
+router.get(
+    '/:id/slots',
+    requireRole('Paciente', 'Doctor', 'Administrador'),
+    (req, res) => container.resolve(CitaController).slotsDisponibles(req, res)
+);
 
 /**
  * @route GET /servicios/:id

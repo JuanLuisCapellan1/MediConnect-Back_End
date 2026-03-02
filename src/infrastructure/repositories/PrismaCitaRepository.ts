@@ -44,7 +44,6 @@ export class PrismaCitaRepository implements ICitaRepository {
         servicioId: number;
         horarioId?: number;
         fechaInicio: Date;
-        fechaFin: Date;
         modalidad: string;
         numPacientes: number;
         seguroId?: number;
@@ -61,7 +60,7 @@ export class PrismaCitaRepository implements ICitaRepository {
                 servicioId: datos.servicioId,
                 horarioId: datos.horarioId ?? null,
                 fechaInicio: datos.fechaInicio,
-                fechaFin: datos.fechaFin,
+                fechaFin: null,          // se registra al completar la cita
                 modalidad: datos.modalidad,
                 numPacientes: datos.numPacientes,
                 seguroId: datos.seguroId ?? null,
@@ -150,6 +149,49 @@ export class PrismaCitaRepository implements ICitaRepository {
             include: CITA_INCLUDE,
         });
     }
+
+    /**
+     * Retorna todas las citas activas del doctor cuya ventana horaria
+     * solapa con el rango [desde, hasta).
+     *
+     * Para citas con fechaFin = null (todavía no completadas), estimamos
+     * el fin como fechaInicio + servicio.duracionMinutos.  Esto permite
+     * detectar correctamente solapamientos cuando el doctor tiene varios
+     * servicios con distintas duraciones.
+     */
+    async obtenerCitasEnRango(doctorId: number, desde: Date, hasta: Date): Promise<any[]> {
+        // Ventana de seguridad: capturamos citas que empezaron hasta 8h antes
+        // para no perder ninguna que pudiera seguir en curso
+        const ventanaSeguridad = new Date(desde.getTime() - 8 * 60 * 60 * 1000);
+
+        const citas = await (this.prisma.cita as any).findMany({
+            where: {
+                doctorUsuarioId: doctorId,
+                estado: { in: ['Programada', 'En Progreso', 'Reprogramada'] },
+                OR: [
+                    // Citas con fechaFin real: solapan si finReal > desde Y inicio < hasta
+                    { fechaFin: { not: null, gt: desde }, fechaInicio: { lt: hasta } },
+                    // Citas sin fechaFin: pre-filtramos en la ventana de seguridad
+                    { fechaFin: null, fechaInicio: { gte: ventanaSeguridad, lt: hasta } },
+                ],
+            },
+            include: {
+                servicio: { select: { duracionMinutos: true } },
+            },
+        });
+
+        // Para las citas sin fechaFin, aplicamos filtro fino con duración estimada
+        return citas.filter((cita: any) => {
+            if (cita.fechaFin) {
+                return true; // Ya se filtró correctamente por la query
+            }
+            const duracion = cita.servicio?.duracionMinutos ?? 30;
+            const finEstimado = new Date(cita.fechaInicio.getTime() + duracion * 60 * 1000);
+            // Solapa si: inicio < hasta Y finEstimado > desde
+            return cita.fechaInicio < hasta && finEstimado > desde;
+        });
+    }
+
 
     async crearHistorial(datos: {
         citaId: number;

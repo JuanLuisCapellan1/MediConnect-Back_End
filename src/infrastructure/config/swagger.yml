@@ -7923,11 +7923,17 @@ paths:
         Permite a un **Paciente** agendar una nueva cita médica.
 
         **Validaciones realizadas:**
-        - El servicio debe existir y estar Activo
-        - El horario debe pertenecer al servicio seleccionado
-        - Si se proporciona seguro, este debe estar activo en el paciente Y el doctor debe aceptarlo
-        - No debe existir otra cita activa del doctor en el mismo rango de fecha/hora
+        - El servicio debe existir y estar `Activo`
+        - El horario debe pertenecer al servicio seleccionado y estar `Activo`
+        - El **día de la semana** de `fechaInicio` debe coincidir con los días configurados en el horario
+        - La **hora** de `fechaInicio` debe caer dentro del rango `horaInicio–horaFin` del horario
+        - El doctor **no debe tener otra cita activa** (de cualquier servicio) que solape con la franja horaria solicitada
+        - El doctor **no debe tener un período de inactividad** que solape con la franja horaria
+        - Si se proporciona seguro, debe estar activo para el paciente y ser aceptado por el doctor
         - `totalAPagar` se calcula automáticamente como `precio × numPacientes`
+        - `fechaFin` es registrada automáticamente por el sistema cuando la cita se **completa**
+
+        **Tip:** Usa `GET /servicios/{id}/slots?fecha=YYYY-MM-DD` para obtener los slots disponibles antes de agendar.
       security:
         - bearerAuth: []
       requestBody:
@@ -7939,8 +7945,8 @@ paths:
               required:
                 - servicioId
                 - horarioId
-                - fechaInicio
-                - fechaFin
+                - fecha
+                - hora
                 - modalidad
               properties:
                 servicioId:
@@ -7948,15 +7954,18 @@ paths:
                   example: 1
                 horarioId:
                   type: integer
+                  description: ID del horario obtenido desde `GET /servicios/{id}/slots`
                   example: 2
-                fechaInicio:
+                fecha:
                   type: string
-                  format: date-time
-                  example: "2026-03-10T09:00:00Z"
-                fechaFin:
+                  description: Fecha de la cita en formato YYYY-MM-DD (UTC)
+                  pattern: '^\d{4}-\d{2}-\d{2}$'
+                  example: "2026-03-10"
+                hora:
                   type: string
-                  format: date-time
-                  example: "2026-03-10T09:30:00Z"
+                  description: Hora de inicio del slot seleccionado en formato HH:MM (UTC)
+                  pattern: '^\d{2}:\d{2}$'
+                  example: "09:00"
                 modalidad:
                   type: string
                   enum: ["Presencial", "Virtual", "Domicilio"]
@@ -8415,6 +8424,7 @@ paths:
         Permite al **Doctor** reprogramar una cita a un nuevo horario y fecha.
         - Solo citas en estado `Programada` o `Reprogramada`.
         - El estado cambia a `Reprogramada`.
+        - `fechaFin` es registrada automáticamente por el sistema cuando la cita se **completa**.
       security:
         - bearerAuth: []
       parameters:
@@ -8431,20 +8441,22 @@ paths:
               type: object
               required:
                 - horarioId
-                - fechaInicio
-                - fechaFin
+                - fecha
+                - hora
               properties:
                 horarioId:
                   type: integer
                   example: 3
-                fechaInicio:
+                fecha:
                   type: string
-                  format: date-time
-                  example: "2026-03-15T10:00:00Z"
-                fechaFin:
+                  description: Nueva fecha en formato YYYY-MM-DD (UTC)
+                  pattern: '^\d{4}-\d{2}-\d{2}$'
+                  example: "2026-03-15"
+                hora:
                   type: string
-                  format: date-time
-                  example: "2026-03-15T10:30:00Z"
+                  description: Nueva hora de inicio en formato HH:MM (UTC)
+                  pattern: '^\d{2}:\d{2}$'
+                  example: "10:00"
       responses:
         '200':
           description: Cita reprogramada exitosamente
@@ -8595,284 +8607,6 @@ paths:
           description: No autorizado
         '404':
           description: Cita o historial no encontrado
-        '500':
-          description: Error interno del servidor
-
-  /citas/recurrentes:
-    post:
-      summary: Agendar citas recurrentes (Paciente)
-      tags:
-        - Citas
-      description: |
-        Crea un **grupo de citas recurrentes** para un paciente.
-
-        El sistema genera automáticamente una cita por cada ocurrencia del horario
-        (según sus `diasSemana`) entre `fechaInicio` y `fechaFin`.
-
-        **Ejemplo:** Si el horario aplica los días `[1, 3]` (Lun y Mié) y el rango
-        es del 1 al 31 de marzo, se crearán ~8 citas individuales.
-
-        Si no se envía `fechaFin`, el rango es de **3 meses** por defecto.
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - servicioId
-                - horarioId
-                - modalidad
-                - fechaInicio
-              properties:
-                servicioId:
-                  type: integer
-                  example: 1
-                horarioId:
-                  type: integer
-                  example: 2
-                modalidad:
-                  type: string
-                  enum: ["Presencial", "Virtual", "Domicilio"]
-                  example: "Presencial"
-                fechaInicio:
-                  type: string
-                  format: date
-                  example: "2026-03-03"
-                  description: Fecha de inicio del ciclo (YYYY-MM-DD)
-                fechaFin:
-                  type: string
-                  format: date
-                  example: "2026-03-31"
-                  description: Fecha fin del ciclo. Si se omite, se usa fechaInicio + 3 meses.
-                numPacientes:
-                  type: integer
-                  default: 1
-                  example: 1
-                seguroId:
-                  type: integer
-                  nullable: true
-                  example: 1
-                tipoSeguroId:
-                  type: integer
-                  nullable: true
-                  example: 2
-                motivoConsulta:
-                  type: string
-                  example: "Sesiones de fisioterapia semanales"
-                descripcion:
-                  type: string
-                  example: "Ciclo de rehabilitación 4 semanas"
-      responses:
-        '201':
-          description: Grupo de citas creado exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    $ref: '#/components/schemas/GrupoCitaResultado'
-                  message:
-                    type: string
-                    example: "Grupo de citas creado. Se generaron 8 citas."
-        '400':
-          description: |
-            Datos inválidos. Posibles causas:
-            - Servicio o horario no disponibles
-            - El horario no tiene días de semana configurados
-            - Fechas inválidas
-        '401':
-          description: No autenticado
-        '403':
-          description: No autorizado (requiere rol Paciente)
-        '500':
-          description: Error interno del servidor
-
-  /citas/grupos:
-    get:
-      summary: Listar mis grupos de citas recurrentes (Paciente)
-      tags:
-        - Citas
-      description: |-
-        Obtiene todos los grupos de citas recurrentes del paciente autenticado.
-
-        **Traducción Automática:** Agrega `?target=en&translate_fields=descripcion` para traducir campos de texto.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: pagina
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limite
-          in: query
-          schema:
-            type: integer
-            default: 10
-        - name: target
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "en"
-          description: Idioma destino para traducción automática
-        - name: source
-          in: query
-          required: false
-          schema:
-            type: string
-            default: "es"
-          example: "es"
-          description: Idioma origen para traducción automática
-        - name: translate_fields
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "descripcion"
-          description: Campos a traducir separados por coma
-      responses:
-        '200':
-          description: Grupos obtenidos exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/GrupoCita'
-                  paginacion:
-                    $ref: '#/components/schemas/Paginacion'
-        '401':
-          description: No autenticado
-        '403':
-          description: No autorizado (requiere rol Paciente)
-        '500':
-          description: Error interno del servidor
-
-  /citas/grupos/{grupoId}:
-    get:
-      summary: Ver detalle de un grupo de citas
-      tags:
-        - Citas
-      description: |-
-        Obtiene el detalle de un grupo de citas recurrentes, incluyendo todas las citas generadas.
-
-        **Traducción Automática:** Agrega `?target=en&translate_fields=descripcion` para traducir campos de texto.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: grupoId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-        - name: target
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "en"
-          description: Idioma destino para traducción automática
-        - name: source
-          in: query
-          required: false
-          schema:
-            type: string
-            default: "es"
-          example: "es"
-          description: Idioma origen para traducción automática
-        - name: translate_fields
-          in: query
-          required: false
-          schema:
-            type: string
-          example: "descripcion"
-          description: Campos a traducir separados por coma
-      responses:
-        '200':
-          description: Grupo obtenido exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    $ref: '#/components/schemas/GrupoCita'
-        '401':
-          description: No autenticado
-        '403':
-          description: No tienes permisos para ver este grupo
-        '404':
-          description: Grupo no encontrado
-        '500':
-          description: Error interno del servidor
-
-    delete:
-      summary: Cancelar un grupo de citas
-      tags:
-        - Citas
-      description: |
-        Cancela todas las citas `Programada` o `Reprogramada` del grupo
-        y marca el grupo como `Cancelado`.
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: grupoId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - motivoCancelacion
-              properties:
-                motivoCancelacion:
-                  type: string
-                  example: "Viaje prolongado"
-      responses:
-        '200':
-          description: Grupo cancelado exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    $ref: '#/components/schemas/GrupoCita'
-                  message:
-                    type: string
-                    example: "Grupo de citas cancelado exitosamente."
-        '400':
-          description: El grupo ya está cancelado o motivo faltante
-        '401':
-          description: No autenticado
-        '403':
-          description: No tienes permisos para cancelar este grupo
-        '404':
-          description: Grupo no encontrado
         '500':
           description: Error interno del servidor
 
@@ -11113,7 +10847,215 @@ paths:
 
   # ─── SOLICITUDES DE ALIANZA (LADO DOCTOR) ─────────────────────────────────────
 
+  /doctores/inactividad:
+    post:
+      summary: Registrar período de inactividad (Doctor)
+      tags:
+        - Doctores
+        - Citas
+      description: |
+        Permite al **Doctor** registrar un período de inactividad (vacaciones, emergencias, etc.).
+
+        **Efecto automático:** todas las citas en estado `Programada` o `Reprogramada` que caigan
+        dentro del rango `[fechaInicio + horaInicio, fechaFin + horaFin]` serán **canceladas automáticamente**.
+
+        El período queda en estado `Activo`. Puede cancelarse con `DELETE /doctores/inactividad/{periodoId}`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fechaInicio
+                - fechaFin
+              properties:
+                fechaInicio:
+                  type: string
+                  format: date
+                  description: Fecha de inicio del período (YYYY-MM-DD)
+                  example: "2026-04-01"
+                horaInicio:
+                  type: string
+                  description: Hora de inicio en formato HH:MM (UTC). Si se omite, se usa **00:00** (inicio del día).
+                  pattern: '^\d{2}:\d{2}$'
+                  example: "08:00"
+                fechaFin:
+                  type: string
+                  format: date
+                  description: Fecha de fin del período (YYYY-MM-DD). Debe ser igual o posterior a fechaInicio.
+                  example: "2026-04-07"
+                horaFin:
+                  type: string
+                  description: Hora de fin en formato HH:MM (UTC). Si se omite, se usa **23:59** (fin del día).
+                  pattern: '^\d{2}:\d{2}$'
+                  example: "18:00"
+                motivo:
+                  type: string
+                  description: Motivo del período de inactividad (opcional)
+                  example: "Vacaciones de Semana Santa"
+
+      responses:
+        '201':
+          description: Período de inactividad registrado y citas afectadas canceladas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      periodo:
+                        type: object
+                        properties:
+                          id_periodo:
+                            type: integer
+                            example: 1
+                          id_doctor:
+                            type: integer
+                            example: 5
+                          fecha_inicio:
+                            type: string
+                            format: date-time
+                            example: "2026-04-01T00:00:00.000Z"
+                          fecha_fin:
+                            type: string
+                            format: date-time
+                            example: "2026-04-07T23:59:59.000Z"
+                          motivo:
+                            type: string
+                            example: "Vacaciones de Semana Santa"
+                          estado:
+                            type: string
+                            example: "Activo"
+                      citasCanceladas:
+                        type: integer
+                        description: Número de citas que fueron canceladas automáticamente
+                        example: 3
+                  message:
+                    type: string
+                    example: "Período de inactividad registrado. 3 cita(s) cancelada(s)."
+        '400':
+          description: fechaFin no es posterior a fechaInicio o parámetros inválidos
+        '401':
+          description: No autenticado
+        '403':
+          description: Acceso denegado (solo Doctor)
+
+    get:
+      summary: Listar períodos de inactividad del doctor autenticado
+      tags:
+        - Doctores
+        - Citas
+      description: |
+        Retorna todos los períodos de inactividad del **Doctor** autenticado, ordenados por `fecha_inicio` descendente.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de períodos de inactividad
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id_periodo:
+                          type: integer
+                          example: 1
+                        fecha_inicio:
+                          type: string
+                          format: date-time
+                          example: "2026-04-01T00:00:00.000Z"
+                        fecha_fin:
+                          type: string
+                          format: date-time
+                          example: "2026-04-07T23:59:59.000Z"
+                        motivo:
+                          type: string
+                          nullable: true
+                          example: "Vacaciones de Semana Santa"
+                        estado:
+                          type: string
+                          enum: ["Activo", "Cancelado"]
+                          example: "Activo"
+                        creado_en:
+                          type: string
+                          format: date-time
+                          example: "2026-03-01T10:00:00.000Z"
+        '401':
+          description: No autenticado
+        '403':
+          description: Acceso denegado (solo Doctor)
+
+  /doctores/inactividad/{periodoId}:
+    delete:
+      summary: Cancelar un período de inactividad (Doctor)
+      tags:
+        - Doctores
+        - Citas
+      description: |
+        Permite al **Doctor** cancelar un período de inactividad propio que esté en estado `Activo`.
+
+        > **Nota:** Al cancelar el período, las citas previamente canceladas **no se reactivan automáticamente**.
+        > El doctor deberá gestionar el reagendamiento manualmente si así lo desea.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: periodoId
+          in: path
+          required: true
+          description: ID del período de inactividad
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Período de inactividad cancelado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id_periodo:
+                        type: integer
+                        example: 1
+                      estado:
+                        type: string
+                        example: "Cancelado"
+                  message:
+                    type: string
+                    example: "Período de inactividad cancelado."
+        '400':
+          description: El período ya fue cancelado anteriormente
+        '401':
+          description: No autenticado
+        '403':
+          description: No tienes permisos para cancelar este período / Acceso denegado
+        '404':
+          description: Período de inactividad no encontrado
+
   /doctores/solicitudes-alianza:
+
     post:
       summary: Doctor envía solicitud de alianza a un centro de salud
       tags:
@@ -13824,6 +13766,82 @@ paths:
           description: No autenticado
         '403':
           description: Acceso denegado (solo Doctor)
+
+  /servicios/{id}/slots:
+    get:
+      summary: Consultar slots disponibles de un servicio en una fecha
+      tags:
+        - Servicios
+        - Citas
+      description: |
+        Retorna la lista de **franjas horarias (slots)** disponibles de un servicio para una fecha concreta.
+
+        El sistema genera automáticamente los slots a partir del horario del servicio (`horaInicio–horaFin`)
+        con una duración de `duracionMinutos` por slot, y marca cada uno como `disponible: true/false`
+        según si el doctor ya tiene una cita u otro evento programado en ese rango.
+
+        **Usa este endpoint antes de `POST /citas`** para mostrar al paciente qué horas están libres.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del servicio
+          schema:
+            type: integer
+          example: 1
+        - name: fecha
+          in: query
+          required: true
+          description: Fecha en formato YYYY-MM-DD
+          schema:
+            type: string
+          example: "2026-03-10"
+      responses:
+        '200':
+          description: Lista de slots del servicio para la fecha solicitada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  fecha:
+                    type: string
+                    example: "2026-03-10"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        horarioId:
+                          type: integer
+                          example: 2
+                        horarioNombre:
+                          type: string
+                          nullable: true
+                          example: "Turno Mañana"
+                        horaInicio:
+                          type: string
+                          format: date-time
+                          example: "2026-03-10T09:00:00.000Z"
+                        horaFin:
+                          type: string
+                          format: date-time
+                          example: "2026-03-10T09:30:00.000Z"
+                        disponible:
+                          type: boolean
+                          description: true si el doctor está libre en esa franja, false si ya tiene una cita u otro evento
+                          example: true
+        '400':
+          description: ID de servicio inválido o parámetro fecha faltante/incorrecto
+        '401':
+          description: No autenticado
+        '404':
+          description: Servicio no encontrado
 
   /servicios/{id}:
     get:
@@ -17000,65 +17018,6 @@ components:
         creadoEn:
           type: string
           format: date-time
-
-    GrupoCita:
-      type: object
-      description: Grupo de citas recurrentes
-      properties:
-        id:
-          type: integer
-          example: 1
-        pacienteId:
-          type: integer
-          example: 10
-        servicioId:
-          type: integer
-          example: 1
-        horarioId:
-          type: integer
-          example: 2
-        descripcion:
-          type: string
-          nullable: true
-          example: "Ciclo de fisioterapia"
-        fechaInicio:
-          type: string
-          format: date
-          example: "2026-03-03"
-        fechaFin:
-          type: string
-          format: date
-          nullable: true
-          example: "2026-03-31"
-        estado:
-          type: string
-          enum: ["Activo", "Parcial", "Cancelado", "Completado"]
-          example: "Activo"
-        creadoEn:
-          type: string
-          format: date-time
-          example: "2026-03-01T09:00:00Z"
-        citas:
-          type: array
-          description: Citas individuales generadas por este grupo
-          items:
-            $ref: '#/components/schemas/CitaDetalle'
-
-    GrupoCitaResultado:
-      type: object
-      description: Resultado de crear un grupo de citas recurrentes
-      properties:
-        grupo:
-          $ref: '#/components/schemas/GrupoCita'
-        citasGeneradas:
-          type: integer
-          description: Número total de citas individuales generadas
-          example: 8
-        citas:
-          type: array
-          description: Lista de citas individuales creadas
-          items:
-            $ref: '#/components/schemas/CitaDetalle'
 
     HistorialConsulta:
       type: object
