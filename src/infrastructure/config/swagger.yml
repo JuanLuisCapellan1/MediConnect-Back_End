@@ -15304,18 +15304,103 @@ components:
         ubicacion:
           type: object
           nullable: true
-          description: Ubicación personalizada (cuando el servicio no es en un centro de salud)
+          description: Ubicación del servicio con jerarquía geográfica completa y coordenadas
           properties:
             id:
               type: integer
+              example: 12
             direccion:
               type: string
               example: "Calle 5ta #10, Local 2"
+            nombre:
+              type: string
+              nullable: true
+              example: "Consultorio Norte"
+            codigoPostal:
+              type: string
+              nullable: true
+              example: "10101"
+            latitud:
+              type: number
+              nullable: true
+              example: 18.4735
+            longitud:
+              type: number
+              nullable: true
+              example: -69.9312
             barrio:
               type: object
+              nullable: true
               properties:
+                id:
+                  type: integer
+                  example: 5
                 nombre:
                   type: string
+                  example: "Los Prados"
+                seccion:
+                  type: object
+                  nullable: true
+                  properties:
+                    id:
+                      type: integer
+                      example: 3
+                    nombre:
+                      type: string
+                      example: "Sección Norte"
+                    distritoMunicipal:
+                      type: object
+                      nullable: true
+                      description: |-
+                        Puede ser null. Cuando es null, el municipio viene
+                        directamente en el campo `municipio` de la sección.
+                      properties:
+                        id:
+                          type: integer
+                          example: 2
+                        nombre:
+                          type: string
+                          example: "Distrito Nacional"
+                        municipio:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 1
+                            nombre:
+                              type: string
+                              example: "Santo Domingo de Guzmán"
+                            provincia:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                  example: 1
+                                nombre:
+                                  type: string
+                                  example: "Distrito Nacional"
+                    municipio:
+                      type: object
+                      nullable: true
+                      description: |-
+                        Solo presente cuando `distritoMunicipal` es null.
+                        Municipio al que pertenece directamente la sección.
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        nombre:
+                          type: string
+                          example: "Santo Domingo de Guzmán"
+                        provincia:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 1
+                            nombre:
+                              type: string
+                              example: "Distrito Nacional"
         horarios:
           type: array
           description: Horarios del servicio con su centro/ubicación

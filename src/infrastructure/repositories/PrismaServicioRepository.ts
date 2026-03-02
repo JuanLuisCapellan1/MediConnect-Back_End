@@ -39,7 +39,39 @@ const UBICACIONES_INCLUDE = {
             select: {
                 id: true,
                 direccion: true,
-                barrio: { select: { nombre: true } }
+                nombre: true,
+                codigoPostal: true,
+                barrio: {
+                    select: {
+                        id: true,
+                        nombre: true,
+                        seccion: {
+                            select: {
+                                id: true,
+                                nombre: true,
+                                id_municipio: true,
+                                distritoMunicipal: {
+                                    select: {
+                                        id: true,
+                                        nombre: true,
+                                        municipio: {
+                                            select: {
+                                                id: true,
+                                                nombre: true,
+                                                provincia: {
+                                                    select: {
+                                                        id: true,
+                                                        nombre: true
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -173,6 +205,7 @@ export class PrismaServicioRepository implements IServicioRepository {
         });
         if (!s) return null;
         await this._enrichUbicacionesConCoordenadas([s]);
+        await this._enrichSeccionesConMunicipio([s]);
         return this.mapToDomainCompleto(s);
     }
 
@@ -199,9 +232,11 @@ export class PrismaServicioRepository implements IServicioRepository {
         const resultado = servicios.map((s: any) => this.mapToDomainCompleto(s));
         if (!hayFiltros) {
             await this._enrichUbicacionesConCoordenadas(servicios);
+            await this._enrichSeccionesConMunicipio(servicios);
             await this.redis.set(this.CACHE_KEY(doctorId), JSON.stringify(servicios), this.CACHE_TTL);
         } else {
             await this._enrichUbicacionesConCoordenadas(servicios);
+            await this._enrichSeccionesConMunicipio(servicios);
         }
         return servicios.map((s: any) => this.mapToDomainCompleto(s));
     }
@@ -221,6 +256,7 @@ export class PrismaServicioRepository implements IServicioRepository {
             orderBy: { creadoEn: 'desc' }
         });
         await this._enrichUbicacionesConCoordenadas(servicios);
+        await this._enrichSeccionesConMunicipio(servicios);
         return servicios.map((s: any) => this.mapToDomainCompleto(s));
     }
 
@@ -585,6 +621,47 @@ export class PrismaServicioRepository implements IServicioRepository {
                         su.ubicacion.latitud = coords.latitud;
                         su.ubicacion.longitud = coords.longitud;
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Enriquece secciones que NO tienen distritoMunicipal pero sí id_municipio.
+     * Adjunta municipio (con provincia) directamente en la sección para que
+     * la jerarquía geográfica esté completa aunque no exista distrito.
+     */
+    private async _enrichSeccionesConMunicipio(servicios: any[]): Promise<void> {
+        // Recolectar id_municipio de secciones sin distritoMunicipal
+        const municipioIds = new Set<number>();
+        for (const s of servicios) {
+            for (const su of s.servicios_ubicaciones ?? []) {
+                const seccion = su.ubicacion?.barrio?.seccion;
+                if (seccion && !seccion.distritoMunicipal && seccion.id_municipio) {
+                    municipioIds.add(Number(seccion.id_municipio));
+                }
+            }
+        }
+        if (municipioIds.size === 0) return;
+
+        const municipios = await (this.prisma as any).municipio.findMany({
+            where: { id: { in: Array.from(municipioIds) } },
+            select: {
+                id: true,
+                nombre: true,
+                provincia: { select: { id: true, nombre: true } }
+            }
+        });
+
+        const municipioMap = new Map<number, any>();
+        for (const m of municipios) municipioMap.set(m.id, m);
+
+        // Adjuntar municipio a las secciones sin distrito
+        for (const s of servicios) {
+            for (const su of s.servicios_ubicaciones ?? []) {
+                const seccion = su.ubicacion?.barrio?.seccion;
+                if (seccion && !seccion.distritoMunicipal && seccion.id_municipio) {
+                    seccion.municipio = municipioMap.get(Number(seccion.id_municipio)) ?? null;
                 }
             }
         }
