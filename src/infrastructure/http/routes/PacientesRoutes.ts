@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { PacienteController } from '../controllers/PacienteController';
 import { autenticarJWT } from '../middlewares/autenticacion';
 import { requireRole } from '../middlewares/roleMiddleware';
+import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 
 const router = Router();
 const pacienteController = new PacienteController();
@@ -14,6 +15,7 @@ router.get(
     '/',
     autenticarJWT,
     requireRole('Admin'),
+    translationMiddleware,
     (req, res) => pacienteController.listar(req, res)
 );
 
@@ -25,6 +27,7 @@ router.get(
     '/me',
     autenticarJWT,
     requireRole('Paciente'),
+    translationMiddleware,
     (req, res) => pacienteController.obtenerPerfil(req, res)
 );
 
@@ -36,6 +39,7 @@ router.get(
     '/:id',
     autenticarJWT,
     requireRole('Admin'),
+    translationMiddleware,
     (req, res) => pacienteController.obtenerPorId(req, res)
 );
 

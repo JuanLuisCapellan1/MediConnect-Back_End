@@ -26,6 +26,7 @@ router.get(
     '/',
     autenticarJWT,
     requireRole('Admin', 'Paciente'),
+    translationMiddleware,
     (req, res) => doctorController.listar(req, res)
 );
 
@@ -60,6 +61,7 @@ router.get(
     '/mis-documentos',
     autenticarJWT,
     requireRole('Doctor'),
+    translationMiddleware,
     (req, res) => doctorController.obtenerEstadoDocumentos(req, res)
 );
 
@@ -153,6 +155,7 @@ router.get(
     '/especialidades',
     autenticarJWT,
     requireRole('Doctor'),
+    translationMiddleware,
     (req, res) => doctorEspecialidadController.obtener(req, res)
 );
 
@@ -201,6 +204,7 @@ router.get(
     '/solicitudes-alianza',
     autenticarJWT,
     requireRole('Doctor'),
+    translationMiddleware,
     (req, res) => container.resolve(CentrosSaludController).doctorListarSolicitudes(req, res)
 );
 
@@ -231,6 +235,7 @@ router.get(
     '/inactividad',
     autenticarJWT,
     requireRole('Doctor'),
+    translationMiddleware,
     (req, res) => container.resolve(CitaController).listarInactividades(req, res)
 );
 
@@ -254,6 +259,7 @@ router.get(
     '/:id',
     autenticarJWT,
     requireRole('Admin', 'Paciente'),
+    translationMiddleware,
     (req, res) => doctorController.obtenerPorId(req, res)
 );
 

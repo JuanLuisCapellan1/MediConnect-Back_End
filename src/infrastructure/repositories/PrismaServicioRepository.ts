@@ -11,7 +11,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { Servicio } from '../../domain/entities/Servicio';
 import { ServicioImagen } from '../../domain/entities/ServicioImagen';
-import { IServicioRepository, FiltrosServicio } from '../../domain/repositories/IServicioRepository';
+import { IServicioRepository, FiltrosServicio, FiltrosCercania } from '../../domain/repositories/IServicioRepository';
 import { RedisCacheService } from '../external-services/RedisCacheService';
 
 // ─── Includes reutilizables ──────────────────────────────────────────────────
@@ -665,5 +665,96 @@ export class PrismaServicioRepository implements IServicioRepository {
                 }
             }
         }
+    }
+
+    // ─── Buscar servicios por cercanía geográfica ──────────────────────────────
+    async buscarCercanos(
+        lat: number,
+        lng: number,
+        radioKm: number,
+        filtros?: FiltrosCercania
+    ): Promise<(Servicio & { distanciaMetros: number })[]> {
+        const radioMetros = radioKm * 1000;
+
+        // Construir cláusulas de filtros opcionales en SQL
+        const condiciones: Prisma.Sql[] = [];
+        if (filtros?.especialidadId) {
+            condiciones.push(Prisma.sql`s.id_especialidad = ${filtros.especialidadId}`);
+        }
+        if (filtros?.modalidad) {
+            condiciones.push(Prisma.sql`s.modalidad = ${filtros.modalidad}`);
+        }
+        if (filtros?.precioMin !== undefined) {
+            condiciones.push(Prisma.sql`s.precio >= ${filtros.precioMin}`);
+        }
+        if (filtros?.precioMax !== undefined) {
+            condiciones.push(Prisma.sql`s.precio <= ${filtros.precioMax}`);
+        }
+
+        const extraWhere = condiciones.length > 0
+            ? Prisma.sql`AND ${Prisma.join(condiciones, ' AND ')}`
+            : Prisma.sql``;
+
+        // Query raw: obtener IDs únicos de servicios dentro del radio, con distancia
+        const rows = await this.prisma.$queryRaw<{ id: number; distancia_metros: number }[]>`
+            SELECT DISTINCT ON (s.id_servicio)
+                s.id_servicio                                          AS id,
+                ST_Distance(
+                    u.punto_geografico::geography,
+                    ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography
+                )                                                      AS distancia_metros
+            FROM servicios s
+            JOIN servicios_ubicaciones su
+                ON su.id_servicio  = s.id_servicio
+               AND su.estado       = 'Activo'
+            JOIN ubicaciones u
+                ON u.id_ubicacion  = su.id_ubicacion
+               AND u.punto_geografico IS NOT NULL
+            WHERE s.estado = 'Activo'
+              AND ST_DWithin(
+                    u.punto_geografico::geography,
+                    ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography,
+                    ${radioMetros}
+                  )
+            ${extraWhere}
+            ORDER BY s.id_servicio, distancia_metros ASC
+        `;
+
+        if (rows.length === 0) return [];
+
+        // Mapa id → distancia
+        const distanciaMap = new Map<number, number>();
+        for (const r of rows) {
+            distanciaMap.set(Number(r.id), Number(r.distancia_metros));
+        }
+
+        // Ordenar IDs por distancia
+        const idOrdenados = [...distanciaMap.entries()]
+            .sort((a, b) => a[1] - b[1])
+            .map(([id]) => id);
+
+        // Cargar servicios completos en lote (usando p.servicio.findMany)
+        const p = this.prisma as any;
+        const serviciosRaw = await p.servicio.findMany({
+            where: { id: { in: idOrdenados } },
+            include: this._listInclude()
+        });
+
+        await this._enrichUbicacionesConCoordenadas(serviciosRaw);
+        await this._enrichSeccionesConMunicipio(serviciosRaw);
+
+        // Mapear, preservar orden y adjuntar distanciaMetros
+        const serviciosMap = new Map<number, any>();
+        for (const s of serviciosRaw) serviciosMap.set(s.id, s);
+
+        return idOrdenados
+            .map(id => {
+                const raw = serviciosMap.get(id);
+                if (!raw) return null;
+                const servicio = this.mapToDomainCompleto(raw) as Servicio & { distanciaMetros: number };
+                servicio.distanciaMetros = Math.round(distanciaMap.get(id)!);
+                return servicio;
+            })
+            .filter((s): s is Servicio & { distanciaMetros: number } => s !== null);
     }
 }

@@ -397,7 +397,43 @@ export class ServiciosController {
     }
 
 
+    /**
+     * GET /servicios/cercanos
+     * Busca servicios activos dentro de un radio de coordenadas dadas.
+     */
+    async buscarCercanos(req: Request, res: Response): Promise<void> {
+        try {
+            const lat = parseFloat(req.query.lat as string);
+            const lng = parseFloat(req.query.lng as string);
+            const radio = req.query.radio !== undefined
+                ? parseFloat(req.query.radio as string)
+                : 5;
+
+            if (isNaN(lat) || isNaN(lng)) {
+                res.status(400).json({ success: false, message: 'Los parámetros lat y lng son requeridos y deben ser números válidos' });
+                return;
+            }
+
+            const filtros: any = {};
+            if (req.query.especialidadId) filtros.especialidadId = Number(req.query.especialidadId);
+            if (req.query.modalidad) filtros.modalidad = String(req.query.modalidad);
+            if (req.query.precioMin) filtros.precioMin = Number(req.query.precioMin);
+            if (req.query.precioMax) filtros.precioMax = Number(req.query.precioMax);
+
+            const servicios = await this.gestionarServiciosUseCase.buscarCercanos(lat, lng, radio, filtros);
+
+            res.status(200).json({
+                success: true,
+                total: servicios.length,
+                data: servicios
+            });
+        } catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+
     private parseFiltros(req: Request): FiltrosServicioDto {
+
         const filtros: FiltrosServicioDto = {};
         if (req.query.especialidadId) filtros.especialidadId = Number(req.query.especialidadId);
         if (req.query.modalidad) filtros.modalidad = String(req.query.modalidad);

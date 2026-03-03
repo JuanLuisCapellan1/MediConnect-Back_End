@@ -7610,7 +7610,10 @@ paths:
       summary: Listar pacientes
       tags:
         - Pacientes
-      description: Obtiene una lista de pacientes con soporte para paginación y filtros. Solo accesible por administradores.
+      description: |
+        Obtiene una lista de pacientes con soporte para paginación y filtros. Solo accesible por administradores.
+
+        **Traducción automática:** Agrega `?target=en&translate_fields=nombre,apellido` para traducir campos de texto.
       security:
         - bearerAuth: []
       parameters:
@@ -7650,6 +7653,28 @@ paths:
           schema:
             type: integer
             default: 10
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,apellido"
+          description: "Campos a traducir separados por coma. Soporta dot-notation para campos anidados (ej: ubicacion.nombre)"
       responses:
         '200':
           description: Pacientes obtenidos exitosamente
@@ -7688,9 +7713,35 @@ paths:
       summary: Obtener perfil del paciente autenticado
       tags:
         - Pacientes
-      description: Obtiene el perfil del paciente actualmente autenticado.
+      description: |
+        Obtiene el perfil del paciente actualmente autenticado.
+
+        **Traducción automática:** Agrega `?target=en&translate_fields=nombre,apellido,ubicacion.nombre` para traducir campos, incluyendo campos anidados con dot-notation.
       security:
         - bearerAuth: []
+      parameters:
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,apellido,ubicacion.nombre"
+          description: "Campos a traducir separados por coma. Soporta dot-notation para campos anidados"
       responses:
         '200':
           description: Perfil obtenido exitosamente
@@ -7791,7 +7842,10 @@ paths:
       summary: Obtener paciente por ID
       tags:
         - Pacientes
-      description: Obtiene un paciente específico por su ID. Solo accesible por administradores.
+      description: |
+        Obtiene un paciente específico por su ID. Solo accesible por administradores.
+
+        **Traducción automática:** Agrega `?target=en&translate_fields=nombre,apellido,ubicacion.nombre` para traducir campos.
       security:
         - bearerAuth: []
       parameters:
@@ -7801,6 +7855,28 @@ paths:
           schema:
             type: integer
           example: 1
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,apellido,ubicacion.nombre"
+          description: "Campos a traducir separados por coma. Soporta dot-notation para campos anidados"
       responses:
         '200':
           description: Paciente obtenido exitosamente
@@ -8622,6 +8698,8 @@ paths:
         **Roles permitidos:**
         - `Admin`: acceso completo, puede filtrar por cualquier estado y estado de verificación.
         - `Paciente`: solo ve doctores **activos y verificados** (`estado: Activo`, `estadoVerificacion: Aprobado`). Los filtros de `estado` y `estadoVerificacion` son ignorados para este rol.
+
+        **Traducción automática:** Agrega `?target=en&translate_fields=biografia,especialidades.nombre,ubicaciones.nombre` para traducir campos, incluyendo arrays anidados con dot-notation.
       security:
         - bearerAuth: []
       parameters:
@@ -8672,6 +8750,28 @@ paths:
           schema:
             type: integer
             default: 10
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "biografia,especialidades.nombre,ubicaciones.nombre"
+          description: "Campos a traducir separados por coma. Soporta dot-notation para arrays anidados (ej: especialidades.nombre)"
       responses:
         '200':
           description: Doctores obtenidos exitosamente
@@ -8710,9 +8810,35 @@ paths:
       summary: Obtener perfil del doctor autenticado
       tags:
         - Doctores
-      description: Obtiene el perfil del doctor actualmente autenticado.
+      description: |
+        Obtiene el perfil del doctor actualmente autenticado.
+
+        **Traducción automática:** Agrega `?target=en&translate_fields=biografia,especialidades.nombre,ubicaciones.nombre,idiomas.nombre` para traducir campos y arrays anidados.
       security:
         - bearerAuth: []
+      parameters:
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "biografia,especialidades.nombre,ubicaciones.nombre,idiomas.nombre"
+          description: "Campos a traducir separados por coma. Soporta dot-notation para arrays anidados"
       responses:
         '200':
           description: Perfil obtenido exitosamente
@@ -8980,6 +9106,8 @@ paths:
         **Roles permitidos:**
         - `Admin`: recibe datos básicos del doctor.
         - `Paciente`: recibe el perfil completo público del doctor (especialidades, seguros, servicios, horarios, idiomas, formaciones, experiencias). Los documentos internos y datos de verificación no se incluyen.
+
+        **Traducción automática:** Agrega `?target=en&translate_fields=biografia,especialidades.nombre,ubicaciones.nombre,idiomas.nombre` para traducir campos del perfil.
       security:
         - bearerAuth: []
       parameters:
@@ -8989,6 +9117,28 @@ paths:
           schema:
             type: integer
           example: 1
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "biografia,especialidades.nombre,ubicaciones.nombre,idiomas.nombre"
+          description: "Campos a traducir separados por coma. Soporta dot-notation para arrays anidados"
       responses:
         '200':
           description: Doctor obtenido exitosamente
@@ -9114,8 +9264,33 @@ paths:
         - Estadísticas (total, aprobados, rechazados, pendientes)
         - Última acción de revisión por documento
         - Comentarios de administradores
+
+        **Traducción automática:** Agrega `?target=en&translate_fields=comentarios` para traducir comentarios de revisión.
       security:
         - bearerAuth: []
+      parameters:
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "comentarios"
+          description: "Campos a traducir separados por coma"
       responses:
         '200':
           description: Estado de documentos obtenido exitosamente
@@ -9554,8 +9729,33 @@ paths:
       description: |
         Retorna todas las especialidades activas del doctor autenticado,
         ordenadas con la principal primero.
+
+        **Traducción automática:** Agrega `?target=en&translate_fields=especialidades.nombre,especialidades.descripcion` para traducir los nombres de las especialidades.
       security:
         - bearerAuth: []
+      parameters:
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "especialidades.nombre,especialidades.descripcion"
+          description: "Campos a traducir separados por coma. Soporta dot-notation para arrays anidados"
       responses:
         '200':
           description: Especialidades obtenidas exitosamente
@@ -10955,8 +11155,33 @@ paths:
         - Citas
       description: |
         Retorna todos los períodos de inactividad del **Doctor** autenticado, ordenados por `fecha_inicio` descendente.
+
+        **Traducción automática:** Agrega `?target=en&translate_fields=motivo` para traducir el motivo de inactividad.
       security:
         - bearerAuth: []
+      parameters:
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "motivo"
+          description: "Campos a traducir separados por coma"
       responses:
         '200':
           description: Lista de períodos de inactividad
@@ -11130,6 +11355,31 @@ paths:
       description: |
         Retorna todas las solicitudes de alianza del doctor autenticado, tanto las que el doctor inició como las que recibió de centros.
         Ordenadas de más reciente a más antigua.
+
+        **Traducción automática:** Agrega `?target=en&translate_fields=mensaje,motivoRechazo` para traducir los mensajes.
+      parameters:
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "mensaje,motivoRechazo"
+          description: "Campos a traducir separados por coma"
       responses:
         '200':
           description: Lista de solicitudes de alianza
@@ -13653,6 +13903,142 @@ paths:
           description: No se puede eliminar - tipo de seguro en uso
 
   # ─── SERVICIOS ─────────────────────────────────────────────────────────────
+  /servicios/cercanos:
+    get:
+      summary: Buscar servicios por cercanía geográfica
+      tags:
+        - Servicios
+      description: |
+        Retorna todos los servicios activos cuyas ubicaciones se encuentren dentro de un radio (0–15 km) de las coordenadas proporcionadas.
+
+        - Resultados ordenados de **más cercano a más lejano**.
+        - Cada servicio incluye el campo `distanciaMetros` con la distancia al punto de referencia.
+        - Usa PostGIS (`ST_DWithin` + `ST_Distance`) para eficiencia máxima con soporte de índice GIST.
+
+        **Traducción automática:** Agrega `?target=en&translate_fields=nombre,descripcion` para traducir campos.
+
+        **Ejemplo:**
+        ```
+        GET /api/servicios/cercanos?lat=18.4861&lng=-69.9312&radio=10
+        ```
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: -90
+            maximum: 90
+          example: 18.4861
+          description: Latitud del punto de referencia (WGS84)
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: -180
+            maximum: 180
+          example: -69.9312
+          description: Longitud del punto de referencia (WGS84)
+        - name: radio
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: 0
+            maximum: 15
+            default: 5
+          example: 10
+          description: Radio de búsqueda en kilómetros (0–15 km, default 5 km)
+        - name: especialidadId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 3
+          description: Filtrar por ID de especialidad
+        - name: modalidad
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["Presencial", "Teleconsulta", "Mixta"]
+          example: "Presencial"
+          description: Filtrar por modalidad del servicio
+        - name: precioMin
+          in: query
+          required: false
+          schema:
+            type: number
+          example: 500
+          description: Precio mínimo del servicio (RD$)
+        - name: precioMax
+          in: query
+          required: false
+          schema:
+            type: number
+          example: 3000
+          description: Precio máximo del servicio (RD$)
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+          description: "Campos a traducir separados por coma"
+      responses:
+        '200':
+          description: Lista de servicios cercanos obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  total:
+                    type: integer
+                    description: Cantidad de servicios encontrados en el radio
+                    example: 4
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/Servicio'
+                        - type: object
+                          properties:
+                            distanciaMetros:
+                              type: integer
+                              description: Distancia en metros desde el punto de referencia
+                              example: 1250
+        '400':
+          description: |
+            Parámetros inválidos. Posibles causas:
+            - `lat` o `lng` ausentes o no numéricos
+            - `radio` fuera del rango permitido (0–15)
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado
+
   /servicios:
     post:
       summary: Crear un nuevo servicio médico

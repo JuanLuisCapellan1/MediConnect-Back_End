@@ -14,6 +14,7 @@ import { ServiciosController } from '../controllers/ServiciosController';
 import { CitaController } from '../controllers/CitaController';
 import { autenticarJWT } from '../middlewares/autenticacion';
 import { requireRole } from '../middlewares/roleMiddleware';
+import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 
 const router = Router();
 const serviciosController = container.resolve(ServiciosController);
@@ -45,6 +46,19 @@ router.post(
     requireRole('Doctor'),
     upload.array('imagenes', 10),
     (req, res) => serviciosController.crear(req, res)
+);
+
+/**
+ * @route GET /servicios/cercanos
+ * @description Busca servicios activos dentro de un radio geográfico (0-15 km)
+ * @access Doctor, Administrador, Paciente
+ * IMPORTANTE: debe ir antes de /:id
+ */
+router.get(
+    '/cercanos',
+    requireRole('Doctor', 'Administrador', 'Paciente'),
+    translationMiddleware,
+    (req, res) => serviciosController.buscarCercanos(req, res)
 );
 
 /**

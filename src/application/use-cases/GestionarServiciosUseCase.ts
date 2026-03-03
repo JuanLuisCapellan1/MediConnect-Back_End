@@ -3,7 +3,7 @@
  */
 import { Servicio } from '../../domain/entities/Servicio';
 import { ServicioImagen } from '../../domain/entities/ServicioImagen';
-import { IServicioRepository, FiltrosServicio } from '../../domain/repositories/IServicioRepository';
+import { IServicioRepository, FiltrosServicio, FiltrosCercania } from '../../domain/repositories/IServicioRepository';
 import { IStorageService } from '../interfaces/IStorageService';
 import {
     CrearServicioDto,
@@ -190,5 +190,24 @@ export class GestionarServiciosUseCase {
         if (!s) throw new Error(`Servicio con ID ${id} no encontrado`);
         if (s.doctorId !== doctorId) throw new Error('No tienes permiso para modificar este servicio');
         return s;
+    }
+
+    // ─── Buscar por cercanía geográfica ──────────────────────────────────────
+    async buscarCercanos(
+        lat: number,
+        lng: number,
+        radioKm: number,
+        filtros?: FiltrosCercania
+    ): Promise<(Servicio & { distanciaMetros: number })[]> {
+        if (isNaN(lat) || lat < -90 || lat > 90) {
+            throw new Error('La latitud debe ser un número entre -90 y 90');
+        }
+        if (isNaN(lng) || lng < -180 || lng > 180) {
+            throw new Error('La longitud debe ser un número entre -180 y 180');
+        }
+        if (isNaN(radioKm) || radioKm < 0 || radioKm > 15) {
+            throw new Error('El radio debe ser un número entre 0 y 15 km');
+        }
+        return this.servicioRepository.buscarCercanos(lat, lng, radioKm, filtros);
     }
 }

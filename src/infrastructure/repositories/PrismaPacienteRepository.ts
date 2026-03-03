@@ -17,6 +17,41 @@ export class PrismaPacienteRepository implements IPacienteRepository {
                     rol: true,
                 },
             },
+            ubicacion: {
+                select: {
+                    id: true,
+                    nombre: true,
+                    direccion: true,
+                    codigoPostal: true,
+                    barrio: {
+                        select: {
+                            id: true,
+                            nombre: true,
+                            seccion: {
+                                select: {
+                                    id: true,
+                                    nombre: true,
+                                    distritoMunicipal: {
+                                        select: {
+                                            id: true,
+                                            nombre: true,
+                                            municipio: {
+                                                select: {
+                                                    id: true,
+                                                    nombre: true,
+                                                    provincia: {
+                                                        select: { id: true, nombre: true }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             seguros: {
                 where: { estado: { not: 'Eliminado' } },
                 include: {
@@ -61,6 +96,7 @@ export class PrismaPacienteRepository implements IPacienteRepository {
             telefono: data.usuario?.telefono ?? null,
             fotoPerfil: data.usuario?.fotoPerfil ?? null,
             rol: data.usuario?.rol ?? null,
+            ubicacion: data.ubicacion ?? null,
             seguros: data.seguros ?? [],
             condicionesMedicas: data.caracteristicas ?? [],
         };

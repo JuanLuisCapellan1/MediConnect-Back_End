@@ -13,6 +13,13 @@ export interface FiltrosServicio {
     diaSemana?: number;
 }
 
+export interface FiltrosCercania {
+    especialidadId?: number;
+    modalidad?: string;
+    precioMin?: number;
+    precioMax?: number;
+}
+
 export interface IServicioRepository {
     crear(
         doctorId: number,
@@ -32,6 +39,12 @@ export interface IServicioRepository {
     buscarPorId(id: number): Promise<Servicio | null>;
     listarPorDoctor(doctorId: number, filtros?: FiltrosServicio): Promise<Servicio[]>;
     listarPorCentro(centroId: number, filtros?: FiltrosServicio): Promise<Servicio[]>;
+    buscarCercanos(
+        lat: number,
+        lng: number,
+        radioKm: number,
+        filtros?: FiltrosCercania
+    ): Promise<(Servicio & { distanciaMetros: number })[]>;
 
     actualizar(
         id: number,
