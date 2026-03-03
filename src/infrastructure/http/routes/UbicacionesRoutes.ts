@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { UbicacionesController } from '../controllers/UbicacionesController';
 import { autenticarJWT } from '../middlewares/autenticacion';
 import { requireRole } from '../middlewares/roleMiddleware';
+import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 
 const router = Router();
 const controller = new UbicacionesController();
@@ -21,6 +22,7 @@ router.get(
     '/mis-ubicaciones',
     autenticarJWT,
     requireRole('Doctor'),
+    translationMiddleware,
     (req, res) => controller.listarMisUbicaciones(req, res)
 );
 
@@ -47,37 +49,37 @@ router.post('/', (req, res) => controller.crear(req, res));
  * GET /ubicaciones
  * Listar todas las ubicaciones
  */
-router.get('/', (req, res) => controller.listarTodas(req, res));
+router.get('/', translationMiddleware, (req, res) => controller.listarTodas(req, res));
 
 /**
  * GET /ubicaciones/barrio/:barrioId
  * Listar ubicaciones por barrio
  */
-router.get('/barrio/:barrioId', (req, res) => controller.listarPorBarrio(req, res));
+router.get('/barrio/:barrioId', translationMiddleware, (req, res) => controller.listarPorBarrio(req, res));
 
 /**
  * GET /ubicaciones/buscar/direccion/:direccion
  * Buscar ubicaciones por dirección
  */
-router.get('/buscar/direccion/:direccion', (req, res) => controller.buscarPorDireccion(req, res));
+router.get('/buscar/direccion/:direccion', translationMiddleware, (req, res) => controller.buscarPorDireccion(req, res));
 
 /**
  * GET /ubicaciones/buscar/codigopostal/:codigoPostal
  * Buscar ubicaciones por código postal
  */
-router.get('/buscar/codigopostal/:codigoPostal', (req, res) => controller.buscarPorCodigoPostal(req, res));
+router.get('/buscar/codigopostal/:codigoPostal', translationMiddleware, (req, res) => controller.buscarPorCodigoPostal(req, res));
 
 /**
  * GET /ubicaciones/buscar/estado/:estado
  * Buscar ubicaciones por estado
  */
-router.get('/buscar/estado/:estado', (req, res) => controller.buscarPorEstado(req, res));
+router.get('/buscar/estado/:estado', translationMiddleware, (req, res) => controller.buscarPorEstado(req, res));
 
 /**
  * GET /ubicaciones/:id
  * Buscar ubicación por ID
  */
-router.get('/:id', (req, res) => controller.buscarPorId(req, res));
+router.get('/:id', translationMiddleware, (req, res) => controller.buscarPorId(req, res));
 
 /**
  * PUT /ubicaciones/:id

@@ -4470,7 +4470,35 @@ paths:
       summary: Listar todas las ubicaciones
       tags:
         - Ubicaciones
-      description: Obtiene una lista de todas las ubicaciones activas.
+      description: |
+        Obtiene una lista de todas las ubicaciones activas.
+
+        **Traducción Automática:**
+        Este endpoint soporta traducción automática de campos mediante query params.
+        Ejemplo: `/api/ubicaciones?target=en&translate_fields=nombre,direccion`
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,direccion"
+          description: 'Campos a traducir separados por comas. Campos disponibles: `nombre`, `direccion`'
       responses:
         '200':
           description: Ubicaciones obtenidas exitosamente
@@ -4488,7 +4516,11 @@ paths:
       summary: Buscar una Ubicacion por ID
       tags:
         - Ubicaciones
-      description: Obtiene los detalles de una ubicación específica.
+      description: |
+        Obtiene los detalles de una ubicación específica.
+
+        **Traducción Automática:**
+        Ejemplo: `/api/ubicaciones/{id}?target=en&translate_fields=nombre,direccion`
       parameters:
         - name: id
           in: path
@@ -4496,6 +4528,28 @@ paths:
           schema:
             type: integer
           description: ID de la ubicación
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,direccion"
+          description: 'Campos a traducir separados por comas. Campos disponibles: `nombre`, `direccion`'
       responses:
         '200':
           description: Ubicación encontrada
@@ -4621,7 +4675,11 @@ paths:
       summary: Listar ubicaciones de un barrio
       tags:
         - Ubicaciones
-      description: Obtiene todas las ubicaciones que pertenecen a un barrio específico.
+      description: |
+        Obtiene todas las ubicaciones que pertenecen a un barrio específico.
+
+        **Traducción Automática:**
+        Ejemplo: `/api/ubicaciones/barrio/{barrioId}?target=en&translate_fields=nombre,direccion`
       parameters:
         - name: barrioId
           in: path
@@ -4629,6 +4687,28 @@ paths:
           schema:
             type: integer
           description: ID del barrio
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,direccion"
+          description: 'Campos a traducir separados por comas. Campos disponibles: `nombre`, `direccion`'
       responses:
         '200':
           description: Ubicaciones del barrio obtenidas exitosamente
@@ -4652,7 +4732,11 @@ paths:
       summary: Buscar ubicaciones por dirección
       tags:
         - Ubicaciones
-      description: Realiza una búsqueda parcial (case-insensitive) de ubicaciones por dirección.
+      description: |
+        Realiza una búsqueda parcial (case-insensitive) de ubicaciones por dirección.
+
+        **Traducción Automática:**
+        Ejemplo: `/api/ubicaciones/buscar/direccion/{direccion}?target=en&translate_fields=nombre,direccion`
       parameters:
         - name: direccion
           in: path
@@ -4660,6 +4744,28 @@ paths:
           schema:
             type: string
           description: Parte de la dirección a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,direccion"
+          description: 'Campos a traducir separados por comas. Campos disponibles: `nombre`, `direccion`'
       responses:
         '200':
           description: Ubicaciones encontradas
@@ -4683,7 +4789,11 @@ paths:
       summary: Buscar ubicaciones por código postal
       tags:
         - Ubicaciones
-      description: Busca ubicaciones que tengan un código postal específico.
+      description: |
+        Busca ubicaciones que tengan un código postal específico.
+
+        **Traducción Automática:**
+        Ejemplo: `/api/ubicaciones/buscar/codigopostal/{codigoPostal}?target=en&translate_fields=nombre,direccion`
       parameters:
         - name: codigoPostal
           in: path
@@ -4691,6 +4801,28 @@ paths:
           schema:
             type: string
           description: Código postal a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,direccion"
+          description: 'Campos a traducir separados por comas. Campos disponibles: `nombre`, `direccion`'
       responses:
         '200':
           description: Ubicaciones encontradas
@@ -4714,7 +4846,11 @@ paths:
       summary: Buscar ubicaciones por estado
       tags:
         - Ubicaciones
-      description: Obtiene todas las ubicaciones que tengan un estado específico.
+      description: |
+        Obtiene todas las ubicaciones que tengan un estado específico.
+
+        **Traducción Automática:**
+        Ejemplo: `/api/ubicaciones/buscar/estado/{estado}?target=en&translate_fields=nombre,direccion`
       parameters:
         - name: estado
           in: path
@@ -4723,6 +4859,28 @@ paths:
             type: string
             enum: ["Activo", "Inactivo", "Eliminado"]
           description: Estado a buscar
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,direccion"
+          description: 'Campos a traducir separados por comas. Campos disponibles: `nombre`, `direccion`'
       responses:
         '200':
           description: Ubicaciones obtenidas exitosamente
@@ -4753,6 +4911,32 @@ paths:
         del campo `id_doctor` en la tabla `ubicaciones`.
 
         **Acceso:** Requiere token JWT con rol `Doctor`.
+
+        **Traducción Automática:**
+        Ejemplo: `/api/ubicaciones/mis-ubicaciones?target=en&translate_fields=nombre,direccion`
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,direccion"
+          description: 'Campos a traducir separados por comas. Campos disponibles: `nombre`, `direccion`'
       responses:
         '200':
           description: Ubicaciones del doctor obtenidas exitosamente
