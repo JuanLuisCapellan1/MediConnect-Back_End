@@ -72,6 +72,8 @@ tags:
     description: Endpoints para gestionar servicios médicos ofrecidos por doctores (CRUD, imágenes, desactivación)
   - name: Reseñas
     description: Sistema de calificaciones y comentarios que los pacientes dejan sobre los servicios médicos
+  - name: Media
+    description: Gestión de archivos multimedia (imágenes, audios, videos, documentos, ZIP) para el chat y otros módulos
 
 
 # --- RUTAS (ENDPOINTS) ---
@@ -5515,6 +5517,272 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  # --- MEDIA ENDPOINTS ---
+  /media/tipos-permitidos:
+    get:
+      summary: Obtener tipos de archivos permitidos
+      tags:
+        - Media
+      description: Devuelve los tipos MIME aceptados agrupados por categoría (imagen, audio, video, documento).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Tipos MIME permitidos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      IMAGE:
+                        type: array
+                        items:
+                          type: string
+                        example: ["image/jpeg", "image/png", "image/gif", "image/webp"]
+                      AUDIO:
+                        type: array
+                        items:
+                          type: string
+                        example: ["audio/mpeg", "audio/wav", "audio/ogg"]
+                      VIDEO:
+                        type: array
+                        items:
+                          type: string
+                        example: ["video/mp4", "video/webm"]
+                      FILE:
+                        type: array
+                        items:
+                          type: string
+                        example: ["application/pdf", "application/zip"]
+        '401':
+          description: No autenticado
+
+  /media:
+    get:
+      summary: Listar archivos multimedia
+      tags:
+        - Media
+      description: |
+        Lista todos los archivos activos. Soporta filtrado por tipo de archivo
+        y paginación mediante `limite` y `offset`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tipo
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["image", "audio", "video", "file"]
+          description: Categoría de archivo a filtrar
+          example: image
+        - name: limite
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+          description: Cantidad máxima de resultados
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Número de registros a omitir (paginación)
+      responses:
+        '200':
+          description: Lista de archivos obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  total:
+                    type: integer
+                    example: 3
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Media'
+        '401':
+          description: No autenticado
+
+    post:
+      summary: Subir un archivo multimedia
+      tags:
+        - Media
+      description: |
+        Sube un archivo al storage y lo registra en la base de datos.
+
+        **Tipos aceptados:** imagen (jpeg, png, gif, webp), audio (mp3, wav, ogg, webm),
+        video (mp4, webm, ogg), documentos (pdf, docx, xlsx, txt, zip).
+
+        **Límite de tamaño:** 50 MB.
+
+        El campo `archivo` debe enviarse como `multipart/form-data`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - archivo
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+                  description: Archivo a subir (imagen, audio, video, PDF, Word, Excel, ZIP, etc.)
+      responses:
+        '201':
+          description: Archivo subido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Archivo subido exitosamente"
+                  data:
+                    $ref: '#/components/schemas/Media'
+        '400':
+          description: |
+            Error de validación. Posibles causas:
+            - Tipo de archivo no permitido
+            - Archivo mayor a 50 MB
+            - No se proporcionó archivo
+        '401':
+          description: No autenticado
+
+  /media/{id}:
+    get:
+      summary: Obtener un archivo por ID
+      tags:
+        - Media
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del archivo
+          example: 1
+      responses:
+        '200':
+          description: Archivo obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Media'
+        '404':
+          description: Archivo no encontrado o eliminado
+        '401':
+          description: No autenticado
+
+    patch:
+      summary: Actualizar el nombre de un archivo
+      tags:
+        - Media
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del archivo
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nombre
+              properties:
+                nombre:
+                  type: string
+                  example: "radiografia_torax.pdf"
+                  description: Nuevo nombre del archivo
+      responses:
+        '200':
+          description: Nombre actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Media'
+        '404':
+          description: Archivo no encontrado
+        '401':
+          description: No autenticado
+
+    delete:
+      summary: Eliminar un archivo
+      tags:
+        - Media
+      description: Hace un soft delete en la base de datos e intenta eliminar el archivo del storage.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del archivo a eliminar
+          example: 1
+      responses:
+        '200':
+          description: Archivo eliminado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Archivo eliminado exitosamente"
+        '404':
+          description: Archivo no encontrado
+        '401':
+          description: No autenticado
 
   # --- SERVICIOS HORARIOS ENDPOINTS ---
   /servicios-horarios:
@@ -11484,6 +11752,119 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   # --- EXPERIENCIAS LABORALES ENDPOINTS ---
+  /experiencias-laborales/doctor/{doctorId}:
+    get:
+      summary: Ver experiencias laborales de un doctor
+      tags:
+        - ExperienciasLaborales
+      description: |
+        Retorna todas las experiencias laborales **activas** de un doctor específico.
+        Accesible por cualquier usuario autenticado (pacientes, otros doctores, administradores).
+
+        **Traducción Automática:**
+        Ejemplo: `/api/experiencias-laborales/doctor/5?target=en&translate_fields=institucion,posicion`
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del doctor
+          example: 5
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          description: Idioma origen
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "institucion,posicion"
+          description: Campos a traducir separados por coma
+        - name: pagina
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+          description: Número de página
+        - name: limite
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+          description: Cantidad de resultados por página
+      responses:
+        '200':
+          description: Experiencias laborales obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Experiencias laborales del doctor obtenidas exitosamente"
+                  data:
+                    type: object
+                    properties:
+                      experiencias:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 1
+                            doctorId:
+                              type: integer
+                              example: 5
+                            institucion:
+                              type: string
+                              example: "Hospital Regional Dr. Arturo Grullón"
+                            posicion:
+                              type: string
+                              example: "Médico Internista"
+                            fechaInicio:
+                              type: string
+                              format: date
+                              example: "2018-01-15"
+                            fechaFinalizacion:
+                              type: string
+                              format: date
+                              nullable: true
+                              example: null
+                            trabajaActualmente:
+                              type: boolean
+                              example: true
+                            estado:
+                              type: string
+                              example: "Activo"
+                      total:
+                        type: integer
+                        example: 3
+        '400':
+          description: ID de doctor inválido
+        '401':
+          description: No autenticado
+
   /experiencias-laborales:
     post:
       summary: Crear experiencia laboral
@@ -11569,7 +11950,31 @@ paths:
       description: |
         Obtiene todas las experiencias laborales del doctor autenticado.
         Los resultados se ordenan por trabajos actuales primero, luego por fecha de inicio descendente.
+
+        **Traducción Automática:**
+        Ejemplo: `/api/experiencias-laborales?target=en&translate_fields=institucion,posicion`
       parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          description: Idioma origen
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "institucion,posicion"
+          description: Campos a traducir separados por coma
         - name: estado
           in: query
           schema:
@@ -11634,7 +12039,12 @@ paths:
         - bearerAuth: []
       tags:
         - ExperienciasLaborales
-      description: Obtiene una experiencia laboral específica. Solo el doctor propietario puede acceder.
+      description: |
+        Obtiene una experiencia laboral específica por su ID.
+        Accesible por cualquier usuario autenticado (pacientes, doctores, administradores).
+
+        **Traducción Automática:**
+        Ejemplo: `/api/experiencias-laborales/1?target=en&translate_fields=institucion,posicion`
       parameters:
         - name: id
           in: path
@@ -11642,6 +12052,20 @@ paths:
           schema:
             type: integer
           description: ID de la experiencia laboral
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "institucion,posicion"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Experiencia laboral encontrada
@@ -11662,8 +12086,6 @@ paths:
           description: ID inválido
         '401':
           description: No autenticado
-        '403':
-          description: No autorizado (no es el propietario)
         '404':
           description: Experiencia laboral no encontrada
         '500':
@@ -11786,6 +12208,120 @@ paths:
 
 
   # --- FORMACIONES ACADÉMICAS ENDPOINTS ---
+  /formaciones-academicas/doctor/{doctorId}:
+    get:
+      summary: Ver formaciones académicas de un doctor
+      tags:
+        - FormacionesAcademicas
+      description: |
+        Retorna todas las formaciones académicas **activas** de un doctor específico.
+        Accesible por cualquier usuario autenticado (pacientes, otros doctores, administradores).
+
+        Soporta traducción automática: `?target=en&translate_fields=nombre`
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del doctor
+          example: 5
+        - name: pagina
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+          description: Número de página
+        - name: limite
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+          description: Cantidad de resultados por página
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Idioma destino para traducción"
+          example: en
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Campos a traducir separados por coma"
+          example: "nombre"
+      responses:
+        '200':
+          description: Formaciones académicas obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Formaciones académicas del doctor obtenidas exitosamente"
+                  data:
+                    type: object
+                    properties:
+                      formaciones:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 1
+                            doctorId:
+                              type: integer
+                              example: 5
+                            nombre:
+                              type: string
+                              example: "Medicina General"
+                            fechaInicio:
+                              type: string
+                              format: date
+                              example: "2005-09-01"
+                            fechaFinalizacion:
+                              type: string
+                              format: date
+                              nullable: true
+                              example: "2011-06-30"
+                            enCurso:
+                              type: boolean
+                              example: false
+                            universidad:
+                              type: object
+                              properties:
+                                nombre:
+                                  type: string
+                                  example: "Pontificia Universidad Católica Madre y Maestra"
+                                pais:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      example: 1
+                                    nombre:
+                                      type: string
+                                      example: "República Dominicana"
+                      total:
+                        type: integer
+                        example: 2
+        '400':
+          description: ID de doctor inválido
+        '401':
+          description: No autenticado
+
   /formaciones-academicas:
     post:
       summary: Crear una nueva formación académica
@@ -11977,7 +12513,14 @@ paths:
       summary: Obtener una formación académica por ID
       tags:
         - FormacionesAcademicas
-      description: Obtiene los detalles completos de una formación académica específica por su ID.
+      description: |
+        Obtiene los detalles completos de una formación académica específica por su ID.
+        Accesible por cualquier usuario autenticado (pacientes, doctores, administradores).
+
+        **Traducción Automática:**
+        Ejemplo: `/api/formaciones-academicas/1?target=en&translate_fields=nombre`
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
@@ -11985,6 +12528,27 @@ paths:
           schema:
             type: integer
           description: ID de la formación académica
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          description: Idioma origen
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Formación académica encontrada
@@ -12283,118 +12847,6 @@ paths:
                     example: "Usuario inactivo. Contacta al administrador"
         '500':
           description: Error interno del servidor
-
-  /formaciones/referencias/paises:
-    get:
-      summary: Obtener todos los países disponibles
-      tags:
-        - FormacionesAcademicas
-      description: |
-        Obtiene la lista de todos los países activos para que el doctor pueda seleccionarlos al crear una formación académica.
-        Los países se retornan ordenados alfabéticamente por nombre.
-      parameters:
-        - name: _limit
-          in: query
-          required: false
-          schema:
-            type: integer
-          description: Limitar cantidad de registros
-      responses:
-        '200':
-          description: Lista de países obtenida exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Países obtenidos exitosamente"
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                          example: 1
-                          description: ID del país
-                        nombre:
-                          type: string
-                          example: "República Dominicana"
-                          description: Nombre del país
-        '500':
-          description: Error interno del servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /formaciones/referencias/universidades/{paisId}:
-    get:
-      summary: Obtener universidades de un país específico
-      tags:
-        - FormacionesAcademicas
-      description: |
-        Obtiene la lista de universidades activas para un país específico.
-        Esta lista se usa para que el doctor seleccione la universidad donde realizó su formación.
-        Las universidades se retornan ordenadas alfabéticamente por nombre.
-      parameters:
-        - name: paisId
-          in: path
-          required: true
-          schema:
-            type: integer
-          description: ID del país
-          example: 1
-      responses:
-        '200':
-          description: Lista de universidades obtenida exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Universidades obtenidas exitosamente"
-                  success:
-                    type: boolean
-                    example: true
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                          example: 5
-                          description: ID de la universidad
-                        nombre:
-                          type: string
-                          example: "Universidad Autónoma de Santo Domingo"
-                          description: Nombre de la universidad
-        '400':
-          description: ID del país inválido
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: País no encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   # --- NOTIFICACIONES ENDPOINTS ---
   /notificaciones:
@@ -13534,6 +13986,98 @@ paths:
       responses:
         '200':
           description: Seguro eliminado exitosamente
+
+  /seguros/doctor/{doctorId}/seguros-aceptados:
+    get:
+      summary: Ver seguros aceptados por un doctor
+      tags:
+        - Seguros
+      description: |
+        Retorna todos los seguros que acepta un doctor específico.
+        Accesible por cualquier usuario autenticado.
+
+        💡 Útil para que un **paciente** verifique si su seguro es aceptado antes de agendar una cita.
+
+        **Traducción Automática:**
+        Ejemplo: `/api/seguros/doctor/5/seguros-aceptados?target=en&translate_fields=nombre`
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del doctor
+          example: 5
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          description: Idioma origen
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir separados por coma
+      responses:
+        '200':
+          description: Seguros aceptados obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Seguros aceptados por el doctor obtenidos exitosamente"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        seguroId:
+                          type: integer
+                          example: 2
+                        tipoSeguroId:
+                          type: integer
+                          example: 1
+                        seguro:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 2
+                            nombre:
+                              type: string
+                              example: "ARS Humano"
+                        tipoSeguro:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 1
+                            nombre:
+                              type: string
+                              example: "Plan Gold"
+        '400':
+          description: ID de doctor inválido
+        '401':
+          description: No autenticado
 
   /seguros/seguros-aceptados:
     post:
@@ -15774,6 +16318,55 @@ paths:
 
 components:
   schemas:
+    # ─── Media ───────────────────────────────────────────────────────────────
+    Media:
+      type: object
+      description: Archivo multimedia registrado en el sistema (imagen, audio, video, documento).
+      properties:
+        id:
+          type: integer
+          example: 1
+        archivo:
+          type: string
+          description: URL pública del archivo en el storage
+          example: "https://cdn.example.com/public-assets/media/42/1234_foto.jpg"
+        nombre:
+          type: string
+          nullable: true
+          example: "radiografia_torax.jpg"
+        tipoMime:
+          type: string
+          nullable: true
+          example: "image/jpeg"
+        tamanioBytes:
+          type: string
+          nullable: true
+          description: Tamaño en bytes (formato string por BigInt)
+          example: "204800"
+        tamanioFormateado:
+          type: string
+          example: "200.00 KB"
+        estado:
+          type: string
+          enum: ["Activo", "Eliminado"]
+          example: "Activo"
+        fechaSubida:
+          type: string
+          format: date-time
+          example: "2026-03-03T04:42:00Z"
+        esImagen:
+          type: boolean
+          example: true
+        esVideo:
+          type: boolean
+          example: false
+        esAudio:
+          type: boolean
+          example: false
+        esDocumento:
+          type: boolean
+          example: false
+
     # ─── Reseñas ─────────────────────────────────────────────────────────────
     Resena:
       type: object

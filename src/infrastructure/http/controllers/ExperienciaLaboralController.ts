@@ -58,7 +58,6 @@ export class ExperienciaLaboralController {
 
   obtenerPorId = async (req: Request, res: Response): Promise<void> => {
     try {
-      const doctorId = (req as any).usuarioId; // Obtener doctor autenticado del JWT
       const id = parseInt(req.params.id as string);
 
       if (isNaN(id)) {
@@ -70,15 +69,6 @@ export class ExperienciaLaboralController {
       }
 
       const experiencia = await this.gestionarExperienciasLaboralesUseCase.obtenerPorId(id);
-
-      // Verificar que la experiencia pertenece al doctor autenticado
-      if (experiencia.doctorId !== doctorId) {
-        res.status(403).json({
-          success: false,
-          message: 'No tienes permiso para acceder a esta experiencia laboral',
-        });
-        return;
-      }
 
       res.status(200).json({
         message: 'Experiencia laboral obtenida exitosamente',
@@ -232,6 +222,45 @@ export class ExperienciaLaboralController {
           message: 'Error interno del servidor',
         });
       }
+    }
+  };
+  /**
+   * GET /experiencias-laborales/doctor/:doctorId
+   * Obtener todas las experiencias laborales activas de un doctor específico
+   * Acceso público (cualquier usuario autenticado puede ver el perfil de un doctor)
+   */
+  obtenerPorDoctor = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const doctorId = parseInt(req.params.doctorId as string);
+
+      if (isNaN(doctorId)) {
+        res.status(400).json({
+          success: false,
+          message: 'ID de doctor inválido',
+        });
+        return;
+      }
+
+      const filtro: FiltroExperienciasLaboralesDto = {
+        doctorId,
+        estado: 'Activo',
+        pagina: req.query.pagina ? parseInt(req.query.pagina as string) : 1,
+        limite: req.query.limite ? parseInt(req.query.limite as string) : 20,
+      };
+
+      const resultado = await this.gestionarExperienciasLaboralesUseCase.obtenerTodos(filtro);
+
+      res.status(200).json({
+        message: 'Experiencias laborales del doctor obtenidas exitosamente',
+        success: true,
+        data: resultado,
+      });
+    } catch (error: any) {
+      console.error('Error al obtener experiencias del doctor:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+      });
     }
   };
 }

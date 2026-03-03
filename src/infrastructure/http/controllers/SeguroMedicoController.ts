@@ -279,6 +279,40 @@ export class SeguroMedicoController {
     }
 
     // ============================================
+    // Público - Ver seguros aceptados de un doctor
+    // ============================================
+
+    /**
+     * GET /api/seguros/doctor/:doctorId/seguros-aceptados
+     * Obtener los seguros que acepta un doctor específico
+     * Visible para cualquier usuario autenticado (pacientes, otros doctores, etc.)
+     */
+    async obtenerSegurosAceptadosPorDoctor(req: Request, res: Response): Promise<void> {
+        try {
+            const doctorId = parseInt(String(req.params.doctorId));
+
+            if (isNaN(doctorId)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'ID de doctor inválido',
+                });
+                return;
+            }
+
+            const useCase = container.resolve(ObtenerSegurosAceptadosUseCase);
+            const seguros = await useCase.execute(doctorId);
+
+            res.status(200).json({
+                success: true,
+                message: 'Seguros aceptados por el doctor obtenidos exitosamente',
+                data: seguros,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    // ============================================
     // Manejo de errores
     // ============================================
 

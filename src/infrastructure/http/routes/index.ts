@@ -34,6 +34,7 @@ import { translationRateLimitMiddleware } from '../middlewares/TranslationRateLi
 import DoctorIdiomasRoutes from './DoctorIdiomasRoutes';
 import CitasRoutes from './CitasRoutes';
 import ResenasRoutes from './ResenasRoutes';
+import MediaRoutes from './MediaRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -135,5 +136,8 @@ router.use('/citas', CitasRoutes);
 
 // Rutas de Reseñas
 router.use('/resenas', ResenasRoutes);
+
+// Rutas de Media (archivos para el chat)
+router.use('/media', MediaRoutes);
 
 export default router;

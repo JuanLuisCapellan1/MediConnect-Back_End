@@ -876,7 +876,8 @@ container.register(GestionarMensajesUseCase, {
 container.register(GestionarMediaUseCase, {
   useFactory: () => {
     const mediaRepository = container.resolve<IMediaRepository>('MediaRepository');
-    return new GestionarMediaUseCase(mediaRepository);
+    const storageService = container.resolve<IStorageService>('StorageService');
+    return new GestionarMediaUseCase(mediaRepository, storageService);
   }
 });
 
@@ -1087,4 +1088,11 @@ container.register(ResenaController, {
     const useCase = container.resolve(GestionarResenasUseCase);
     return new ResenaController(useCase);
   }
+});
+
+// ===== MEDIA =====
+import { MediaController } from '../../infrastructure/http/controllers/MediaController';
+
+container.register(MediaController, {
+  useFactory: () => new MediaController()
 });
