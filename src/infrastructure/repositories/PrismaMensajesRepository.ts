@@ -2,9 +2,9 @@ import { injectable, inject } from 'tsyringe';
 import { PrismaClient } from '@prisma/client';
 import { IMensajesRepository } from '../../domain/repositories/IMensajesRepository';
 import { Mensaje, TipoMensaje, EstadoMensaje } from '../../domain/entities/Mensaje';
-import { 
-  FiltroMensajesDto, 
-  MensajeConRemitenteDto 
+import {
+  FiltroMensajesDto,
+  MensajeConRemitenteDto
 } from '../../application/dtos/MensajeDtos';
 
 interface IMensajesRepositoryExtendido extends IMensajesRepository {
@@ -15,7 +15,7 @@ interface IMensajesRepositoryExtendido extends IMensajesRepository {
 export class PrismaMensajesRepository implements IMensajesRepositoryExtendido {
   constructor(
     @inject('PrismaClient') private prisma: PrismaClient
-  ) {}
+  ) { }
 
   async crear(mensaje: Mensaje): Promise<Mensaje> {
     const mensajeCreado = await this.prisma.mensaje.create({
@@ -46,7 +46,13 @@ export class PrismaMensajesRepository implements IMensajesRepositoryExtendido {
     return mensaje ? this.mapearAEntidad(mensaje) : null;
   }
 
-  async obtenerPorConversacion(filtros: FiltroMensajesDto): Promise<MensajeConRemitenteDto[]> {
+  async obtenerPorConversacion(filtros: FiltroMensajesDto): Promise<{
+    mensajes: MensajeConRemitenteDto[];
+    total: number;
+    pagina: number;
+    limite: number;
+    hayMas: boolean;
+  }> {
     // Verificar que el usuario tenga acceso a la conversación
     const conversacion = await this.prisma.conversacion.findFirst({
       where: {
@@ -61,6 +67,12 @@ export class PrismaMensajesRepository implements IMensajesRepositoryExtendido {
     if (!conversacion) {
       throw new Error('No tienes acceso a esta conversación');
     }
+
+    const limite = filtros.limite || 50;
+    const pagina = filtros.pagina && filtros.pagina > 0 ? filtros.pagina : 1;
+    const skip = filtros.offset !== undefined
+      ? filtros.offset
+      : (pagina - 1) * limite;
 
     const where: any = {
       conversacionId: filtros.conversacionId,
@@ -82,66 +94,66 @@ export class PrismaMensajesRepository implements IMensajesRepositoryExtendido {
       where.id = { lt: filtros.antesDeId };
     }
 
-    const mensajes = await this.prisma.mensaje.findMany({
-      where,
-      include: {
-        remitente: {
-          select: {
-            id: true,
-            fotoPerfil: true,
-            paciente: {
-              select: {
-                nombre: true,
-                apellido: true
-              }
-            },
-            doctor: {
-              select: {
-                nombre: true,
-                apellido: true
-              }
+    // Contar total y obtener mensajes en paralelo
+    const [total, mensajes] = await Promise.all([
+      this.prisma.mensaje.count({ where }),
+      this.prisma.mensaje.findMany({
+        where,
+        include: {
+          remitente: {
+            select: {
+              id: true,
+              fotoPerfil: true,
+              paciente: { select: { nombre: true, apellido: true } },
+              doctor: { select: { nombre: true, apellido: true } }
+            }
+          },
+          media: {
+            select: {
+              id: true,
+              archivo: true,
+              nombre: true,
+              tipoMime: true,
+              tamanioBytes: true
             }
           }
         },
-        media: {
-          select: {
-            id: true,
-            archivo: true,
-            nombre: true,
-            tipoMime: true,
-            tamanioBytes: true
-          }
-        }
-      },
-      orderBy: { enviadoEn: 'desc' },
-      take: filtros.limite || 50,
-      skip: filtros.offset || 0
-    });
+        orderBy: { id: 'desc' },   // Mayor ID = más reciente
+        take: limite,
+        skip
+      })
+    ]);
 
-    return mensajes.map(m => ({
-      id: m.id,
-      conversacionId: m.conversacionId,
-      remitenteId: m.remitenteId,
-      contenido: m.contenido || undefined,
-      tipo: m.tipo,
-      mediaId: m.mediaId || undefined,
-      estado: m.estado,
-      enviadoEn: m.enviadoEn,
-      remitente: {
-        id: m.remitente.id,
-        nombre: m.remitente.paciente?.nombre || m.remitente.doctor?.nombre || 'Sin nombre',
-        apellido: m.remitente.paciente?.apellido || m.remitente.doctor?.apellido || '',
-        fotoPerfil: m.remitente.fotoPerfil || undefined
-      },
-      media: m.media ? {
-        id: m.media.id,
-        archivo: m.media.archivo,
-        nombre: m.media.nombre || undefined,
-        tipoMime: m.media.tipoMime || undefined,
-        tamanioBytes: m.media.tamanioBytes ? Number(m.media.tamanioBytes) : undefined
-      } : undefined,
-      esPropio: m.remitenteId === filtros.usuarioId
-    }));
+    return {
+      mensajes: mensajes.map(m => ({
+        id: m.id,
+        conversacionId: m.conversacionId,
+        remitenteId: m.remitenteId,
+        contenido: m.contenido || undefined,
+        tipo: m.tipo,
+        mediaId: m.mediaId || undefined,
+        estado: m.estado,
+        enviadoEn: m.enviadoEn,
+        remitente: {
+          id: m.remitente.id,
+          nombre: m.remitente.paciente?.nombre || m.remitente.doctor?.nombre || 'Sin nombre',
+          apellido: m.remitente.paciente?.apellido || m.remitente.doctor?.apellido || '',
+          fotoPerfil: m.remitente.fotoPerfil || undefined
+        },
+        media: m.media ? {
+          id: m.media.id,
+          archivo: m.media.archivo,
+          nombre: m.media.nombre || undefined,
+          tipoMime: m.media.tipoMime || undefined,
+          tamanioBytes: m.media.tamanioBytes ? Number(m.media.tamanioBytes) : undefined
+        } : undefined,
+        esPropio: m.remitenteId === filtros.usuarioId
+      })),
+      total,
+      pagina,
+      limite,
+      hayMas: skip + mensajes.length < total
+    };
   }
 
   async actualizar(id: number, datos: Partial<Mensaje>): Promise<Mensaje | null> {
@@ -211,7 +223,7 @@ export class PrismaMensajesRepository implements IMensajesRepositoryExtendido {
         conversacionId,
         remitenteId: { not: usuarioId },
         estado: { not: 'Eliminado' },
-        id: lectura?.ultimoMensajeLeidoId 
+        id: lectura?.ultimoMensajeLeidoId
           ? { gt: lectura.ultimoMensajeLeidoId }
           : undefined
       }

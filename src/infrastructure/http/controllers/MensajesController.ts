@@ -29,13 +29,18 @@ export class MensajesController {
         });
       }
 
+      const limite = parseInt(req.query.limite as string) || 50;
+      const pagina = parseInt(req.query.pagina as string) || 1;
+
       const filtros: FiltroMensajesDto = {
         conversacionId,
         usuarioId,
         tipo: req.query.tipo as any,
         busqueda: req.query.busqueda as string,
-        limite: parseInt(req.query.limite as string) || 50,
-        offset: parseInt(req.query.offset as string) || 0,
+        limite,
+        pagina,
+        // offset sigue siendo compatible si se pasa explícitamente
+        offset: req.query.offset ? parseInt(req.query.offset as string) : undefined,
         antesDeId: req.query.antesDeId ? parseInt(req.query.antesDeId as string) : undefined
       };
 
@@ -45,7 +50,13 @@ export class MensajesController {
       return res.status(200).json({
         success: true,
         mensaje: 'Mensajes obtenidos exitosamente',
-        data: resultado
+        paginacion: {
+          pagina: resultado.pagina,
+          limite: resultado.limite,
+          total: resultado.total,
+          hayMas: resultado.hayMas,
+        },
+        data: resultado.mensajes,
       });
     } catch (error: any) {
       console.error('Error al obtener mensajes:', error);

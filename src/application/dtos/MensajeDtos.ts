@@ -17,6 +17,7 @@ export interface FiltroMensajesDto {
   tipo?: 'texto' | 'imagen' | 'audio' | 'video' | 'archivo' | 'otro';
   busqueda?: string; // Para buscar en el contenido
   limite?: number;
+  pagina?: number;   // Página (1-indexed). Alternativa a offset
   offset?: number;
   antesDeId?: number; // Para cargar mensajes más antiguos (paginación hacia atrás)
 }

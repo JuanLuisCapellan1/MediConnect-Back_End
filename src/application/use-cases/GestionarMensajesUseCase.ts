@@ -20,6 +20,8 @@ import { AccesoConversacionDenegadoError } from '../../domain/errors/Conversacio
 export interface ResultadoMensajes {
   mensajes: MensajeConRemitenteDto[];
   total: number;
+  pagina: number;
+  limite: number;
   hayMas: boolean;
 }
 
@@ -34,7 +36,7 @@ export class GestionarMensajesUseCase {
     private lecturasRepository: ILecturasConversacionRepository,
     @inject('MediaRepository')
     private mediaRepository: IMediaRepository
-  ) {}
+  ) { }
 
   /**
    * Crea un nuevo mensaje en una conversación
@@ -42,7 +44,7 @@ export class GestionarMensajesUseCase {
   async crear(dto: CrearMensajeDto): Promise<Mensaje> {
     // Verificar que la conversación existe
     const conversacion = await this.conversacionesRepository.obtenerPorId(dto.conversacionId);
-    
+
     if (!conversacion) {
       throw new ConversacionNoEncontradaError(dto.conversacionId);
     }
@@ -84,7 +86,7 @@ export class GestionarMensajesUseCase {
     const mensajeCreado = await this.mensajesRepository.crear(nuevoMensaje);
 
     // Actualizar el timestamp de la conversación (ya se hace en el repositorio)
-    
+
     return mensajeCreado;
   }
 
@@ -103,16 +105,7 @@ export class GestionarMensajesUseCase {
    * Obtiene los mensajes de una conversación
    */
   async obtenerPorConversacion(filtros: FiltroMensajesDto): Promise<ResultadoMensajes> {
-    const mensajes = await this.mensajesRepository.obtenerPorConversacion(filtros);
-
-    const limite = filtros.limite || 50;
-    const hayMas = mensajes.length === limite;
-
-    return {
-      mensajes,
-      total: mensajes.length,
-      hayMas
-    };
+    return await this.mensajesRepository.obtenerPorConversacion(filtros);
   }
 
   /**
@@ -127,7 +120,7 @@ export class GestionarMensajesUseCase {
 
     // Verificar que el usuario tenga acceso a la conversación
     const conversacion = await this.conversacionesRepository.obtenerPorId(mensaje.conversacionId);
-    
+
     if (!conversacion || !conversacion.esParticipante(usuarioId)) {
       throw new AccesoMensajeDenegadoError(id, usuarioId);
     }
@@ -197,7 +190,7 @@ export class GestionarMensajesUseCase {
   async marcarComoLeidos(dto: MarcarMensajesLeidosDto): Promise<void> {
     // Verificar que el usuario tenga acceso a la conversación
     const conversacion = await this.conversacionesRepository.obtenerPorId(dto.conversacionId);
-    
+
     if (!conversacion || !conversacion.esParticipante(dto.usuarioId)) {
       throw new AccesoConversacionDenegadoError(dto.conversacionId, dto.usuarioId);
     }
@@ -218,7 +211,7 @@ export class GestionarMensajesUseCase {
   async buscar(conversacionId: number, usuarioId: number, busqueda: string): Promise<MensajeConRemitenteDto[]> {
     // Verificar acceso a la conversación
     const conversacion = await this.conversacionesRepository.obtenerPorId(conversacionId);
-    
+
     if (!conversacion || !conversacion.esParticipante(usuarioId)) {
       throw new AccesoConversacionDenegadoError(conversacionId, usuarioId);
     }
@@ -232,7 +225,7 @@ export class GestionarMensajesUseCase {
   async obtenerUltimo(conversacionId: number, usuarioId: number): Promise<Mensaje | null> {
     // Verificar acceso
     const conversacion = await this.conversacionesRepository.obtenerPorId(conversacionId);
-    
+
     if (!conversacion || !conversacion.esParticipante(usuarioId)) {
       throw new AccesoConversacionDenegadoError(conversacionId, usuarioId);
     }

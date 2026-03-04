@@ -13711,7 +13711,23 @@ paths:
       summary: Obtener mensajes de una conversación
       tags:
         - Mensajes
-      description: Lista mensajes con paginación y filtros
+      description: |-
+        Lista los mensajes de una conversación con paginación basada en número de página.
+
+        **Orden:** Los mensajes se devuelven de **más reciente a más antiguo** (ID descendente).
+        La página 1 siempre contiene los mensajes más recientes.
+
+        **Paginación por página:**
+        ```
+        GET /conversaciones/1/mensajes?pagina=1&limite=20   → mensajes más recientes
+        GET /conversaciones/1/mensajes?pagina=2&limite=20   → mensajes anteriores
+        ```
+
+        **Paginación por cursor (`antesDeId`):**
+        Para scroll infinito hacia atrás, usa `antesDeId` con el ID del mensaje más antiguo cargado.
+        ```
+        GET /conversaciones/1/mensajes?antesDeId=45&limite=20
+        ```
       security:
         - bearerAuth: []
       parameters:
@@ -13720,32 +13736,122 @@ paths:
           required: true
           schema:
             type: integer
+        - name: pagina
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          description: "Número de página (1-indexed). Página 1 = mensajes más recientes"
+          example: 1
         - name: limite
           in: query
+          required: false
           schema:
             type: integer
             default: 50
-        - name: offset
-          in: query
-          schema:
-            type: integer
-            default: 0
+            minimum: 1
+            maximum: 100
+          description: Mensajes por página
+          example: 20
         - name: antesDeId
           in: query
+          required: false
           schema:
             type: integer
+          description: "Cursor: retorna mensajes con ID menor al indicado (para scroll infinito)"
+          example: 45
         - name: tipo
           in: query
+          required: false
           schema:
             type: string
-            enum: [Texto, Imagen, Video, Audio, Archivo]
+            enum: [texto, imagen, video, audio, archivo]
         - name: busqueda
           in: query
+          required: false
           schema:
             type: string
+          description: Filtrar mensajes que contengan este texto
       responses:
         '200':
           description: Mensajes obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  mensaje:
+                    type: string
+                    example: "Mensajes obtenidos exitosamente"
+                  paginacion:
+                    type: object
+                    properties:
+                      pagina:
+                        type: integer
+                        example: 1
+                      limite:
+                        type: integer
+                        example: 20
+                      total:
+                        type: integer
+                        description: Total de mensajes en la conversación
+                        example: 87
+                      hayMas:
+                        type: boolean
+                        description: Si hay más páginas disponibles
+                        example: true
+                  data:
+                    type: array
+                    description: Mensajes ordenados de más reciente a más antiguo
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 87
+                        conversacionId:
+                          type: integer
+                          example: 1
+                        remitenteId:
+                          type: integer
+                          example: 5
+                        contenido:
+                          type: string
+                          example: "Hola, ¿cómo estás?"
+                        tipo:
+                          type: string
+                          example: "texto"
+                        estado:
+                          type: string
+                          example: "Enviado"
+                        enviadoEn:
+                          type: string
+                          format: date-time
+                        esPropio:
+                          type: boolean
+                          description: Si el mensaje fue enviado por el usuario autenticado
+                          example: true
+                        remitente:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            nombre:
+                              type: string
+                            apellido:
+                              type: string
+                            fotoPerfil:
+                              type: string
+                              nullable: true
+        '403':
+          description: No tienes acceso a esta conversación
+        '401':
+          description: No autenticado
 
     post:
       summary: Enviar un nuevo mensaje
