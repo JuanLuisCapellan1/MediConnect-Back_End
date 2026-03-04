@@ -74,6 +74,21 @@ tags:
     description: Sistema de calificaciones y comentarios que los pacientes dejan sobre los servicios médicos
   - name: Media
     description: Gestión de archivos multimedia (imágenes, audios, videos, documentos, ZIP) para el chat y otros módulos
+  - name: WebSocket Chat
+    description: |
+      Eventos de tiempo real gestionados por Socket.IO para el módulo de chat.
+      La conexión se establece con un token JWT en el handshake.
+
+      **Conexión:**
+      ```
+      const socket = io('wss://tu-servidor.com', {
+        auth: { token: '<JWT>' }
+      });
+      ```
+
+      **Salas:**
+      - `conversacion:{id}` — Sala de una conversación específica
+      - `usuario:{id}` — Sala personal de cada usuario (notificaciones individuales)
 
 
 # --- RUTAS (ENDPOINTS) ---
@@ -13883,8 +13898,203 @@ paths:
 
 
   # ==========================================
-  # SEGUROS MÉDICOS
+  # WEBSOCKET CHAT — EVENTOS EN TIEMPO REAL
   # ==========================================
+  # Nota: Los eventos WebSocket no son rutas HTTP estándar.
+  # Esta sección los documenta como referencia para el frontend.
+
+  /ws/chat/eventos/emitidos-por-cliente:
+    get:
+      summary: "[WS] Eventos que el CLIENTE emite al servidor"
+      tags:
+        - WebSocket Chat
+      description: |
+        Referencia de todos los eventos que el cliente debe emitir via Socket.IO.
+
+        ---
+        ### `unirse-conversacion`
+        Unirse a la sala de una conversación.
+        ```json
+        socket.emit('unirse-conversacion', conversacionId: number)
+        ```
+
+        ---
+        ### `salir-conversacion`
+        Salir de la sala de una conversación.
+        ```json
+        socket.emit('salir-conversacion', conversacionId: number)
+        ```
+
+        ---
+        ### `usuario-escribiendo`
+        Notificar que el usuario está escribiendo en una conversación.
+        ```json
+        socket.emit('usuario-escribiendo', {
+          conversacionId: number,
+          nombre: string
+        })
+        ```
+
+        ---
+        ### `usuario-dejo-escribir`
+        Notificar que el usuario dejó de escribir.
+        ```json
+        socket.emit('usuario-dejo-escribir', {
+          conversacionId: number
+        })
+        ```
+
+        ---
+        ### `mensajes-leidos`
+        Notificar que el usuario leyó mensajes hasta un punto específico.
+        ```json
+        socket.emit('mensajes-leidos', {
+          conversacionId: number,
+          usuarioId: number,
+          ultimoMensajeLeidoId: number
+        })
+        ```
+      responses:
+        '200':
+          description: (Solo referencia — no es un endpoint HTTP real)
+
+  /ws/chat/eventos/emitidos-por-servidor:
+    get:
+      summary: "[WS] Eventos que el SERVIDOR emite al cliente"
+      tags:
+        - WebSocket Chat
+      description: |
+        Referencia de todos los eventos que el servidor emite via Socket.IO.
+
+        ---
+        ### `nuevo-mensaje`
+        Nuevo mensaje en una conversación. Se recibe en la sala `conversacion:{id}` y en `usuario:{id}`.
+        ```json
+        {
+          id: number,
+          conversacionId: number,
+          remitenteId: number,
+          contenido: string,
+          tipo: 'Texto' | 'Imagen' | 'Video' | 'Audio' | 'Archivo',
+          enviadoEn: string  // ISO 8601
+        }
+        ```
+
+        ---
+        ### `mensaje-editado`
+        El remitente editó un mensaje existente.
+        ```json
+        {
+          id: number,
+          conversacionId: number,
+          contenido: string,
+          editadoEn: string
+        }
+        ```
+
+        ---
+        ### `mensaje-eliminado`
+        Un mensaje fue eliminado (soft delete).
+        ```json
+        {
+          conversacionId: number,
+          mensajeId: number
+        }
+        ```
+
+        ---
+        ### `usuario-escribiendo`
+        Otro participante está escribiendo en la conversación.
+        ```json
+        {
+          conversacionId: number,
+          usuarioId: number,
+          nombre: string
+        }
+        ```
+
+        ---
+        ### `usuario-dejo-escribir`
+        Otro participante dejó de escribir.
+        ```json
+        {
+          conversacionId: number,
+          usuarioId: number
+        }
+        ```
+
+        ---
+        ### `mensajes-leidos`
+        El otro participante marcó mensajes como leídos.
+        ```json
+        {
+          conversacionId: number,
+          usuarioId: number,
+          ultimoMensajeLeidoId: number
+        }
+        ```
+
+        ---
+        ### `nueva-conversacion`
+        Se creó una nueva conversación con el usuario. Se recibe en `usuario:{id}`.
+        ```json
+        {
+          id: number,
+          emisorId: number,
+          receptorId: number,
+          estado: string,
+          creadoEn: string
+        }
+        ```
+
+        ---
+        ### `conversacion-actualizada`
+        Una conversación del usuario fue modificada (silenciada, archivada, etc.).
+        ```json
+        {
+          id: number,
+          estado: string,
+          silenciado: boolean,
+          actualizadoEn: string
+        }
+        ```
+
+        ---
+        ### `contador-no-leidos-conversacion`
+        Actualización del contador de mensajes no leídos. Se recibe en `usuario:{id}`.
+        ```json
+        {
+          conversacionId: number,
+          contador: number
+        }
+        ```
+
+        ---
+        ### `usuario-conectado` 🆕
+        Un usuario con el que tienes una conversación activa acaba de conectarse.
+        Solo se emite a los participantes de conversaciones `Activa` con ese usuario.
+        Se recibe en `usuario:{id}`.
+        ```json
+        {
+          usuarioId: number,
+          timestamp: string  // ISO 8601
+        }
+        ```
+
+        ---
+        ### `usuario-desconectado` 🆕
+        Un usuario con el que tienes una conversación activa se desconectó completamente
+        (cerró todas sus pestañas/dispositivos). Se recibe en `usuario:{id}`.
+        ```json
+        {
+          usuarioId: number,
+          timestamp: string  // ISO 8601
+        }
+        ```
+      responses:
+        '200':
+          description: (Solo referencia — no es un endpoint HTTP real)
+
 
   /seguros:
     post:
