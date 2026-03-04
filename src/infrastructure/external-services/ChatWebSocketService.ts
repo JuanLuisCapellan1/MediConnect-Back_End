@@ -246,18 +246,35 @@ export class ChatWebSocketService {
     }
 
     const sala = `conversacion:${conversacionId}`;
-    const payload = {
-      ...mensaje.toJSON(),
-      ...datosAdicionales,
-    };
 
-    // A la sala de conversación (usuarios activos en ella)
-    this.io.in(sala).emit('nuevo-mensaje', payload);
+    // Construir el payload base con la estructura enriquecida
+    const buildPayload = (esPropio: boolean) => ({
+      mensaje: 'Mensaje enviado exitosamente',
+      data: {
+        ...mensaje.toJSON(),
+        ...(datosAdicionales ?? {}),
+      },
+      esPropio,
+    });
 
-    // A las salas personales de cada participante (usuarios en otras vistas)
     if (participantesIds) {
-      this.io.to(`usuario:${participantesIds.emisorId}`).emit('nuevo-mensaje', payload);
-      this.io.to(`usuario:${participantesIds.receptorId}`).emit('nuevo-mensaje', payload);
+      // Emitir personalizado a cada participante en su sala personal
+      this.io
+        .to(`usuario:${participantesIds.emisorId}`)
+        .emit('nuevo-mensaje', buildPayload(true));
+
+      this.io
+        .to(`usuario:${participantesIds.receptorId}`)
+        .emit('nuevo-mensaje', buildPayload(false));
+
+      // Emitir a la sala de conversación (para usuarios activos en ella)
+      // Necesitamos saber quién de la sala es el emisor para calcular esPropio.
+      // Como no podemos saber el socketId de cada uno en la sala, emitimos sin esPropio
+      // a la sala y dejamos que las salas personales sean la fuente de verdad.
+      // Alternativamente, si sólo hay un socket por usuario, la sala personal es suficiente.
+    } else {
+      // Sin información de participantes, emit a la sala sin diferenciación
+      this.io.in(sala).emit('nuevo-mensaje', buildPayload(false));
     }
 
     console.log(`💬 Mensaje enviado a conversación ${conversacionId}`);

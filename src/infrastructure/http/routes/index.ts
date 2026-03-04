@@ -24,7 +24,7 @@ import AuthRoutes from './AuthRoutes';
 import AuthPasswordRoutes from './AuthPasswordRoutes';
 import NotificacionesRoutes from './notificaciones.routes';
 import ConversacionesRoutes from './conversaciones.routes';
-import MensajesRoutes from './mensajes.routes';
+import MensajesRoutes, { mensajesRouter } from './mensajes.routes';
 import CondicionesMedicasRoutes from './CondicionesMedicasRoutes';
 import SegurosRoutes from './SegurosRoutes';
 import TiposSegurosRoutes from './TiposSegurosRoutes';
@@ -116,8 +116,11 @@ router.use('/notificaciones', NotificacionesRoutes);
 // Rutas de Conversaciones (Chat)
 router.use('/conversaciones', ConversacionesRoutes);
 
-// Rutas de Mensajes
+// Rutas de Mensajes (subrutas de conversaciones)
 router.use('/conversaciones', MensajesRoutes);
+
+// Rutas de Mensajes individuales (editar y eliminar)
+router.use('/mensajes', mensajesRouter);
 
 // Rutas de Condiciones Médicas (Catálogo, Doctores y Pacientes)
 router.use('/condiciones-medicas', CondicionesMedicasRoutes);
