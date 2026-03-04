@@ -253,12 +253,12 @@ router.delete(
 
 /**
  * GET /doctores/:id
- * Obtener doctor por ID (Admin: datos completos; Paciente: perfil público sin documentos)
+ * Obtener doctor por ID (cualquier usuario autenticado)
  */
 router.get(
     '/:id',
     autenticarJWT,
-    requireRole('Admin', 'Paciente'),
+    requireRole('Admin', 'Paciente', 'Doctor'),
     translationMiddleware,
     (req, res) => doctorController.obtenerPorId(req, res)
 );

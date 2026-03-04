@@ -420,7 +420,22 @@ export class ServiciosController {
             if (req.query.precioMin) filtros.precioMin = Number(req.query.precioMin);
             if (req.query.precioMax) filtros.precioMax = Number(req.query.precioMax);
 
-            const servicios = await this.gestionarServiciosUseCase.buscarCercanos(lat, lng, radio, filtros);
+            // Resolver pacienteId si el usuario autenticado es un Paciente
+            let pacienteId: number | undefined;
+            const usuarioId: number | undefined = (req as any).usuarioId;
+            const rol: string | undefined = (req as any).rol ?? req.user?.rol;
+
+            if (usuarioId && rol === 'Paciente') {
+                try {
+                    const { PrismaPacienteRepository } = await import('../../../infrastructure/repositories/PrismaPacienteRepository');
+                    const { prisma } = await import('../../../infrastructure/database/prisma/client');
+                    const pacienteRepo = new PrismaPacienteRepository(prisma);
+                    const paciente = await pacienteRepo.obtenerPorUsuarioId(usuarioId);
+                    if (paciente) pacienteId = paciente.usuarioId;
+                } catch { /* no bloquear si falla */ }
+            }
+
+            const servicios = await this.gestionarServiciosUseCase.buscarCercanos(lat, lng, radio, filtros, pacienteId);
 
             res.status(200).json({
                 success: true,

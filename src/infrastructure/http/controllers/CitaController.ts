@@ -30,6 +30,48 @@ export class CitaController {
         } catch (error) { this.manejarError(error, res); }
     }
 
+    // GET /servicios/doctor/:doctorId/disponibilidad?dias=7&fechaInicio=YYYY-MM-DD
+    async disponibilidadDoctor(req: Request, res: Response): Promise<void> {
+        try {
+            const doctorId = Number(req.params.doctorId);
+            if (isNaN(doctorId) || doctorId <= 0) {
+                res.status(400).json({ success: false, message: 'El doctorId debe ser un número válido.' });
+                return;
+            }
+
+            const dias = req.query.dias !== undefined ? Number(req.query.dias) : 7;
+            if (isNaN(dias) || dias < 1 || dias > 30) {
+                res.status(400).json({ success: false, message: 'El parámetro "dias" debe ser un número entre 1 y 30.' });
+                return;
+            }
+
+            const fechaInicio = req.query.fechaInicio as string | undefined;
+
+            const data = await this.citasUseCase.disponibilidadDoctor(doctorId, dias, fechaInicio);
+            res.status(200).json({ success: true, doctorId, dias, data });
+        } catch (error) { this.manejarError(error, res); }
+    }
+
+    // GET /servicios/:id/slots-disponibles?fecha=YYYY-MM-DD
+    // Solo devuelve los slots disponibles (sin los ocupados)
+    async slotsDisponiblesParaServicio(req: Request, res: Response): Promise<void> {
+        try {
+            const servicioId = Number(req.params.id);
+            if (isNaN(servicioId) || servicioId <= 0) {
+                res.status(400).json({ success: false, message: 'ID de servicio inválido.' });
+                return;
+            }
+            const fecha = req.query.fecha as string;
+            if (!fecha) {
+                res.status(400).json({ success: false, message: 'El parámetro "fecha" es requerido en formato YYYY-MM-DD.' });
+                return;
+            }
+
+            const data = await this.citasUseCase.slotsDisponiblesParaServicio(servicioId, fecha);
+            res.status(200).json({ success: true, servicioId, fecha, total: data.length, data });
+        } catch (error) { this.manejarError(error, res); }
+    }
+
     // ─── CITAS ────────────────────────────────────────────────────────
 
     // POST /citas — Paciente agenda una cita

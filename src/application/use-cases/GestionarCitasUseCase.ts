@@ -149,6 +149,117 @@ export class GestionarCitasUseCase {
     }
 
     // ===================================================================
+    // PÚBLICO: Solo los slots DISPONIBLES de un servicio para una fecha
+    // GET /servicios/:id/slots-disponibles?fecha=YYYY-MM-DD
+    // ===================================================================
+    async slotsDisponiblesParaServicio(servicioId: number, fecha: string): Promise<{
+        horaInicio: string;       // "HH:MM" (UTC 24h)
+        horaFin: string;          // "HH:MM" (UTC 24h)
+        horaInicioFormateada: string; // "10:00 a.m." estilo UI
+        horarioId: number;
+        horarioNombre: string | null;
+    }[]> {
+        this._validarFecha(fecha);
+
+        const { PrismaClient } = await import('@prisma/client');
+        const prisma = new PrismaClient();
+
+        try {
+            const servicio = await prisma.servicio.findUnique({
+                where: { id: servicioId },
+                include: {
+                    horarios: {
+                        where: { estado: 'Activo' },
+                        include: {
+                            horario: {
+                                include: { horarios_dias: { select: { dia_semana: true } } },
+                            },
+                        },
+                    },
+                },
+            });
+
+            if (!servicio || servicio.estado !== 'Activo') {
+                throw new Error('El servicio no existe o no está disponible.');
+            }
+
+            const fechaBase = new Date(`${fecha}T00:00:00.000Z`);
+            const diaRequerido = this._diaSemana(fechaBase);
+            const duracion = servicio.duracionMinutos ?? 30;
+
+            // Prefetch citas e inactividades del día completo
+            const diaFin = new Date(fechaBase.getTime() + 24 * 60 * 60 * 1000);
+            const citasDelDia = await this.citaRepo.obtenerCitasEnRango(servicio.doctorId, fechaBase, diaFin);
+            const inactividades = await this.inactividadRepo.buscarSolapantes(servicio.doctorId, fechaBase, diaFin);
+
+            // Helper: formato 12h "10:00 a.m." / "2:30 p.m."
+            const formatear12h = (hhmm: string): string => {
+                const [hh, mm] = hhmm.split(':').map(Number);
+                const periodo = hh < 12 ? 'a.m.' : 'p.m.';
+                const hora12 = hh % 12 === 0 ? 12 : hh % 12;
+                return `${hora12}:${mm.toString().padStart(2, '0')} ${periodo}`;
+            };
+
+            const disponibles: {
+                horaInicio: string;
+                horaFin: string;
+                horaInicioFormateada: string;
+                horarioId: number;
+                horarioNombre: string | null;
+            }[] = [];
+
+            for (const sh of servicio.horarios) {
+                const horario = sh.horario as any;
+                const diasDelHorario: number[] = horario.horarios_dias.map((d: any) => d.dia_semana);
+                if (!diasDelHorario.includes(diaRequerido)) continue;
+
+                const horaInicioRef = new Date(horario.horaInicio);
+                const horaFinRef = new Date(horario.horaFin);
+
+                let cursor = this._aplicarHoraEnFecha(fechaBase, horaInicioRef);
+                const limite = this._aplicarHoraEnFecha(fechaBase, horaFinRef);
+
+                while (cursor.getTime() + duracion * 60 * 1000 <= limite.getTime()) {
+                    const slotIni = cursor.getTime();
+                    const slotFin = slotIni + duracion * 60 * 1000;
+
+                    const conflictoCita = citasDelDia.some(c => {
+                        const cIni = new Date(c.fechaInicio).getTime();
+                        const cFin = c.fechaFin
+                            ? new Date(c.fechaFin).getTime()
+                            : cIni + duracion * 60 * 1000;
+                        return cIni < slotFin && cFin > slotIni;
+                    });
+
+                    const conflictoInac = inactividades.some(p => {
+                        const pIni = new Date(p.fechaInicio).getTime();
+                        const pFin = new Date(p.fechaFin).getTime();
+                        return pIni < slotFin && pFin > slotIni;
+                    });
+
+                    if (!conflictoCita && !conflictoInac) {
+                        const horaInicioStr = new Date(slotIni).toISOString().substring(11, 16);
+                        const horaFinStr = new Date(slotFin).toISOString().substring(11, 16);
+                        disponibles.push({
+                            horaInicio: horaInicioStr,
+                            horaFin: horaFinStr,
+                            horaInicioFormateada: formatear12h(horaInicioStr),
+                            horarioId: horario.id,
+                            horarioNombre: horario.nombre ?? null,
+                        });
+                    }
+
+                    cursor = new Date(slotFin);
+                }
+            }
+
+            return disponibles;
+        } finally {
+            await prisma.$disconnect();
+        }
+    }
+
+    // ===================================================================
     // PACIENTE: Agendar cita
     // ===================================================================
     async agendarCita(pacienteId: number, dto: CrearCitaDto): Promise<any> {
@@ -590,6 +701,162 @@ export class GestionarCitasUseCase {
         }
 
         return await this.inactividadRepo.cancelar(periodoId);
+    }
+
+    // ===================================================================
+    // PÚBLICO: Disponibilidad de un doctor — resumen por día
+    // GET /servicios/doctor/:doctorId/disponibilidad?dias=7&fechaInicio=YYYY-MM-DD
+    // ===================================================================
+    async disponibilidadDoctor(
+        doctorId: number,
+        dias: number,
+        fechaInicioStr?: string,
+    ): Promise<{
+        fecha: string;
+        diaSemana: string;
+        mes: string;
+        hayDisponibilidad: boolean;
+        totalSlotsLibres: number;
+    }[]> {
+        if (dias < 1 || dias > 30) {
+            throw new Error('El parámetro "dias" debe estar entre 1 y 30.');
+        }
+        if (fechaInicioStr) this._validarFecha(fechaInicioStr);
+
+        const { PrismaClient } = await import('@prisma/client');
+        const prisma = new PrismaClient();
+
+        try {
+            // 1. Verificar que el doctor existe
+            const doctor = await prisma.doctor.findUnique({ where: { usuarioId: doctorId } });
+            if (!doctor) throw new Error('El doctor no existe.');
+
+            // 2. Cargar todos los servicios activos con sus horarios
+            const servicios = await (prisma as any).servicio.findMany({
+                where: { doctorId, estado: 'Activo' },
+                include: {
+                    horarios: {
+                        where: { estado: 'Activo' },
+                        include: {
+                            horario: {
+                                include: { horarios_dias: { select: { dia_semana: true } } },
+                            },
+                        },
+                    },
+                },
+            });
+
+            // 3. Determinar rango de fechas completo
+            const hoy = fechaInicioStr
+                ? new Date(`${fechaInicioStr}T00:00:00.000Z`)
+                : new Date(new Date().toISOString().substring(0, 10) + 'T00:00:00.000Z');
+
+            const ultimoDia = new Date(hoy.getTime() + (dias - 1) * 24 * 60 * 60 * 1000);
+            const rangoFin = new Date(ultimoDia.getTime() + 24 * 60 * 60 * 1000); // día siguiente (exclusivo)
+
+            // 4. Prefetch: TODAS las citas del doctor en el rango (una sola query)
+            const todasLasCitas: any[] = await this.citaRepo.obtenerCitasEnRango(
+                doctorId,
+                hoy,
+                rangoFin,
+            );
+
+            // 5. Prefetch: TODOS los periodos de inactividad solapantes
+            const todasLasInactividades: any[] = await this.inactividadRepo.buscarSolapantes(
+                doctorId,
+                hoy,
+                rangoFin,
+            );
+
+            // Abreviaturas en español
+            const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+            const resultado: {
+                fecha: string;
+                diaSemana: string;
+                mes: string;
+                hayDisponibilidad: boolean;
+                totalSlotsLibres: number;
+            }[] = [];
+
+            // 6. Iterar día a día
+            for (let i = 0; i < dias; i++) {
+                const fechaBase = new Date(hoy.getTime() + i * 24 * 60 * 60 * 1000);
+                const fechaStr = fechaBase.toISOString().substring(0, 10);
+                const diaNum = fechaBase.getUTCDay();
+                const diaInicioMs = fechaBase.getTime();
+                const diaFinMs = diaInicioMs + 24 * 60 * 60 * 1000;
+
+                // Filtrar citas e inactividades solo de este día
+                const citasDelDia = todasLasCitas.filter(c => {
+                    const t = new Date(c.fechaInicio).getTime();
+                    return t >= diaInicioMs && t < diaFinMs;
+                });
+                const inactividadesDelDia = todasLasInactividades.filter(p => {
+                    const ini = new Date(p.fechaInicio).getTime();
+                    const fin = new Date(p.fechaFin).getTime();
+                    return ini < diaFinMs && fin > diaInicioMs;
+                });
+
+                let totalLibres = 0;
+
+                for (const servicio of servicios) {
+                    const duracion: number = servicio.duracionMinutos ?? 30;
+
+                    for (const sh of servicio.horarios) {
+                        const horario = sh.horario as any;
+                        const dias_horario: number[] = horario.horarios_dias.map((d: any) => d.dia_semana);
+                        if (!dias_horario.includes(diaNum)) continue;
+
+                        const horaInicioRef = new Date(horario.horaInicio);
+                        const horaFinRef = new Date(horario.horaFin);
+
+                        let cursor = this._aplicarHoraEnFecha(fechaBase, horaInicioRef);
+                        const limite = this._aplicarHoraEnFecha(fechaBase, horaFinRef);
+
+                        while (cursor.getTime() + duracion * 60 * 1000 <= limite.getTime()) {
+                            const slotIni = cursor.getTime();
+                            const slotFin = slotIni + duracion * 60 * 1000;
+
+                            // Verificar conflicto con citas (del día ya filtrado)
+                            const conflictoCita = citasDelDia.some(c => {
+                                const cIni = new Date(c.fechaInicio).getTime();
+                                const cFin = c.fechaFin
+                                    ? new Date(c.fechaFin).getTime()
+                                    : cIni + duracion * 60 * 1000;
+                                return cIni < slotFin && cFin > slotIni;
+                            });
+
+                            // Verificar conflicto con inactividades (del día ya filtrado)
+                            const conflictoInac = inactividadesDelDia.some(p => {
+                                const pIni = new Date(p.fechaInicio).getTime();
+                                const pFin = new Date(p.fechaFin).getTime();
+                                return pIni < slotFin && pFin > slotIni;
+                            });
+
+                            if (!conflictoCita && !conflictoInac) {
+                                totalLibres++;
+                            }
+
+                            cursor = new Date(slotFin);
+                        }
+                    }
+                }
+
+                resultado.push({
+                    fecha: fechaStr,
+                    diaSemana: DIAS_SEMANA[diaNum],
+                    mes: MESES[fechaBase.getUTCMonth()],
+                    hayDisponibilidad: totalLibres > 0,
+                    totalSlotsLibres: totalLibres,
+                });
+            }
+
+            return resultado;
+        } finally {
+            await prisma.$disconnect();
+        }
     }
 
     // ===================================================================

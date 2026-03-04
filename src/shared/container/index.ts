@@ -37,6 +37,7 @@ import { ICondicionMedicaRepository } from '../../domain/repositories/ICondicion
 import { ISeguroMedicoRepository } from '../../domain/repositories/ISeguroMedicoRepository';
 import { ITipoSeguroRepository } from '../../domain/repositories/ITipoSeguroRepository';
 import { IServicioRepository } from '../../domain/repositories/IServicioRepository';
+import { IFavoritoRepository } from '../../domain/repositories/IFavoritoRepository';
 
 
 // Implementaciones
@@ -70,6 +71,7 @@ import { PrismaCondicionMedicaRepository } from '../../infrastructure/repositori
 import { PrismaSeguroMedicoRepository } from '../../infrastructure/repositories/PrismaSeguroMedicoRepository';
 import { PrismaTipoSeguroRepository } from '../../infrastructure/repositories/PrismaTipoSeguroRepository';
 import { PrismaServicioRepository } from '../../infrastructure/repositories/PrismaServicioRepository';
+import { PrismaFavoritoRepository } from '../../infrastructure/repositories/PrismaFavoritoRepository';
 
 
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
@@ -145,6 +147,7 @@ import { EliminarCuentaUseCase } from '../../application/use-cases/EliminarCuent
 import { CentrosSaludController } from '../../infrastructure/http/controllers/CentrosSaludController';
 import { GestionarCondicionesMedicasUseCase } from '../../application/use-cases/GestionarCondicionesMedicasUseCase';
 import { GestionarServiciosUseCase } from '../../application/use-cases/GestionarServiciosUseCase';
+import { GestionarFavoritosUseCase } from '../../application/use-cases/GestionarFavoritosUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 // Registrar PrismaClient como singleton
@@ -602,6 +605,24 @@ container.register<IServicioRepository>(
     }
   }
 );
+
+container.register<IFavoritoRepository>(
+  'FavoritoRepository',
+  {
+    useFactory: () => {
+      const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+      return new PrismaFavoritoRepository(prismaClient);
+    }
+  }
+);
+
+container.register(GestionarFavoritosUseCase, {
+  useFactory: () => {
+    const favRepo = container.resolve<IFavoritoRepository>('FavoritoRepository');
+    const doctorRepo = container.resolve<IDoctorRepository>('DoctorRepository');
+    return new GestionarFavoritosUseCase(favRepo, doctorRepo);
+  }
+});
 
 
 // ===== REGISTRAR USE CASES =====

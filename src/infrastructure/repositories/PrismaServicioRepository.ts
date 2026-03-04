@@ -689,8 +689,9 @@ export class PrismaServicioRepository implements IServicioRepository {
         lat: number,
         lng: number,
         radioKm: number,
-        filtros?: FiltrosCercania
-    ): Promise<(Servicio & { distanciaMetros: number })[]> {
+        filtros?: FiltrosCercania,
+        pacienteId?: number
+    ): Promise<(Servicio & { distanciaMetros: number; doctorEsFavorito: boolean })[]> {
         const radioMetros = radioKm * 1000;
 
         // Construir cláusulas de filtros opcionales en SQL
@@ -760,7 +761,17 @@ export class PrismaServicioRepository implements IServicioRepository {
         await this._enrichUbicacionesConCoordenadas(serviciosRaw);
         await this._enrichSeccionesConMunicipio(serviciosRaw);
 
-        // Mapear, preservar orden y adjuntar distanciaMetros
+        // Obtener IDs de doctores favoritos del paciente (si aplica)
+        let favoritosSet = new Set<number>();
+        if (pacienteId) {
+            const favRows = await p.doctorFavorito.findMany({
+                where: { pacienteId, estado: 'Activo' },
+                select: { doctorId: true }
+            });
+            favoritosSet = new Set(favRows.map((f: any) => f.doctorId));
+        }
+
+        // Mapear, preservar orden y adjuntar distanciaMetros + doctorEsFavorito
         const serviciosMap = new Map<number, any>();
         for (const s of serviciosRaw) serviciosMap.set(s.id, s);
 
@@ -768,10 +779,11 @@ export class PrismaServicioRepository implements IServicioRepository {
             .map(id => {
                 const raw = serviciosMap.get(id);
                 if (!raw) return null;
-                const servicio = this.mapToDomainCompleto(raw) as Servicio & { distanciaMetros: number };
+                const servicio = this.mapToDomainCompleto(raw) as Servicio & { distanciaMetros: number; doctorEsFavorito: boolean };
                 servicio.distanciaMetros = Math.round(distanciaMap.get(id)!);
+                servicio.doctorEsFavorito = favoritosSet.has(raw.doctorId);
                 return servicio;
             })
-            .filter((s): s is Servicio & { distanciaMetros: number } => s !== null);
+            .filter((s): s is Servicio & { distanciaMetros: number; doctorEsFavorito: boolean } => s !== null);
     }
 }

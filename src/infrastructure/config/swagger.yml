@@ -72,6 +72,8 @@ tags:
     description: Endpoints para gestionar servicios médicos ofrecidos por doctores (CRUD, imágenes, desactivación)
   - name: Reseñas
     description: Sistema de calificaciones y comentarios que los pacientes dejan sobre los servicios médicos
+  - name: Favoritos
+    description: Permite a los pacientes marcar y gestionar sus doctores favoritos
   - name: Media
     description: Gestión de archivos multimedia (imágenes, audios, videos, documentos, ZIP) para el chat y otros módulos
   - name: WebSocket Chat
@@ -14002,206 +14004,6 @@ paths:
         '200':
           description: Mensaje eliminado exitosamente
 
-
-  # ==========================================
-  # WEBSOCKET CHAT — EVENTOS EN TIEMPO REAL
-  # ==========================================
-  # Nota: Los eventos WebSocket no son rutas HTTP estándar.
-  # Esta sección los documenta como referencia para el frontend.
-
-  /ws/chat/eventos/emitidos-por-cliente:
-    get:
-      summary: "[WS] Eventos que el CLIENTE emite al servidor"
-      tags:
-        - WebSocket Chat
-      description: |
-        Referencia de todos los eventos que el cliente debe emitir via Socket.IO.
-
-        ---
-        ### `unirse-conversacion`
-        Unirse a la sala de una conversación.
-        ```json
-        socket.emit('unirse-conversacion', conversacionId: number)
-        ```
-
-        ---
-        ### `salir-conversacion`
-        Salir de la sala de una conversación.
-        ```json
-        socket.emit('salir-conversacion', conversacionId: number)
-        ```
-
-        ---
-        ### `usuario-escribiendo`
-        Notificar que el usuario está escribiendo en una conversación.
-        ```json
-        socket.emit('usuario-escribiendo', {
-          conversacionId: number,
-          nombre: string
-        })
-        ```
-
-        ---
-        ### `usuario-dejo-escribir`
-        Notificar que el usuario dejó de escribir.
-        ```json
-        socket.emit('usuario-dejo-escribir', {
-          conversacionId: number
-        })
-        ```
-
-        ---
-        ### `mensajes-leidos`
-        Notificar que el usuario leyó mensajes hasta un punto específico.
-        ```json
-        socket.emit('mensajes-leidos', {
-          conversacionId: number,
-          usuarioId: number,
-          ultimoMensajeLeidoId: number
-        })
-        ```
-      responses:
-        '200':
-          description: (Solo referencia — no es un endpoint HTTP real)
-
-  /ws/chat/eventos/emitidos-por-servidor:
-    get:
-      summary: "[WS] Eventos que el SERVIDOR emite al cliente"
-      tags:
-        - WebSocket Chat
-      description: |
-        Referencia de todos los eventos que el servidor emite via Socket.IO.
-
-        ---
-        ### `nuevo-mensaje`
-        Nuevo mensaje en una conversación. Se recibe en la sala `conversacion:{id}` y en `usuario:{id}`.
-        ```json
-        {
-          id: number,
-          conversacionId: number,
-          remitenteId: number,
-          contenido: string,
-          tipo: 'Texto' | 'Imagen' | 'Video' | 'Audio' | 'Archivo',
-          enviadoEn: string  // ISO 8601
-        }
-        ```
-
-        ---
-        ### `mensaje-editado`
-        El remitente editó un mensaje existente.
-        ```json
-        {
-          id: number,
-          conversacionId: number,
-          contenido: string,
-          editadoEn: string
-        }
-        ```
-
-        ---
-        ### `mensaje-eliminado`
-        Un mensaje fue eliminado (soft delete).
-        ```json
-        {
-          conversacionId: number,
-          mensajeId: number
-        }
-        ```
-
-        ---
-        ### `usuario-escribiendo`
-        Otro participante está escribiendo en la conversación.
-        ```json
-        {
-          conversacionId: number,
-          usuarioId: number,
-          nombre: string
-        }
-        ```
-
-        ---
-        ### `usuario-dejo-escribir`
-        Otro participante dejó de escribir.
-        ```json
-        {
-          conversacionId: number,
-          usuarioId: number
-        }
-        ```
-
-        ---
-        ### `mensajes-leidos`
-        El otro participante marcó mensajes como leídos.
-        ```json
-        {
-          conversacionId: number,
-          usuarioId: number,
-          ultimoMensajeLeidoId: number
-        }
-        ```
-
-        ---
-        ### `nueva-conversacion`
-        Se creó una nueva conversación con el usuario. Se recibe en `usuario:{id}`.
-        ```json
-        {
-          id: number,
-          emisorId: number,
-          receptorId: number,
-          estado: string,
-          creadoEn: string
-        }
-        ```
-
-        ---
-        ### `conversacion-actualizada`
-        Una conversación del usuario fue modificada (silenciada, archivada, etc.).
-        ```json
-        {
-          id: number,
-          estado: string,
-          silenciado: boolean,
-          actualizadoEn: string
-        }
-        ```
-
-        ---
-        ### `contador-no-leidos-conversacion`
-        Actualización del contador de mensajes no leídos. Se recibe en `usuario:{id}`.
-        ```json
-        {
-          conversacionId: number,
-          contador: number
-        }
-        ```
-
-        ---
-        ### `usuario-conectado` 🆕
-        Un usuario con el que tienes una conversación activa acaba de conectarse.
-        Solo se emite a los participantes de conversaciones `Activa` con ese usuario.
-        Se recibe en `usuario:{id}`.
-        ```json
-        {
-          usuarioId: number,
-          timestamp: string  // ISO 8601
-        }
-        ```
-
-        ---
-        ### `usuario-desconectado` 🆕
-        Un usuario con el que tienes una conversación activa se desconectó completamente
-        (cerró todas sus pestañas/dispositivos). Se recibe en `usuario:{id}`.
-        ```json
-        {
-          usuarioId: number,
-          timestamp: string  // ISO 8601
-        }
-        ```
-      responses:
-        '200':
-          description: (Solo referencia — no es un endpoint HTTP real)
-
-
   /seguros:
     post:
       tags:
@@ -15163,6 +14965,12 @@ paths:
                               type: integer
                               description: Distancia en metros desde el punto de referencia
                               example: 1250
+                            doctorEsFavorito:
+                              type: boolean
+                              description: |
+                                Indica si el doctor que ofrece este servicio está marcado como favorito
+                                por el paciente autenticado. Siempre `false` para usuarios no-Paciente.
+                              example: true
         '400':
           description: |
             Parámetros inválidos. Posibles causas:
@@ -15362,6 +15170,236 @@ paths:
           description: No autenticado
         '404':
           description: Servicio no encontrado
+
+  /servicios/{id}/slots-disponibles:
+    get:
+      summary: Slots disponibles de un servicio (solo los libres)
+      tags:
+        - Servicios
+        - Citas
+      description: |
+        Devuelve **únicamente los horarios disponibles** de un servicio para una fecha dada,
+        listos para mostrar como botones/pills en la UI (ej: `10:00 a.m.`, `10:30 a.m.`, …).
+
+        A diferencia de `GET /servicios/{id}/slots` que devuelve todos los slots con
+        `disponible: true/false`, este endpoint solo retorna los que están libres.
+
+        - Divide el rango `horaInicio–horaFin` del horario en franjas de `duracionMinutos`.
+        - Excluye slots con conflicto de citas o periodo de inactividad del doctor.
+        - Incluye la hora formateada en 12h para uso directo en el frontend.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=horarioNombre` para traducir nombres del horario.
+
+        **Acceso:** Paciente, Doctor, Administrador
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del servicio
+          schema:
+            type: integer
+          example: 1
+        - name: fecha
+          in: query
+          required: true
+          description: Fecha en formato YYYY-MM-DD
+          schema:
+            type: string
+          example: "2026-03-10"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "horarioNombre"
+          description: Campos a traducir separados por coma
+      responses:
+        '200':
+          description: Lista de slots disponibles obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  servicioId:
+                    type: integer
+                    example: 1
+                  fecha:
+                    type: string
+                    example: "2026-03-10"
+                  total:
+                    type: integer
+                    description: Cantidad de slots disponibles
+                    example: 12
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        horaInicio:
+                          type: string
+                          description: Hora de inicio en formato HH:MM UTC (24h)
+                          example: "10:00"
+                        horaFin:
+                          type: string
+                          description: Hora de fin en formato HH:MM UTC (24h)
+                          example: "10:30"
+                        horaInicioFormateada:
+                          type: string
+                          description: Hora de inicio en formato 12h para la UI
+                          example: "10:00 a.m."
+                        horarioId:
+                          type: integer
+                          example: 2
+                        horarioNombre:
+                          type: string
+                          nullable: true
+                          example: "Turno Mañana"
+        '400':
+          description: ID inválido o fecha faltante/incorrecta
+        '401':
+          description: No autenticado
+        '404':
+          description: Servicio no encontrado o inactivo
+
+  /servicios/doctor/{doctorId}/disponibilidad:
+    get:
+      summary: Disponibilidad del doctor por días
+      tags:
+        - Servicios
+        - Citas
+      description: |
+        Retorna un **resumen de disponibilidad día a día** para todos los servicios activos
+        de un doctor. Por cada día informa si hay al menos un slot libre y cuántos slots
+        libres hay en total (sumando todos sus servicios y horarios).
+
+        Ideal para mostrar un selector tipo calendario como:
+        ```
+        Mar Oct 28  |  Mié Oct 29  |  Jue Oct 30  |  ...
+        Sin citas   |  Sin citas   |  2 disponibles
+        ```
+
+        - Tiene en cuenta citas ya programadas y periodos de inactividad del doctor.
+        - Una sola query de citas y una de inactividad para todo el rango (sin N+1).
+
+        **Acceso:** Paciente, Doctor, Administrador
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          description: ID del doctor (usuarioId)
+          schema:
+            type: integer
+          example: 12
+        - name: dias
+          in: query
+          required: false
+          description: Cuántos días mostrar desde `fechaInicio` (1–30, default 7)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 30
+            default: 7
+          example: 5
+        - name: fechaInicio
+          in: query
+          required: false
+          description: Día de inicio en formato YYYY-MM-DD (default hoy UTC)
+          schema:
+            type: string
+          example: "2026-03-04"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "diaSemana,mes"
+          description: Campos a traducir separados por coma
+      responses:
+        '200':
+          description: Resumen de disponibilidad por día obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  doctorId:
+                    type: integer
+                    example: 12
+                  dias:
+                    type: integer
+                    example: 7
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        fecha:
+                          type: string
+                          description: Fecha en formato YYYY-MM-DD
+                          example: "2026-03-04"
+                        diaSemana:
+                          type: string
+                          description: Abreviatura del día en español
+                          example: "Mar"
+                        mes:
+                          type: string
+                          description: Abreviatura del mes en español
+                          example: "Mar"
+                        hayDisponibilidad:
+                          type: boolean
+                          description: true si hay al menos un slot libre ese día
+                          example: true
+                        totalSlotsLibres:
+                          type: integer
+                          description: Slots libres sumando todos los servicios del doctor
+                          example: 4
+        '400':
+          description: Parámetros inválidos (doctorId, dias o fechaInicio incorrectos)
+        '401':
+          description: No autenticado
+        '404':
+          description: Doctor no encontrado
 
   /servicios/{id}:
     get:
@@ -16906,6 +16944,177 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  # ================================================================
+  # FAVORITOS
+  # ================================================================
+
+  /favoritos:
+    get:
+      summary: Listar mis doctores favoritos
+      tags:
+        - Favoritos
+      description: |
+        Devuelve la lista de doctores que el paciente autenticado ha marcado como favoritos,
+        incluyendo datos básicos del doctor (nombre, foto, especialidades, calificación).
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=especialidades` para traducir campos.
+
+        **Acceso:** Solo Paciente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "especialidades"
+          description: Campos a traducir separados por coma
+      responses:
+        '200':
+          description: Lista de doctores favoritos obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  total:
+                    type: integer
+                    example: 2
+                    description: Cantidad de favoritos activos
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DoctorFavorito'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso denegado (solo Paciente)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /favoritos/{doctorId}:
+    post:
+      summary: Agregar doctor a favoritos
+      tags:
+        - Favoritos
+      description: |
+        El paciente autenticado marca un doctor como favorito.
+
+        - Si ya está en favoritos devuelve `409 Conflict`.
+        - Si el doctor estaba en favoritos pero fue eliminado previamente, lo reactiva.
+
+        **Acceso:** Solo Paciente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del doctor a favoritar (usuarioId del doctor)
+          example: 12
+      responses:
+        '201':
+          description: Doctor agregado a favoritos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  mensaje:
+                    type: string
+                    example: Doctor agregado a favoritos exitosamente
+                  data:
+                    $ref: '#/components/schemas/DoctorFavorito'
+        '400':
+          description: doctorId inválido
+        '401':
+          description: No autenticado
+        '403':
+          description: Acceso denegado (solo Paciente)
+        '404':
+          description: Doctor no encontrado
+        '409':
+          description: El doctor ya está en la lista de favoritos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Eliminar doctor de favoritos
+      tags:
+        - Favoritos
+      description: |
+        El paciente autenticado elimina un doctor de su lista de favoritos (soft-delete).
+
+        **Acceso:** Solo Paciente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del doctor a eliminar de favoritos
+          example: 12
+      responses:
+        '200':
+          description: Doctor eliminado de favoritos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  mensaje:
+                    type: string
+                    example: Doctor eliminado de favoritos exitosamente
+        '400':
+          description: doctorId inválido
+        '401':
+          description: No autenticado
+        '403':
+          description: Acceso denegado (solo Paciente)
+        '404':
+          description: El doctor no está en la lista de favoritos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     # ─── Media ───────────────────────────────────────────────────────────────
@@ -16956,6 +17165,61 @@ components:
         esDocumento:
           type: boolean
           example: false
+
+    # ─── Favoritos ───────────────────────────────────────────────────────────
+    DoctorFavorito:
+      type: object
+      description: Entrada de doctor favorito de un paciente, incluyendo datos básicos del doctor.
+      properties:
+        pacienteId:
+          type: integer
+          example: 5
+        doctorId:
+          type: integer
+          example: 12
+        agregadoEn:
+          type: string
+          format: date-time
+          example: "2026-03-04T13:00:00Z"
+        estado:
+          type: string
+          enum: [Activo, Inactivo]
+          example: Activo
+        doctor:
+          type: object
+          nullable: true
+          properties:
+            usuarioId:
+              type: integer
+              example: 12
+            nombre:
+              type: string
+              example: "Juan"
+            apellido:
+              type: string
+              example: "García"
+            fotoPerfil:
+              type: string
+              nullable: true
+              example: "https://cdn.example.com/fotos/doctor.jpg"
+            calificacionPromedio:
+              type: number
+              nullable: true
+              example: 4.8
+            especialidades:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  nombre:
+                    type: string
+                    example: "Cardiología"
+                  esPrincipal:
+                    type: boolean
+                    example: true
 
     # ─── Reseñas ─────────────────────────────────────────────────────────────
     Resena:

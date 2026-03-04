@@ -197,8 +197,9 @@ export class GestionarServiciosUseCase {
         lat: number,
         lng: number,
         radioKm: number,
-        filtros?: FiltrosCercania
-    ): Promise<(Servicio & { distanciaMetros: number })[]> {
+        filtros?: FiltrosCercania,
+        pacienteId?: number
+    ): Promise<(Servicio & { distanciaMetros: number; doctorEsFavorito: boolean })[]> {
         if (isNaN(lat) || lat < -90 || lat > 90) {
             throw new Error('La latitud debe ser un número entre -90 y 90');
         }
@@ -208,6 +209,6 @@ export class GestionarServiciosUseCase {
         if (isNaN(radioKm) || radioKm < 0 || radioKm > 15) {
             throw new Error('El radio debe ser un número entre 0 y 15 km');
         }
-        return this.servicioRepository.buscarCercanos(lat, lng, radioKm, filtros);
+        return this.servicioRepository.buscarCercanos(lat, lng, radioKm, filtros, pacienteId);
     }
 }

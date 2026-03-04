@@ -35,6 +35,7 @@ import DoctorIdiomasRoutes from './DoctorIdiomasRoutes';
 import CitasRoutes from './CitasRoutes';
 import ResenasRoutes from './ResenasRoutes';
 import MediaRoutes from './MediaRoutes';
+import FavoritosRoutes from './FavoritosRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -139,6 +140,9 @@ router.use('/citas', CitasRoutes);
 
 // Rutas de Reseñas
 router.use('/resenas', ResenasRoutes);
+
+// Rutas de Favoritos
+router.use('/favoritos', FavoritosRoutes);
 
 // Rutas de Media (archivos para el chat)
 router.use('/media', MediaRoutes);

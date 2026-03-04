@@ -97,6 +97,32 @@ router.get(
 
 
 /**
+ * @route GET /servicios/doctor/:doctorId/disponibilidad
+ * @description Resumen de disponibilidad por día para todos los servicios del doctor
+ * @access Paciente, Doctor, Administrador
+ * IMPORTANTE: debe ir antes de /:id
+ */
+router.get(
+    '/doctor/:doctorId/disponibilidad',
+    requireRole('Paciente', 'Doctor', 'Administrador'),
+    translationMiddleware,
+    (req, res) => container.resolve(CitaController).disponibilidadDoctor(req, res)
+);
+
+/**
+ * @route GET /servicios/:id/slots-disponibles
+ * @description Retorna solo los slots disponibles de un servicio en una fecha (sin los ocupados)
+ * @access Paciente, Doctor, Administrador
+ * IMPORTANTE: debe ir antes de /:id
+ */
+router.get(
+    '/:id/slots-disponibles',
+    requireRole('Paciente', 'Doctor', 'Administrador'),
+    translationMiddleware,
+    (req, res) => container.resolve(CitaController).slotsDisponiblesParaServicio(req, res)
+);
+
+/**
  * @route GET /servicios/:id/slots
  * @description Consulta los slots de disponibilidad de un servicio en una fecha (YYYY-MM-DD)
  * @access Paciente, Doctor, Administrador

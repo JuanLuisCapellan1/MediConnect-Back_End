@@ -43,8 +43,9 @@ export interface IServicioRepository {
         lat: number,
         lng: number,
         radioKm: number,
-        filtros?: FiltrosCercania
-    ): Promise<(Servicio & { distanciaMetros: number })[]>;
+        filtros?: FiltrosCercania,
+        pacienteId?: number
+    ): Promise<(Servicio & { distanciaMetros: number; doctorEsFavorito: boolean })[]>;
 
     actualizar(
         id: number,
