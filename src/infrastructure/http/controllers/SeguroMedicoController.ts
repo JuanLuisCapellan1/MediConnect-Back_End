@@ -14,6 +14,7 @@ import { EliminarMiSeguroUseCase } from '../../../application/use-cases/seguros/
 import { AgregarSeguroDoctorUseCase } from '../../../application/use-cases/seguros/AgregarSeguroDoctorUseCase';
 import { ObtenerSegurosAceptadosUseCase } from '../../../application/use-cases/seguros/ObtenerSegurosAceptadosUseCase';
 import { EliminarSeguroAceptadoUseCase } from '../../../application/use-cases/seguros/EliminarSeguroAceptadoUseCase';
+import { ObtenerSegurosPopularesUseCase } from '../../../application/use-cases/seguros/ObtenerSegurosPopularesUseCase';
 
 // DTOs
 import {
@@ -331,5 +332,40 @@ export class SeguroMedicoController {
             success: false,
             message: 'Error interno del servidor',
         });
+    }
+
+    // ============================================
+    // Rankings
+    // ============================================
+
+    /**
+     * GET /api/seguros/mas-utilizados
+     * Devuelve los seguros más utilizados por pacientes, ordenados por popularidad.
+     * Accesible por cualquier usuario autenticado.
+     */
+    async masUtilizados(req: Request, res: Response): Promise<void> {
+        try {
+            const limite = req.query.limite ? parseInt(req.query.limite as string) : 10;
+
+            if (isNaN(limite) || limite < 1) {
+                res.status(400).json({
+                    success: false,
+                    message: 'El parámetro “limite” debe ser un número positivo',
+                });
+                return;
+            }
+
+            const useCase = container.resolve(ObtenerSegurosPopularesUseCase);
+            const ranking = await useCase.ejecutar(limite);
+
+            res.status(200).json({
+                success: true,
+                mensaje: 'Seguros más utilizados obtenidos exitosamente',
+                total: ranking.length,
+                data: ranking,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
     }
 }

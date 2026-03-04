@@ -55,6 +55,16 @@ routerSeguros.get(
     (req, res) => controller.obtenerSegurosDisponibles(req, res)
 );
 
+/**
+ * GET /api/seguros/mas-utilizados
+ * Ver el ranking de los seguros más utilizados por pacientes (cualquier usuario autenticado)
+ */
+routerSeguros.get(
+    '/mas-utilizados',
+    autenticarJWT,
+    (req, res) => controller.masUtilizados(req, res)
+);
+
 // ============================================
 // Público - Ver seguros aceptados de un doctor
 // IMPORTANTE: antes de /mis-seguros y /seguros-aceptados para evitar conflictos

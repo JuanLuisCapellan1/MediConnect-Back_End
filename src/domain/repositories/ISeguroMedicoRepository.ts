@@ -41,4 +41,5 @@ export interface ISeguroMedicoRepository {
     // Utilidades
     // ============================================
     existeNombre(nombre: string, excluirId?: number): Promise<boolean>;
+    obtenerMasUtilizadosPorPacientes(limite?: number): Promise<any[]>;
 }

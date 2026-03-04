@@ -273,6 +273,41 @@ export class PrismaSeguroMedicoRepository implements ISeguroMedicoRepository {
         return count > 0;
     }
 
+    /**
+     * Devuelve los seguros más utilizados por pacientes (con estado Activo),
+     * ordenados de mayor a menor número de pacientes activos.
+     */
+    async obtenerMasUtilizadosPorPacientes(limite: number = 10): Promise<any[]> {
+        // Agrupar por seguroId y contar pacientes activos
+        const grupos = await this.prisma.pacienteSeguro.groupBy({
+            by: ['seguroId'],
+            where: { estado: 'Activo' },
+            _count: { seguroId: true },
+            orderBy: { _count: { seguroId: 'desc' } },
+            take: limite,
+        });
+
+        if (grupos.length === 0) return [];
+
+        // Obtener los datos completos de cada seguro
+        const seguroIds = grupos.map(g => g.seguroId);
+        const seguros = await this.prisma.seguroMedico.findMany({
+            where: { id: { in: seguroIds } },
+        });
+
+        // Mapear manteniendo el orden del ranking
+        return grupos.map(grupo => {
+            const seguro = seguros.find(s => s.id === grupo.seguroId)!;
+            return {
+                id: seguro.id,
+                nombre: seguro.nombre,
+                urlImage: seguro.urlImage,
+                estado: seguro.estado,
+                totalPacientes: grupo._count.seguroId,
+            };
+        });
+    }
+
     // ============================================
     // Mappers
     // ============================================

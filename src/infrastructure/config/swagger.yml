@@ -14288,6 +14288,74 @@ paths:
         '200':
           description: Seguros disponibles obtenidos exitosamente
 
+  /seguros/mas-utilizados:
+    get:
+      tags:
+        - Seguros
+      summary: Seguros más utilizados por pacientes
+      description: |-
+        Devuelve el ranking de los seguros médicos más utilizados por pacientes activos,
+        ordenados de mayor a menor número de pacientes. Útil para que doctores y administradores
+        conozcan cuáles son los seguros con mayor demanda.
+
+        **Acceso:** Cualquier usuario autenticado (Paciente, Doctor, Administrador)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limite
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+          description: "Número máximo de seguros a retornar (default: 10, max: 50)"
+          example: 10
+      responses:
+        '200':
+          description: Ranking obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  mensaje:
+                    type: string
+                    example: "Seguros más utilizados obtenidos exitosamente"
+                  total:
+                    type: integer
+                    example: 5
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 3
+                        nombre:
+                          type: string
+                          example: "ARS Humano"
+                        urlImage:
+                          type: string
+                          nullable: true
+                          example: "https://example.com/logo.png"
+                        estado:
+                          type: string
+                          example: "Activo"
+                        totalPacientes:
+                          type: integer
+                          description: Número de pacientes activos con este seguro
+                          example: 42
+        '400':
+          description: Parámetro 'limite' inválido
+        '401':
+          description: No autenticado
+
   /seguros/mis-seguros:
     post:
       tags:
