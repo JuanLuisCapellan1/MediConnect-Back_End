@@ -178,7 +178,15 @@ export class PrismaServicioRepository implements IServicioRepository {
             where: { id },
             include: {
                 imagenes: { where: { estado: 'Activo' }, orderBy: { orden: 'asc' } },
-                doctor: { include: { usuario: { select: { id: true, email: true, fotoPerfil: true } } } },
+                doctor: {
+                    include: {
+                        usuario: { select: { id: true, email: true, fotoPerfil: true } },
+                        idiomas: {
+                            where: { estado: 'Activo' },
+                            select: { id: true, nombre: true, nivel: true }
+                        }
+                    }
+                },
                 especialidad: true,
                 servicios_ubicaciones: UBICACIONES_INCLUDE,
                 servicios_centros_salud: CENTROS_INCLUDE,
@@ -490,6 +498,15 @@ export class PrismaServicioRepository implements IServicioRepository {
     private _listInclude() {
         return {
             imagenes: { where: { estado: 'Activo' }, orderBy: { orden: 'asc' }, take: 1 },
+            doctor: {
+                include: {
+                    usuario: { select: { id: true, email: true, fotoPerfil: true } },
+                    idiomas: {
+                        where: { estado: 'Activo' },
+                        select: { id: true, nombre: true, nivel: true }
+                    }
+                }
+            },
             especialidad: { select: { id: true, nombre: true } },
             servicios_ubicaciones: UBICACIONES_INCLUDE,
             servicios_centros_salud: {

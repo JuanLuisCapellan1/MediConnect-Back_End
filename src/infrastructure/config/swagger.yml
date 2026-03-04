@@ -14312,6 +14312,28 @@ paths:
             maximum: 50
           description: "Número máximo de seguros a retornar (default: 10, max: 50)"
           example: 10
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: "Campos a traducir separados por comas. Campo disponible: `nombre`"
       responses:
         '200':
           description: Ranking obtenido exitosamente

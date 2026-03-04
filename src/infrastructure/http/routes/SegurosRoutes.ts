@@ -62,6 +62,7 @@ routerSeguros.get(
 routerSeguros.get(
     '/mas-utilizados',
     autenticarJWT,
+    translationMiddleware,
     (req, res) => controller.masUtilizados(req, res)
 );
 
