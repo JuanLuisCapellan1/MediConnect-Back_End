@@ -42,4 +42,17 @@ export interface ISeguroMedicoRepository {
     // ============================================
     existeNombre(nombre: string, excluirId?: number): Promise<boolean>;
     obtenerMasUtilizadosPorPacientes(limite?: number): Promise<any[]>;
+    verificarCompatibilidadSeguro(
+        seguroId: number,
+        tipoSeguroId: number,
+        doctorId: number,
+        pacienteId: number,
+    ): Promise<{
+        seguroNombre: string;
+        tipoSeguroNombre: string;
+        doctorAcepta: boolean;
+        pacienteTiene: boolean;
+        compatible: boolean;
+        mensaje: string;
+    }>;
 }

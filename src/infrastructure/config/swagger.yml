@@ -14455,6 +14455,116 @@ paths:
         '401':
           description: No autenticado
 
+  /seguros/verificar-compatibilidad/{seguroId}/{tipoSeguroId}/doctor/{doctorId}:
+    get:
+      tags:
+        - Seguros
+      summary: Verificar compatibilidad de seguro con un doctor
+      description: |
+        Verifica si un seguro específico (por `seguroId` + `tipoSeguroId`) es compatible entre el doctor y el **paciente autenticado**.
+
+        Comprueba simultáneamente:
+        - ✅ **doctorAcepta**: el doctor tiene activo ese seguro + plan
+        - ✅ **pacienteTiene**: el paciente autenticado tiene activo ese seguro + plan
+        - ✅ **compatible**: ambas condiciones son verdaderas
+
+        Para obtener los IDs disponibles:
+        - `GET /api/seguros/disponibles` → lista de `seguroId`
+        - `GET /api/tipos-seguros/disponibles` → lista de `tipoSeguroId`
+
+        **Acceso:** Paciente autenticado (se identifica por JWT).
+
+        **Traducción Automática:**
+        El campo `mensaje` puede traducirse usando `target` y `translate_fields=mensaje`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: seguroId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del seguro médico (ej: ARS Humano)
+          example: 2
+        - name: tipoSeguroId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del tipo/plan de seguro (ej: Plan Familiar)
+          example: 1
+        - name: doctorId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: usuarioId del doctor a verificar
+          example: 6
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Idioma destino para traducción automática (ej: 'en', 'fr')"
+          example: "en"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          description: Idioma origen para traducción automática
+          example: "es"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Campos a traducir separados por comas. Campo disponible: `mensaje`"
+          example: "mensaje"
+      responses:
+        '200':
+          description: Resultado de la verificación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Compatible: el doctor acepta y el paciente tiene el seguro "ARS Humano" (plan: Plan Familiar).'
+                  data:
+                    type: object
+                    properties:
+                      seguroNombre:
+                        type: string
+                        example: "ARS Humano"
+                      tipoSeguroNombre:
+                        type: string
+                        example: "Plan Familiar"
+                      doctorAcepta:
+                        type: boolean
+                        description: El doctor tiene activo ese seguro + plan
+                        example: true
+                      pacienteTiene:
+                        type: boolean
+                        description: El paciente autenticado tiene activo ese seguro + plan
+                        example: true
+                      compatible:
+                        type: boolean
+                        description: true solo si doctorAcepta y pacienteTiene son ambos true
+                        example: true
+                      mensaje:
+                        type: string
+                        example: 'Compatible: el doctor acepta y el paciente tiene el seguro "ARS Humano" (plan: Plan Familiar).'
+        '400':
+          description: ID de seguro, tipoSeguro o doctor inválido — o el seguro / tipo de seguro no existe
+        '401':
+          description: No autenticado
+
   /seguros/seguros-aceptados:
     post:
       tags:

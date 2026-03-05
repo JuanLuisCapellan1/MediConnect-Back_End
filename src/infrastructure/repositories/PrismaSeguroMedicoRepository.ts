@@ -308,6 +308,74 @@ export class PrismaSeguroMedicoRepository implements ISeguroMedicoRepository {
         });
     }
 
+    async verificarCompatibilidadSeguro(
+        seguroId: number,
+        tipoSeguroId: number,
+        doctorId: number,
+        pacienteId: number,
+    ): Promise<{
+        seguroNombre: string;
+        tipoSeguroNombre: string;
+        doctorAcepta: boolean;
+        pacienteTiene: boolean;
+        compatible: boolean;
+        mensaje: string;
+    }> {
+        // 1. Obtener nombres del seguro y tipo de seguro
+        const [seguro, tipoSeguro] = await Promise.all([
+            this.prisma.seguroMedico.findUnique({
+                where: { id: seguroId },
+                select: { nombre: true },
+            }),
+            this.prisma.tipoSeguro.findUnique({
+                where: { id: tipoSeguroId },
+                select: { nombre: true },
+            }),
+        ]);
+
+        if (!seguro || !tipoSeguro) {
+            throw new Error(
+                !seguro
+                    ? `No existe un seguro médico con ID ${seguroId}.`
+                    : `No existe un tipo de seguro con ID ${tipoSeguroId}.`,
+            );
+        }
+
+        // 2. Verificar en paralelo: doctor acepta + paciente tiene
+        const [doctorSeguro, pacienteSeguro] = await Promise.all([
+            this.prisma.doctorSeguro.findFirst({
+                where: { doctorId, seguroId, tipoSeguroId, estado: 'Activo' },
+            }),
+            this.prisma.pacienteSeguro.findFirst({
+                where: { pacienteId, seguroId, tipoSeguroId, estado: 'Activo' },
+            }),
+        ]);
+
+        const doctorAcepta = doctorSeguro !== null;
+        const pacienteTiene = pacienteSeguro !== null;
+        const compatible = doctorAcepta && pacienteTiene;
+
+        let mensaje: string;
+        if (compatible) {
+            mensaje = `Compatible: el doctor acepta y el paciente tiene el seguro "${seguro.nombre}" (plan: ${tipoSeguro.nombre}).`;
+        } else if (!doctorAcepta && !pacienteTiene) {
+            mensaje = `El doctor no acepta el seguro "${seguro.nombre}" (plan: ${tipoSeguro.nombre}) y el paciente tampoco lo tiene registrado.`;
+        } else if (!doctorAcepta) {
+            mensaje = `El doctor no acepta el seguro "${seguro.nombre}" (plan: ${tipoSeguro.nombre}).`;
+        } else {
+            mensaje = `El paciente no tiene registrado el seguro "${seguro.nombre}" (plan: ${tipoSeguro.nombre}) como activo.`;
+        }
+
+        return {
+            seguroNombre: seguro.nombre,
+            tipoSeguroNombre: tipoSeguro.nombre,
+            doctorAcepta,
+            pacienteTiene,
+            compatible,
+            mensaje,
+        };
+    }
+
     // ============================================
     // Mappers
     // ============================================

@@ -15,6 +15,7 @@ import { AgregarSeguroDoctorUseCase } from '../../../application/use-cases/segur
 import { ObtenerSegurosAceptadosUseCase } from '../../../application/use-cases/seguros/ObtenerSegurosAceptadosUseCase';
 import { EliminarSeguroAceptadoUseCase } from '../../../application/use-cases/seguros/EliminarSeguroAceptadoUseCase';
 import { ObtenerSegurosPopularesUseCase } from '../../../application/use-cases/seguros/ObtenerSegurosPopularesUseCase';
+import { VerificarCompatibilidadSeguroUseCase } from '../../../application/use-cases/seguros/VerificarCompatibilidadSeguroUseCase';
 
 // DTOs
 import {
@@ -307,6 +308,52 @@ export class SeguroMedicoController {
                 success: true,
                 message: 'Seguros aceptados por el doctor obtenidos exitosamente',
                 data: seguros,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    // ============================================
+    // Verificar compatibilidad de seguro
+    // ============================================
+
+    /**
+     * GET /api/seguros/verificar-compatibilidad/:seguroId/:tipoSeguroId/doctor/:doctorId
+     * Recibe seguroId y tipoSeguroId como path params.
+     * El paciente se identifica por el token JWT.
+     */
+    async verificarCompatibilidad(req: Request, res: Response): Promise<void> {
+        try {
+            const seguroId = parseInt(String(req.params.seguroId));
+            const tipoSeguroId = parseInt(String(req.params.tipoSeguroId));
+            const doctorId = parseInt(String(req.params.doctorId));
+            const pacienteId = (req as any).user?.userId;
+
+            if (isNaN(seguroId) || seguroId <= 0) {
+                res.status(400).json({ success: false, message: 'seguroId inválido.' });
+                return;
+            }
+            if (isNaN(tipoSeguroId) || tipoSeguroId <= 0) {
+                res.status(400).json({ success: false, message: 'tipoSeguroId inválido.' });
+                return;
+            }
+            if (isNaN(doctorId) || doctorId <= 0) {
+                res.status(400).json({ success: false, message: 'doctorId inválido.' });
+                return;
+            }
+            if (!pacienteId) {
+                res.status(401).json({ success: false, message: 'No autenticado.' });
+                return;
+            }
+
+            const useCase = container.resolve(VerificarCompatibilidadSeguroUseCase);
+            const resultado = await useCase.execute(seguroId, tipoSeguroId, doctorId, pacienteId);
+
+            res.status(200).json({
+                success: true,
+                message: resultado.mensaje,
+                data: resultado,
             });
         } catch (error: any) {
             this.manejarError(error, res);

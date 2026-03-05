@@ -82,6 +82,20 @@ routerSeguros.get(
     (req, res) => controller.obtenerSegurosAceptadosPorDoctor(req, res)
 );
 
+/**
+ * GET /api/seguros/verificar-compatibilidad/:seguroId/:tipoSeguroId/doctor/:doctorId
+ * Verifica compatibilidad de un seguro+plan entre el paciente autenticado y un doctor.
+ * - doctorAcepta: el doctor tiene ese seguro+plan activo
+ * - pacienteTiene: el paciente autenticado tiene ese seguro+plan activo
+ * - compatible: ambos son true
+ */
+routerSeguros.get(
+    '/verificar-compatibilidad/:seguroId/:tipoSeguroId/doctor/:doctorId',
+    autenticarJWT,
+    translationMiddleware,
+    (req, res) => controller.verificarCompatibilidad(req, res)
+);
+
 // ============================================
 // Paciente - Gestión de seguros (máximo 3)
 // ============================================
