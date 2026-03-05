@@ -8837,7 +8837,10 @@ paths:
       description: |
         Permite al paciente editar su cita.
         **Solo si la cita está en estado `Programada`.**
-        Todos los campos son opcionales. El `totalAPagar` se recalcula automáticamente si cambia el servicio o `numPacientes`.
+
+        Todos los campos son opcionales.
+        - `fechaFin` **no se envía** — se recalcula automáticamente como `fechaInicio + duracionMinutos` del servicio.
+        - `totalAPagar` se recalcula automáticamente si cambia `servicioId` o `numPacientes`.
       security:
         - bearerAuth: []
       parameters:
@@ -8855,27 +8858,38 @@ paths:
               properties:
                 servicioId:
                   type: integer
+                  description: ID del servicio (si cambia, recalcula precio y fechaFin)
+                  example: 2
                 horarioId:
                   type: integer
-                fechaInicio:
+                  example: 1
+                fecha:
                   type: string
-                  format: date-time
-                fechaFin:
+                  format: date
+                  description: Fecha de la cita en formato YYYY-MM-DD
+                  example: "2026-03-15"
+                hora:
                   type: string
-                  format: date-time
+                  description: Hora de inicio en formato HH:MM (UTC)
+                  example: "10:00"
                 modalidad:
                   type: string
                   enum: ["Presencial", "Virtual", "Domicilio"]
+                  example: "Virtual"
                 numPacientes:
                   type: integer
+                  example: 1
                 seguroId:
                   type: integer
                   nullable: true
+                  example: 1
                 tipoSeguroId:
                   type: integer
                   nullable: true
+                  example: 1
                 motivoConsulta:
                   type: string
+                  example: "Control de presión arterial"
       responses:
         '200':
           description: Cita actualizada exitosamente
@@ -18841,10 +18855,22 @@ components:
           example: "Programada"
         fechaInicio:
           type: string
-          format: date-time
+          format: date
+          description: Fecha de inicio de la cita (YYYY-MM-DD)
+          example: "2026-03-10"
+        horaInicio:
+          type: string
+          description: Hora de inicio en formato HH:MM (UTC)
+          example: "09:00"
         fechaFin:
           type: string
-          format: date-time
+          format: date
+          description: Fecha de fin de la cita (YYYY-MM-DD) — calculada automáticamente
+          example: "2026-03-10"
+        horaFin:
+          type: string
+          description: Hora de fin en formato HH:MM (UTC) — calculada automáticamente
+          example: "09:30"
         modalidad:
           type: string
           example: "Presencial"

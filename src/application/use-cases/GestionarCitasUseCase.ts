@@ -470,13 +470,61 @@ export class GestionarCitasUseCase {
 
         const actualizacion: any = {};
 
-        // Combinar fecha+hora si se envían
-        if (dto.fecha !== undefined || dto.hora !== undefined) {
-            const fecha = dto.fecha ?? cita.fechaInicio.toISOString().substring(0, 10);
-            const hora = dto.hora ?? cita.fechaInicio.toISOString().substring(11, 16);
-            if (dto.fecha) this._validarFecha(dto.fecha);
-            if (dto.hora) this._validarHora(dto.hora);
-            actualizacion.fechaInicio = this._combinarFechaHora(fecha, hora);
+        // fechaInicio: cita.fechaInicio ya viene como "YYYY-MM-DD" y cita.horaInicio como "HH:MM"
+        // gracias al mapper _mapCita en el repositorio.
+        const fechaActual = typeof cita.fechaInicio === 'string'
+            ? cita.fechaInicio                          // "YYYY-MM-DD" del mapper
+            : new Date(cita.fechaInicio).toISOString().substring(0, 10);
+        const horaActual = typeof cita.horaInicio === 'string'
+            ? cita.horaInicio                           // "HH:MM" del mapper
+            : new Date(cita.fechaInicio).toISOString().substring(11, 16);
+
+        // Combinar fecha+hora si se envían, y recalcular fechaFin automáticamente
+        const fechaCambia = dto.fecha !== undefined || dto.hora !== undefined;
+        const servicioCambia = dto.servicioId !== undefined;
+
+        if (fechaCambia || servicioCambia) {
+            const { PrismaClient } = await import('@prisma/client');
+            const prisma = new PrismaClient();
+            try {
+                const servicioId = dto.servicioId ?? cita.servicioId;
+                const servicio = await prisma.servicio.findUnique({ where: { id: servicioId } });
+                if (!servicio) throw new Error('Servicio no encontrado.');
+
+                if (fechaCambia) {
+                    const fecha = dto.fecha ?? fechaActual;
+                    const hora = dto.hora ?? horaActual;
+                    if (dto.fecha) this._validarFecha(dto.fecha);
+                    if (dto.hora) this._validarHora(dto.hora);
+                    actualizacion.fechaInicio = this._combinarFechaHora(fecha, hora);
+                }
+
+                // Recalcular fechaFin siempre que cambie fecha o servicio
+                const nuevaFechaInicio = actualizacion.fechaInicio
+                    ?? this._combinarFechaHora(fechaActual, horaActual);
+                const duracion = servicio.duracionMinutos ?? 30;
+                actualizacion.fechaFin = new Date(
+                    new Date(nuevaFechaInicio).getTime() + duracion * 60 * 1000
+                );
+
+                // Recalcular precio si cambia servicio o numPacientes
+                if (dto.servicioId !== undefined) actualizacion.servicioId = dto.servicioId;
+                const numPacientes = dto.numPacientes ?? cita.numPacientes ?? 1;
+                actualizacion.totalAPagar = parseFloat(servicio.precio.toString()) * numPacientes;
+            } finally {
+                await prisma.$disconnect();
+            }
+        } else if (dto.numPacientes !== undefined) {
+            // Solo cambio de numPacientes sin cambio de servicio/fecha
+            const { PrismaClient } = await import('@prisma/client');
+            const prisma = new PrismaClient();
+            try {
+                const servicio = await prisma.servicio.findUnique({ where: { id: cita.servicioId } });
+                if (!servicio) throw new Error('Servicio no encontrado.');
+                actualizacion.totalAPagar = parseFloat(servicio.precio.toString()) * dto.numPacientes;
+            } finally {
+                await prisma.$disconnect();
+            }
         }
 
         if (dto.horarioId !== undefined) actualizacion.horarioId = dto.horarioId;
@@ -485,18 +533,6 @@ export class GestionarCitasUseCase {
         if (dto.seguroId !== undefined) actualizacion.seguroId = dto.seguroId;
         if (dto.tipoSeguroId !== undefined) actualizacion.tipoSeguroId = dto.tipoSeguroId;
         if (dto.motivoConsulta !== undefined) actualizacion.motivoConsulta = dto.motivoConsulta;
-
-        if (dto.numPacientes !== undefined || dto.servicioId !== undefined) {
-            const { PrismaClient } = await import('@prisma/client');
-            const prisma = new PrismaClient();
-            const servicioId = dto.servicioId ?? cita.servicioId;
-            const servicio = await prisma.servicio.findUnique({ where: { id: servicioId } });
-            if (!servicio) { await prisma.$disconnect(); throw new Error('Servicio no encontrado.'); }
-            const numPacientes = dto.numPacientes ?? cita.numPacientes ?? 1;
-            actualizacion.totalAPagar = parseFloat(servicio.precio.toString()) * numPacientes;
-            if (dto.servicioId !== undefined) actualizacion.servicioId = dto.servicioId;
-            await prisma.$disconnect();
-        }
 
         return await this.citaRepo.actualizar(citaId, actualizacion);
     }
