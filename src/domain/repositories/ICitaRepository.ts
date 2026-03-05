@@ -5,6 +5,7 @@ export interface ICitaRepository {
         servicioId: number;
         horarioId?: number;
         fechaInicio: Date;
+        duracionMinutos?: number;
         modalidad: string;
         numPacientes: number;
         seguroId?: number;

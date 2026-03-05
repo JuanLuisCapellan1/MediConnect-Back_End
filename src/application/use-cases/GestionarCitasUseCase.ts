@@ -389,6 +389,7 @@ export class GestionarCitasUseCase {
                 servicioId: dto.servicioId,
                 horarioId: dto.horarioId,
                 fechaInicio,
+                duracionMinutos: servicio.duracionMinutos ?? 30,
                 modalidad: dto.modalidad,
                 numPacientes,
                 seguroId: dto.seguroId,
