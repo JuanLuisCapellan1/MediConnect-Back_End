@@ -9402,7 +9402,168 @@ paths:
         '500':
           description: Error interno del servidor
 
+  /doctores/cercanos:
+    get:
+      summary: Buscar doctores cercanos (geolocalización)
+      tags:
+        - Doctores
+      description: |
+        Retorna doctores **activos** y **verificados** (`estadoVerificacion = Aprobado`) que tienen
+        al menos una ubicación con coordenadas geográficas dentro del radio indicado.
+
+        Los resultados se ordenan de **menor a mayor distancia**.
+
+        Solo se retornan doctores que han registrado al menos una ubicación con `punto_geografico`.
+
+        **Filtros opcionales:** `especialidadId`, `genero`, `calificacionMin`
+
+        **Traducción Automática:** soportada vía `target` + `translate_fields`
+
+        **Acceso:** Paciente, Doctor, Admin autenticado.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+          description: Latitud del punto de referencia (-90 a 90)
+          example: 18.4861
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+          description: Longitud del punto de referencia (-180 a 180)
+          example: -69.9312
+        - name: radio
+          in: query
+          required: false
+          schema:
+            type: number
+            default: 5
+            minimum: 0
+            maximum: 15
+          description: Radio de búsqueda en kilómetros (0–15). Por defecto 5 km
+          example: 5
+        - name: especialidadId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filtrar por ID de especialidad
+          example: 3
+        - name: genero
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [M, F]
+          description: Filtrar por género del doctor
+          example: M
+        - name: calificacionMin
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: 0
+            maximum: 5
+          description: Calificación promedio mínima (0–5)
+          example: 4
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Idioma destino para traducción automática
+          example: "en"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          description: Idioma origen para traducción
+          example: "es"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Campos a traducir separados por coma
+          example: "biografia,nombre"
+      responses:
+        '200':
+          description: Lista de doctores cercanos ordenados por distancia
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  total:
+                    type: integer
+                    description: Número de doctores encontrados
+                    example: 3
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        usuarioId:
+                          type: integer
+                          example: 6
+                        nombre:
+                          type: string
+                          example: "Juan"
+                        apellido:
+                          type: string
+                          example: "Aramboles"
+                        calificacionPromedio:
+                          type: number
+                          nullable: true
+                          example: 4.5
+                        distanciaMetros:
+                          type: integer
+                          description: Distancia en metros desde el punto de referencia
+                          example: 1200
+                        especialidades:
+                          type: array
+                          items:
+                            type: object
+                        ubicaciones:
+                          type: array
+                          items:
+                            type: object
+                        servicios:
+                          type: array
+                          items:
+                            type: object
+                        segurosAceptados:
+                          type: array
+                          items:
+                            type: object
+                        usuario:
+                          type: object
+                          properties:
+                            email:
+                              type: string
+                            telefono:
+                              type: string
+                              nullable: true
+                            fotoPerfil:
+                              type: string
+                              nullable: true
+        '400':
+          description: Parámetros lat, lng o radio inválidos
+        '401':
+          description: No autenticado
+
   /doctores/comparar:
+
     post:
       summary: Comparar hasta 4 doctores
       tags:

@@ -32,3 +32,12 @@ export interface ActualizarIdiomaDto {
     nombre?: string;
     nivel?: string;
 }
+
+export interface FiltroDoctoresCercania {
+    /** Filtrar por especialidad */
+    especialidadId?: number;
+    /** Filtrar por género: 'M' | 'F' */
+    genero?: string;
+    /** Calificación promedio mínima (0–5) */
+    calificacionMin?: number;
+}

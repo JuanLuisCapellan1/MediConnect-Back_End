@@ -1,5 +1,5 @@
 import { Doctor } from '../entities/Doctor';
-import { ActualizarDoctorDto, FiltroDoctoresDto } from '../../application/dtos/DoctorDtos';
+import { ActualizarDoctorDto, FiltroDoctoresDto, FiltroDoctoresCercania } from '../../application/dtos/DoctorDtos';
 
 export interface IDoctorRepository {
     obtenerPorId(id: number): Promise<Doctor | null>;
@@ -11,4 +11,6 @@ export interface IDoctorRepository {
     eliminar(usuarioId: number): Promise<void>;
     existePorExequatur(exequatur: string, excluirUsuarioId?: number): Promise<boolean>;
     existePorDocumento(numeroDocumento: string, excluirUsuarioId?: number): Promise<boolean>;
+    buscarCercanos(lat: number, lng: number, radioKm: number, filtros?: FiltroDoctoresCercania): Promise<any[]>;
 }
+

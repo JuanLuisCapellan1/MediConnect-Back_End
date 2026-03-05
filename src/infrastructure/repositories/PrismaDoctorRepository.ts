@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
 import { Doctor } from '../../domain/entities/Doctor';
-import { ActualizarDoctorDto, FiltroDoctoresDto } from '../../application/dtos/DoctorDtos';
+import { ActualizarDoctorDto, FiltroDoctoresDto, FiltroDoctoresCercania } from '../../application/dtos/DoctorDtos';
 
 export class PrismaDoctorRepository implements IDoctorRepository {
     constructor(private prisma: PrismaClient) { }
@@ -472,5 +472,126 @@ export class PrismaDoctorRepository implements IDoctorRepository {
 
         const count = await this.prisma.doctor.count({ where });
         return count > 0;
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // Buscar doctores dentro de un radio geográfico usando PostGIS
+    // ────────────────────────────────────────────────────────────────────────────
+    async buscarCercanos(
+        lat: number,
+        lng: number,
+        radioKm: number,
+        filtros?: FiltroDoctoresCercania,
+    ): Promise<any[]> {
+        const radioMetros = radioKm * 1000;
+
+        // Condiciones SQL opcionales
+        const condiciones: Prisma.Sql[] = [];
+        if (filtros?.especialidadId) {
+            condiciones.push(Prisma.sql`
+                EXISTS (
+                    SELECT 1 FROM doctores_especialidades de2
+                    WHERE de2.id_doctor = d.id_usuario
+                      AND de2.id_especialidad = ${filtros.especialidadId}
+                      AND de2.estado = 'Activo'
+                )
+            `);
+        }
+        if (filtros?.genero) {
+            condiciones.push(Prisma.sql`d.genero = ${filtros.genero}`);
+        }
+        if (filtros?.calificacionMin !== undefined) {
+            condiciones.push(Prisma.sql`d.calificacion_promedio >= ${filtros.calificacionMin}`);
+        }
+
+        const extraWhere = condiciones.length > 0
+            ? Prisma.sql`AND ${Prisma.join(condiciones, ' AND ')}`
+            : Prisma.sql``;
+
+        // Query raw: IDs de doctores dentro del radio, con distancia
+        const rows = await this.prisma.$queryRaw<{ id: number; distancia_metros: number }[]>`
+            SELECT DISTINCT ON (d.id_usuario)
+                d.id_usuario                                           AS id,
+                ST_Distance(
+                    u.punto_geografico::geography,
+                    ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography
+                )                                                      AS distancia_metros
+            FROM doctores d
+            JOIN ubicaciones u
+                ON  u.id_doctor          = d.id_usuario
+                AND u.estado             = 'Activo'
+                AND u.punto_geografico IS NOT NULL
+            WHERE d.estado               = 'Activo'
+              AND d.estado_verificacion  = 'Aprobado'
+              AND ST_DWithin(
+                    u.punto_geografico::geography,
+                    ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography,
+                    ${radioMetros}
+                  )
+            ${extraWhere}
+            ORDER BY d.id_usuario, distancia_metros ASC
+        `;
+
+        if (rows.length === 0) return [];
+
+        // Mapa id → distancia y lista ordenada
+        const distanciaMap = new Map<number, number>();
+        for (const r of rows) distanciaMap.set(Number(r.id), Number(r.distancia_metros));
+        const idsOrdenados = [...distanciaMap.entries()]
+            .sort((a, b) => a[1] - b[1])
+            .map(([id]) => id);
+
+        // Cargar el perfil completo de cada doctor en lote
+        const doctores = await (this.prisma.doctor as any).findMany({
+            where: { usuarioId: { in: idsOrdenados } },
+            include: {
+                usuario: {
+                    select: { email: true, telefono: true, fotoPerfil: true },
+                },
+                especialidades: {
+                    where: { estado: 'Activo' },
+                    include: { especialidades: true },
+                },
+                ubicaciones: {
+                    where: { estado: { not: 'Eliminado' } },
+                },
+                servicios: {
+                    where: { estado: 'Activo' },
+                    select: {
+                        id: true, nombre: true, precio: true,
+                        duracionMinutos: true, modalidad: true,
+                    },
+                },
+                segurosAceptados: {
+                    where: { estado: 'Activo' },
+                    include: {
+                        seguro: { select: { id: true, nombre: true, urlImage: true } },
+                        tipoSeguro: { select: { id: true, nombre: true } },
+                    },
+                },
+            },
+        });
+
+        // Mapear, respetar orden por distancia y adjuntar distanciaMetros
+        const doctoresMap = new Map<number, any>();
+        for (const d of doctores) doctoresMap.set(d.usuarioId, d);
+
+        return idsOrdenados
+            .map(id => {
+                const d = doctoresMap.get(id);
+                if (!d) return null;
+                return {
+                    ...d,
+                    calificacionPromedio: d.calificacionPromedio != null
+                        ? Number(d.calificacionPromedio) : null,
+                    tarifas: d.tarifas != null ? Number(d.tarifas) : null,
+                    servicios: (d.servicios ?? []).map((s: any) => ({
+                        ...s,
+                        precio: s.precio != null ? Number(s.precio) : null,
+                    })),
+                    distanciaMetros: Math.round(distanciaMap.get(id)!),
+                };
+            })
+            .filter(Boolean);
     }
 }
