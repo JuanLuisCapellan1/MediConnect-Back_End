@@ -76,22 +76,6 @@ tags:
     description: Permite a los pacientes marcar y gestionar sus doctores favoritos
   - name: Media
     description: Gestión de archivos multimedia (imágenes, audios, videos, documentos, ZIP) para el chat y otros módulos
-  - name: WebSocket Chat
-    description: |
-      Eventos de tiempo real gestionados por Socket.IO para el módulo de chat.
-      La conexión se establece con un token JWT en el handshake.
-
-      **Conexión:**
-      ```
-      const socket = io('wss://tu-servidor.com', {
-        auth: { token: '<JWT>' }
-      });
-      ```
-
-      **Salas:**
-      - `conversacion:{id}` — Sala de una conversación específica
-      - `usuario:{id}` — Sala personal de cada usuario (notificaciones individuales)
-
 
 # --- RUTAS (ENDPOINTS) ---
 paths:

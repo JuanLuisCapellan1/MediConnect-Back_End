@@ -347,8 +347,18 @@ export class GestionarCitasUseCase {
                 );
             }
 
-            // 6. Validar seguro
-            if (dto.seguroId && dto.tipoSeguroId) {
+            // 6. Validar seguro (ambos campos son opcionales; si se envía uno, se requiere el otro)
+            const tieneSeguroId = dto.seguroId != null;
+            const tieneTipoSeguroId = dto.tipoSeguroId != null;
+
+            if (tieneSeguroId !== tieneTipoSeguroId) {
+                throw new Error(
+                    'Para agendar con seguro debes enviar tanto "seguroId" como "tipoSeguroId". ' +
+                    'Si no usas seguro, omite ambos campos.',
+                );
+            }
+
+            if (tieneSeguroId && tieneTipoSeguroId) {
                 const pacienteSeguro = await prisma.pacienteSeguro.findFirst({
                     where: {
                         pacienteId,
@@ -367,6 +377,7 @@ export class GestionarCitasUseCase {
                     throw new Error('El doctor no acepta el seguro seleccionado.');
                 }
             }
+            // Si ninguno se envía, la cita se agenda sin seguro (seguroId y tipoSeguroId quedan null)
 
             // 7. Calcular total y crear cita
             const numPacientes = dto.numPacientes ?? 1;
@@ -595,9 +606,15 @@ export class GestionarCitasUseCase {
             });
         }
 
+        // Calcular fechaFin como fechaInicio + duración del servicio.
+        // NO se usa new Date() porque la cita puede ser futura y la constraint
+        // chk_citas_fechas exige fechaFin >= fechaInicio.
+        const duracionMs = (cita.servicio?.duracionMinutos ?? 30) * 60 * 1000;
+        const fechaFin = new Date(new Date(cita.fechaInicio).getTime() + duracionMs);
+
         await this.citaRepo.actualizar(citaId, {
             estado: 'Completada',
-            fechaFin: new Date(),
+            fechaFin,
         });
 
         return historial;

@@ -564,6 +564,15 @@ export class PrismaServicioRepository implements IServicioRepository {
                 horaFin: this.dateAHHMM(sh.horario.horaFin)
             } : sh.horario
         }));
+        // Normalizar calificacionPromedio del doctor de Prisma.Decimal → number
+        const doctor = s.doctor
+            ? {
+                ...s.doctor,
+                calificacionPromedio: s.doctor.calificacionPromedio != null
+                    ? Number(s.doctor.calificacionPromedio)
+                    : null,
+            }
+            : s.doctor;
         return new Servicio(
             s.id, s.doctorId, s.especialidadId,
             s.nombre, s.descripcion ?? null,
@@ -572,7 +581,7 @@ export class PrismaServicioRepository implements IServicioRepository {
             s.modalidad ?? 'Presencial',
             s.estado, s.creadoEn, s.actualizadoEn ?? null,
             imagenes,
-            s.doctor,
+            doctor,
             s.especialidad,
             horarios,
             s.servicios_centros_salud,
