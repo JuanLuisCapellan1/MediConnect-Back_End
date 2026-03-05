@@ -560,6 +560,25 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                     select: {
                         id: true, nombre: true, precio: true,
                         duracionMinutos: true, modalidad: true,
+                        servicios_ubicaciones: {
+                            where: { estado: 'Activo' },
+                            include: {
+                                ubicacion: {
+                                    select: {
+                                        id: true,
+                                        direccion: true,
+                                        nombre: true,
+                                        codigoPostal: true,
+                                        barrio: {
+                                            select: {
+                                                id: true,
+                                                nombre: true,
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
                 segurosAceptados: {
@@ -571,6 +590,48 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                 },
             },
         });
+
+        // ── Enriquecer ubicaciones de servicios con lat/lng (PostGIS) ────────
+        const ubicacionIds: number[] = [];
+        for (const d of doctores) {
+            for (const s of d.servicios ?? []) {
+                for (const su of s.servicios_ubicaciones ?? []) {
+                    if (su.ubicacion?.id) ubicacionIds.push(su.ubicacion.id);
+                }
+            }
+        }
+        if (ubicacionIds.length > 0) {
+            const coordRows = await this.prisma.$queryRaw<{ id: number; latitud: number; longitud: number }[]>`
+                SELECT
+                    id_ubicacion           AS id,
+                    ST_Y(punto_geografico) AS latitud,
+                    ST_X(punto_geografico) AS longitud
+                FROM ubicaciones
+                WHERE id_ubicacion IN (${Prisma.join(ubicacionIds)})
+                  AND punto_geografico IS NOT NULL
+            `;
+            const coordsMap = new Map<number, { latitud: number; longitud: number }>();
+            for (const row of coordRows) {
+                coordsMap.set(Number(row.id), {
+                    latitud: Number(row.latitud),
+                    longitud: Number(row.longitud),
+                });
+            }
+            // Mergar coordenadas
+            for (const d of doctores) {
+                for (const s of d.servicios ?? []) {
+                    for (const su of s.servicios_ubicaciones ?? []) {
+                        if (su.ubicacion?.id) {
+                            const coords = coordsMap.get(su.ubicacion.id);
+                            if (coords) {
+                                su.ubicacion.latitud = coords.latitud;
+                                su.ubicacion.longitud = coords.longitud;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // Mapear, respetar orden por distancia y adjuntar distanciaMetros
         const doctoresMap = new Map<number, any>();
@@ -594,4 +655,5 @@ export class PrismaDoctorRepository implements IDoctorRepository {
             })
             .filter(Boolean);
     }
+
 }
