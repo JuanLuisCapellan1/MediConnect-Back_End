@@ -919,4 +919,51 @@ export class GestionarCitasUseCase {
     async listarInactividades(doctorId: number): Promise<any[]> {
         return await this.inactividadRepo.listarPorDoctor(doctorId);
     }
+
+    // ===================================================================
+    // DOCTOR: Estadísticas de sus pacientes
+    // ===================================================================
+    async estadisticasPacientesDoctor(
+        doctorId: number,
+        filtros: {
+            fechaDesde?: string;
+            fechaHasta?: string;
+            servicioId?: number;
+        },
+    ): Promise<{
+        totalPacientes: number;
+        pacientesConCondicionesActivas: number;
+        pacientesConAlergias: number;
+        edadPromedio: number | null;
+    }> {
+        return await this.citaRepo.estadisticasPacientes(doctorId, {
+            fechaDesde: filtros.fechaDesde ? new Date(filtros.fechaDesde) : undefined,
+            fechaHasta: filtros.fechaHasta ? new Date(filtros.fechaHasta) : undefined,
+            servicioId: filtros.servicioId,
+        });
+    }
+
+    // ===================================================================
+    // DOCTOR: Estadísticas de sus citas
+    // ===================================================================
+    async estadisticasCitasDoctor(
+        doctorId: number,
+        filtros: {
+            fechaDesde?: string;
+            fechaHasta?: string;
+            servicioId?: number;
+        },
+    ): Promise<{
+        totalCitas: number;
+        citasProgramadas: number;
+        citasCanceladas: number;
+        citasCompletadas: number;
+    }> {
+        return await this.citaRepo.estadisticasCitas(doctorId, {
+            fechaDesde: filtros.fechaDesde ? new Date(filtros.fechaDesde) : undefined,
+            fechaHasta: filtros.fechaHasta ? new Date(filtros.fechaHasta) : undefined,
+            servicioId: filtros.servicioId,
+        });
+    }
 }
+

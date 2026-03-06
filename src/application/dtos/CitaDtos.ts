@@ -63,3 +63,23 @@ export interface CrearPeriodoInactividadDto {
     horaFin?: string;
     motivo?: string;
 }
+
+/** DTO de filtros para estadísticas de pacientes del doctor */
+export interface FiltroEstadisticasPacientesDto {
+    /** Fecha desde (YYYY-MM-DD) — filtra por fechaInicio de cita */
+    fechaDesde?: string;
+    /** Fecha hasta (YYYY-MM-DD) — filtra por fechaInicio de cita */
+    fechaHasta?: string;
+    /** Filtrar por un servicio específico del doctor */
+    servicioId?: number;
+}
+
+/** DTO de filtros para estadísticas de citas del doctor */
+export interface FiltroEstadisticasCitasDto {
+    /** Fecha desde (YYYY-MM-DD) */
+    fechaDesde?: string;
+    /** Fecha hasta (YYYY-MM-DD) */
+    fechaHasta?: string;
+    /** Filtrar por un servicio específico del doctor */
+    servicioId?: number;
+}

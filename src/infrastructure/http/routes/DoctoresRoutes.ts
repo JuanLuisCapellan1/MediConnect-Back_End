@@ -265,6 +265,31 @@ router.delete(
 );
 
 
+// ─── Estadísticas del Doctor (antes de /:id) ──────────────────────────────────
+/**
+ * GET /doctores/estadisticas/pacientes
+ * Estadísticas globales de pacientes del doctor autenticado.
+ * Filtros opcionales: fechaDesde, fechaHasta, servicioId
+ */
+router.get(
+    '/estadisticas/pacientes',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => container.resolve(CitaController).estadisticasPacientes(req, res)
+);
+
+/**
+ * GET /doctores/estadisticas/citas
+ * Estadísticas globales de citas del doctor autenticado.
+ * Filtros opcionales: fechaDesde, fechaHasta, servicioId
+ */
+router.get(
+    '/estadisticas/citas',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => container.resolve(CitaController).estadisticasCitas(req, res)
+);
+
 /**
  * GET /doctores/:id
  * Obtener doctor por ID (cualquier usuario autenticado)

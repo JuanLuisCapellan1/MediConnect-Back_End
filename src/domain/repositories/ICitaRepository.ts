@@ -66,4 +66,26 @@ export interface ICitaRepository {
         pagina?: number;
         limite?: number;
     }): Promise<{ datos: any[]; total: number }>;
+
+    estadisticasPacientes(doctorId: number, filtros: {
+        fechaDesde?: Date;
+        fechaHasta?: Date;
+        servicioId?: number;
+    }): Promise<{
+        totalPacientes: number;
+        pacientesConCondicionesActivas: number;
+        pacientesConAlergias: number;
+        edadPromedio: number | null;
+    }>;
+
+    estadisticasCitas(doctorId: number, filtros: {
+        fechaDesde?: Date;
+        fechaHasta?: Date;
+        servicioId?: number;
+    }): Promise<{
+        totalCitas: number;
+        citasProgramadas: number;
+        citasCanceladas: number;
+        citasCompletadas: number;
+    }>;
 }

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { ICitaRepository } from '../../domain/repositories/ICitaRepository';
 
 const CITA_INCLUDE = {
@@ -6,6 +6,16 @@ const CITA_INCLUDE = {
         include: {
             usuario: {
                 select: { email: true, telefono: true, fotoPerfil: true },
+            },
+            // Alergias y condiciones médicas del paciente
+            caracteristicas: {
+                where: { estado: 'Activo' },
+                include: {
+                    condicion: {
+                        select: { id: true, nombre: true, tipo: true, descripcion: true },
+                    },
+                },
+                orderBy: { registradoEn: 'asc' as const },
             },
         },
     },
@@ -29,7 +39,11 @@ const CITA_INCLUDE = {
     horario: true,
     seguro: { select: { id: true, nombre: true, urlImage: true } },
     tipoSeguro: { select: { id: true, nombre: true } },
-    ubicacion: true,
+    ubicacion: {
+        include: {
+            barrio: { select: { id: true, nombre: true } },
+        },
+    },
     historial: {
         include: { adjuntos: { include: { media: true } } },
     },
@@ -135,7 +149,7 @@ export class PrismaCitaRepository implements ICitaRepository {
             if (filtros.fechaHasta) where.fechaInicio.lte = filtros.fechaHasta;
         }
 
-        const [datos, total] = await Promise.all([
+        const [citas, total] = await Promise.all([
             (this.prisma.cita as any).findMany({
                 where,
                 include: CITA_INCLUDE,
@@ -146,7 +160,58 @@ export class PrismaCitaRepository implements ICitaRepository {
             (this.prisma.cita as any).count({ where }),
         ]);
 
-        return { datos: datos.map((c: any) => this._mapCita(c)), total };
+        // ── Enriquecer ubicaciones de citas con coords + dirección completa ──
+        const ubicacionIds: number[] = citas
+            .map((c: any) => c.ubicacionId)
+            .filter((id: any): id is number => id != null);
+
+        if (ubicacionIds.length > 0) {
+            const uniqueIds = [...new Set(ubicacionIds)];
+            const geoRows = await this.prisma.$queryRaw<{
+                id: number;
+                latitud: number | null;
+                longitud: number | null;
+                barrio_nombre: string | null;
+                municipio_nombre: string | null;
+                provincia_nombre: string | null;
+            }[]>`
+                SELECT
+                    u.id_ubicacion                        AS id,
+                    ST_Y(u.punto_geografico::geometry)    AS latitud,
+                    ST_X(u.punto_geografico::geometry)    AS longitud,
+                    b.nombre                              AS barrio_nombre,
+                    m.nombre                              AS municipio_nombre,
+                    p.nombre                              AS provincia_nombre
+                FROM ubicaciones u
+                LEFT JOIN barrios               b  ON b.id_barrio              = u.id_barrio
+                LEFT JOIN secciones             s  ON s.id_seccion              = b.id_seccion
+                LEFT JOIN distritos_municipales dm ON dm.id_distrito_municipal  = s.id_distrito_municipal
+                LEFT JOIN municipios            m  ON m.id_municipio            = COALESCE(dm.id_municipio, s.id_municipio)
+                LEFT JOIN provincias            p  ON p.id_provincia            = m.id_provincia
+                WHERE u.id_ubicacion IN (${Prisma.join(uniqueIds)})
+            `;
+
+            const geoMap = new Map<number, typeof geoRows[0]>();
+            for (const row of geoRows) geoMap.set(Number(row.id), row);
+
+            for (const cita of citas) {
+                if (!cita.ubicacion || !cita.ubicacionId) continue;
+                const geo = geoMap.get(cita.ubicacionId);
+                if (!geo) continue;
+
+                if (geo.latitud != null) cita.ubicacion.latitud = Number(geo.latitud);
+                if (geo.longitud != null) cita.ubicacion.longitud = Number(geo.longitud);
+
+                const partes: string[] = [];
+                if (cita.ubicacion.direccion) partes.push(cita.ubicacion.direccion.trim());
+                if (geo.barrio_nombre) partes.push(geo.barrio_nombre.trim());
+                if (geo.municipio_nombre) partes.push(geo.municipio_nombre.trim());
+                if (geo.provincia_nombre) partes.push(geo.provincia_nombre.trim());
+                cita.ubicacion.direccionCompleta = partes.join(', ');
+            }
+        }
+
+        return { datos: citas.map((c: any) => this._mapCita(c)), total };
     }
 
     async actualizar(id: number, datos: any): Promise<any> {
@@ -194,10 +259,22 @@ export class PrismaCitaRepository implements ICitaRepository {
             calificacionPromedio: toN(cita.doctor.calificacionPromedio),
         } : null;
 
-        // ── Paciente — peso a number ─────────────────────
+        // ── Paciente — peso a number + edad calculada ──────
+        const calcularEdad = (fechaNac: Date | string): number => {
+            const hoy = new Date();
+            const nac = new Date(fechaNac);
+            let edad = hoy.getFullYear() - nac.getFullYear();
+            const diffMes = hoy.getMonth() - nac.getMonth();
+            if (diffMes < 0 || (diffMes === 0 && hoy.getDate() < nac.getDate())) edad--;
+            return edad;
+        };
+
         const paciente = cita.paciente ? {
             ...cita.paciente,
             peso: toN(cita.paciente.peso),
+            edad: cita.paciente.fechaNacimiento
+                ? calcularEdad(cita.paciente.fechaNacimiento)
+                : null,
         } : null;
 
         // ── Ensamblar respuesta final ────────────────────
@@ -356,4 +433,124 @@ export class PrismaCitaRepository implements ICitaRepository {
 
         return { datos, total };
     }
+
+    // ─── ESTADÍSTICAS DE PACIENTES ─────────────────────────────────────────────
+    async estadisticasPacientes(
+        doctorId: number,
+        filtros: { fechaDesde?: Date; fechaHasta?: Date; servicioId?: number },
+    ): Promise<{
+        totalPacientes: number;
+        pacientesConCondicionesActivas: number;
+        pacientesConAlergias: number;
+        edadPromedio: number | null;
+    }> {
+        // Construcción del where base
+        const where: any = { doctorUsuarioId: doctorId };
+        if (filtros.servicioId) where.servicioId = filtros.servicioId;
+        if (filtros.fechaDesde || filtros.fechaHasta) {
+            where.fechaInicio = {};
+            if (filtros.fechaDesde) where.fechaInicio.gte = filtros.fechaDesde;
+            if (filtros.fechaHasta) where.fechaInicio.lte = filtros.fechaHasta;
+        }
+
+        // 1. Obtener pacientes únicos con sus fechas de nacimiento
+        const citasConPaciente = await (this.prisma.cita as any).findMany({
+            where,
+            select: {
+                pacienteId: true,
+                paciente: { select: { fechaNacimiento: true } },
+            },
+        });
+
+        // Deduplicar por pacienteId
+        const pacienteMap = new Map<number, Date>();
+        for (const c of citasConPaciente) {
+            if (!pacienteMap.has(c.pacienteId)) {
+                pacienteMap.set(c.pacienteId, c.paciente?.fechaNacimiento ?? null);
+            }
+        }
+
+        const totalPacientes = pacienteMap.size;
+        const pacienteIds = [...pacienteMap.keys()];
+
+        if (totalPacientes === 0) {
+            return { totalPacientes: 0, pacientesConCondicionesActivas: 0, pacientesConAlergias: 0, edadPromedio: null };
+        }
+
+        // 2. Condiciones activas y alergias en una sola query agrupada
+        const caracteristicas = await this.prisma.caracteristicaEspecial.findMany({
+            where: {
+                pacienteId: { in: pacienteIds },
+                estado: 'Activo',
+            },
+            select: {
+                pacienteId: true,
+                condicion: { select: { tipo: true } },
+            },
+        });
+
+        // Agrupar por paciente: ¿tiene condición activa? ¿tiene alergia activa?
+        const conCondicion = new Set<number>();
+        const conAlergia = new Set<number>();
+        for (const car of caracteristicas) {
+            conCondicion.add(car.pacienteId);
+            if (car.condicion?.tipo === 'Alergia') {
+                conAlergia.add(car.pacienteId);
+            }
+        }
+
+        // 3. Calcular edad promedio
+        const hoy = new Date();
+        let sumaEdades = 0;
+        let countEdades = 0;
+        for (const [, fechaNac] of pacienteMap) {
+            if (!fechaNac) continue;
+            const nac = new Date(fechaNac);
+            let edad = hoy.getFullYear() - nac.getFullYear();
+            const m = hoy.getMonth() - nac.getMonth();
+            if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+            sumaEdades += edad;
+            countEdades++;
+        }
+        const edadPromedio = countEdades > 0
+            ? Math.round((sumaEdades / countEdades) * 10) / 10
+            : null;
+
+        return {
+            totalPacientes,
+            pacientesConCondicionesActivas: conCondicion.size,
+            pacientesConAlergias: conAlergia.size,
+            edadPromedio,
+        };
+    }
+
+    // ─── ESTADÍSTICAS DE CITAS ─────────────────────────────────────────────────
+    async estadisticasCitas(
+        doctorId: number,
+        filtros: { fechaDesde?: Date; fechaHasta?: Date; servicioId?: number },
+    ): Promise<{
+        totalCitas: number;
+        citasProgramadas: number;
+        citasCanceladas: number;
+        citasCompletadas: number;
+    }> {
+        const baseWhere: any = { doctorUsuarioId: doctorId };
+        if (filtros.servicioId) baseWhere.servicioId = filtros.servicioId;
+        if (filtros.fechaDesde || filtros.fechaHasta) {
+            baseWhere.fechaInicio = {};
+            if (filtros.fechaDesde) baseWhere.fechaInicio.gte = filtros.fechaDesde;
+            if (filtros.fechaHasta) baseWhere.fechaInicio.lte = filtros.fechaHasta;
+        }
+
+        const [totalCitas, citasProgramadas, citasCanceladas, citasCompletadas] =
+            await Promise.all([
+                (this.prisma.cita as any).count({ where: baseWhere }),
+                (this.prisma.cita as any).count({ where: { ...baseWhere, estado: 'Programada' } }),
+                (this.prisma.cita as any).count({ where: { ...baseWhere, estado: 'Cancelada' } }),
+                (this.prisma.cita as any).count({ where: { ...baseWhere, estado: 'Completada' } }),
+            ]);
+
+        return { totalCitas, citasProgramadas, citasCanceladas, citasCompletadas };
+    }
 }
+

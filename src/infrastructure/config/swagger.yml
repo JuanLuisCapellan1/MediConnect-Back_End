@@ -11675,7 +11675,211 @@ paths:
 
   # ─── SOLICITUDES DE ALIANZA (LADO DOCTOR) ─────────────────────────────────────
 
+  # ─── ESTADÍSTICAS DEL DOCTOR ───────────────────────────────────────────────
+
+  /doctores/estadisticas/pacientes:
+    get:
+      summary: Estadísticas de pacientes del doctor autenticado
+      tags:
+        - Doctores
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna métricas agregadas de los **pacientes únicos** que han tenido al menos
+        una cita con el doctor autenticado.
+
+        Todos los filtros son opcionales. Si no se aplica ninguno, se considera el historial completo.
+
+        **Métricas devueltas:**
+        - `totalPacientes` — pacientes únicos deduplicados por cita
+        - `pacientesConCondicionesActivas` — con ≥1 `CaracteristicaEspecial` en estado `Activo`
+        - `pacientesConAlergias` — subconjunto con `CondicionMedica.tipo = "Alergia"` activa
+        - `edadPromedio` — promedio de edades redondeado a 1 decimal (`null` si no hay datos)
+      parameters:
+        - name: fechaDesde
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2026-01-01"
+          description: "Filtrar citas desde esta fecha (YYYY-MM-DD)"
+        - name: fechaHasta
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2026-03-31"
+          description: "Filtrar citas hasta esta fecha (YYYY-MM-DD)"
+        - name: servicioId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 3
+          description: "Filtrar por un servicio específico del doctor"
+      responses:
+        '200':
+          description: Estadísticas de pacientes obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  filtros:
+                    type: object
+                    properties:
+                      fechaDesde:
+                        type: string
+                        nullable: true
+                        example: "2026-01-01"
+                      fechaHasta:
+                        type: string
+                        nullable: true
+                        example: "2026-03-31"
+                      servicioId:
+                        type: integer
+                        nullable: true
+                        example: 3
+                  data:
+                    type: object
+                    properties:
+                      totalPacientes:
+                        type: integer
+                        description: Total de pacientes únicos del doctor
+                        example: 45
+                      pacientesConCondicionesActivas:
+                        type: integer
+                        description: Pacientes con al menos una condición médica activa
+                        example: 12
+                      pacientesConAlergias:
+                        type: integer
+                        description: Pacientes con al menos una alergia activa
+                        example: 8
+                      edadPromedio:
+                        type: number
+                        format: float
+                        nullable: true
+                        description: Edad promedio de los pacientes (1 decimal). Null si no hay datos.
+                        example: 34.7
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso denegado (solo Doctor)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /doctores/estadisticas/citas:
+    get:
+      summary: Estadísticas de citas del doctor autenticado
+      tags:
+        - Doctores
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna conteos de citas del doctor autenticado, agrupados por estado.
+
+        Todos los filtros son opcionales. Si no se aplica ninguno, se considera el historial completo.
+
+        **Métricas devueltas:**
+        - `totalCitas` — total de citas registradas
+        - `citasProgramadas` — en estado `Programada`
+        - `citasCanceladas` — en estado `Cancelada`
+        - `citasCompletadas` — en estado `Completada`
+      parameters:
+        - name: fechaDesde
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2026-01-01"
+          description: "Filtrar citas desde esta fecha (YYYY-MM-DD)"
+        - name: fechaHasta
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2026-03-31"
+          description: "Filtrar citas hasta esta fecha (YYYY-MM-DD)"
+        - name: servicioId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 3
+          description: "Filtrar por un servicio específico del doctor"
+      responses:
+        '200':
+          description: Estadísticas de citas obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  filtros:
+                    type: object
+                    properties:
+                      fechaDesde:
+                        type: string
+                        nullable: true
+                        example: "2026-01-01"
+                      fechaHasta:
+                        type: string
+                        nullable: true
+                        example: "2026-03-31"
+                      servicioId:
+                        type: integer
+                        nullable: true
+                        example: 3
+                  data:
+                    type: object
+                    properties:
+                      totalCitas:
+                        type: integer
+                        description: Total de citas registradas
+                        example: 120
+                      citasProgramadas:
+                        type: integer
+                        description: Citas en estado Programada
+                        example: 40
+                      citasCanceladas:
+                        type: integer
+                        description: Citas en estado Cancelada
+                        example: 15
+                      citasCompletadas:
+                        type: integer
+                        description: Citas en estado Completada
+                        example: 65
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso denegado (solo Doctor)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /doctores/inactividad:
+
     post:
       summary: Registrar período de inactividad (Doctor)
       tags:

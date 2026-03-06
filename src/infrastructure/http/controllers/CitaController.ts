@@ -328,6 +328,52 @@ export class CitaController {
         } catch (error) { this.manejarError(error, res); }
     }
 
+    // GET /doctores/estadisticas/pacientes — Estadísticas de pacientes del doctor
+    async estadisticasPacientes(req: Request, res: Response): Promise<void> {
+        try {
+            const doctorId = req.user?.userId;
+            if (!doctorId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+
+            const { fechaDesde, fechaHasta, servicioId } = req.query;
+            const filtros = {
+                fechaDesde: fechaDesde as string | undefined,
+                fechaHasta: fechaHasta as string | undefined,
+                servicioId: servicioId ? Number(servicioId) : undefined,
+            };
+
+            if (filtros.servicioId !== undefined && isNaN(filtros.servicioId)) {
+                res.status(400).json({ success: false, message: 'servicioId debe ser un número válido.' });
+                return;
+            }
+
+            const data = await this.citasUseCase.estadisticasPacientesDoctor(doctorId, filtros);
+            res.status(200).json({ success: true, filtros, data });
+        } catch (error) { this.manejarError(error, res); }
+    }
+
+    // GET /doctores/estadisticas/citas — Estadísticas de citas del doctor
+    async estadisticasCitas(req: Request, res: Response): Promise<void> {
+        try {
+            const doctorId = req.user?.userId;
+            if (!doctorId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+
+            const { fechaDesde, fechaHasta, servicioId } = req.query;
+            const filtros = {
+                fechaDesde: fechaDesde as string | undefined,
+                fechaHasta: fechaHasta as string | undefined,
+                servicioId: servicioId ? Number(servicioId) : undefined,
+            };
+
+            if (filtros.servicioId !== undefined && isNaN(filtros.servicioId)) {
+                res.status(400).json({ success: false, message: 'servicioId debe ser un número válido.' });
+                return;
+            }
+
+            const data = await this.citasUseCase.estadisticasCitasDoctor(doctorId, filtros);
+            res.status(200).json({ success: true, filtros, data });
+        } catch (error) { this.manejarError(error, res); }
+    }
+
     private manejarError(error: any, res: Response): void {
         const msg: string = error?.message ?? 'Error interno del servidor';
         if (msg.includes('no encontrad') || msg.includes('no existe')) {
