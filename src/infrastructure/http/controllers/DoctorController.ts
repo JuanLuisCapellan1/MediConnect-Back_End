@@ -372,8 +372,12 @@ export class DoctorController {
             if (req.query.genero) filtros.genero = String(req.query.genero);
             if (req.query.calificacionMin) filtros.calificacionMin = Number(req.query.calificacionMin);
 
+            // Solo pasamos el ID del paciente loggeado para calcular esFavorito
+            const esPaciente = (req as any).user?.rol === 'Paciente';
+            const pacienteId = esPaciente ? (req as any).user?.userId : undefined;
+
             const useCase = container.resolve(GestionarDoctoresUseCase);
-            const doctores = await useCase['doctorRepository'].buscarCercanos(lat, lng, radio, filtros);
+            const doctores = await useCase['doctorRepository'].buscarCercanos(lat, lng, radio, filtros, pacienteId);
 
             return res.status(200).json({
                 success: true,

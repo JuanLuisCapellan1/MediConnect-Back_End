@@ -482,6 +482,7 @@ export class PrismaDoctorRepository implements IDoctorRepository {
         lng: number,
         radioKm: number,
         filtros?: FiltroDoctoresCercania,
+        pacienteId?: number,
     ): Promise<any[]> {
         const radioMetros = radioKm * 1000;
 
@@ -555,6 +556,15 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                 ubicaciones: {
                     where: { estado: { not: 'Eliminado' } },
                 },
+                idiomas: {
+                    where: { estado: 'Activo' },
+                    select: {
+                        id: true,
+                        nombre: true,
+                        nivel: true,
+                    },
+                    orderBy: { nombre: 'asc' },
+                },
                 servicios: {
                     where: { estado: 'Activo' },
                     select: {
@@ -588,10 +598,17 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                         tipoSeguro: { select: { id: true, nombre: true } },
                     },
                 },
+                _count: {
+                    select: {
+                        resenas: {
+                            where: { estado: 'Publicada' },
+                        },
+                    },
+                },
             },
         });
 
-        // ── Enriquecer ubicaciones de servicios con lat/lng (PostGIS) ────────
+        // ── Enriquecer ubicaciones: coords + dirección completa (PostGIS raw) ──
         const ubicacionIds: number[] = [];
         for (const d of doctores) {
             for (const s of d.servicios ?? []) {
@@ -601,36 +618,68 @@ export class PrismaDoctorRepository implements IDoctorRepository {
             }
         }
         if (ubicacionIds.length > 0) {
-            const coordRows = await this.prisma.$queryRaw<{ id: number; latitud: number; longitud: number }[]>`
+            const geoRows = await this.prisma.$queryRaw<{
+                id: number;
+                latitud: number | null;
+                longitud: number | null;
+                barrio_nombre: string | null;
+                municipio_nombre: string | null;
+                provincia_nombre: string | null;
+            }[]>`
                 SELECT
-                    id_ubicacion           AS id,
-                    ST_Y(punto_geografico) AS latitud,
-                    ST_X(punto_geografico) AS longitud
-                FROM ubicaciones
-                WHERE id_ubicacion IN (${Prisma.join(ubicacionIds)})
-                  AND punto_geografico IS NOT NULL
+                    u.id_ubicacion                                                   AS id,
+                    ST_Y(u.punto_geografico::geometry)                               AS latitud,
+                    ST_X(u.punto_geografico::geometry)                               AS longitud,
+                    b.nombre                                                         AS barrio_nombre,
+                    m.nombre                                                         AS municipio_nombre,
+                    p.nombre                                                         AS provincia_nombre
+                FROM ubicaciones u
+                LEFT JOIN barrios              b  ON b.id_barrio             = u.id_barrio
+                LEFT JOIN secciones            s  ON s.id_seccion             = b.id_seccion
+                LEFT JOIN distritos_municipales dm ON dm.id_distrito_municipal = s.id_distrito_municipal
+                LEFT JOIN municipios           m  ON m.id_municipio           = COALESCE(dm.id_municipio, s.id_municipio)
+                LEFT JOIN provincias           p  ON p.id_provincia           = m.id_provincia
+                WHERE u.id_ubicacion IN (${Prisma.join(ubicacionIds)})
             `;
-            const coordsMap = new Map<number, { latitud: number; longitud: number }>();
-            for (const row of coordRows) {
-                coordsMap.set(Number(row.id), {
-                    latitud: Number(row.latitud),
-                    longitud: Number(row.longitud),
-                });
-            }
-            // Mergar coordenadas
+
+            const geoMap = new Map<number, typeof geoRows[0]>();
+            for (const row of geoRows) geoMap.set(Number(row.id), row);
+
+            // Mergar coords + direccionCompleta en cada ubicación
             for (const d of doctores) {
                 for (const s of d.servicios ?? []) {
                     for (const su of s.servicios_ubicaciones ?? []) {
-                        if (su.ubicacion?.id) {
-                            const coords = coordsMap.get(su.ubicacion.id);
-                            if (coords) {
-                                su.ubicacion.latitud = coords.latitud;
-                                su.ubicacion.longitud = coords.longitud;
-                            }
-                        }
+                        if (!su.ubicacion?.id) continue;
+                        const geo = geoMap.get(su.ubicacion.id);
+                        if (!geo) continue;
+
+                        if (geo.latitud != null) su.ubicacion.latitud = Number(geo.latitud);
+                        if (geo.longitud != null) su.ubicacion.longitud = Number(geo.longitud);
+
+                        // Construir dirección completa
+                        const partes: string[] = [];
+                        if (su.ubicacion.direccion) partes.push(su.ubicacion.direccion.trim());
+                        if (geo.barrio_nombre) partes.push(geo.barrio_nombre.trim());
+                        if (geo.municipio_nombre) partes.push(geo.municipio_nombre.trim());
+                        if (geo.provincia_nombre) partes.push(geo.provincia_nombre.trim());
+                        su.ubicacion.direccionCompleta = partes.join(', ');
                     }
                 }
             }
+        }
+
+        // ── Determinar favoritos del paciente loggeado ────────────────────
+        const favoritosSet = new Set<number>();
+        if (pacienteId) {
+            const favRows = await this.prisma.doctorFavorito.findMany({
+                where: {
+                    pacienteId,
+                    doctorId: { in: idsOrdenados },
+                    estado: 'Activo',
+                },
+                select: { doctorId: true },
+            });
+            for (const fav of favRows) favoritosSet.add(fav.doctorId);
         }
 
         // Mapear, respetar orden por distancia y adjuntar distanciaMetros
@@ -646,6 +695,8 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                     calificacionPromedio: d.calificacionPromedio != null
                         ? Number(d.calificacionPromedio) : null,
                     tarifas: d.tarifas != null ? Number(d.tarifas) : null,
+                    cantidadResenas: d._count?.resenas ?? 0,
+                    esFavorito: pacienteId ? favoritosSet.has(id) : false,
                     servicios: (d.servicios ?? []).map((s: any) => ({
                         ...s,
                         precio: s.precio != null ? Number(s.precio) : null,
