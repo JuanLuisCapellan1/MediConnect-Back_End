@@ -328,6 +328,50 @@ export class CitaController {
         } catch (error) { this.manejarError(error, res); }
     }
 
+    // GET /citas/calendario — Vista de calendario (Paciente y Doctor)
+    async calendario(req: Request, res: Response): Promise<void> {
+        try {
+            const usuarioId = req.user?.userId;
+            const rol = req.user?.rol as 'Paciente' | 'Doctor' | undefined;
+
+            if (!usuarioId || !rol) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            if (rol !== 'Paciente' && rol !== 'Doctor') {
+                res.status(403).json({ success: false, message: 'Acceso denegado.' });
+                return;
+            }
+
+            const vista = (req.query.vista as string | undefined) ?? 'hoy';
+            const vistasValidas = ['hoy', 'dia', 'semana', 'mes'];
+            if (!vistasValidas.includes(vista)) {
+                res.status(400).json({
+                    success: false,
+                    message: `El parámetro "vista" debe ser uno de: ${vistasValidas.join(', ')}.`,
+                });
+                return;
+            }
+
+            const fecha = req.query.fecha as string | undefined;
+            if (fecha && !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'El parámetro "fecha" debe tener el formato YYYY-MM-DD.',
+                });
+                return;
+            }
+
+            const data = await this.citasUseCase.calendarioCitas(
+                usuarioId,
+                rol,
+                { vista: vista as any, fecha },
+            );
+
+            res.status(200).json({ success: true, ...data });
+        } catch (error) { this.manejarError(error, res); }
+    }
+
     // GET /doctores/estadisticas/pacientes — Estadísticas de pacientes del doctor
     async estadisticasPacientes(req: Request, res: Response): Promise<void> {
         try {

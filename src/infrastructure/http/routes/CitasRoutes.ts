@@ -16,6 +16,9 @@ router.get('/historial', autenticarJWT, requireRole('Paciente'), (req, res) => c
 // GET /citas/doctor — Doctor lista sus citas
 router.get('/doctor', autenticarJWT, requireRole('Doctor'), (req, res) => ctrl().listarCitasDoctor(req, res));
 
+// GET /citas/calendario — Vista de calendario (Paciente o Doctor)
+router.get('/calendario', autenticarJWT, requireRole('Paciente', 'Doctor'), (req, res) => ctrl().calendario(req, res));
+
 // ── POST /citas ───────────────────────────────────────────────────────
 
 // POST /citas — Paciente agenda una cita

@@ -8619,7 +8619,105 @@ paths:
         '500':
           description: Error interno del servidor
 
+  /citas/calendario:
+    get:
+      summary: Vista de calendario de citas
+      tags:
+        - Citas
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna las citas del usuario autenticado (**Paciente** o **Doctor**) agrupadas por fecha,
+        para un rango de tiempo determinado por el parámetro `vista`.
+
+        | `vista`   | Rango cubierto |
+        |-----------|---------------|
+        | `hoy`     | Solo el día de `fecha` (o hoy si se omite) |
+        | `dia`     | Igual que `hoy` — útil para pasar una fecha cualquiera |
+        | `semana`  | Lunes–Domingo de la semana que contiene `fecha` |
+        | `mes`     | 1er día al último día del mes que contiene `fecha` |
+
+        Si se omite `fecha` se usa la fecha actual del servidor.
+      parameters:
+        - name: vista
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [hoy, dia, semana, mes]
+            default: hoy
+          description: "Rango de tiempo a mostrar"
+        - name: fecha
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2026-03-08"
+          description: "Fecha de referencia en formato YYYY-MM-DD (default: hoy)"
+      responses:
+        '200':
+          description: Calendario de citas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  vista:
+                    type: string
+                    example: "semana"
+                  fechaReferencia:
+                    type: string
+                    format: date
+                    example: "2026-03-08"
+                  rango:
+                    type: object
+                    properties:
+                      desde:
+                        type: string
+                        format: date
+                        example: "2026-03-02"
+                      hasta:
+                        type: string
+                        format: date
+                        example: "2026-03-08"
+                  total:
+                    type: integer
+                    description: Total de citas en el rango
+                    example: 5
+                  dias:
+                    type: array
+                    description: Citas agrupadas por fecha, ordenadas cronológicamente
+                    items:
+                      type: object
+                      properties:
+                        fecha:
+                          type: string
+                          format: date
+                          example: "2026-03-04"
+                        total:
+                          type: integer
+                          example: 2
+                        citas:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/Cita'
+        '400':
+          description: Parámetros inválidos (vista no reconocida, formato de fecha incorrecto)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+        '403':
+          description: Acceso denegado (solo Paciente o Doctor)
+
   /citas/historial:
+
     get:
       summary: Historial de consultas del paciente
       tags:
@@ -9732,8 +9830,10 @@ paths:
         Obtiene un doctor específico por su ID.
 
         **Roles permitidos:**
-        - `Admin`: recibe datos básicos del doctor.
-        - `Paciente`: recibe el perfil completo público del doctor (especialidades, seguros, servicios, horarios, idiomas, formaciones, experiencias). Los documentos internos y datos de verificación no se incluyen.
+        - `Admin` / `Doctor`: recibe datos básicos del doctor.
+        - `Paciente`: recibe el perfil completo público del doctor (especialidades, seguros, servicios, horarios, idiomas, formaciones, experiencias).
+          Los documentos internos y datos de verificación no se incluyen.
+          Incluye la propiedad **`isFavorite`** (`true` / `false`) que indica si este doctor está en la lista de favoritos del paciente autenticado.
 
         **Traducción automática:** Agrega `?target=en&translate_fields=biografia,especialidades.nombre,ubicaciones.nombre,idiomas.nombre` para traducir campos del perfil.
       security:
@@ -9779,17 +9879,28 @@ paths:
                     type: boolean
                     example: true
                   data:
-                    $ref: '#/components/schemas/Doctor'
+                    allOf:
+                      - $ref: '#/components/schemas/Doctor'
+                      - type: object
+                        properties:
+                          isFavorite:
+                            type: boolean
+                            nullable: true
+                            description: >
+                              Solo presente cuando el solicitante tiene el rol **Paciente**.
+                              `true` si el doctor está en la lista de favoritos del paciente; `false` en caso contrario.
+                            example: true
         '400':
           description: ID inválido
         '401':
           description: No autenticado
         '403':
-          description: No autorizado (requiere rol Admin o Paciente)
+          description: No autorizado (requiere rol Admin, Doctor o Paciente)
         '404':
           description: Doctor no encontrado
         '500':
           description: Error interno del servidor
+
 
     patch:
       summary: Actualizar doctor por ID
@@ -11676,6 +11787,241 @@ paths:
   # ─── SOLICITUDES DE ALIANZA (LADO DOCTOR) ─────────────────────────────────────
 
   # ─── ESTADÍSTICAS DEL DOCTOR ───────────────────────────────────────────────
+
+  /doctores/estadisticas/productividad:
+    get:
+      summary: Análisis de productividad del doctor (consultas e ingresos)
+      tags:
+        - Doctores
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna las **consultas completadas** e **ingresos generados** del Doctor autenticado,
+        agrupados en puntos de tiempo según el `periodo` seleccionado:
+
+        | `periodo`  | Rango | Agrupación |
+        |------------|-------|-----------|
+        | `semana`   | Últimos 7 días | Por día (Lun, Mar…) |
+        | `mes`      | Mes actual | Por semana (Sem 1–4) |
+        | `3meses`   | Últimos 3 meses | Por mes |
+        | `año`      | Últimos 12 meses | Por mes |
+        | `todo`     | Desde la primera cita | Por mes |
+      parameters:
+        - name: periodo
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [semana, mes, 3meses, año, todo]
+            default: mes
+          description: "Período de análisis"
+      responses:
+        '200':
+          description: Análisis de productividad obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  periodo:
+                    type: string
+                    example: "mes"
+                  puntos:
+                    type: array
+                    description: Puntos del gráfico ordenados cronológicamente
+                    items:
+                      type: object
+                      properties:
+                        label:
+                          type: string
+                          example: "Sem 2"
+                        consultas:
+                          type: integer
+                          example: 720
+                        ingresos:
+                          type: number
+                          format: float
+                          example: 19800.00
+                  totales:
+                    type: object
+                    properties:
+                      consultas:
+                        type: integer
+                        example: 2400
+                      ingresos:
+                        type: number
+                        format: float
+                        example: 65000.00
+        '400':
+          description: Período inválido
+        '401':
+          description: No autenticado
+        '403':
+          description: Acceso denegado (solo Doctor)
+
+  /doctores/estadisticas/servicios-mas-utilizados:
+    get:
+      summary: Servicios más utilizados del doctor (pie chart + lista)
+      tags:
+        - Doctores
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna dos colecciones para el Doctor autenticado:
+        - **`masUtilizados`** — servicios ordenados desc por número de citas, listos para el gráfico circular, incluyendo `porcentaje` sobre el total.
+        - **`servicios`** — lista completa de todos sus servicios (activos e inactivos) con el conteo de citas asociadas.
+      responses:
+        '200':
+          description: Datos de servicios obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  masUtilizados:
+                    type: array
+                    description: Servicios con al menos 1 cita, ordenados de mayor a menor uso
+                    items:
+                      type: object
+                      properties:
+                        servicioId:
+                          type: integer
+                          example: 3
+                        nombre:
+                          type: string
+                          example: "Consulta médica"
+                        totalCitas:
+                          type: integer
+                          example: 35
+                        porcentaje:
+                          type: number
+                          format: float
+                          description: "Porcentaje sobre el total de citas del doctor (0–100)"
+                          example: 28.50
+                  servicios:
+                    type: array
+                    description: Lista completa de servicios del doctor
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 3
+                        nombre:
+                          type: string
+                          example: "Consulta médica"
+                        precio:
+                          type: number
+                          format: float
+                          nullable: true
+                          example: 1500.00
+                        estado:
+                          type: string
+                          enum: [Activo, Inactivo]
+                          example: "Activo"
+                        modalidad:
+                          type: string
+                          example: "Presencial"
+                        totalCitas:
+                          type: integer
+                          example: 35
+        '401':
+          description: No autenticado
+        '403':
+          description: Acceso denegado (solo Doctor)
+
+  /doctores/estadisticas/resumen:
+    get:
+      summary: Resumen general del doctor autenticado
+      tags:
+        - Doctores
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna métricas generales del **Doctor** autenticado:
+        - `totalPacientes` — pacientes únicos que han tenido al menos una cita
+        - `totalConsultas` — citas en estado `Completada`
+        - `totalDineroGanado` — suma de `precio` de los servicios de las citas completadas (redondeado a 2 decimales)
+      responses:
+        '200':
+          description: Resumen obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      totalPacientes:
+                        type: integer
+                        example: 45
+                      totalConsultas:
+                        type: integer
+                        example: 65
+                      totalDineroGanado:
+                        type: number
+                        format: float
+                        example: 12750.00
+        '401':
+          description: No autenticado
+        '403':
+          description: Acceso denegado (solo Doctor)
+
+  /doctores/estadisticas/servicios:
+    get:
+      summary: Estadísticas de servicios del doctor autenticado
+      tags:
+        - Doctores
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna métricas sobre los **servicios** del **Doctor** autenticado y su rating:
+        - `totalServicios` — total de servicios registrados
+        - `serviciosActivos` — con estado `Activo`
+        - `serviciosInactivos` — con estado `Inactivo`
+        - `promedioRating` — `calificacionPromedio` del doctor (`null` si aún no tiene reseñas)
+      responses:
+        '200':
+          description: Estadísticas de servicios obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      totalServicios:
+                        type: integer
+                        example: 8
+                      serviciosActivos:
+                        type: integer
+                        example: 6
+                      serviciosInactivos:
+                        type: integer
+                        example: 2
+                      promedioRating:
+                        type: number
+                        format: float
+                        nullable: true
+                        example: 4.7
+        '401':
+          description: No autenticado
+        '403':
+          description: Acceso denegado (solo Doctor)
 
   /doctores/estadisticas/pacientes:
     get:

@@ -965,5 +965,82 @@ export class GestionarCitasUseCase {
             servicioId: filtros.servicioId,
         });
     }
-}
 
+    // ===================================================================
+    // CALENDARIO: Vista de citas agrupadas por fecha
+    // Accessible por Paciente y Doctor
+    // ===================================================================
+    async calendarioCitas(
+        usuarioId: number,
+        rol: 'Paciente' | 'Doctor',
+        filtros: {
+            vista?: 'hoy' | 'dia' | 'semana' | 'mes';
+            fecha?: string;   // YYYY-MM-DD, referencia; default = hoy
+        },
+    ): Promise<{
+        vista: string;
+        fechaReferencia: string;
+        rango: { desde: string; hasta: string };
+        total: number;
+        dias: { fecha: string; total: number; citas: any[] }[];
+    }> {
+        // ── 1. Calcular fecha de referencia ──────────────────────────────
+        const ref = filtros.fecha ? new Date(`${filtros.fecha}T00:00:00.000Z`) : (() => {
+            const hoy = new Date();
+            return new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate()));
+        })();
+
+        const refStr = ref.toISOString().substring(0, 10);
+        const vista = filtros.vista ?? 'hoy';
+
+        // ── 2. Calcular rango [desde, hasta] según vista ─────────────────
+        let desde: Date;
+        let hasta: Date;
+
+        if (vista === 'hoy' || vista === 'dia') {
+            desde = new Date(ref);
+            hasta = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate(), 23, 59, 59, 999));
+
+        } else if (vista === 'semana') {
+            // Lunes de la semana de referencia
+            const dow = ref.getUTCDay() === 0 ? 6 : ref.getUTCDay() - 1; // 0=Lunes
+            desde = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate() - dow));
+            hasta = new Date(Date.UTC(desde.getUTCFullYear(), desde.getUTCMonth(), desde.getUTCDate() + 6, 23, 59, 59, 999));
+
+        } else { // mes
+            desde = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), 1));
+            hasta = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+        }
+
+        const desdeStr = desde.toISOString().substring(0, 10);
+        const hastaStr = hasta.toISOString().substring(0, 10);
+
+        // ── 3. Obtener todas las citas del rango (sin paginación) ────────
+        const BIG = 9999;
+        const { datos } = rol === 'Paciente'
+            ? await this.citaRepo.listarPorPaciente(usuarioId, { pagina: 1, limite: BIG, fechaDesde: desde, fechaHasta: hasta })
+            : await this.citaRepo.listarPorDoctor(usuarioId, { pagina: 1, limite: BIG, fechaDesde: desde, fechaHasta: hasta });
+
+        // ── 4. Agrupar por fecha local (YYYY-MM-DD de fechaInicio) ───────
+        const grouped = new Map<string, any[]>();
+        for (const cita of datos) {
+            // fechaInicio puede venir como string ISO o Date
+            const fechaKey = String(cita.fecha ?? cita.fechaInicio ?? '').substring(0, 10);
+            if (!grouped.has(fechaKey)) grouped.set(fechaKey, []);
+            grouped.get(fechaKey)!.push(cita);
+        }
+
+        // ── 5. Ordenar días cronológicamente ────────────────────────────
+        const dias = [...grouped.entries()]
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([fecha, citas]) => ({ fecha, total: citas.length, citas }));
+
+        return {
+            vista,
+            fechaReferencia: refStr,
+            rango: { desde: desdeStr, hasta: hastaStr },
+            total: datos.length,
+            dias,
+        };
+    }
+}

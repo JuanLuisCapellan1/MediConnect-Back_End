@@ -238,8 +238,25 @@ export class PrismaDoctorRepository implements IDoctorRepository {
             }
         }
 
+        // Convertir campos Decimal de Prisma a number plano para evitar serialización interna ({s,e,d})
+        if (doctor) {
+            if (doctor.calificacionPromedio != null)
+                doctor.calificacionPromedio = parseFloat(doctor.calificacionPromedio.toString());
+            if (doctor.tarifas != null)
+                doctor.tarifas = parseFloat(doctor.tarifas.toString());
+
+            // Convertir precio de cada servicio asociado
+            if (Array.isArray(doctor.servicios)) {
+                doctor.servicios = doctor.servicios.map((s: any) => ({
+                    ...s,
+                    precio: s.precio != null ? parseFloat(s.precio.toString()) : null,
+                }));
+            }
+        }
+
         return doctor;
     }
+
 
     /**
      * Compara hasta 4 doctores por sus IDs,

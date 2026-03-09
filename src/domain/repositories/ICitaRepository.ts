@@ -88,4 +88,28 @@ export interface ICitaRepository {
         citasCanceladas: number;
         citasCompletadas: number;
     }>;
+
+    resumenDoctor(doctorId: number): Promise<{
+        totalPacientes: number;
+        totalConsultas: number;
+        totalDineroGanado: number;
+    }>;
+
+    estadisticasServicios(doctorId: number): Promise<{
+        totalServicios: number;
+        serviciosActivos: number;
+        serviciosInactivos: number;
+        promedioRating: number | null;
+    }>;
+
+    productividadDoctor(doctorId: number, periodo: string): Promise<{
+        periodo: string;
+        puntos: { label: string; consultas: number; ingresos: number }[];
+        totales: { consultas: number; ingresos: number };
+    }>;
+
+    serviciosMasUtilizados(doctorId: number): Promise<{
+        masUtilizados: { servicioId: number; nombre: string; totalCitas: number; porcentaje: number }[];
+        servicios: { id: number; nombre: string; precio: number | null; estado: string; modalidad: string; totalCitas: number }[];
+    }>;
 }

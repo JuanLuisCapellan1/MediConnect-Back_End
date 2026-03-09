@@ -1,5 +1,6 @@
 import { inject, injectable } from 'tsyringe';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
+import { ICitaRepository } from '../../domain/repositories/ICitaRepository';
 import { DoctorValidator } from '../../domain/validators/Doctores/DoctorValidator';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
 import { ActualizarDoctorDto, FiltroDoctoresDto } from '../dtos/DoctorDtos';
@@ -11,6 +12,8 @@ export class GestionarDoctoresUseCase {
     constructor(
         @inject('DoctorRepository')
         private doctorRepository: IDoctorRepository,
+        @inject('CitaRepository')
+        private citaRepository: ICitaRepository,
         @inject(DoctorValidator)
         private validator: DoctorValidator,
         @inject(EstadoValidator)
@@ -83,5 +86,25 @@ export class GestionarDoctoresUseCase {
     private normalizarEstado(estado: string): string {
         if (!estado) return estado;
         return estado.charAt(0).toUpperCase() + estado.slice(1).toLowerCase();
+    }
+
+    // ─── ESTADÍSTICAS DE DOCTOR ──────────────────────────────────────────────
+
+    async resumenDoctor(doctorId: number) {
+        return await this.citaRepository.resumenDoctor(doctorId);
+    }
+
+    async estadisticasServiciosDoctor(doctorId: number) {
+        return await this.citaRepository.estadisticasServicios(doctorId);
+    }
+
+    async productividadDoctor(doctorId: number, periodo: string) {
+        const periodosValidos = ['semana', 'mes', '3meses', 'año', 'todo'];
+        const p = periodosValidos.includes(periodo) ? periodo : 'mes';
+        return await this.citaRepository.productividadDoctor(doctorId, p);
+    }
+
+    async serviciosMasUtilizados(doctorId: number) {
+        return await this.citaRepository.serviciosMasUtilizados(doctorId);
     }
 }

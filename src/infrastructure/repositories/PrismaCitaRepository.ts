@@ -552,5 +552,245 @@ export class PrismaCitaRepository implements ICitaRepository {
 
         return { totalCitas, citasProgramadas, citasCanceladas, citasCompletadas };
     }
+
+    // ─── RESUMEN GENERAL DEL DOCTOR ───────────────────────────────────────────
+    async resumenDoctor(doctorId: number): Promise<{
+        totalPacientes: number;
+        totalConsultas: number;
+        totalDineroGanado: number;
+    }> {
+        const where: any = { doctorUsuarioId: doctorId };
+
+        // Pacientes únicos + total de consultas completadas en paralelo
+        const [citasConPaciente, totalConsultas] = await Promise.all([
+            (this.prisma.cita as any).findMany({
+                where,
+                select: { pacienteId: true },
+            }),
+            (this.prisma.cita as any).count({ where: { ...where, estado: 'Completada' } }),
+        ]);
+
+        // Deduplicar pacientes
+        const totalPacientes = new Set<number>(
+            (citasConPaciente as { pacienteId: number }[]).map((c) => c.pacienteId)
+        ).size;
+
+        // Sumar precios de citas completadas (servicio.precio)
+        const citasCompletadas = await (this.prisma.cita as any).findMany({
+            where: { ...where, estado: 'Completada' },
+            select: { servicio: { select: { precio: true } } },
+        });
+        const totalDineroGanado = (citasCompletadas as { servicio: { precio: any } | null }[])
+            .reduce((sum, c) => sum + (c.servicio?.precio != null ? parseFloat(c.servicio.precio.toString()) : 0), 0);
+
+        return {
+            totalPacientes,
+            totalConsultas,
+            totalDineroGanado: Math.round(totalDineroGanado * 100) / 100,
+        };
+    }
+
+    // ─── ESTADÍSTICAS DE SERVICIOS DEL DOCTOR ────────────────────────────────
+    async estadisticasServicios(doctorId: number): Promise<{
+        totalServicios: number;
+        serviciosActivos: number;
+        serviciosInactivos: number;
+        promedioRating: number | null;
+    }> {
+        const [totalServicios, serviciosActivos, serviciosInactivos, doctor] = await Promise.all([
+            this.prisma.servicio.count({ where: { doctorId } }),
+            this.prisma.servicio.count({ where: { doctorId, estado: 'Activo' } }),
+            this.prisma.servicio.count({ where: { doctorId, estado: 'Inactivo' } }),
+            this.prisma.doctor.findUnique({
+                where: { usuarioId: doctorId },
+                select: { calificacionPromedio: true },
+            }),
+        ]);
+
+        const promedioRating = doctor?.calificacionPromedio != null
+            ? parseFloat(doctor.calificacionPromedio.toString())
+            : null;
+
+        return { totalServicios, serviciosActivos, serviciosInactivos, promedioRating };
+    }
+
+    // ─── PRODUCTIVIDAD DEL DOCTOR ─────────────────────────────────────────────
+    async productividadDoctor(doctorId: number, periodo: string): Promise<{
+        periodo: string;
+        puntos: { label: string; consultas: number; ingresos: number }[];
+        totales: { consultas: number; ingresos: number };
+    }> {
+        const now = new Date();
+
+        // ── Calcular rango según periodo ────────────────────────────────
+        let desde: Date;
+        let groupBy: 'dia' | 'semana' | 'mes';
+
+        if (periodo === 'semana') {
+            // Últimos 7 días → agrupar por día
+            desde = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 6));
+            groupBy = 'dia';
+        } else if (periodo === 'mes') {
+            // Mes actual → agrupar por semana del mes
+            desde = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+            groupBy = 'semana';
+        } else if (periodo === '3meses') {
+            // Últimos 3 meses → agrupar por mes
+            desde = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1));
+            groupBy = 'mes';
+        } else if (periodo === 'año') {
+            // Últimos 12 meses → agrupar por mes
+            desde = new Date(Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth() + 1, 1));
+            groupBy = 'mes';
+        } else {
+            // 'todo' → desde la primera cita, agrupar por mes
+            const primera = await (this.prisma.cita as any).findFirst({
+                where: { doctorUsuarioId: doctorId },
+                orderBy: { fechaInicio: 'asc' },
+                select: { fechaInicio: true },
+            });
+            desde = primera
+                ? new Date(Date.UTC(new Date(primera.fechaInicio).getUTCFullYear(), new Date(primera.fechaInicio).getUTCMonth(), 1))
+                : new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+            groupBy = 'mes';
+        }
+
+        // ── Obtener citas completadas en el rango ────────────────────────
+        const citas = await (this.prisma.cita as any).findMany({
+            where: {
+                doctorUsuarioId: doctorId,
+                estado: 'Completada',
+                fechaInicio: { gte: desde },
+            },
+            select: {
+                fechaInicio: true,
+                servicio: { select: { precio: true } },
+            },
+            orderBy: { fechaInicio: 'asc' },
+        });
+
+        // ── Generar mapa de puntos vacíos según groupBy ─────────────────
+        const puntoMap = new Map<string, { consultas: number; ingresos: number }>();
+
+        const MESES_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const DIAS_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+        if (groupBy === 'dia') {
+            // Generar últimos 7 días como claves
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
+                const label = DIAS_ES[d.getUTCDay()];
+                puntoMap.set(d.toISOString().substring(0, 10), { consultas: 0, ingresos: 0 });
+                // guardamos con clave ISO, label por separado
+                (puntoMap.get(d.toISOString().substring(0, 10)) as any).__label = label;
+            }
+        } else if (groupBy === 'semana') {
+            // Sem 1..4 del mes actual
+            for (let sem = 1; sem <= 4; sem++) {
+                puntoMap.set(`Sem ${sem}`, { consultas: 0, ingresos: 0 });
+            }
+        } else {
+            // Meses del rango
+            const cursor = new Date(desde);
+            while (cursor <= now) {
+                const key = `${MESES_ES[cursor.getUTCMonth()]} ${cursor.getUTCFullYear()}`;
+                puntoMap.set(key, { consultas: 0, ingresos: 0 });
+                cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+            }
+        }
+
+        // ── Distribuir citas en el mapa ──────────────────────────────────
+        for (const cita of citas) {
+            const fecha = new Date(cita.fechaInicio);
+            const precio = cita.servicio?.precio != null ? parseFloat(cita.servicio.precio.toString()) : 0;
+
+            let key: string;
+            if (groupBy === 'dia') {
+                key = fecha.toISOString().substring(0, 10);
+            } else if (groupBy === 'semana') {
+                const diaDelMes = fecha.getUTCDate();
+                const semNum = Math.min(Math.ceil(diaDelMes / 7), 4);
+                key = `Sem ${semNum}`;
+            } else {
+                key = `${MESES_ES[fecha.getUTCMonth()]} ${fecha.getUTCFullYear()}`;
+            }
+
+            const punto = puntoMap.get(key);
+            if (punto) {
+                punto.consultas++;
+                punto.ingresos += precio;
+            }
+        }
+
+        // ── Construir puntos finales ─────────────────────────────────────
+        const puntos = [...puntoMap.entries()].map(([key, val]) => ({
+            label: (val as any).__label ?? key,
+            consultas: val.consultas,
+            ingresos: Math.round(val.ingresos * 100) / 100,
+        }));
+
+        const totales = puntos.reduce(
+            (acc, p) => ({ consultas: acc.consultas + p.consultas, ingresos: Math.round((acc.ingresos + p.ingresos) * 100) / 100 }),
+            { consultas: 0, ingresos: 0 },
+        );
+
+        return { periodo, puntos, totales };
+    }
+
+    // ─── SERVICIOS MÁS UTILIZADOS ─────────────────────────────────────────────
+    async serviciosMasUtilizados(doctorId: number): Promise<{
+        masUtilizados: { servicioId: number; nombre: string; totalCitas: number; porcentaje: number }[];
+        servicios: { id: number; nombre: string; precio: number | null; estado: string; modalidad: string; totalCitas: number }[];
+    }> {
+        // Todos los servicios del doctor
+        const servicios = await this.prisma.servicio.findMany({
+            where: { doctorId },
+            select: { id: true, nombre: true, precio: true, estado: true, modalidad: true },
+            orderBy: { nombre: 'asc' },
+        });
+
+        if (servicios.length === 0) {
+            return { masUtilizados: [], servicios: [] };
+        }
+
+        // Contar citas por servicio
+        const servicioIds = servicios.map((s) => s.id);
+        const conteos = await (this.prisma.cita as any).groupBy({
+            by: ['servicioId'],
+            where: { doctorUsuarioId: doctorId, servicioId: { in: servicioIds } },
+            _count: { servicioId: true },
+        });
+
+        const conteoMap = new Map<number, number>(
+            (conteos as { servicioId: number; _count: { servicioId: number } }[]).map((c) => [c.servicioId, c._count.servicioId])
+        );
+
+        const totalCitasGlobal = [...conteoMap.values()].reduce((s, n) => s + n, 0);
+
+        // Armar lista completa de servicios con totalCitas
+        const serviciosList = servicios.map((s) => ({
+            id: s.id,
+            nombre: s.nombre,
+            precio: s.precio != null ? parseFloat(s.precio.toString()) : null,
+            estado: s.estado,
+            modalidad: s.modalidad,
+            totalCitas: conteoMap.get(s.id) ?? 0,
+        }));
+
+        // Servicios más utilizados ordenados desc por totalCitas
+        const masUtilizados = [...serviciosList]
+            .filter((s) => s.totalCitas > 0)
+            .sort((a, b) => b.totalCitas - a.totalCitas)
+            .map((s) => ({
+                servicioId: s.id,
+                nombre: s.nombre,
+                totalCitas: s.totalCitas,
+                porcentaje: totalCitasGlobal > 0
+                    ? Math.round((s.totalCitas / totalCitasGlobal) * 10000) / 100
+                    : 0,
+            }));
+
+        return { masUtilizados, servicios: serviciosList };
+    }
 }
 

@@ -780,9 +780,10 @@ container.register(GestionarPacientesUseCase, {
 container.register(GestionarDoctoresUseCase, {
   useFactory: () => {
     const repo = container.resolve<IDoctorRepository>('DoctorRepository');
+    const citaRepo = container.resolve<ICitaRepository>('CitaRepository');
     const validator = container.resolve(DoctorValidator);
     const estadoValidator = container.resolve(EstadoValidator);
-    return new GestionarDoctoresUseCase(repo, validator, estadoValidator);
+    return new GestionarDoctoresUseCase(repo, citaRepo, validator, estadoValidator);
   }
 });
 

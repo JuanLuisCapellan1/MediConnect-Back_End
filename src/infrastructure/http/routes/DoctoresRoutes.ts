@@ -291,6 +291,51 @@ router.get(
 );
 
 /**
+ * GET /doctores/estadisticas/resumen
+ * Resumen general: total pacientes, total consultas completadas, dinero ganado.
+ */
+router.get(
+    '/estadisticas/resumen',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => doctorController.resumenDoctor(req, res)
+);
+
+/**
+ * GET /doctores/estadisticas/servicios
+ * Estadísticas de servicios: activos, inactivos, total y promedio de rating.
+ */
+router.get(
+    '/estadisticas/servicios',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => doctorController.estadisticasServicios(req, res)
+);
+
+/**
+ * GET /doctores/estadisticas/productividad
+ * Análisis de consultas e ingresos agrupados por sub-período.
+ * Query param: periodo = semana | mes | 3meses | año | todo
+ */
+router.get(
+    '/estadisticas/productividad',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => doctorController.productividadDoctor(req, res)
+);
+
+/**
+ * GET /doctores/estadisticas/servicios-mas-utilizados
+ * Servicios más utilizados (pie chart) y lista completa de servicios del doctor.
+ */
+router.get(
+    '/estadisticas/servicios-mas-utilizados',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => doctorController.serviciosMasUtilizados(req, res)
+);
+
+/**
  * GET /doctores/:id
  * Obtener doctor por ID (cualquier usuario autenticado)
  */

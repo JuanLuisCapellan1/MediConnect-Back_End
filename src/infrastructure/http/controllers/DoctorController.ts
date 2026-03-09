@@ -72,6 +72,7 @@ export class DoctorController {
             const useCase = container.resolve(GestionarDoctoresUseCase);
             const id = parseInt(req.params.id as string);
             const esPaciente = (req as any).user?.rol === 'Paciente';
+            const pacienteId: number | undefined = esPaciente ? (req as any).user?.userId : undefined;
 
             if (isNaN(id)) {
                 return res.status(400).json({ success: false, message: 'ID inválido.' });
@@ -87,12 +88,16 @@ export class DoctorController {
                 return res.status(404).json({ success: false, message: 'Doctor no encontrado.' });
             }
 
-            // Si es paciente, ocultamos datos sensibles
+            // Si es paciente, ocultamos datos sensibles y calculamos isFavorite
             if (esPaciente) {
                 delete doctor.documentos;
                 delete doctor.comentarioVerificacion;
                 delete doctor.estadoAccionVerificacion;
                 delete doctor.fechaResolucionVerificacion;
+
+                // Verificar si el doctor está en los favoritos del paciente
+                const favRepo = container.resolve<any>('FavoritoRepository');
+                doctor.isFavorite = await favRepo.existe(pacienteId!, id);
             }
 
             return res.status(200).json({
@@ -387,6 +392,59 @@ export class DoctorController {
         } catch (error) {
             return this.manejarError(error, res);
         }
+    }
+
+    // GET /doctores/estadisticas/resumen
+    async resumenDoctor(req: Request, res: Response): Promise<Response> {
+        try {
+            const useCase = container.resolve(GestionarDoctoresUseCase);
+            const doctorId = (req as any).user?.userId;
+            if (!doctorId) return res.status(401).json({ success: false, message: 'No autenticado' });
+            const data = await useCase.resumenDoctor(doctorId);
+            return res.status(200).json({ success: true, data });
+        } catch (error) { return this.manejarError(error, res); }
+    }
+
+    // GET /doctores/estadisticas/servicios
+    async estadisticasServicios(req: Request, res: Response): Promise<Response> {
+        try {
+            const useCase = container.resolve(GestionarDoctoresUseCase);
+            const doctorId = (req as any).user?.userId;
+            if (!doctorId) return res.status(401).json({ success: false, message: 'No autenticado' });
+            const data = await useCase.estadisticasServiciosDoctor(doctorId);
+            return res.status(200).json({ success: true, data });
+        } catch (error) { return this.manejarError(error, res); }
+    }
+
+    // GET /doctores/estadisticas/productividad
+    async productividadDoctor(req: Request, res: Response): Promise<Response> {
+        try {
+            const useCase = container.resolve(GestionarDoctoresUseCase);
+            const doctorId = (req as any).user?.userId;
+            if (!doctorId) return res.status(401).json({ success: false, message: 'No autenticado' });
+
+            const periodosValidos = ['semana', 'mes', '3meses', 'año', 'todo'];
+            const periodo = (req.query.periodo as string | undefined) ?? 'mes';
+            if (!periodosValidos.includes(periodo)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `El parámetro "periodo" debe ser uno de: ${periodosValidos.join(', ')}.`,
+                });
+            }
+            const data = await useCase.productividadDoctor(doctorId, periodo);
+            return res.status(200).json({ success: true, ...data });
+        } catch (error) { return this.manejarError(error, res); }
+    }
+
+    // GET /doctores/estadisticas/servicios-mas-utilizados
+    async serviciosMasUtilizados(req: Request, res: Response): Promise<Response> {
+        try {
+            const useCase = container.resolve(GestionarDoctoresUseCase);
+            const doctorId = (req as any).user?.userId;
+            if (!doctorId) return res.status(401).json({ success: false, message: 'No autenticado' });
+            const data = await useCase.serviciosMasUtilizados(doctorId);
+            return res.status(200).json({ success: true, ...data });
+        } catch (error) { return this.manejarError(error, res); }
     }
 
     private manejarError(error: any, res: Response): Response {
