@@ -28,6 +28,26 @@ export interface ICentroSaludRepository {
   // Doctores asociados (solicitudes Aceptadas)
   listarDoctoresAsociados(centroSaludId: number): Promise<any[]>;
 
+  // ─── ANALÍTICAS DEL CENTRO ──────────────────────────────────────────────────
+
+  estadisticasGenerales(centroSaludId: number): Promise<{
+    totalMedicos: number;
+    totalEspecialidades: number;
+    citasSemanaActual: number;
+    valoracionPromedio: number | null;
+  }>;
+
+  crecimientoMedicos(centroSaludId: number, periodo: string): Promise<{
+    periodo: string;
+    puntos: { label: string; total: number; nuevos: number }[];
+    totalActual: number;
+  }>;
+
+  distribucionEspecialidades(centroSaludId: number): Promise<{
+    especialidades: { id: number; nombre: string; totalMedicos: number; porcentaje: number }[];
+    total: number;
+  }>;
+
   // Legacy (mantener compatibilidad con RegisterCentroUseCase)
   obtenerPorId(usuarioId: number): Promise<any | null>;
   obtenerPorUsuarioId(usuarioId: number): Promise<any | null>;

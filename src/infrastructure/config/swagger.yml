@@ -11290,6 +11290,170 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
 
+  # ─── CENTROS DE SALUD: ANALÍTICAS ──────────────────────────────────────────────
+
+  /centros-salud/estadisticas/general:
+    get:
+      summary: Estadísticas generales del centro autenticado
+      tags:
+        - CentrosSalud
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna indicadores clave del **Centro** autenticado (semana actual):
+        - `totalMedicos` — total de médicos afiliados con solicitud aceptada
+        - `totalEspecialidades` — número de especialidades únicas entre todos sus médicos
+        - `citasSemanaActual` — total de citas de todos sus médicos en la semana en curso (Lun–Dom)
+        - `valoracionPromedio` — promedio de `calificacionPromedio` de los médicos afiliados (`null` si ninguno tiene calificación)
+      responses:
+        '200':
+          description: Estadísticas obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      totalMedicos:
+                        type: integer
+                        example: 12
+                      totalEspecialidades:
+                        type: integer
+                        example: 8
+                      citasSemanaActual:
+                        type: integer
+                        example: 47
+                      valoracionPromedio:
+                        type: number
+                        format: float
+                        nullable: true
+                        example: 4.35
+        '401':
+          description: No autenticado
+        '403':
+          description: Solo accesible por Centros
+
+  /centros-salud/estadisticas/crecimiento-medicos:
+    get:
+      summary: Crecimiento de médicos afiliados al centro
+      tags:
+        - CentrosSalud
+      security:
+        - bearerAuth: []
+      description: |
+        Serie temporal del crecimiento de médicos afiliados (solicitudes aceptadas).
+
+        | `periodo`  | Rango | Agrupación |
+        |------------|-------|-----------|
+        | `semana`   | Semana actual | Por día (Lun–Sáb) |
+        | `mes`      | Mes actual | Por semana (Sem 1–4) |
+        | `3meses`   | Últimos 3 meses | Por mes |
+        | `año`      | Últimos 12 meses | Por mes |
+        | `todo`     | Desde la primera afiliación | Por mes |
+
+        Cada punto incluye:
+        - `label` — etiqueta del eje X
+        - `total` — médicos acumulados hasta ese punto
+        - `nuevos` — médicos que se afiliaron en ese sub-período
+      parameters:
+        - name: periodo
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [semana, mes, 3meses, año, todo]
+            default: mes
+      responses:
+        '200':
+          description: Datos de crecimiento obtenidos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  periodo:
+                    type: string
+                    example: "mes"
+                  totalActual:
+                    type: integer
+                    example: 12
+                  puntos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        label:
+                          type: string
+                          example: "Sem 2"
+                        total:
+                          type: integer
+                          example: 10
+                        nuevos:
+                          type: integer
+                          example: 2
+        '400':
+          description: Período inválido
+        '401':
+          description: No autenticado
+
+  /centros-salud/estadisticas/distribucion-especialidades:
+    get:
+      summary: Distribución de especialidades de los médicos afiliados
+      tags:
+        - CentrosSalud
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna la distribución de especialidades entre los médicos afiliados al **Centro** autenticado.
+        Ordenada de mayor a menor por cantidad de médicos.
+        Útil para gráficos de torta o barras.
+      responses:
+        '200':
+          description: Distribución obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  total:
+                    type: integer
+                    description: Número de especialidades distintas
+                    example: 5
+                  especialidades:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 2
+                        nombre:
+                          type: string
+                          example: "Cardiología"
+                        totalMedicos:
+                          type: integer
+                          example: 4
+                        porcentaje:
+                          type: number
+                          format: float
+                          description: "Porcentaje sobre el total de asignaciones de especialidades (todos los médicos × sus especialidades). Si Cardiología tiene 4 de 10 asignaciones → 40%."
+                          example: 33.33
+        '401':
+          description: No autenticado
+        '403':
+          description: Solo accesible por Centros
+
   # ─── CENTROS DE SALUD: PERFIL & GESTIÓN ───────────────────────────────────────
 
   /centros-salud/mi-perfil:
@@ -11938,16 +12102,16 @@ paths:
 
   /doctores/estadisticas/resumen:
     get:
-      summary: Resumen general del doctor autenticado
+      summary: Resumen del mes actual del doctor autenticado
       tags:
         - Doctores
       security:
         - bearerAuth: []
       description: |
-        Retorna métricas generales del **Doctor** autenticado:
-        - `totalPacientes` — pacientes únicos que han tenido al menos una cita
-        - `totalConsultas` — citas en estado `Completada`
-        - `totalDineroGanado` — suma de `precio` de los servicios de las citas completadas (redondeado a 2 decimales)
+        Retorna métricas del **Doctor** autenticado correspondientes al **mes calendario actual**:
+        - `totalPacientes` — pacientes únicos atendidos este mes (con al menos una cita)
+        - `totalConsultas` — citas en estado `Completada` en el mes actual
+        - `totalDineroGanado` — suma del `precio` de los servicios de las citas completadas este mes (redondeado a 2 decimales)
       responses:
         '200':
           description: Resumen obtenido exitosamente

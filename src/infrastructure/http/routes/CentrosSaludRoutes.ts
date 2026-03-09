@@ -94,4 +94,26 @@ centrosSaludRouter.put(
   (req, res) => controller.responderSolicitud(req, res)
 );
 
+// ─── Analíticas del Centro ─────────────────────────────────────────────────────
+centrosSaludRouter.get(
+  '/estadisticas/general',
+  autenticarJWT,
+  requireRole('Centro'),
+  (req, res) => controller.estadisticasGenerales(req, res)
+);
+
+centrosSaludRouter.get(
+  '/estadisticas/crecimiento-medicos',
+  autenticarJWT,
+  requireRole('Centro'),
+  (req, res) => controller.crecimientoMedicos(req, res)
+);
+
+centrosSaludRouter.get(
+  '/estadisticas/distribucion-especialidades',
+  autenticarJWT,
+  requireRole('Centro'),
+  (req, res) => controller.distribucionEspecialidades(req, res)
+);
+
 export default centrosSaludRouter;

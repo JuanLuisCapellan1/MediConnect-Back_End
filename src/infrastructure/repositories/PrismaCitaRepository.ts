@@ -559,9 +559,17 @@ export class PrismaCitaRepository implements ICitaRepository {
         totalConsultas: number;
         totalDineroGanado: number;
     }> {
-        const where: any = { doctorUsuarioId: doctorId };
+        // ── Rango del mes actual (UTC) ───────────────────────────────────
+        const now = new Date();
+        const inicioMes = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+        const finMes = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)); // exclusivo
 
-        // Pacientes únicos + total de consultas completadas en paralelo
+        const where: any = {
+            doctorUsuarioId: doctorId,
+            fechaInicio: { gte: inicioMes, lt: finMes },
+        };
+
+        // Pacientes únicos del mes + total de consultas completadas del mes en paralelo
         const [citasConPaciente, totalConsultas] = await Promise.all([
             (this.prisma.cita as any).findMany({
                 where,
@@ -575,7 +583,7 @@ export class PrismaCitaRepository implements ICitaRepository {
             (citasConPaciente as { pacienteId: number }[]).map((c) => c.pacienteId)
         ).size;
 
-        // Sumar precios de citas completadas (servicio.precio)
+        // Sumar precios de citas completadas del mes (servicio.precio)
         const citasCompletadas = await (this.prisma.cita as any).findMany({
             where: { ...where, estado: 'Completada' },
             select: { servicio: { select: { precio: true } } },

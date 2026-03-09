@@ -279,6 +279,48 @@ export class CentrosSaludController {
     } catch (error) { this.manejarError(error, res); }
   }
 
+  // ══════════════════════════════════════════════════════════════
+  // GET /centros-salud/estadisticas/general
+  // ══════════════════════════════════════════════════════════════
+  async estadisticasGenerales(req: Request, res: Response): Promise<void> {
+    try {
+      const centroId = req.user?.userId;
+      if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+      const data = await this.gestionarCentroUseCase.estadisticasGenerales(centroId);
+      res.status(200).json({ success: true, data });
+    } catch (error) { this.manejarError(error, res); }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // GET /centros-salud/estadisticas/crecimiento-medicos
+  // ══════════════════════════════════════════════════════════════
+  async crecimientoMedicos(req: Request, res: Response): Promise<void> {
+    try {
+      const centroId = req.user?.userId;
+      if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+      const periodosValidos = ['semana', 'mes', '3meses', 'año', 'todo'];
+      const periodo = (req.query.periodo as string | undefined) ?? 'mes';
+      if (!periodosValidos.includes(periodo)) {
+        res.status(400).json({ success: false, message: `El parámetro "periodo" debe ser uno de: ${periodosValidos.join(', ')}.` });
+        return;
+      }
+      const data = await this.gestionarCentroUseCase.crecimientoMedicos(centroId, periodo);
+      res.status(200).json({ success: true, ...data });
+    } catch (error) { this.manejarError(error, res); }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // GET /centros-salud/estadisticas/distribucion-especialidades
+  // ══════════════════════════════════════════════════════════════
+  async distribucionEspecialidades(req: Request, res: Response): Promise<void> {
+    try {
+      const centroId = req.user?.userId;
+      if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+      const data = await this.gestionarCentroUseCase.distribucionEspecialidades(centroId);
+      res.status(200).json({ success: true, ...data });
+    } catch (error) { this.manejarError(error, res); }
+  }
+
   private manejarError(error: any, res: Response): void {
     const e: any = error;
     if (e?.code === 'P2002') {

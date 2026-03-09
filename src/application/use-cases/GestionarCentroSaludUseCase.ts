@@ -77,4 +77,26 @@ export class GestionarCentroSaludUseCase {
         if (!centro) throw new Error('Centro de salud no encontrado');
         return await this.centroRepo.listarDoctoresAsociados(centroId);
     }
+
+    // ─── ANALÍTICAS ───────────────────────────────────────────────────────────
+
+    async estadisticasGenerales(centroId: number) {
+        const centro = await this.centroRepo.obtenerPorId(centroId);
+        if (!centro) throw new Error('Centro de salud no encontrado');
+        return await this.centroRepo.estadisticasGenerales(centroId);
+    }
+
+    async crecimientoMedicos(centroId: number, periodo: string) {
+        const centro = await this.centroRepo.obtenerPorId(centroId);
+        if (!centro) throw new Error('Centro de salud no encontrado');
+        const periodosValidos = ['semana', 'mes', '3meses', 'año', 'todo'];
+        const p = periodosValidos.includes(periodo) ? periodo : 'mes';
+        return await this.centroRepo.crecimientoMedicos(centroId, p);
+    }
+
+    async distribucionEspecialidades(centroId: number) {
+        const centro = await this.centroRepo.obtenerPorId(centroId);
+        if (!centro) throw new Error('Centro de salud no encontrado');
+        return await this.centroRepo.distribucionEspecialidades(centroId);
+    }
 }
