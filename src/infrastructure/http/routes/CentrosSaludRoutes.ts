@@ -4,6 +4,7 @@ import multer from 'multer';
 import { CentrosSaludController } from '../controllers/CentrosSaludController';
 import { autenticarJWT, autenticarJWTOpcional } from '../middlewares/autenticacion';
 import { requireRole } from '../middlewares/roleMiddleware';
+import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 
 const centrosSaludRouter = Router();
 const controller = container.resolve(CentrosSaludController);
@@ -31,6 +32,7 @@ centrosSaludRouter.get(
   '/mi-perfil',
   autenticarJWT,
   requireRole('Centro'),
+  translationMiddleware,
   (req, res) => controller.obtenerPerfil(req, res)
 );
 
@@ -69,6 +71,7 @@ centrosSaludRouter.get(
   '/mis-doctores',
   autenticarJWT,
   requireRole('Centro'),
+  translationMiddleware,
   (req, res) => controller.listarDoctores(req, res)
 );
 
@@ -99,6 +102,7 @@ centrosSaludRouter.get(
   '/estadisticas/general',
   autenticarJWT,
   requireRole('Centro'),
+  translationMiddleware,
   (req, res) => controller.estadisticasGenerales(req, res)
 );
 
@@ -106,6 +110,7 @@ centrosSaludRouter.get(
   '/estadisticas/crecimiento-medicos',
   autenticarJWT,
   requireRole('Centro'),
+  translationMiddleware,
   (req, res) => controller.crecimientoMedicos(req, res)
 );
 
@@ -113,6 +118,7 @@ centrosSaludRouter.get(
   '/estadisticas/distribucion-especialidades',
   autenticarJWT,
   requireRole('Centro'),
+  translationMiddleware,
   (req, res) => controller.distribucionEspecialidades(req, res)
 );
 

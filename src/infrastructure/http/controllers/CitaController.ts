@@ -418,6 +418,16 @@ export class CitaController {
         } catch (error) { this.manejarError(error, res); }
     }
 
+    // GET /citas/mis-doctores — Doctores con quienes el paciente ha tenido citas
+    async misDoctores(req: Request, res: Response): Promise<void> {
+        try {
+            const pacienteId = req.user?.userId;
+            if (!pacienteId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+            const data = await this.citasUseCase.misDoctores(pacienteId);
+            res.status(200).json({ success: true, total: data.length, data });
+        } catch (error) { this.manejarError(error, res); }
+    }
+
     private manejarError(error: any, res: Response): void {
         const msg: string = error?.message ?? 'Error interno del servidor';
         if (msg.includes('no encontrad') || msg.includes('no existe')) {

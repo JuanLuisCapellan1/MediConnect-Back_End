@@ -112,4 +112,6 @@ export interface ICitaRepository {
         masUtilizados: { servicioId: number; nombre: string; totalCitas: number; porcentaje: number }[];
         servicios: { id: number; nombre: string; precio: number | null; estado: string; modalidad: string; totalCitas: number }[];
     }>;
+
+    misDoctores(pacienteId: number): Promise<any[]>;
 }

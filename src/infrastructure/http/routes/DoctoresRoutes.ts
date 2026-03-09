@@ -275,6 +275,7 @@ router.get(
     '/estadisticas/pacientes',
     autenticarJWT,
     requireRole('Doctor'),
+    translationMiddleware,
     (req, res) => container.resolve(CitaController).estadisticasPacientes(req, res)
 );
 
@@ -287,6 +288,7 @@ router.get(
     '/estadisticas/citas',
     autenticarJWT,
     requireRole('Doctor'),
+    translationMiddleware,
     (req, res) => container.resolve(CitaController).estadisticasCitas(req, res)
 );
 
@@ -298,6 +300,7 @@ router.get(
     '/estadisticas/resumen',
     autenticarJWT,
     requireRole('Doctor'),
+    translationMiddleware,
     (req, res) => doctorController.resumenDoctor(req, res)
 );
 
@@ -309,6 +312,7 @@ router.get(
     '/estadisticas/servicios',
     autenticarJWT,
     requireRole('Doctor'),
+    translationMiddleware,
     (req, res) => doctorController.estadisticasServicios(req, res)
 );
 
@@ -321,6 +325,7 @@ router.get(
     '/estadisticas/productividad',
     autenticarJWT,
     requireRole('Doctor'),
+    translationMiddleware,
     (req, res) => doctorController.productividadDoctor(req, res)
 );
 
@@ -332,6 +337,7 @@ router.get(
     '/estadisticas/servicios-mas-utilizados',
     autenticarJWT,
     requireRole('Doctor'),
+    translationMiddleware,
     (req, res) => doctorController.serviciosMasUtilizados(req, res)
 );
 

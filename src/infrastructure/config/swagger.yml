@@ -8655,6 +8655,28 @@ paths:
             format: date
           example: "2026-03-08"
           description: "Fecha de referencia en formato YYYY-MM-DD (default: hoy)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "motivoConsulta,diagnostico"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Calendario de citas
@@ -8715,6 +8737,167 @@ paths:
           description: No autenticado
         '403':
           description: Acceso denegado (solo Paciente o Doctor)
+
+  /citas/mis-doctores:
+    get:
+      summary: Doctores con quienes el paciente ha tenido citas
+      tags:
+        - Citas
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna la lista de **doctores únicos** con los que el paciente autenticado ha tenido alguna cita.
+        Los resultados están ordenados por la cita más reciente de cada doctor.
+        Incluye la información principal del doctor, su especialidad principal y el detalle de la última cita realizada.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=nombre,apellido,especialidadPrincipal.nombre` para traducir campos de texto.
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,apellido"
+          description: Campos a traducir separados por coma
+      responses:
+        '200':
+          description: Lista de doctores obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  total:
+                    type: integer
+                    example: 3
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 5
+                        nombre:
+                          type: string
+                          example: "Carlos"
+                        apellido:
+                          type: string
+                          example: "Méndez"
+                        fotoPerfil:
+                          type: string
+                          nullable: true
+                          example: "https://..."
+                        email:
+                          type: string
+                          nullable: true
+                        telefono:
+                          type: string
+                          nullable: true
+                        calificacionPromedio:
+                          type: number
+                          format: float
+                          nullable: true
+                          example: 4.8
+                        especialidadPrincipal:
+                          type: object
+                          nullable: true
+                          properties:
+                            id:
+                              type: integer
+                            nombre:
+                              type: string
+                              example: "Cardiología"
+                        anosExperiencia:
+                          type: integer
+                          nullable: true
+                          example: 8
+                        idiomas:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              nombre:
+                                type: string
+                                example: "Inglés"
+                              nivel:
+                                type: string
+                                nullable: true
+                                example: "Avanzado"
+                        segurosAceptados:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                nullable: true
+                              nombre:
+                                type: string
+                                nullable: true
+                                example: "ARS Salud"
+                              urlImage:
+                                type: string
+                                nullable: true
+                              tipoSeguro:
+                                type: object
+                                nullable: true
+                                properties:
+                                  id:
+                                    type: integer
+                                  nombre:
+                                    type: string
+                                    example: "Básico"
+                        totalServiciosActivos:
+                          type: integer
+                          example: 4
+                        ultimaCita:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            fecha:
+                              type: string
+                              format: date
+                              example: "2026-03-09"
+                            estado:
+                              type: string
+                              example: "Completada"
+                            servicio:
+                              type: object
+                              nullable: true
+                              properties:
+                                id:
+                                  type: integer
+                                nombre:
+                                  type: string
+                                precio:
+                                  type: number
+                                  format: float
+                                  nullable: true
+                                  example: 1500.00
+        '401':
+          description: No autenticado
+        '403':
+          description: Acceso denegado (solo Paciente)
 
   /citas/historial:
 
@@ -11305,6 +11488,29 @@ paths:
         - `totalEspecialidades` — número de especialidades únicas entre todos sus médicos
         - `citasSemanaActual` — total de citas de todos sus médicos en la semana en curso (Lun–Dom)
         - `valoracionPromedio` — promedio de `calificacionPromedio` de los médicos afiliados (`null` si ninguno tiene calificación)
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: ""
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Estadísticas obtenidas exitosamente
@@ -11368,6 +11574,28 @@ paths:
             type: string
             enum: [semana, mes, 3meses, año, todo]
             default: mes
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: ""
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Datos de crecimiento obtenidos
@@ -11415,6 +11643,29 @@ paths:
         Retorna la distribución de especialidades entre los médicos afiliados al **Centro** autenticado.
         Ordenada de mayor a menor por cantidad de médicos.
         Útil para gráficos de torta o barras.
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Distribución obtenida exitosamente
@@ -11979,6 +12230,28 @@ paths:
             enum: [semana, mes, 3meses, año, todo]
             default: mes
           description: "Período de análisis"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: ""
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Análisis de productividad obtenido exitosamente
@@ -12037,6 +12310,29 @@ paths:
         Retorna dos colecciones para el Doctor autenticado:
         - **`masUtilizados`** — servicios ordenados desc por número de citas, listos para el gráfico circular, incluyendo `porcentaje` sobre el total.
         - **`servicios`** — lista completa de todos sus servicios (activos e inactivos) con el conteo de citas asociadas.
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Datos de servicios obtenidos exitosamente
@@ -12112,6 +12408,31 @@ paths:
         - `totalPacientes` — pacientes únicos atendidos este mes (con al menos una cita)
         - `totalConsultas` — citas en estado `Completada` en el mes actual
         - `totalDineroGanado` — suma del `precio` de los servicios de las citas completadas este mes (redondeado a 2 decimales)
+
+        **Traducción Automática:** Agrega `?target=en` para traducir campos de texto.
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: ""
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Resumen obtenido exitosamente
@@ -12154,6 +12475,29 @@ paths:
         - `serviciosActivos` — con estado `Activo`
         - `serviciosInactivos` — con estado `Inactivo`
         - `promedioRating` — `calificacionPromedio` del doctor (`null` si aún no tiene reseñas)
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: ""
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Estadísticas de servicios obtenidas exitosamente

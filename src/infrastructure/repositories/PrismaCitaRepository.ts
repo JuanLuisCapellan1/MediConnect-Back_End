@@ -130,6 +130,57 @@ export class PrismaCitaRepository implements ICitaRepository {
             (this.prisma.cita as any).count({ where }),
         ]);
 
+        // ── Enriquecer ubicaciones con coords + dirección completa ──────────────
+        const ubicacionIds: number[] = datos
+            .map((c: any) => c.ubicacionId)
+            .filter((id: any): id is number => id != null);
+
+        if (ubicacionIds.length > 0) {
+            const uniqueIds = [...new Set(ubicacionIds)];
+            const geoRows = await this.prisma.$queryRaw<{
+                id: number;
+                latitud: number | null;
+                longitud: number | null;
+                barrio_nombre: string | null;
+                municipio_nombre: string | null;
+                provincia_nombre: string | null;
+            }[]>`
+                SELECT
+                    u.id_ubicacion                        AS id,
+                    ST_Y(u.punto_geografico::geometry)    AS latitud,
+                    ST_X(u.punto_geografico::geometry)    AS longitud,
+                    b.nombre                              AS barrio_nombre,
+                    m.nombre                              AS municipio_nombre,
+                    p.nombre                              AS provincia_nombre
+                FROM ubicaciones u
+                LEFT JOIN barrios               b  ON b.id_barrio              = u.id_barrio
+                LEFT JOIN secciones             s  ON s.id_seccion              = b.id_seccion
+                LEFT JOIN distritos_municipales dm ON dm.id_distrito_municipal  = s.id_distrito_municipal
+                LEFT JOIN municipios            m  ON m.id_municipio            = COALESCE(dm.id_municipio, s.id_municipio)
+                LEFT JOIN provincias            p  ON p.id_provincia            = m.id_provincia
+                WHERE u.id_ubicacion IN (${Prisma.join(uniqueIds)})
+            `;
+
+            const geoMap = new Map<number, typeof geoRows[0]>();
+            for (const row of geoRows) geoMap.set(Number(row.id), row);
+
+            for (const cita of datos) {
+                if (!cita.ubicacion || !cita.ubicacionId) continue;
+                const geo = geoMap.get(cita.ubicacionId);
+                if (!geo) continue;
+
+                if (geo.latitud != null) cita.ubicacion.latitud = Number(geo.latitud);
+                if (geo.longitud != null) cita.ubicacion.longitud = Number(geo.longitud);
+
+                const partes: string[] = [];
+                if (cita.ubicacion.direccion) partes.push(cita.ubicacion.direccion.trim());
+                if (geo.barrio_nombre) partes.push(geo.barrio_nombre.trim());
+                if (geo.municipio_nombre) partes.push(geo.municipio_nombre.trim());
+                if (geo.provincia_nombre) partes.push(geo.provincia_nombre.trim());
+                cita.ubicacion.direccionCompleta = partes.join(', ');
+            }
+        }
+
         return { datos: datos.map((c: any) => this._mapCita(c)), total };
     }
 
@@ -799,6 +850,99 @@ export class PrismaCitaRepository implements ICitaRepository {
             }));
 
         return { masUtilizados, servicios: serviciosList };
+    }
+
+    // ─── DOCTORES DEL PACIENTE ────────────────────────────────────────────────
+    async misDoctores(pacienteId: number): Promise<any[]> {
+        // Obtener citas agrupadas por doctor — las más recientes primero
+        const citas = await (this.prisma.cita as any).findMany({
+            where: { pacienteId },
+            include: {
+                doctor: {
+                    include: {
+                        usuario: {
+                            select: { email: true, telefono: true, fotoPerfil: true },
+                        },
+                        especialidades: {
+                            where: { es_principal: true },
+                            include: { especialidades: { select: { id: true, nombre: true } } },
+                        },
+                        servicios: {
+                            where: { estado: 'Activo' },
+                            select: { id: true },
+                        },
+                        idiomas: {
+                            where: { estado: 'Activo' },
+                            select: { nombre: true, nivel: true },
+                        },
+                        segurosAceptados: {
+                            where: { estado: 'Activo' },
+                            include: {
+                                seguro: { select: { id: true, nombre: true, urlImage: true } },
+                                tipoSeguro: { select: { id: true, nombre: true } },
+                            },
+                        },
+                    },
+                },
+                servicio: { select: { id: true, nombre: true, precio: true } },
+            },
+            orderBy: { fechaInicio: 'desc' },
+        });
+
+        // Deduplicar — un doctor puede tener varias citas; conservar el más reciente
+        const seenDoctors = new Map<number, any>();
+        for (const cita of citas) {
+            const doctorId: number = cita.doctorUsuarioId;
+            if (!seenDoctors.has(doctorId)) {
+                const d = cita.doctor;
+                const especialidadPrincipal = d.especialidades?.[0]?.especialidades ?? null;
+
+                // Mapear seguros — evitar duplicados por seguro+tipo
+                const seguros = (d.segurosAceptados ?? []).map((ds: any) => ({
+                    id: ds.seguro?.id ?? null,
+                    nombre: ds.seguro?.nombre ?? null,
+                    urlImage: ds.seguro?.urlImage ?? null,
+                    tipoSeguro: ds.tipoSeguro
+                        ? { id: ds.tipoSeguro.id, nombre: ds.tipoSeguro.nombre }
+                        : null,
+                }));
+
+                // Mapear precio del servicio de la última cita (Decimal → number)
+                const servicioMapeado = cita.servicio
+                    ? {
+                        id: cita.servicio.id,
+                        nombre: cita.servicio.nombre,
+                        precio: cita.servicio.precio != null
+                            ? Number(cita.servicio.precio.toString())
+                            : null,
+                    }
+                    : null;
+
+                seenDoctors.set(doctorId, {
+                    id: d.usuarioId,
+                    nombre: d.nombre,
+                    apellido: d.apellido,
+                    fotoPerfil: d.usuario?.fotoPerfil ?? null,
+                    email: d.usuario?.email ?? null,
+                    telefono: d.usuario?.telefono ?? null,
+                    calificacionPromedio: d.calificacionPromedio != null
+                        ? parseFloat(d.calificacionPromedio.toString()) : null,
+                    anosExperiencia: d.anosExperiencia ?? null,
+                    especialidadPrincipal,
+                    idiomas: d.idiomas ?? [],
+                    segurosAceptados: seguros,
+                    totalServiciosActivos: d.servicios?.length ?? 0,
+                    ultimaCita: {
+                        id: cita.id,
+                        fecha: cita.fechaInicio ? cita.fechaInicio.toISOString().substring(0, 10) : null,
+                        estado: cita.estado,
+                        servicio: servicioMapeado,
+                    },
+                });
+            }
+        }
+
+        return [...seenDoctors.values()];
     }
 }
 

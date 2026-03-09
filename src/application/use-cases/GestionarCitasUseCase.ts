@@ -1043,4 +1043,10 @@ export class GestionarCitasUseCase {
             dias,
         };
     }
+
+    // ─── DOCTORES DEL PACIENTE ─────────────────────────────────────────────────
+
+    async misDoctores(pacienteId: number): Promise<any[]> {
+        return await this.citaRepo.misDoctores(pacienteId);
+    }
 }
