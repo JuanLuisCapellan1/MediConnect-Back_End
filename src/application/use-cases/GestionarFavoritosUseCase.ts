@@ -5,11 +5,13 @@
 import { DoctorFavorito } from '../../domain/entities/DoctorFavorito';
 import { IFavoritoRepository } from '../../domain/repositories/IFavoritoRepository';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
+import { EnviarNotificacionUseCase } from './notificaciones/EnviarNotificacionUseCase';
 
 export class GestionarFavoritosUseCase {
     constructor(
         private readonly favoritoRepository: IFavoritoRepository,
-        private readonly doctorRepository: IDoctorRepository
+        private readonly doctorRepository: IDoctorRepository,
+        private readonly enviarNotifUC: EnviarNotificacionUseCase,
     ) { }
 
     /**
@@ -27,7 +29,18 @@ export class GestionarFavoritosUseCase {
             throw new Error('Este doctor ya está en tu lista de favoritos');
         }
 
-        return this.favoritoRepository.agregar(pacienteId, doctorId);
+        const favorito = await this.favoritoRepository.agregar(pacienteId, doctorId);
+
+        // ─ Notificar al doctor ─────────────────────────────────────────────
+        this.enviarNotifUC.execute({
+            usuarioId: doctorId,
+            titulo: 'Nuevo Seguidor',
+            mensaje: 'Un paciente te ha añadido a su lista de médicos favoritos.',
+            tipoAlerta: 'Informacion',
+            tipoEntidad: 'Perfil',
+        }).catch((e: any) => console.error('notif agregar favorito:', e));
+
+        return favorito;
     }
 
     /**

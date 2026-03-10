@@ -675,6 +675,7 @@ model Notificacion {
   creadoEn    DateTime  @default(now()) @map("creado_en") @db.Timestamptz(6)
   usuario     Usuario   @relation(fields: [usuarioId], references: [id])
 
+  @@index([usuarioId, leidaEn], map: "notificaciones_usuario_leida_idx")
   @@map("notificaciones")
 }
 

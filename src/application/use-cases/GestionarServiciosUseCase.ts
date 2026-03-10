@@ -10,6 +10,7 @@ import {
     ActualizarServicioDto,
     FiltrosServicioDto,
 } from '../dtos/ServicioDtos';
+import { EnviarNotificacionUseCase } from './notificaciones/EnviarNotificacionUseCase';
 
 const MAX_IMAGENES = 10;
 const TIPOS_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -25,7 +26,8 @@ export interface ImagenUpload {
 export class GestionarServiciosUseCase {
     constructor(
         private readonly servicioRepository: IServicioRepository,
-        private readonly storageService: IStorageService
+        private readonly storageService: IStorageService,
+        private readonly enviarNotifUC: EnviarNotificacionUseCase,
     ) { }
 
     // ─── Crear ────────────────────────────────────────────────────────────────
@@ -109,7 +111,7 @@ export class GestionarServiciosUseCase {
             estado: dto.estado,
             centroSaludIds: dto.centroSaludIds,
             ubicacionIds: dto.ubicacionIds,
-            horarioIds: dto.horarioIds
+            horarioIds: dto.horarioIds,
         });
     }
 
@@ -122,7 +124,38 @@ export class GestionarServiciosUseCase {
     async desactivar(id: number, doctorId: number): Promise<Servicio> {
         const s = await this._verificarPropiedad(id, doctorId);
         if (s.estado === 'Inactivo') throw new Error('El servicio ya está inactivo');
-        return this.servicioRepository.desactivar(id);
+
+        const resultado = await this.servicioRepository.desactivar(id);
+
+        // ─ Notificar a pacientes con citas futuras en este servicio ─────────
+        try {
+            const { PrismaClient } = await import('@prisma/client');
+            const prisma = new PrismaClient();
+            const citasAfectadas = await (prisma.cita as any).findMany({
+                where: {
+                    servicioId: id,
+                    estado: { in: ['Programada', 'Reprogramada'] },
+                    fechaInicio: { gt: new Date() },
+                },
+                select: { id: true, pacienteId: true },
+            });
+            await prisma.$disconnect();
+
+            for (const cita of citasAfectadas) {
+                this.enviarNotifUC.execute({
+                    usuarioId: cita.pacienteId,
+                    titulo: 'Servicio Médico Desactivado',
+                    mensaje: 'Un servicio al que tienes citas programadas ha sido desactivado por el médico. Por favor, contacta con tu doctor.',
+                    tipoAlerta: 'Advertencia',
+                    tipoEntidad: 'Cita',
+                    entidadId: cita.id,
+                }).catch((e: any) => console.error('notif desactivarServicio:', e));
+            }
+        } catch (e) {
+            console.error('GestionarServiciosUseCase.desactivar: error al notificar:', e);
+        }
+
+        return resultado;
     }
 
     // ─── Imágenes ─────────────────────────────────────────────────────────────

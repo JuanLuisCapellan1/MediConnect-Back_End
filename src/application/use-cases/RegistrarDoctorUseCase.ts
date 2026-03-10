@@ -5,6 +5,7 @@ import { IPasswordHasher } from '../interfaces/IPasswordHasher';
 import { IStorageService } from '../interfaces/IStorageService';
 import { RegistrarDoctorDto } from '../dtos/RegistrarDoctorDto';
 import { AuthService } from '../../infrastructure/external-services/AuthService';
+import { EnviarNotificacionUseCase } from './notificaciones/EnviarNotificacionUseCase';
 
 @injectable()
 export class RegistrarDoctorUseCase {
@@ -13,7 +14,8 @@ export class RegistrarDoctorUseCase {
     @inject('EspecialidadRepository') private especialidadRepository: IEspecialidadRepository,
     @inject('PasswordHasher') private passwordHasher: IPasswordHasher,
     @inject('StorageService') private storageService: IStorageService,
-    @inject(AuthService) private authService: AuthService
+    @inject(AuthService) private authService: AuthService,
+    @inject(EnviarNotificacionUseCase) private enviarNotifUC: EnviarNotificacionUseCase,
   ) { }
 
   async execute(dto: RegistrarDoctorDto, files: any, token: string): Promise<void> {
@@ -200,6 +202,29 @@ export class RegistrarDoctorUseCase {
         ids_especialidades_secundarias: dto.ids_especialidades_secundarias || [],
         documentos: todosLosDocumentos,
       });
+
+      // ─ Notificar a todos los Admins ─────────────────────────────
+      try {
+        const { PrismaClient } = await import('@prisma/client');
+        const prismaTemp = new PrismaClient();
+        const admins = await prismaTemp.usuario.findMany({
+          where: { rol: 'Admin', estado: 'Activo' },
+          select: { id: true },
+        });
+        await prismaTemp.$disconnect();
+
+        for (const admin of admins) {
+          this.enviarNotifUC.execute({
+            usuarioId: admin.id,
+            titulo: 'Nuevo Doctor Registrado',
+            mensaje: 'Un nuevo médico se ha registrado y sus documentos están pendientes de revisión.',
+            tipoAlerta: 'Informacion',
+            tipoEntidad: 'Perfil',
+          }).catch((e: any) => console.error('notif registrarDoctor admin:', e));
+        }
+      } catch (notifErr) {
+        console.error('RegistrarDoctorUseCase: error al notificar admins:', notifErr);
+      }
     } catch (error) {
       // Aquí podrías implementar limpieza de archivos subidos en caso de error
       throw error;

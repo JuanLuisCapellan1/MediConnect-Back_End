@@ -33,6 +33,7 @@ import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 import { translationRateLimitMiddleware } from '../middlewares/TranslationRateLimiter';
 import DoctorIdiomasRoutes from './DoctorIdiomasRoutes';
 import CitasRoutes from './CitasRoutes';
+import TeleconsultasRoutes from './TeleconsultasRoutes';
 import ResenasRoutes from './ResenasRoutes';
 import MediaRoutes from './MediaRoutes';
 import FavoritosRoutes from './FavoritosRoutes';
@@ -137,6 +138,9 @@ router.use('/servicios', ServiciosRoutes);
 
 // Rutas de Citas
 router.use('/citas', CitasRoutes);
+
+// Rutas de Teleconsultas
+router.use('/teleconsultas', TeleconsultasRoutes);
 
 // Rutas de Reseñas
 router.use('/resenas', ResenasRoutes);

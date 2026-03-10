@@ -8,12 +8,14 @@ import { IHorariosRepository } from '../../domain/repositories/IHorariosReposito
 import { HorarioValidator } from '../../domain/validators/Horarios/HorarioValidator';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
 import { CrearHorarioDto, ActualizarHorarioDto } from '../dtos/HorarioDtos';
+import { EnviarNotificacionUseCase } from './notificaciones/EnviarNotificacionUseCase';
 
 export class GestionarHorariosUseCase {
   constructor(
     private horariosRepository: IHorariosRepository,
     private horarioValidator: HorarioValidator,
-    private estadoValidator: EstadoValidator
+    private estadoValidator: EstadoValidator,
+    private enviarNotifUC: EnviarNotificacionUseCase,
   ) { }
 
   async crear(dto: CrearHorarioDto): Promise<Horario> {
@@ -90,6 +92,34 @@ export class GestionarHorariosUseCase {
     const horario = await this.horariosRepository.buscarPorId(id);
     if (!horario) throw new Error(`Horario con ID ${id} no encontrado`);
     if (horario.doctorId !== doctorId) throw new Error('No tienes permiso para eliminar este horario');
+
+    // ─ Buscar pacientes con citas en este horario y notificarles ──────────────
+    try {
+      const { PrismaClient } = await import('@prisma/client');
+      const prisma = new PrismaClient();
+      const citasAfectadas = await (prisma.cita as any).findMany({
+        where: {
+          horarioId: id,
+          estado: { in: ['Programada', 'Reprogramada'] },
+        },
+        select: { id: true, pacienteId: true },
+      });
+      await prisma.$disconnect();
+
+      for (const cita of citasAfectadas) {
+        this.enviarNotifUC.execute({
+          usuarioId: cita.pacienteId,
+          titulo: 'Disponibilidad Médica Modificada',
+          mensaje: 'Tu médico ha actualizado su disponibilidad. Por favor revisa el estado de tu cita.',
+          tipoAlerta: 'Atencion',
+          tipoEntidad: 'Cita',
+          entidadId: cita.id,
+        }).catch((e: any) => console.error('notif eliminarHorario:', e));
+      }
+    } catch (e) {
+      console.error('GestionarHorariosUseCase.eliminar: error al notificar:', e);
+    }
+
     return await this.horariosRepository.eliminar(id);
   }
 
@@ -100,7 +130,6 @@ export class GestionarHorariosUseCase {
 
   /**
    * Verifica si un conjunto de horarios (por ID) presentan conflictos entre sí.
-   * Conflicto = comparten al menos un día Y sus rangos horarios se solapan.
    */
   async verificarConflictos(horarioIds: number[]): Promise<{
     conflicto: boolean;
@@ -120,7 +149,6 @@ export class GestionarHorariosUseCase {
       };
     }
 
-    // Cargar todos los horarios solicitados
     const horarios: Horario[] = [];
     for (const id of horarioIds) {
       const h = await this.horariosRepository.buscarPorId(id);

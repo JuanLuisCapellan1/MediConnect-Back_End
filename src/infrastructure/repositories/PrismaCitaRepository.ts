@@ -1096,6 +1096,7 @@ export class PrismaCitaRepository implements ICitaRepository {
                     idiomas: d.idiomas ?? [],
                     segurosAceptados: seguros,
                     totalServiciosActivos: d.servicios?.length ?? 0,
+                    esFavorito: false, // se actualiza abajo
                     ultimaCita: {
                         id: cita.id,
                         fecha: cita.fechaInicio ? cita.fechaInicio.toISOString().substring(0, 10) : null,
@@ -1103,6 +1104,23 @@ export class PrismaCitaRepository implements ICitaRepository {
                         servicio: servicioMapeado,
                     },
                 });
+            }
+        }
+
+        // ── Enriquecer con esFavorito ─────────────────────────────────────────
+        const doctorIds = [...seenDoctors.keys()];
+        if (doctorIds.length > 0) {
+            const favoritos = await (this.prisma.doctorFavorito as any).findMany({
+                where: {
+                    pacienteId,
+                    doctorId: { in: doctorIds },
+                    estado: 'Activo',
+                },
+                select: { doctorId: true },
+            });
+            const favoritosSet = new Set<number>(favoritos.map((f: any) => f.doctorId));
+            for (const [id, doc] of seenDoctors) {
+                doc.esFavorito = favoritosSet.has(id);
             }
         }
 

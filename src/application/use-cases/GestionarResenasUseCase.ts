@@ -1,11 +1,13 @@
 import { injectable, inject } from 'tsyringe';
 import { IResenaRepository } from '../../domain/repositories/IResenaRepository';
 import { CrearResenaDto, FiltroResenasDto } from '../dtos/ResenaDtos';
+import { EnviarNotificacionUseCase } from './notificaciones/EnviarNotificacionUseCase';
 
 @injectable()
 export class GestionarResenasUseCase {
     constructor(
-        @inject('ResenaRepository') private resenaRepo: IResenaRepository
+        @inject('ResenaRepository') private resenaRepo: IResenaRepository,
+        @inject(EnviarNotificacionUseCase) private enviarNotifUC: EnviarNotificacionUseCase,
     ) { }
 
     // ===================================================================
@@ -67,7 +69,7 @@ export class GestionarResenasUseCase {
             throw new Error('Ya has calificado este servicio anteriormente.');
         }
 
-        return await this.resenaRepo.crear({
+        const resena = await this.resenaRepo.crear({
             servicioId: dto.servicioId,
             pacienteId,
             doctorId: servicio.doctorId,
@@ -75,6 +77,18 @@ export class GestionarResenasUseCase {
             comentario: dto.comentario ?? null,
             citaId: dto.citaId ?? null,
         });
+
+        // ─ Notificar al doctor ────────────────────────────────────────────────
+        this.enviarNotifUC.execute({
+            usuarioId: servicio.doctorId,
+            titulo: 'Nueva Reseña Recibida',
+            mensaje: 'Un paciente ha calificado su última consulta contigo.',
+            tipoAlerta: 'Informacion',
+            tipoEntidad: 'Resena',
+            entidadId: resena.id ?? dto.servicioId,
+        }).catch((e: any) => console.error('notif crearResena:', e));
+
+        return resena;
     }
 
     // ===================================================================

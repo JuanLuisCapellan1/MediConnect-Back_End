@@ -12,6 +12,7 @@ import {
     FiltroCitasDto,
     CrearPeriodoInactividadDto,
 } from '../dtos/CitaDtos';
+import { EnviarNotificacionUseCase } from './notificaciones/EnviarNotificacionUseCase';
 
 @injectable()
 export class GestionarCitasUseCase {
@@ -20,6 +21,7 @@ export class GestionarCitasUseCase {
         @inject('DoctorRepository') private doctorRepo: IDoctorRepository,
         @inject('PacienteRepository') private pacienteRepo: IPacienteRepository,
         @inject('InactividadRepository') private inactividadRepo: IInactividadRepository,
+        @inject(EnviarNotificacionUseCase) private enviarNotifUC: EnviarNotificacionUseCase,
     ) { }
 
     // ===================================================================
@@ -383,7 +385,7 @@ export class GestionarCitasUseCase {
             const numPacientes = dto.numPacientes ?? 1;
             const totalAPagar = parseFloat(servicio.precio.toString()) * numPacientes;
 
-            return await this.citaRepo.crear({
+            const citaCreada = await this.citaRepo.crear({
                 pacienteId,
                 doctorId,
                 servicioId: dto.servicioId,
@@ -397,6 +399,18 @@ export class GestionarCitasUseCase {
                 motivoConsulta: dto.motivoConsulta,
                 totalAPagar,
             });
+
+            // — Notificar al doctor en tiempo real —
+            this.enviarNotifUC.execute({
+                usuarioId: doctorId,
+                titulo: 'Nueva Cita Agendada',
+                mensaje: 'Un paciente ha agendado una nueva cita contigo.',
+                tipoAlerta: 'Informacion',
+                tipoEntidad: 'Cita',
+                entidadId: citaCreada.id,
+            }).catch((e: any) => console.error('notif agendarCita:', e));
+
+            return citaCreada;
         } finally {
             await prisma.$disconnect();
         }
@@ -562,10 +576,23 @@ export class GestionarCitasUseCase {
             throw new Error('El motivo de cancelación es requerido.');
         }
 
-        return await this.citaRepo.actualizar(citaId, {
+        const citaCancelada = await this.citaRepo.actualizar(citaId, {
             estado: 'Cancelada',
             motivoCancelacion: dto.motivoCancelacion,
         });
+
+        // — Notificar al otro participante —
+        const destinatarioId = rol === 'Paciente' ? cita.doctorUsuarioId : cita.pacienteId;
+        this.enviarNotifUC.execute({
+            usuarioId: destinatarioId,
+            titulo: 'Cita Cancelada',
+            mensaje: 'La cita programada ha sido cancelada.',
+            tipoAlerta: 'Advertencia',
+            tipoEntidad: 'Cita',
+            entidadId: citaId,
+        }).catch((e: any) => console.error('notif cancelarCita:', e));
+
+        return citaCancelada;
     }
 
     // ===================================================================
@@ -590,12 +617,24 @@ export class GestionarCitasUseCase {
 
         const nuevaFechaInicio = this._combinarFechaHora(dto.fecha, dto.hora);
 
-        return await this.citaRepo.actualizar(citaId, {
+        const citaReprogramada = await this.citaRepo.actualizar(citaId, {
             horarioId: dto.horarioId,
             fechaInicio: nuevaFechaInicio,
             fechaFin: null,
             estado: 'Reprogramada',
         });
+
+        // — Notificar al paciente (solo el doctor puede reprogramar) —
+        this.enviarNotifUC.execute({
+            usuarioId: cita.pacienteId,
+            titulo: 'Cita Reprogramada',
+            mensaje: 'La fecha/hora de tu cita ha sido modificada.',
+            tipoAlerta: 'Atencion',
+            tipoEntidad: 'Cita',
+            entidadId: citaId,
+        }).catch((e: any) => console.error('notif reprogramarCita:', e));
+
+        return citaReprogramada;
     }
 
     // ===================================================================
@@ -653,6 +692,16 @@ export class GestionarCitasUseCase {
             estado: 'Completada',
             fechaFin,
         });
+
+        // ─ Notificar al paciente que su historial/diagnóstico está disponible ─
+        this.enviarNotifUC.execute({
+            usuarioId: cita.pacienteId,
+            titulo: 'Historial Médico Actualizado',
+            mensaje: 'El doctor ha cerrado tu consulta y registrado el diagnóstico. Ya puedes verlo en tu historial.',
+            tipoAlerta: 'Exito',
+            tipoEntidad: 'Cita',
+            entidadId: citaId,
+        }).catch((e: any) => console.error('notif diagnosticarCita:', e));
 
         return historial;
     }
@@ -735,6 +784,16 @@ export class GestionarCitasUseCase {
                     motivoCancelacion,
                 });
                 citasCanceladas++;
+
+                // ─ Notificar al paciente de cada cita cancelada ─────────────
+                this.enviarNotifUC.execute({
+                    usuarioId: cita.pacienteId,
+                    titulo: 'Cita Cancelada por Indisponibilidad',
+                    mensaje: `Tu cita fue cancelada porque el doctor registró un período de inactividad.${dto.motivo ? ' Motivo: ' + dto.motivo : ''}`,
+                    tipoAlerta: 'Advertencia',
+                    tipoEntidad: 'Cita',
+                    entidadId: cita.id,
+                }).catch((e: any) => console.error('notif registrarInactividad:', e));
             }
         }
 

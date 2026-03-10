@@ -16,6 +16,7 @@ import { AccesoMensajeDenegadoError } from '../../domain/errors/Mensajes/AccesoM
 import { MensajeInvalidoError } from '../../domain/errors/Mensajes/MensajeInvalidoError';
 import { ConversacionNoEncontradaError } from '../../domain/errors/Conversaciones/ConversacionNoEncontradaError';
 import { AccesoConversacionDenegadoError } from '../../domain/errors/Conversaciones/AccesoConversacionDenegadoError';
+import { EnviarNotificacionUseCase } from './notificaciones/EnviarNotificacionUseCase';
 
 export interface ResultadoMensajes {
   mensajes: MensajeConRemitenteDto[];
@@ -35,7 +36,9 @@ export class GestionarMensajesUseCase {
     @inject('LecturasConversacionRepository')
     private lecturasRepository: ILecturasConversacionRepository,
     @inject('MediaRepository')
-    private mediaRepository: IMediaRepository
+    private mediaRepository: IMediaRepository,
+    @inject(EnviarNotificacionUseCase)
+    private enviarNotifUC: EnviarNotificacionUseCase,
   ) { }
 
   /**
@@ -85,7 +88,21 @@ export class GestionarMensajesUseCase {
 
     const mensajeCreado = await this.mensajesRepository.crear(nuevoMensaje);
 
-    // Actualizar el timestamp de la conversación (ya se hace en el repositorio)
+    // ─ Notificar al otro participante (no al remitente) ────────────────────
+    const conv = conversacion as any;
+    const destinatarioId: number | undefined =
+      conv.emisorId === dto.remitenteId ? conv.receptorId : conv.emisorId;
+
+    if (destinatarioId !== undefined && destinatarioId !== dto.remitenteId) {
+      this.enviarNotifUC.execute({
+        usuarioId: destinatarioId,
+        titulo: 'Nuevo Mensaje',
+        mensaje: 'Tienes un nuevo mensaje en tu conversación.',
+        tipoAlerta: 'Informacion',
+        tipoEntidad: 'Mensaje',
+        entidadId: mensajeCreado.id,
+      }).catch((e: any) => console.error('notif crearMensaje:', e));
+    }
 
     return mensajeCreado;
   }
