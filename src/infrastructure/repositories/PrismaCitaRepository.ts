@@ -34,6 +34,27 @@ const CITA_INCLUDE = {
         include: {
             especialidad: { select: { id: true, nombre: true } },
             imagenes: { where: { estado: 'Activo' }, orderBy: { orden: 'asc' as const } },
+            ubicaciones: {
+                include: {
+                    barrio: {
+                        include: {
+                            seccion: {
+                                include: {
+                                    distritoMunicipal: {
+                                        include: {
+                                            municipio: {
+                                                include: {
+                                                    provincia: { select: { id: true, nombre: true } },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
     },
     horario: true,
@@ -181,6 +202,78 @@ export class PrismaCitaRepository implements ICitaRepository {
             }
         }
 
+        // ── Enriquecer ubicaciones del SERVICIO con coords + dirección ──────────
+        const servicioUbicacionIds: number[] = datos
+            .map((c: any) => c.servicio?.id_ubicacion)
+            .filter((id: any): id is number => id != null);
+
+        if (servicioUbicacionIds.length > 0) {
+            const uniqueServUbIds = [...new Set(servicioUbicacionIds)];
+            const geoServRows = await this.prisma.$queryRaw<{
+                id: number;
+                latitud: number | null;
+                longitud: number | null;
+                barrio_nombre: string | null;
+                municipio_nombre: string | null;
+                provincia_nombre: string | null;
+            }[]>`
+                SELECT
+                    u.id_ubicacion                        AS id,
+                    ST_Y(u.punto_geografico::geometry)    AS latitud,
+                    ST_X(u.punto_geografico::geometry)    AS longitud,
+                    b.nombre                              AS barrio_nombre,
+                    m.nombre                              AS municipio_nombre,
+                    p.nombre                              AS provincia_nombre
+                FROM ubicaciones u
+                LEFT JOIN barrios               b  ON b.id_barrio              = u.id_barrio
+                LEFT JOIN secciones             s  ON s.id_seccion              = b.id_seccion
+                LEFT JOIN distritos_municipales dm ON dm.id_distrito_municipal  = s.id_distrito_municipal
+                LEFT JOIN municipios            m  ON m.id_municipio            = COALESCE(dm.id_municipio, s.id_municipio)
+                LEFT JOIN provincias            p  ON p.id_provincia            = m.id_provincia
+                WHERE u.id_ubicacion IN (${Prisma.join(uniqueServUbIds)})
+            `;
+
+            const geoServMap = new Map<number, typeof geoServRows[0]>();
+            for (const row of geoServRows) geoServMap.set(Number(row.id), row);
+
+            for (const cita of datos) {
+                if (!cita.servicio?.ubicaciones) continue;
+                // Inicializar siempre los campos geo con null
+                cita.servicio.ubicaciones.latitud = null;
+                cita.servicio.ubicaciones.longitud = null;
+                cita.servicio.ubicaciones.barrio_nombre = null;
+                cita.servicio.ubicaciones.municipio_nombre = null;
+                cita.servicio.ubicaciones.provincia_nombre = null;
+                cita.servicio.ubicaciones.direccionCompleta = null;
+
+                if (!cita.servicio.id_ubicacion) continue;
+                const geo = geoServMap.get(cita.servicio.id_ubicacion);
+                if (!geo) continue;
+
+                cita.servicio.ubicaciones.latitud = geo.latitud != null ? Number(geo.latitud) : null;
+                cita.servicio.ubicaciones.longitud = geo.longitud != null ? Number(geo.longitud) : null;
+                cita.servicio.ubicaciones.barrio_nombre = geo.barrio_nombre ?? null;
+                cita.servicio.ubicaciones.municipio_nombre = geo.municipio_nombre ?? null;
+                cita.servicio.ubicaciones.provincia_nombre = geo.provincia_nombre ?? null;
+
+                // Si distritoMunicipal es null, inyectar municipio directamente en barrio.seccion
+                const seccion = cita.servicio.ubicaciones.barrio?.seccion;
+                if (seccion && !seccion.distritoMunicipal && geo.municipio_nombre) {
+                    seccion.municipio = {
+                        nombre: geo.municipio_nombre,
+                        provincia: geo.provincia_nombre ? { nombre: geo.provincia_nombre } : null,
+                    };
+                }
+
+                const partes: string[] = [];
+                if (cita.servicio.ubicaciones.direccion) partes.push(cita.servicio.ubicaciones.direccion.trim());
+                if (geo.barrio_nombre) partes.push(geo.barrio_nombre.trim());
+                if (geo.municipio_nombre) partes.push(geo.municipio_nombre.trim());
+                if (geo.provincia_nombre) partes.push(geo.provincia_nombre.trim());
+                cita.servicio.ubicaciones.direccionCompleta = partes.join(', ') || null;
+            }
+        }
+
         return { datos: datos.map((c: any) => this._mapCita(c)), total };
     }
 
@@ -262,9 +355,80 @@ export class PrismaCitaRepository implements ICitaRepository {
             }
         }
 
+        // ── Enriquecer ubicaciones del SERVICIO con coords + dirección ──────────
+        const servicioUbicacionIds: number[] = citas
+            .map((c: any) => c.servicio?.id_ubicacion)
+            .filter((id: any): id is number => id != null);
+
+        if (servicioUbicacionIds.length > 0) {
+            const uniqueServUbIds = [...new Set(servicioUbicacionIds)];
+            const geoServRows = await this.prisma.$queryRaw<{
+                id: number;
+                latitud: number | null;
+                longitud: number | null;
+                barrio_nombre: string | null;
+                municipio_nombre: string | null;
+                provincia_nombre: string | null;
+            }[]>`
+                SELECT
+                    u.id_ubicacion                        AS id,
+                    ST_Y(u.punto_geografico::geometry)    AS latitud,
+                    ST_X(u.punto_geografico::geometry)    AS longitud,
+                    b.nombre                              AS barrio_nombre,
+                    m.nombre                              AS municipio_nombre,
+                    p.nombre                              AS provincia_nombre
+                FROM ubicaciones u
+                LEFT JOIN barrios               b  ON b.id_barrio              = u.id_barrio
+                LEFT JOIN secciones             s  ON s.id_seccion              = b.id_seccion
+                LEFT JOIN distritos_municipales dm ON dm.id_distrito_municipal  = s.id_distrito_municipal
+                LEFT JOIN municipios            m  ON m.id_municipio            = COALESCE(dm.id_municipio, s.id_municipio)
+                LEFT JOIN provincias            p  ON p.id_provincia            = m.id_provincia
+                WHERE u.id_ubicacion IN (${Prisma.join(uniqueServUbIds)})
+            `;
+
+            const geoServMap = new Map<number, typeof geoServRows[0]>();
+            for (const row of geoServRows) geoServMap.set(Number(row.id), row);
+
+            for (const cita of citas) {
+                if (!cita.servicio?.ubicaciones) continue;
+                // Inicializar siempre los campos geo con null
+                cita.servicio.ubicaciones.latitud = null;
+                cita.servicio.ubicaciones.longitud = null;
+                cita.servicio.ubicaciones.barrio_nombre = null;
+                cita.servicio.ubicaciones.municipio_nombre = null;
+                cita.servicio.ubicaciones.provincia_nombre = null;
+                cita.servicio.ubicaciones.direccionCompleta = null;
+
+                if (!cita.servicio.id_ubicacion) continue;
+                const geo = geoServMap.get(cita.servicio.id_ubicacion);
+                if (!geo) continue;
+
+                cita.servicio.ubicaciones.latitud = geo.latitud != null ? Number(geo.latitud) : null;
+                cita.servicio.ubicaciones.longitud = geo.longitud != null ? Number(geo.longitud) : null;
+                cita.servicio.ubicaciones.barrio_nombre = geo.barrio_nombre ?? null;
+                cita.servicio.ubicaciones.municipio_nombre = geo.municipio_nombre ?? null;
+                cita.servicio.ubicaciones.provincia_nombre = geo.provincia_nombre ?? null;
+
+                // Si distritoMunicipal es null, inyectar municipio directamente en barrio.seccion
+                const seccionD = cita.servicio.ubicaciones.barrio?.seccion;
+                if (seccionD && !seccionD.distritoMunicipal && geo.municipio_nombre) {
+                    seccionD.municipio = {
+                        nombre: geo.municipio_nombre,
+                        provincia: geo.provincia_nombre ? { nombre: geo.provincia_nombre } : null,
+                    };
+                }
+
+                const partes: string[] = [];
+                if (cita.servicio.ubicaciones.direccion) partes.push(cita.servicio.ubicaciones.direccion.trim());
+                if (geo.barrio_nombre) partes.push(geo.barrio_nombre.trim());
+                if (geo.municipio_nombre) partes.push(geo.municipio_nombre.trim());
+                if (geo.provincia_nombre) partes.push(geo.provincia_nombre.trim());
+                cita.servicio.ubicaciones.direccionCompleta = partes.join(', ') || null;
+            }
+        }
+
         return { datos: citas.map((c: any) => this._mapCita(c)), total };
     }
-
     async actualizar(id: number, datos: any): Promise<any> {
         const cita = await (this.prisma.cita as any).update({
             where: { id },
