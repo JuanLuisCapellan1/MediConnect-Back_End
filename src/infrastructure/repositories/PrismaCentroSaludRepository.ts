@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { ICentroSaludRepository } from '../../domain/repositories/ICentroSaludRepository';
 import { RedisCacheService } from '../external-services/RedisCacheService';
 
@@ -162,6 +162,141 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
     return await this.prisma.centroSalud.findMany({
       include: { usuario: true, tipoCentro: true, ubicacion: true },
     });
+  }
+
+  // ─── BÚSQUEDA GEOGRÁFICA ────────────────────────────────────────────────────
+  async buscarCercanos(
+    lat?: number,
+    lng?: number,
+    radioKm?: number,
+    filtros?: { tipoCentroId?: number; estadoVerificacion?: string },
+  ): Promise<any[]> {
+    const useGeo = lat != null && lng != null && radioKm != null;
+    const radioMetros = useGeo ? radioKm! * 1000 : 0;
+    const estadoVerif = filtros?.estadoVerificacion ?? 'Aprobado';
+
+    const condiciones: Prisma.Sql[] = [];
+    if (filtros?.tipoCentroId) {
+      condiciones.push(Prisma.sql`cs.id_tipo_centro = ${filtros.tipoCentroId}`);
+    }
+    const extraWhere = condiciones.length > 0
+      ? Prisma.sql`AND ${Prisma.join(condiciones, ' AND ')}`
+      : Prisma.sql``;
+
+    // ── 1. Obtener IDs (+ distancia opcional) con raw SQL ──────────────────
+    let rows: { id: number; distancia_metros: number | null }[];
+
+    if (useGeo) {
+      rows = await this.prisma.$queryRaw<{ id: number; distancia_metros: number }[]>`
+        SELECT DISTINCT ON (cs.id_usuario)
+          cs.id_usuario AS id,
+          ST_Distance(
+            u.punto_geografico::geography,
+            ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography
+          ) AS distancia_metros
+        FROM centros_salud cs
+        JOIN ubicaciones u ON u.id_ubicacion = cs.id_ubicacion
+                          AND u.punto_geografico IS NOT NULL
+        WHERE cs.estado              = 'Activo'
+          AND cs.estado_verificacion = ${estadoVerif}
+          AND ST_DWithin(
+                u.punto_geografico::geography,
+                ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography,
+                ${radioMetros}
+              )
+        ${extraWhere}
+        ORDER BY cs.id_usuario, distancia_metros ASC
+      `;
+    } else {
+      rows = await this.prisma.$queryRaw<{ id: number; distancia_metros: null }[]>`
+        SELECT cs.id_usuario AS id, NULL::double precision AS distancia_metros
+        FROM centros_salud cs
+        WHERE cs.estado              = 'Activo'
+          AND cs.estado_verificacion = ${estadoVerif}
+        ${extraWhere}
+        ORDER BY cs.id_usuario
+      `;
+    }
+
+    if (rows.length === 0) return [];
+
+    const distanciaMap = new Map<number, number | null>();
+    for (const r of rows) {
+      distanciaMap.set(Number(r.id), r.distancia_metros != null ? Number(r.distancia_metros) : null);
+    }
+    const idsOrdenados = useGeo
+      ? [...distanciaMap.entries()].sort((a, b) => (a[1] ?? 0) - (b[1] ?? 0)).map(([id]) => id)
+      : [...distanciaMap.keys()];
+
+    // ── 2. Carga batch de datos completos ──────────────────────────────────
+    const centros = await this.prisma.centroSalud.findMany({
+      where: { usuarioId: { in: idsOrdenados } },
+      include: {
+        usuario: { select: { id: true, email: true, telefono: true, fotoPerfil: true } },
+        tipoCentro: { select: { id: true, nombre: true } },
+        ubicacion: {
+          select: {
+            id: true, direccion: true, codigoPostal: true, nombre: true,
+            barrio: { select: { id: true, nombre: true } },
+          },
+        },
+      },
+    });
+
+    // ── 3. Enriquecer ubicaciones con coords PostGIS ────────────────────────
+    const ubicIds = centros.map((c: any) => c.ubicacion?.id).filter(Boolean) as number[];
+    if (ubicIds.length > 0) {
+      const geoRows = await this.prisma.$queryRaw<{
+        id: number; latitud: number | null; longitud: number | null;
+        barrio_nombre: string | null; municipio_nombre: string | null; provincia_nombre: string | null;
+      }[]>`
+        SELECT
+          u.id_ubicacion                     AS id,
+          ST_Y(u.punto_geografico::geometry) AS latitud,
+          ST_X(u.punto_geografico::geometry) AS longitud,
+          b.nombre                           AS barrio_nombre,
+          m.nombre                           AS municipio_nombre,
+          p.nombre                           AS provincia_nombre
+        FROM ubicaciones u
+        LEFT JOIN barrios              b  ON b.id_barrio             = u.id_barrio
+        LEFT JOIN secciones            s  ON s.id_seccion             = b.id_seccion
+        LEFT JOIN distritos_municipales dm ON dm.id_distrito_municipal = s.id_distrito_municipal
+        LEFT JOIN municipios           m  ON m.id_municipio           = COALESCE(dm.id_municipio, s.id_municipio)
+        LEFT JOIN provincias           p  ON p.id_provincia           = m.id_provincia
+        WHERE u.id_ubicacion IN (${Prisma.join(ubicIds)})
+      `;
+      const geoMap = new Map<number, typeof geoRows[0]>();
+      for (const row of geoRows) geoMap.set(Number(row.id), row);
+
+      for (const c of centros) {
+        if (!c.ubicacion?.id) continue;
+        const geo = geoMap.get((c.ubicacion as any).id);
+        if (!geo) continue;
+        (c.ubicacion as any).latitud = geo.latitud != null ? Number(geo.latitud) : null;
+        (c.ubicacion as any).longitud = geo.longitud != null ? Number(geo.longitud) : null;
+        const partes: string[] = [];
+        if ((c.ubicacion as any).direccion) partes.push((c.ubicacion as any).direccion.trim());
+        if (geo.barrio_nombre) partes.push(geo.barrio_nombre.trim());
+        if (geo.municipio_nombre) partes.push(geo.municipio_nombre.trim());
+        if (geo.provincia_nombre) partes.push(geo.provincia_nombre.trim());
+        (c.ubicacion as any).direccionCompleta = partes.join(', ');
+      }
+    }
+
+    // ── 4. Ordenar y adjuntar distancia ────────────────────────────────────
+    const centrosMap = new Map<number, any>();
+    for (const c of centros) centrosMap.set(c.usuarioId, c);
+
+    return idsOrdenados
+      .map(id => {
+        const c = centrosMap.get(id);
+        if (!c) return null;
+        return {
+          ...c,
+          distanciaMetros: distanciaMap.get(id) != null ? Math.round(distanciaMap.get(id)!) : null,
+        };
+      })
+      .filter(Boolean);
   }
 
   // ─── ANALÍTICAS DEL CENTRO ──────────────────────────────────────────────────

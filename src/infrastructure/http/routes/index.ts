@@ -37,6 +37,7 @@ import TeleconsultasRoutes from './TeleconsultasRoutes';
 import ResenasRoutes from './ResenasRoutes';
 import MediaRoutes from './MediaRoutes';
 import FavoritosRoutes from './FavoritosRoutes';
+import BusquedaRoutes from './BusquedaRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -150,5 +151,8 @@ router.use('/favoritos', FavoritosRoutes);
 
 // Rutas de Media (archivos para el chat)
 router.use('/media', MediaRoutes);
+
+// Rutas de Búsqueda Unificada
+router.use('/busqueda', BusquedaRoutes);
 
 export default router;

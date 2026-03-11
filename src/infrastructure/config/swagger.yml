@@ -78,6 +78,8 @@ tags:
     description: Gestión de archivos multimedia (imágenes, audios, videos, documentos, ZIP) para el chat y otros módulos
   - name: Teleconsultas
     description: Gestión de teleconsultas médicas por videollamada usando Daily.co como proveedor. El backend actúa como Signaling Server (crea la sala, registra el log y retorna la URL de acceso).
+  - name: Búsqueda
+    description: Endpoint unificado para buscar doctores y centros de salud con o sin filtro geográfico (PostGIS). Acepta filtros combinados por especialidad, idioma, turno, modalidad, seguro y más.
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -18290,12 +18292,14 @@ paths:
         **Flujo interno:**
         1. Verifica que la cita exista y pertenezca al doctor autenticado.
         2. Comprueba que el estado de la cita sea `Programada`.
-        3. Valida que se esté dentro de la **ventana de ±15 minutos** del inicio programado.
-        4. Busca o crea la `Conversacion` entre del doctor y el paciente (requerida por el log).
-        5. Crea una sala privada en **Daily.co** que expira automáticamente al finalizar la duración del servicio.
-        6. Registra el `LogTeleconsulta` con estado `Iniciada`.
+        3. Valida que no sea más de **15 minutos antes** del inicio programado (sin límite de tiempo posterior mientras la cita siga `Programada`).
+        4. Busca o crea la `Conversacion` entre doctor y paciente.
+        5. Crea una sala privada en **Daily.co** y genera dos tokens:
+           - **Owner token** para el doctor (`urlAcceso` en la respuesta).
+           - **Participant token** para el paciente (guardado en `LogTeleconsulta.urlPaciente`; el paciente lo obtiene via `GET /{citaId}/url-acceso`).
+        6. Registra el `LogTeleconsulta` con estado `Iniciada`, guardando ambas URLs.
         7. Cambia el estado de la `Cita` a `En curso`.
-        8. Retorna la `urlAcceso` (URL de Daily.co para unirse) y el `logId`.
+        8. Notifica al paciente en tiempo real vía WebSocket con el enlace de acceso.
 
         **Acceso:** Solo el Doctor dueño de la cita.
       security:
@@ -18329,7 +18333,7 @@ paths:
           description: |
             Alguna de estas condiciones:
             - La cita no está en estado `Programada`.
-            - Fuera de la ventana de inicio (±15 min del inicio programado).
+            - El doctor intenta iniciar más de 15 minutos antes de la hora programada.
             - `citaId` inválido.
           content:
             application/json:
@@ -18434,6 +18438,332 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Cita no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /teleconsultas/{citaId}/url-acceso:
+    get:
+      summary: Obtener URL de acceso del paciente a la teleconsulta
+      tags:
+        - Teleconsultas
+      description: |
+        Permite al **Paciente** obtener su URL personal de acceso a la sala de videollamada.
+
+        La URL ya incluye un **participant token** de Daily.co, generado cuando el doctor inició
+        la sala. Sin este token la sala privada rechazaría el acceso.
+
+        El endpoint retorna **404** si el doctor aún no ha iniciado la sala.
+
+        **Acceso:** Solo el Paciente dueño de la cita.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: citaId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: ID de la cita médica.
+          example: 15
+      responses:
+        '200':
+          description: URL de acceso obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: URL de acceso obtenida exitosamente.
+                  data:
+                    type: object
+                    properties:
+                      urlAcceso:
+                        type: string
+                        format: uri
+                        description: URL de Daily.co con participant token incluido
+                        example: "https://mediconnect-cita.daily.co/MediConnect-cita-15-1773...?t=PARTICIPANT_TOKEN"
+                      citaId:
+                        type: integer
+                        example: 15
+                      estado:
+                        type: string
+                        example: Iniciada
+                      inicio:
+                        type: string
+                        format: date-time
+                        example: "2026-03-10T17:00:00.000Z"
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: El usuario no es el Paciente de esta cita o no tiene el rol Paciente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cita no encontrada o el doctor aún no ha iniciado la teleconsulta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Búsqueda Unificada ────────────────────────────────────────────────────
+  /busqueda/cercanos:
+    get:
+      summary: Búsqueda unificada de doctores y centros de salud
+      tags:
+        - Búsqueda
+      description: |
+        Endpoint unificado que devuelve **doctores** y **centros de salud** en una sola respuesta.
+        Las dos consultas se ejecutan **en paralelo** para maximizar el rendimiento.
+
+        **Filtro geográfico:** Si se pasan `lat` y `lng`, se aplica un radio de búsqueda con PostGIS (`ST_DWithin`).
+        Si se omiten, se devuelven todos los registros activos sin filtro de distancia.
+
+        **Tipo:** Usa el parámetro `tipo` para limitar la respuesta a solo doctores o solo centros.
+
+        **Auth opcional:** Si se envía un token JWT de paciente, los doctores incluirán el campo `esFavorito`.
+
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: lat
+          in: query
+          required: false
+          schema: { type: number, example: 18.4861 }
+          description: Latitud del punto de referencia (−90 a 90). Si se omite, no aplica filtro geográfico.
+        - name: lng
+          in: query
+          required: false
+          schema: { type: number, example: -69.9312 }
+          description: Longitud del punto de referencia (−180 a 180).
+        - name: radio
+          in: query
+          required: false
+          schema: { type: number, default: 5, maximum: 50 }
+          description: Radio de búsqueda en km (máx 50). Ignorado si no hay coordenadas.
+        - name: tipo
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [Doctor, CentroSalud]
+          description: Filtra el tipo de resultado. Si se omite, devuelve ambos.
+        # ── Filtros Doctor ────────────────────────────────────────────────────
+        - name: especialidadId
+          in: query
+          required: false
+          schema: { type: integer }
+          description: ID de especialidad médica.
+        - name: genero
+          in: query
+          required: false
+          schema: { type: string, enum: [M, F] }
+          description: Género del doctor.
+        - name: calificacionMin
+          in: query
+          required: false
+          schema: { type: number, minimum: 0, maximum: 5 }
+          description: Calificación promedio mínima (0–5).
+        - name: idioma
+          in: query
+          required: false
+          schema: { type: string, example: inglés }
+          description: Nombre del idioma que debe hablar el doctor (case-insensitive).
+        - name: anosExperienciaMin
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0 }
+          description: Años mínimos de experiencia del doctor.
+        - name: turno
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [manana, tarde, noche]
+          description: |
+            Turno del servicio basado en `horaInicio` de los horarios activos:
+            - `manana`: 06:00–12:00
+            - `tarde`: 12:00–18:00
+            - `noche`: 18:00–24:00
+        - name: modalidad
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [Presencial, Virtual, Domicilio]
+          description: Modalidad del servicio ofrecido por el doctor.
+        - name: seguroId
+          in: query
+          required: false
+          schema: { type: integer }
+          description: ID del seguro médico que el doctor acepta.
+        - name: soloFavoritos
+          in: query
+          required: false
+          schema: { type: boolean }
+          description: Si `true` (y el token es de Paciente), solo devuelve doctores marcados como favoritos.
+        # ── Filtros Centro ────────────────────────────────────────────────────
+        - name: tipoCentroId
+          in: query
+          required: false
+          schema: { type: integer }
+          description: ID del tipo de centro de salud.
+        - name: estadoVerificacion
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [Aprobado, "En revisión"]
+            default: Aprobado
+          description: Estado de verificación de los centros (default `Aprobado`).
+        # ── Traducción ────────────────────────────────────────────────────────
+        - name: target
+          in: query
+          required: false
+          schema: { type: string, example: en }
+          description: Código de idioma destino para traducción automática.
+        - name: source
+          in: query
+          required: false
+          schema: { type: string, example: es }
+          description: Idioma fuente (default `es`).
+        - name: translate_fields
+          in: query
+          required: false
+          schema: { type: string }
+          description: Campos a traducir separados por coma.
+      responses:
+        '200':
+          description: Resultados obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  total:
+                    type: object
+                    properties:
+                      doctores:
+                        type: integer
+                        example: 4
+                      centros:
+                        type: integer
+                        example: 2
+                  doctores:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        nombre:
+                          type: string
+                        apellido:
+                          type: string
+                        fotoPerfil:
+                          type: string
+                          nullable: true
+                        calificacionPromedio:
+                          type: number
+                          nullable: true
+                        anosExperiencia:
+                          type: integer
+                          nullable: true
+                        especialidades:
+                          type: array
+                          items:
+                            type: object
+                        idiomas:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              nombre: { type: string }
+                              nivel: { type: string, nullable: true }
+                        servicios:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id: { type: integer }
+                              nombre: { type: string }
+                              precio: { type: number, nullable: true }
+                              modalidad: { type: string }
+                        segurosAceptados:
+                          type: array
+                          items:
+                            type: object
+                        esFavorito:
+                          type: boolean
+                          description: Solo presente si el token JWT corresponde a un Paciente.
+                        distanciaMetros:
+                          type: integer
+                          nullable: true
+                          description: Distancia en metros. `null` si no se proporcionaron coordenadas.
+                  centros:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        usuarioId:
+                          type: integer
+                        nombreComercial:
+                          type: string
+                        foto_perfil:
+                          type: string
+                          nullable: true
+                        sitio_web:
+                          type: string
+                          nullable: true
+                        descripcion:
+                          type: string
+                          nullable: true
+                        tipoCentro:
+                          type: object
+                          properties:
+                            id: { type: integer }
+                            nombre: { type: string }
+                        ubicacion:
+                          type: object
+                          properties:
+                            id: { type: integer }
+                            direccion: { type: string, nullable: true }
+                            latitud: { type: number, nullable: true }
+                            longitud: { type: number, nullable: true }
+                            direccionCompleta: { type: string, nullable: true }
+                        distanciaMetros:
+                          type: integer
+                          nullable: true
+        '400':
+          description: Parámetros de coordenadas o radio inválidos
           content:
             application/json:
               schema:
@@ -18659,13 +18989,15 @@ components:
 
     IniciarTeleconsultaResponse:
       type: object
-      description: Respuesta al iniciar una teleconsulta exitosamente
+      description: Respuesta al iniciar una teleconsulta exitosamente (solo para el Doctor)
       properties:
         urlAcceso:
           type: string
           format: uri
-          description: URL de Daily.co para unirse a la videollamada
-          example: "https://MediConnect-cita-42-1741583035000.daily.co/MediConnect-cita-42-1741583035000"
+          description: |
+            URL de Daily.co con **owner token** incluido. Solo para el Doctor.
+            El paciente obtiene su propia URL via `GET /teleconsultas/{citaId}/url-acceso`.
+          example: "https://mediconnect-cita.daily.co/MediConnect-cita-42-1741583035000?t=OWNER_TOKEN"
         logId:
           type: integer
           description: ID del registro LogTeleconsulta creado en la base de datos

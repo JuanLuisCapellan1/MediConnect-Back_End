@@ -28,4 +28,14 @@ router.post(
     (req, res) => ctrl().finalizar(req, res),
 );
 
+// ── GET /teleconsultas/:citaId/url-acceso ─────────────────────────────────────
+// Solo el Paciente dueño de la cita puede obtener su URL de acceso con token.
+// El doctor debe haber iniciado la sala previamente.
+router.get(
+    '/:citaId/url-acceso',
+    autenticarJWT,
+    requireRole('Paciente'),
+    (req, res) => ctrl().obtenerUrlPaciente(req, res),
+);
+
 export default router;

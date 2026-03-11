@@ -95,6 +95,81 @@ export class TeleconsultaController {
         }
     }
 
+    /**
+     * GET /teleconsultas/:citaId/url-acceso
+     * Solo el Paciente dueño de la cita puede consultar su URL.
+     * Retorna la URL de Daily.co con el token de participante almacenado en el log.
+     */
+    async obtenerUrlPaciente(req: Request, res: Response): Promise<void> {
+        try {
+            const pacienteId = req.user?.userId;
+            if (!pacienteId) {
+                res.status(401).json({ success: false, message: 'No autenticado.' });
+                return;
+            }
+
+            const citaId = Number(req.params.citaId);
+            if (isNaN(citaId) || citaId <= 0) {
+                res.status(400).json({ success: false, message: 'El parámetro citaId debe ser un número válido.' });
+                return;
+            }
+
+            // Verificar que el paciente pertenece a la cita
+            const { PrismaClient } = await import('@prisma/client');
+            const prisma = new PrismaClient();
+
+            const cita = await prisma.cita.findUnique({
+                where: { id: citaId },
+                select: { pacienteId: true, estado: true },
+            });
+
+            if (!cita) {
+                await prisma.$disconnect();
+                res.status(404).json({ success: false, message: 'Cita no encontrada.' });
+                return;
+            }
+
+            if (cita.pacienteId !== pacienteId) {
+                await prisma.$disconnect();
+                res.status(403).json({ success: false, message: 'No tienes permisos para acceder a esta teleconsulta.' });
+                return;
+            }
+
+            // Buscar el log activo (el más reciente Iniciada o En Progreso)
+            const log = await (prisma.logTeleconsulta as any).findFirst({
+                where: {
+                    citaId,
+                    estado: { in: ['Iniciada', 'En Progreso'] },
+                },
+                orderBy: { inicio: 'desc' },
+                select: { urlPaciente: true, estado: true, inicio: true },
+            });
+
+            await prisma.$disconnect();
+
+            if (!log || !log.urlPaciente) {
+                res.status(404).json({
+                    success: false,
+                    message: 'No hay una teleconsulta activa para esta cita. Espera a que el doctor inicie la sala.',
+                });
+                return;
+            }
+
+            res.status(200).json({
+                success: true,
+                message: 'URL de acceso obtenida exitosamente.',
+                data: {
+                    urlAcceso: log.urlPaciente,
+                    citaId,
+                    estado: log.estado,
+                    inicio: log.inicio,
+                },
+            });
+        } catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+
     private manejarError(error: any, res: Response): void {
         const msg: string = error?.message ?? 'Error interno del servidor';
 

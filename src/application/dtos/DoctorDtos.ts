@@ -40,4 +40,16 @@ export interface FiltroDoctoresCercania {
     genero?: string;
     /** Calificación promedio mínima (0–5) */
     calificacionMin?: number;
+    /** Filtrar por nombre de idioma (ej. 'inglés') */
+    idioma?: string;
+    /** Años de experiencia mínimos */
+    anosExperienciaMin?: number;
+    /** Turno del servicio: 'manana' (06–12), 'tarde' (12–18), 'noche' (18–24) */
+    turno?: 'manana' | 'tarde' | 'noche';
+    /** Modalidad del servicio: 'Presencial' | 'Virtual' | 'Domicilio' */
+    modalidad?: string;
+    /** ID de seguro médico aceptado */
+    seguroId?: number;
+    /** Solo mostrar doctores favoritos del paciente */
+    soloFavoritos?: boolean;
 }

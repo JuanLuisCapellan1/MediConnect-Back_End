@@ -10,7 +10,8 @@ export interface IVideoService {
      * @returns urlAcceso (URL pública para unirse) y nombreSala (nombre único de la sala)
      */
     crearSalaPrivada(citaId: number, duracionMinutos: number): Promise<{
-        urlAcceso: string;
+        urlAcceso: string;    // URL con token de propietario (doctor)
+        urlPaciente: string;  // URL con token de participante (paciente)
         nombreSala: string;
     }>;
 

@@ -8,8 +8,8 @@ import { EnviarNotificacionUseCase } from '../notificaciones/EnviarNotificacionU
 @injectable()
 export class IniciarTeleconsultaUseCase {
 
-    /** Margen de tiempo permitido antes/después del inicio programado (en minutos). */
-    private readonly VENTANA_MINUTOS = 15;
+    /** Minutos antes del inicio programado en que se puede abrir la sala. */
+    private readonly VENTANA_ANTES_MINUTOS = 15;
 
     constructor(
         @inject('CitaRepository') private readonly citaRepo: ICitaRepository,
@@ -42,23 +42,19 @@ export class IniciarTeleconsultaUseCase {
             );
         }
 
-        // ─── 4. Validar ventana horaria (±VENTANA_MINUTOS del inicio) ─────────
+        // ─── 4. Validar ventana horaria ────────────────────────────────────────
+        // Solo se bloquea si el doctor intenta abrir demasiado temprano.
+        // Si la cita sigue en 'Programada' siempre se puede iniciar (el sistema
+        // nunca la auto-completa), sin importar cuánto tiempo haya pasado.
         const ahora = new Date();
         const fechaInicio = new Date(cita.fechaInicio);
-        const diffMs = ahora.getTime() - fechaInicio.getTime();
-        const diffMinutos = diffMs / 60_000;
+        const aperturaMs = fechaInicio.getTime() - this.VENTANA_ANTES_MINUTOS * 60_000;
 
-        if (diffMinutos < -this.VENTANA_MINUTOS) {
-            const minutosRestantes = Math.ceil(-diffMinutos - this.VENTANA_MINUTOS);
+        if (ahora.getTime() < aperturaMs) {
+            const minutosRestantes = Math.ceil((aperturaMs - ahora.getTime()) / 60_000);
             throw new Error(
                 `Aún no puedes iniciar la teleconsulta. ` +
                 `Podrás hacerlo a partir de ${minutosRestantes} minuto(s) antes de la hora programada.`
-            );
-        }
-        if (diffMinutos > this.VENTANA_MINUTOS) {
-            throw new Error(
-                `La ventana de inicio de la teleconsulta ha expirado. ` +
-                `Solo puedes iniciarla dentro de los ${this.VENTANA_MINUTOS} minutos posteriores a la hora programada.`
             );
         }
 
@@ -82,7 +78,7 @@ export class IniciarTeleconsultaUseCase {
         // ─── 6. Crear la sala en Daily.co ─────────────────────────────────────
         const duracionMinutos: number = cita.servicio?.duracionMinutos ?? 30;
 
-        const { urlAcceso, nombreSala } = await this.videoService.crearSalaPrivada(
+        const { urlAcceso, urlPaciente, nombreSala } = await this.videoService.crearSalaPrivada(
             citaId,
             duracionMinutos,
         );
@@ -94,8 +90,9 @@ export class IniciarTeleconsultaUseCase {
                 conversacionId,
                 inicio: ahora,
                 salaReunion: nombreSala,
+                urlPaciente,
                 estado: 'Iniciada',
-            },
+            } as any,
         });
 
         // ─── 8. Actualizar estado de la Cita a 'En curso' ────────────────────
@@ -106,15 +103,14 @@ export class IniciarTeleconsultaUseCase {
         // es directamente el usuarioId del paciente — no necesitamos otra query.
         try {
             await this.enviarNotifUC.execute({
-                usuarioId: pacienteId,   // pacienteId === Paciente.usuarioId (@id)
+                usuarioId: pacienteId,
                 titulo: '¡Llamada Entrante!',
-                mensaje: 'El doctor ha iniciado la videollamada. Haz clic para unirte.',
+                mensaje: `El doctor ha iniciado la videollamada. Úté al enlace para unirte: ${urlPaciente}`,
                 tipoAlerta: 'Urgente',
                 tipoEntidad: 'Teleconsulta',
                 entidadId: citaId,
             });
         } catch (notifErr) {
-            // Nunca bloqueamos el flujo principal por un error de notificación
             console.error('IniciarTeleconsultaUseCase: error al notificar al paciente:', notifErr);
         }
 
