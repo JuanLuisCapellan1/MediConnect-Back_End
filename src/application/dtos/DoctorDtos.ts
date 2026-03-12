@@ -34,6 +34,8 @@ export interface ActualizarIdiomaDto {
 }
 
 export interface FiltroDoctoresCercania {
+    /** Búsqueda por nombre/apellido del doctor o nombre de especialidad */
+    nombre?: string;
     /** Filtrar por especialidad */
     especialidadId?: number;
     /** Filtrar por género: 'M' | 'F' */

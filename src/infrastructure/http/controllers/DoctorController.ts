@@ -357,42 +357,6 @@ export class DoctorController {
         }
     }
 
-    /**
-     * GET /doctores/cercanos
-     * Busca doctores activos y verificados dentro de un radio geográfico.
-     * Query params: lat, lng, radio (km, máx 15), especialidadId?, genero?, calificacionMin?
-     */
-    async buscarCercanos(req: Request, res: Response): Promise<Response> {
-        try {
-            const lat = parseFloat(req.query.lat as string);
-            const lng = parseFloat(req.query.lng as string);
-            const radio = req.query.radio !== undefined ? parseFloat(req.query.radio as string) : 5;
-
-            if (isNaN(lat) || lat < -90 || lat > 90) return res.status(400).json({ success: false, message: 'lat debe ser un número entre -90 y 90.' });
-            if (isNaN(lng) || lng < -180 || lng > 180) return res.status(400).json({ success: false, message: 'lng debe ser un número entre -180 y 180.' });
-            if (isNaN(radio) || radio < 0 || radio > 15) return res.status(400).json({ success: false, message: 'radio debe ser un número entre 0 y 15 km.' });
-
-            const filtros: any = {};
-            if (req.query.especialidadId) filtros.especialidadId = Number(req.query.especialidadId);
-            if (req.query.genero) filtros.genero = String(req.query.genero);
-            if (req.query.calificacionMin) filtros.calificacionMin = Number(req.query.calificacionMin);
-
-            // Solo pasamos el ID del paciente loggeado para calcular esFavorito
-            const esPaciente = (req as any).user?.rol === 'Paciente';
-            const pacienteId = esPaciente ? (req as any).user?.userId : undefined;
-
-            const useCase = container.resolve(GestionarDoctoresUseCase);
-            const doctores = await useCase['doctorRepository'].buscarCercanos(lat, lng, radio, filtros, pacienteId);
-
-            return res.status(200).json({
-                success: true,
-                total: doctores.length,
-                data: doctores,
-            });
-        } catch (error) {
-            return this.manejarError(error, res);
-        }
-    }
 
     // GET /doctores/estadisticas/resumen
     async resumenDoctor(req: Request, res: Response): Promise<Response> {

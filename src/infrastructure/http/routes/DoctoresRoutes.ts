@@ -192,21 +192,8 @@ router.delete(
     (req, res) => doctorEspecialidadController.eliminar(req, res)
 );
 
-// ─── Solicitudes de alianza (lado Doctor) — ANTES de /:id para evitar captura ─
-/**
- * GET /doctores/cercanos
- * Busca doctores activos y verificados dentro de un radio geográfico (máx 15 km).
- * Acceso: Paciente, Doctor, Admin
- * Query: lat, lng, radio?, especialidadId?, genero?, calificacionMin?
- */
-router.get(
-    '/cercanos',
-    autenticarJWT,
-    requireRole('Paciente', 'Doctor', 'Admin'),
-    translationMiddleware,
-    (req, res) => doctorController.buscarCercanos(req, res)
-);
 
+// ─── Solicitudes de alianza (lado Doctor) — ANTES de /:id para evitar captura ─
 router.post(
     '/solicitudes-alianza',
     autenticarJWT,

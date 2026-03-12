@@ -169,7 +169,7 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
     lat?: number,
     lng?: number,
     radioKm?: number,
-    filtros?: { tipoCentroId?: number; estadoVerificacion?: string },
+    filtros?: { tipoCentroId?: number; estadoVerificacion?: string; nombre?: string },
   ): Promise<any[]> {
     const useGeo = lat != null && lng != null && radioKm != null;
     const radioMetros = useGeo ? radioKm! * 1000 : 0;
@@ -178,6 +178,10 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
     const condiciones: Prisma.Sql[] = [];
     if (filtros?.tipoCentroId) {
       condiciones.push(Prisma.sql`cs.id_tipo_centro = ${filtros.tipoCentroId}`);
+    }
+    if (filtros?.nombre) {
+      const termino = `%${filtros.nombre}%`;
+      condiciones.push(Prisma.sql`LOWER(cs.nombre_comercial) ILIKE LOWER(${termino})`);
     }
     const extraWhere = condiciones.length > 0
       ? Prisma.sql`AND ${Prisma.join(condiciones, ' AND ')}`

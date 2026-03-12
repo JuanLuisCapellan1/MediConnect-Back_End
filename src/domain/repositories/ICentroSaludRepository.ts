@@ -60,6 +60,6 @@ export interface ICentroSaludRepository {
     lat?: number,
     lng?: number,
     radioKm?: number,
-    filtros?: { tipoCentroId?: number; estadoVerificacion?: string },
+    filtros?: { tipoCentroId?: number; estadoVerificacion?: string; nombre?: string },
   ): Promise<any[]>;
 }

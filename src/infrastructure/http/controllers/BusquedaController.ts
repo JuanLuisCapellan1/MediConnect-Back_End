@@ -39,8 +39,9 @@ export class BusquedaController {
             // ── tipo ──────────────────────────────────────────────────────────
             const tipo = (req.query.tipo as string | undefined)?.trim();
 
-            // ── Filtros de doctores ───────────────────────────────────────────
+            // ── Filtros de doctores ───────────────────────────────────────
             const filtrosDoctor: any = {};
+            if (req.query.nombre) filtrosDoctor.nombre = String(req.query.nombre);
             if (req.query.especialidadId) filtrosDoctor.especialidadId = Number(req.query.especialidadId);
             if (req.query.genero) filtrosDoctor.genero = String(req.query.genero);
             if (req.query.calificacionMin) filtrosDoctor.calificacionMin = Number(req.query.calificacionMin);
@@ -51,8 +52,9 @@ export class BusquedaController {
             if (req.query.seguroId) filtrosDoctor.seguroId = Number(req.query.seguroId);
             if (req.query.soloFavoritos === 'true') filtrosDoctor.soloFavoritos = true;
 
-            // ── Filtros de centros ────────────────────────────────────────────
+            // ── Filtros de centros ────────────────────────────────────────
             const filtrosCentro: any = {};
+            if (req.query.nombre) filtrosCentro.nombre = String(req.query.nombre);
             if (req.query.tipoCentroId) filtrosCentro.tipoCentroId = Number(req.query.tipoCentroId);
             if (req.query.estadoVerificacion) filtrosCentro.estadoVerificacion = String(req.query.estadoVerificacion);
 

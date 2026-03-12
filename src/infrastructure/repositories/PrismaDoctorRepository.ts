@@ -530,6 +530,22 @@ export class PrismaDoctorRepository implements IDoctorRepository {
         if (filtros?.calificacionMin !== undefined) {
             condiciones.push(Prisma.sql`d.calificacion_promedio >= ${filtros.calificacionMin}`);
         }
+        if (filtros?.nombre) {
+            const termino = `%${filtros.nombre}%`;
+            condiciones.push(Prisma.sql`
+                (
+                    LOWER(d.nombre)    ILIKE LOWER(${termino})
+                    OR LOWER(d.apellido) ILIKE LOWER(${termino})
+                    OR EXISTS (
+                        SELECT 1 FROM doctores_especialidades de3
+                        JOIN especialidades e ON e.id_especialidad = de3.id_especialidad
+                        WHERE de3.id_doctor = d.id_usuario
+                          AND LOWER(e.nombre) ILIKE LOWER(${termino})
+                          AND de3.estado = 'Activo'
+                    )
+                )
+            `);
+        }
         if (filtros?.idioma) {
             condiciones.push(Prisma.sql`
                 EXISTS (
