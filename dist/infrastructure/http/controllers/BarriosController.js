@@ -235,6 +235,94 @@ class BarriosController {
         }
     }
     /**
+     * GET /barrios/geo/punto?longitud=X&latitud=Y
+     * Devuelve el barrio cuyo polígono contiene el punto dado.
+     */
+    async buscarPorCoordenadas(req, res) {
+        try {
+            const longRaw = req.query.longitud;
+            const latRaw = req.query.latitud;
+            if (!longRaw || !latRaw) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Los parámetros longitud y latitud son requeridos'
+                });
+                return;
+            }
+            const longitud = parseFloat(longRaw);
+            const latitud = parseFloat(latRaw);
+            if (isNaN(longitud) || isNaN(latitud)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Los parámetros longitud y latitud deben ser números válidos'
+                });
+                return;
+            }
+            if (longitud < -180 || longitud > 180) {
+                res.status(400).json({
+                    success: false,
+                    message: 'La longitud debe estar entre -180 y 180'
+                });
+                return;
+            }
+            if (latitud < -90 || latitud > 90) {
+                res.status(400).json({
+                    success: false,
+                    message: 'La latitud debe estar entre -90 y 90'
+                });
+                return;
+            }
+            const barrio = await this.gestionarBarriosUseCase.buscarPorCoordenadas(longitud, latitud);
+            if (!barrio) {
+                res.status(404).json({
+                    success: false,
+                    message: `No se encontró ningún barrio que contenga el punto (longitud: ${longitud}, latitud: ${latitud})`
+                });
+                return;
+            }
+            res.status(200).json({
+                success: true,
+                data: barrio,
+                message: 'Barrio encontrado exitosamente para las coordenadas dadas'
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    /**
+     * GET /barrios/geo/:id
+     * Devuelve un barrio con su geometría completa (campo geom en GeoJSON).
+     */
+    async obtenerGeometria(req, res) {
+        try {
+            const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
+            if (isNaN(id) || id <= 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'El ID debe ser un número positivo'
+                });
+                return;
+            }
+            const barrio = await this.gestionarBarriosUseCase.obtenerGeometria(id);
+            if (!barrio) {
+                res.status(404).json({
+                    success: false,
+                    message: `Barrio con ID ${id} no encontrado`
+                });
+                return;
+            }
+            res.status(200).json({
+                success: true,
+                data: barrio,
+                message: 'Geometría del barrio obtenida exitosamente'
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    /**
      * Maneja los errores que se lanzan en los métodos del controlador
      * @param error - El error lanzado
      * @param res - Response de Express

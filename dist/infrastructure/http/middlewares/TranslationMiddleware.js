@@ -6,10 +6,46 @@ const TranslationHelper_1 = require("../../../application/services/TranslationHe
 const TranslationCache_1 = require("./TranslationCache");
 const translation_config_1 = require("../../config/translation.config");
 /**
+ * Convierte un array de campos (con posible dot-notation) en un árbol de rutas.
+ * Campos planos ("nombre") y dot-notation ("ubicacion.nombre") pueden coexistir.
+ *
+ * @param fields ["nombre", "ubicacion.nombre", "centrosSalud.nombre"]
+ * @returns { nombre: null, ubicacion: { nombre: null }, centrosSalud: { nombre: null } }
+ */
+function buildFieldTree(fields) {
+    const tree = {};
+    for (const field of fields) {
+        const parts = field.split('.');
+        let node = tree;
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            if (i === parts.length - 1) {
+                // Hoja: marcar como null si aún no tiene sub-árbol
+                if (!(part in node)) {
+                    node[part] = null;
+                }
+            }
+            else {
+                // Nodo intermedio: crear sub-árbol si hace falta
+                if (node[part] === null || !(part in node)) {
+                    node[part] = {};
+                }
+                node = node[part];
+            }
+        }
+    }
+    return tree;
+}
+/**
  * Middleware de traducción automática para respuestas JSON
  *
- * Uso:
- * GET /api/endpoint?source=es&target=en&translate_fields=nombre,descripcion
+ * Uso básico (campo plano):
+ *   GET /api/endpoint?source=es&target=en&translate_fields=nombre,descripcion
+ *
+ * Uso con array de objetos (dot-notation):
+ *   GET /api/endpoint?target=en&translate_fields=nombre,ubicacion.nombre,centrosSalud.nombre
+ *   → traduce `nombre` en el objeto raíz, `nombre` dentro de cada elemento de `ubicacion`,
+ *     y `nombre` dentro de cada elemento de `centrosSalud`.
  *
  * Query params:
  * - source: Idioma origen (opcional, default: 'es')
@@ -19,7 +55,7 @@ const translation_config_1 = require("../../config/translation.config");
  * Características:
  * - Caché de traducciones para mejorar performance
  * - Validación de idiomas soportados
- * - Soporte para arrays y objetos anidados
+ * - Soporte para arrays y objetos anidados con dot-notation
  * - Manejo de errores sin interrumpir la respuesta
  */
 const translationMiddleware = async (req, res, next) => {
@@ -47,7 +83,7 @@ const translationMiddleware = async (req, res, next) => {
                 received: target
             });
         }
-        // Parsear campos (pueden venir como "nombre,descripcion" o "nombre")
+        // Parsear campos (pueden venir como "nombre,descripcion" o "nombre" o "ubicacion.nombre")
         const translateFields = translateFieldsParam
             .split(',')
             .map(f => f.trim())
@@ -58,6 +94,8 @@ const translationMiddleware = async (req, res, next) => {
         }
         console.log(`🌐 Middleware de traducción activado: ${source} -> ${target}`);
         console.log(`📝 Campos a traducir:`, translateFields);
+        // Construir el árbol de rutas una sola vez
+        const rootFieldTree = buildFieldTree(translateFields);
         // Interceptar el método res.json original
         const originalJson = res.json.bind(res);
         // Sobrescribir res.json para traducir antes de enviar
@@ -69,57 +107,81 @@ const translationMiddleware = async (req, res, next) => {
             // Resolver dependencias
             const translationHelper = tsyringe_1.container.resolve(TranslationHelper_1.TranslationHelper);
             const cache = TranslationCache_1.TranslationCache.getInstance();
-            // Función auxiliar para traducir un objeto con caché (recursiva)
-            const translateWithCache = async (obj) => {
+            /**
+             * Recorre `obj` guiándose por `fieldTree`:
+             * - Si `key` es hoja del árbol (null) y el valor es string → traduce.
+             * - Si `key` es nodo intermedio del árbol → desciende al array/objeto con su sub-árbol.
+             * - Si `key` no está en el árbol pero el valor es objeto/array → desciende con el árbol completo
+             *   (para que los campos planos funcionen en cualquier nivel, como antes).
+             */
+            const translateWithCache = async (obj, fieldTree) => {
                 if (!obj || typeof obj !== 'object')
                     return obj;
-                // Si es un array, procesar cada elemento recursivamente
+                // Si es un array, procesar cada elemento con el mismo árbol
                 if (Array.isArray(obj)) {
-                    return await Promise.all(obj.map(item => translateWithCache(item)));
+                    return await Promise.all(obj.map(item => translateWithCache(item, fieldTree)));
                 }
                 const result = {};
-                // Procesar cada propiedad del objeto
                 for (const key of Object.keys(obj)) {
                     const value = obj[key];
                     // Manejar valores null o undefined
                     if (value === null || value === undefined) {
                         result[key] = value;
+                        continue;
                     }
-                    // Si el campo actual está en la lista de campos a traducir Y es un string no vacío
-                    else if (translateFields.includes(key) && typeof value === 'string' && value.trim().length > 0) {
-                        const originalText = value;
-                        // Buscar en caché
-                        const cached = cache.get(originalText, source, target);
-                        if (cached) {
-                            console.log(`💾 Cache hit: "${originalText.substring(0, 30)}..." [${key}]`);
-                            result[key] = cached;
+                    const treeNode = fieldTree[key]; // undefined | null | FieldTree
+                    if (treeNode === null) {
+                        // ── HOJA: campo que debe traducirse ──────────────────────────────
+                        if (typeof value === 'string' && value.trim().length > 0) {
+                            const cached = cache.get(value, source, target);
+                            if (cached) {
+                                console.log(`💾 Cache hit: "${value.substring(0, 30)}..." [${key}]`);
+                                result[key] = cached;
+                            }
+                            else {
+                                try {
+                                    const translated = await translationHelper.traducirObjeto({ [key]: value }, [key], source, target);
+                                    result[key] = translated[key];
+                                    cache.set(value, result[key], source, target);
+                                }
+                                catch (error) {
+                                    console.error(`❌ Error traduciendo campo "${key}":`, error);
+                                    result[key] = value; // mantener original en caso de error
+                                }
+                            }
+                        }
+                        else if (Array.isArray(value)) {
+                            // El campo hoja es un array de strings → traducir cada elemento
+                            result[key] = await translateWithCache(value, fieldTree);
                         }
                         else {
-                            // Si no está en caché, traducir y guardar
-                            try {
-                                const translated = await translationHelper.traducirObjeto({ [key]: originalText }, [key], source, target);
-                                result[key] = translated[key];
-                                // Guardar en caché
-                                cache.set(originalText, result[key], source, target);
-                            }
-                            catch (error) {
-                                console.error(`❌ Error traduciendo campo "${key}":`, error);
-                                // Mantener el texto original en caso de error
-                                result[key] = originalText;
-                            }
+                            result[key] = value;
                         }
                     }
-                    // Si el valor es un array, procesarlo recursivamente
-                    else if (Array.isArray(value)) {
-                        result[key] = await translateWithCache(value);
+                    else if (treeNode !== undefined && typeof treeNode === 'object') {
+                        // ── NODO INTERMEDIO: descender con el sub-árbol ───────────────────
+                        if (Array.isArray(value)) {
+                            result[key] = await Promise.all(value.map(item => translateWithCache(item, treeNode)));
+                        }
+                        else if (typeof value === 'object' && !(value instanceof Date)) {
+                            result[key] = await translateWithCache(value, treeNode);
+                        }
+                        else {
+                            result[key] = value;
+                        }
                     }
-                    // Si el valor es un objeto (no Date, no null, no array), procesarlo recursivamente
-                    else if (typeof value === 'object' && !(value instanceof Date)) {
-                        result[key] = await translateWithCache(value);
-                    }
-                    // Para todo lo demás (strings que no se traducen, números, booleans, dates), copiar directamente
                     else {
-                        result[key] = value;
+                        // ── CAMPO NO LISTADO: si es objeto/array, descender con el árbol raíz
+                        // (mantiene el comportamiento legacy: campos planos funcionan a cualquier nivel)
+                        if (Array.isArray(value)) {
+                            result[key] = await translateWithCache(value, fieldTree);
+                        }
+                        else if (typeof value === 'object' && !(value instanceof Date)) {
+                            result[key] = await translateWithCache(value, fieldTree);
+                        }
+                        else {
+                            result[key] = value;
+                        }
                     }
                 }
                 return result;
@@ -127,9 +189,7 @@ const translationMiddleware = async (req, res, next) => {
             // Traducir de forma asíncrona
             (async () => {
                 try {
-                    // Traducir todo el body de forma recursiva
-                    const translated = await translateWithCache(body);
-                    // Agregar metadata de traducción
+                    const translated = await translateWithCache(body, rootFieldTree);
                     const responseWithMeta = {
                         ...translated,
                         _translation: {
@@ -143,7 +203,6 @@ const translationMiddleware = async (req, res, next) => {
                 }
                 catch (error) {
                     console.error('❌ Error en middleware de traducción:', error);
-                    // En caso de error crítico, enviar respuesta original
                     return originalJson(body);
                 }
             })();
@@ -154,7 +213,7 @@ const translationMiddleware = async (req, res, next) => {
     }
     catch (error) {
         console.error('❌ Error crítico en middleware de traducción:', error);
-        next(); // Continuar sin traducción en caso de error
+        next();
     }
 };
 exports.translationMiddleware = translationMiddleware;

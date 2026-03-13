@@ -9053,6 +9053,128 @@ paths:
         '500':
           description: Error interno del servidor
 
+  /citas/mis-pacientes:
+    get:
+      summary: Listar pacientes del doctor con filtros avanzados
+      tags:
+        - Citas
+      description: |-
+        Obtiene todos los pacientes que han agendado citas con el doctor autenticado, con información demográfica, médica, ubicación del servicio y filtros avanzados.
+        
+        **Traducción Automática:** Agrega `?target=en&translate_fields=nombre,apellido,ubicacion` para traducir campos de texto.
+      security:
+        - bearerAuth: []
+      parameters:
+        # Paginación
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Número de página
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Cantidad de resultados por página
+        
+        # Filtros de búsqueda
+        - name: buscar
+          in: query
+          schema:
+            type: string
+          description: Buscar por nombre del paciente, especialidad o servicio
+        - name: genero
+          in: query
+          schema:
+            type: string
+            enum: ["M", "F"]
+          description: Filtrar por género (M=Masculino, F=Femenino)
+        - name: condicionId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID de condición médica
+        - name: alergiaId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID de alergia
+        - name: especialidadId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID de especialidad
+        - name: servicioId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID de servicio
+        - name: ubicacionId
+          in: query
+          schema:
+            type: integer
+          description: Filtrar por ID de ubicación del servicio
+        - name: ultimaCitaDesde
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filtrar por fecha de última cita desde (YYYY-MM-DD)
+        - name: ultimaCitaHasta
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filtrar por fecha de última cita hasta (YYYY-MM-DD)
+        
+        # Traducción Automática
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,apellido,ubicacion"
+          description: Campos a traducir separados por coma (ej. nombre,apellido,ubicacionUltimaCita.barrio)
+      responses:
+        '200':
+          description: Listado de pacientes con información detallada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PacienteDelDoctor'
+                  paginacion:
+                    $ref: '#/components/schemas/Paginacion'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Doctor)
+        '500':
+          description: Error interno del servidor
+
   /citas/{id}:
     get:
       summary: Obtener detalle de una cita
@@ -20813,6 +20935,100 @@ components:
             nombre:
               type: string
               example: "Republica Dominicana"
+
+    PacienteDelDoctor:
+      type: object
+      description: Información detallada de un paciente que ha agendado citas con el doctor
+      properties:
+        pacienteId:
+          type: integer
+        nombre:
+          type: string
+        apellido:
+          type: string
+        email:
+          type: string
+        telefono:
+          type: string
+          nullable: true
+        fotoPerfil:
+          type: string
+          nullable: true
+        edad:
+          type: integer
+        genero:
+          type: string
+        tipoDocIdentificacion:
+          type: string
+        numeroDocIdentificacion:
+          type: string
+        peso:
+          type: number
+          nullable: true
+        altura:
+          type: integer
+          nullable: true
+        tipoSangre:
+          type: string
+          nullable: true
+        ubicacionUltimaCita:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            nombre:
+              type: string
+              nullable: true
+        condiciones:
+          type: object
+          properties:
+            total:
+              type: integer
+            lista:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  nombre:
+                    type: string
+                  tipo:
+                    type: string
+                    enum: ["Condición", "Alergia"]
+        ultimaCita:
+          type: object
+          nullable: true
+          properties:
+            citaId:
+              type: integer
+            fecha:
+              type: string
+              format: date
+            hora:
+              type: string
+            estado:
+              type: string
+            modalidad:
+              type: string
+            servicio:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: integer
+                nombre:
+                  type: string
+                especialidad:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    nombre:
+                      type: string
+        totalCitas:
+          type: integer
 
   securitySchemes:
     bearerAuth:

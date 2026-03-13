@@ -3,6 +3,39 @@
  * ServiciosController.ts
  * Controlador HTTP para Servicios médicos
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ServiciosController = void 0;
 const tsyringe_1 = require("tsyringe");
@@ -22,11 +55,7 @@ class ServiciosController {
                 res.status(401).json({ success: false, message: 'No autenticado' });
                 return;
             }
-            const { tipoServicioId, especialidadId, nombre, descripcion, precio, duracionMinutos, maxPacientesDia, modalidad } = req.body;
-            if (!tipoServicioId || isNaN(Number(tipoServicioId))) {
-                res.status(400).json({ success: false, message: 'El campo tipoServicioId es requerido y debe ser numérico' });
-                return;
-            }
+            const { especialidadId, nombre, descripcion, precio, duracionMinutos, maxPacientesDia, modalidad } = req.body;
             if (!especialidadId || isNaN(Number(especialidadId))) {
                 res.status(400).json({ success: false, message: 'El campo especialidadId es requerido y debe ser numérico' });
                 return;
@@ -47,10 +76,7 @@ class ServiciosController {
                 res.status(400).json({ success: false, message: 'El campo modalidad es requerido. Valores válidos: Presencial, Teleconsulta, Mixta' });
                 return;
             }
-            // `sedes` puede llegar como string JSON, objeto, o array en multipart/form-data
-            const sedes = this.parseSedes(req.body.sedes);
             const dto = {
-                tipoServicioId: Number(tipoServicioId),
                 especialidadId: Number(especialidadId),
                 nombre,
                 descripcion,
@@ -58,7 +84,9 @@ class ServiciosController {
                 duracionMinutos: Number(duracionMinutos),
                 maxPacientesDia: maxPacientesDia !== undefined ? Number(maxPacientesDia) : undefined,
                 modalidad,
-                sedes
+                centroSaludIds: this.parseIds(req.body.centroSaludIds),
+                ubicacionIds: this.parseIds(req.body.ubicacionIds),
+                horarioIds: this.parseIds(req.body.horarioIds)
             };
             const archivos = req.files ?? [];
             const imagenes = archivos.map(f => ({
@@ -183,7 +211,6 @@ class ServiciosController {
             }
             const dto = {
                 id,
-                tipoServicioId: req.body.tipoServicioId !== undefined ? Number(req.body.tipoServicioId) : undefined,
                 especialidadId: req.body.especialidadId !== undefined ? Number(req.body.especialidadId) : undefined,
                 nombre: req.body.nombre,
                 descripcion: req.body.descripcion,
@@ -192,12 +219,9 @@ class ServiciosController {
                 maxPacientesDia: req.body.maxPacientesDia !== undefined ? Number(req.body.maxPacientesDia) : undefined,
                 modalidad: req.body.modalidad,
                 estado: req.body.estado,
-                // Nuevas sedes con sus horarios (JSON o string JSON)
-                sedesAgregar: this.parseSedes(req.body.sedesAgregar),
-                // IDs de centros a desactivar
-                sedesEliminar: this.parseIds(req.body.sedesEliminar),
-                // IDs de horarios existentes a desactivar
-                horariosEliminar: this.parseIds(req.body.horariosEliminar)
+                centroSaludIds: this.parseIds(req.body.centroSaludIds),
+                ubicacionIds: this.parseIds(req.body.ubicacionIds),
+                horarioIds: this.parseIds(req.body.horarioIds)
             };
             const actualizado = await this.gestionarServiciosUseCase.actualizar(dto, doctorId);
             res.status(200).json({
@@ -336,97 +360,109 @@ class ServiciosController {
     // ─── Helpers ──────────────────────────────────────────────────────────────
     /** Parsea IDs que pueden venir como array JSON, string CSV o array de strings */
     parseIds(value) {
+        const valid = (n) => !isNaN(n) && n > 0;
         if (value === undefined || value === null)
             return undefined;
         if (Array.isArray(value)) {
-            const nums = value.map(Number).filter(n => !isNaN(n));
+            const nums = value.map(Number).filter(valid);
             return nums.length ? nums : undefined;
         }
         if (typeof value === 'string') {
-            const nums = value.split(',').map(s => Number(s.trim())).filter(n => !isNaN(n));
-            return nums.length ? nums : undefined;
-        }
-        return undefined;
-    }
-    /**
-     * Parsea el campo `sedes` que puede llegar de múltiples formas en multipart/form-data:
-     *   1. Ya parseado como array u objeto (Express lo resolvió)
-     *   2. String JSON válido: '[{...},{...}]'
-     *   3. Array de strings (múltiples -F sedes=...): cada elemento se parsea y se une
-     *   4. Un solo objeto JSON: '{...}' → se envuelve en array
-     *   5. Objetos concatenados sin array: '{...},{...}' → se envuelve en '[...]'
-     */
-    parseSedes(value) {
-        if (value === undefined || value === null)
-            return undefined;
-        // Ya es un array de objetos
-        if (Array.isArray(value)) {
-            // Puede ser string[] (múltiples -F fields) o ya objetos
-            const result = [];
-            for (const item of value) {
-                if (typeof item === 'string') {
-                    const parsed = this.tryParseSedesString(item);
-                    if (parsed)
-                        result.push(...(Array.isArray(parsed) ? parsed : [parsed]));
+            const trimmed = value.trim();
+            if (!trimmed)
+                return undefined; // string vacío → nada
+            // Intenta parsear como JSON array primero
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) {
+                    const nums = parsed.map(Number).filter(valid);
+                    return nums.length ? nums : undefined;
                 }
-                else if (item && typeof item === 'object') {
-                    result.push(item);
-                }
+                if (typeof parsed === 'number' && valid(parsed))
+                    return [parsed];
             }
-            return result.length > 0 ? result : undefined;
+            catch { /* continuar */ }
+            // Fallback: CSV
+            const nums = trimmed.split(',').map(s => Number(s.trim())).filter(valid);
+            return nums.length ? nums : undefined;
         }
-        // Es un objeto JS ya parseado
-        if (typeof value === 'object')
+        if (typeof value === 'number' && valid(value))
             return [value];
-        // Es un string
-        if (typeof value === 'string') {
-            const parsed = this.tryParseSedesString(value);
-            if (!parsed)
-                return undefined;
-            return Array.isArray(parsed) ? parsed : [parsed];
-        }
         return undefined;
     }
-    /**
-     * Intenta parsear un string como JSON de sedes.
-     * Estrategias: directo → envuelto en [...] → cada elemento separado por '},{'.
-     */
-    tryParseSedesString(str) {
-        const s = str.trim();
-        if (!s)
-            return undefined;
-        // Intento 1: parseo directo (ya es JSON válido: array u objeto)
-        try {
-            return JSON.parse(s);
-        }
-        catch { /* continuar */ }
-        // Intento 2: envolver en array ('{...}' o '{...},{...}')
-        try {
-            return JSON.parse(`[${s}]`);
-        }
-        catch { /* continuar */ }
-        return undefined;
-    }
-    /** Parsea un campo JSON genérico (no sedes) */
+    /** Parsea un campo JSON genérico (array de objetos) */
     parseJsonField(value) {
         if (value === undefined || value === null)
             return undefined;
+        if (Array.isArray(value))
+            return value.length ? value : undefined;
         if (typeof value === 'string') {
             try {
-                return JSON.parse(value);
+                const parsed = JSON.parse(value);
+                return Array.isArray(parsed) ? parsed : [parsed];
             }
             catch {
                 return undefined;
             }
         }
-        return value;
+        if (typeof value === 'object')
+            return [value];
+        return undefined;
+    }
+    /**
+     * GET /servicios/cercanos
+     * Busca servicios activos dentro de un radio de coordenadas dadas.
+     */
+    async buscarCercanos(req, res) {
+        try {
+            const lat = parseFloat(req.query.lat);
+            const lng = parseFloat(req.query.lng);
+            const radio = req.query.radio !== undefined
+                ? parseFloat(req.query.radio)
+                : 5;
+            if (isNaN(lat) || isNaN(lng)) {
+                res.status(400).json({ success: false, message: 'Los parámetros lat y lng son requeridos y deben ser números válidos' });
+                return;
+            }
+            const filtros = {};
+            if (req.query.especialidadId)
+                filtros.especialidadId = Number(req.query.especialidadId);
+            if (req.query.modalidad)
+                filtros.modalidad = String(req.query.modalidad);
+            if (req.query.precioMin)
+                filtros.precioMin = Number(req.query.precioMin);
+            if (req.query.precioMax)
+                filtros.precioMax = Number(req.query.precioMax);
+            // Resolver pacienteId si el usuario autenticado es un Paciente
+            let pacienteId;
+            const usuarioId = req.usuarioId;
+            const rol = req.rol ?? req.user?.rol;
+            if (usuarioId && rol === 'Paciente') {
+                try {
+                    const { PrismaPacienteRepository } = await Promise.resolve().then(() => __importStar(require('../../../infrastructure/repositories/PrismaPacienteRepository')));
+                    const { prisma } = await Promise.resolve().then(() => __importStar(require('../../../infrastructure/database/prisma/client')));
+                    const pacienteRepo = new PrismaPacienteRepository(prisma);
+                    const paciente = await pacienteRepo.obtenerPorUsuarioId(usuarioId);
+                    if (paciente)
+                        pacienteId = paciente.usuarioId;
+                }
+                catch { /* no bloquear si falla */ }
+            }
+            const servicios = await this.gestionarServiciosUseCase.buscarCercanos(lat, lng, radio, filtros, pacienteId);
+            res.status(200).json({
+                success: true,
+                total: servicios.length,
+                data: servicios
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
     }
     parseFiltros(req) {
         const filtros = {};
         if (req.query.especialidadId)
             filtros.especialidadId = Number(req.query.especialidadId);
-        if (req.query.tipoServicioId)
-            filtros.tipoServicioId = Number(req.query.tipoServicioId);
         if (req.query.modalidad)
             filtros.modalidad = String(req.query.modalidad);
         if (req.query.estado)
@@ -470,9 +506,8 @@ class ServiciosController {
             return 'La especialidad especificada no existe. Verifica el especialidadId.';
         }
         if (raw.includes('id_tipo_servicio') || raw.includes('tipos_servicios')) {
-            return 'El tipo de servicio especificado no existe. Verifica el tipoServicioId.';
         }
-        return 'Uno de los IDs proporcionados no existe en la base de datos. Verifica centroSaludId, ubicacionId, especialidadId y tipoServicioId.';
+        return 'Uno de los IDs proporcionados no existe en la base de datos. Verifica centroSaludId, ubicacionId o especialidadId.';
     }
 }
 exports.ServiciosController = ServiciosController;

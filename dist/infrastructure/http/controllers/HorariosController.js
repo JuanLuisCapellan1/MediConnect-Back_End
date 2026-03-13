@@ -18,19 +18,18 @@ class HorariosController {
      */
     async crear(req, res) {
         try {
-            const { doctorId, nombre, diaSemana, horaInicio, horaFin } = req.body;
-            const doctorIdNum = Number(doctorId);
-            const diaSemanaNum = Number(diaSemana);
-            if (!doctorId || isNaN(doctorIdNum)) {
-                res.status(400).json({ success: false, message: 'El campo doctorId es requerido y debe ser numérico' });
+            const doctorId = req.user?.userId;
+            if (!doctorId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
                 return;
             }
+            const { nombre, diasSemana, horaInicio, horaFin } = req.body;
             if (!nombre || typeof nombre !== 'string') {
                 res.status(400).json({ success: false, message: 'El campo nombre es requerido y debe ser string' });
                 return;
             }
-            if (diaSemana === undefined || isNaN(diaSemanaNum)) {
-                res.status(400).json({ success: false, message: 'El campo diaSemana es requerido y debe ser numérico' });
+            if (!Array.isArray(diasSemana) || diasSemana.length === 0) {
+                res.status(400).json({ success: false, message: 'El campo diasSemana es requerido y debe ser un array con al menos un día (1=Lunes…7=Domingo)' });
                 return;
             }
             if (!horaInicio || typeof horaInicio !== 'string') {
@@ -42,9 +41,9 @@ class HorariosController {
                 return;
             }
             const dto = {
-                doctorId: doctorIdNum,
+                doctorId,
                 nombre,
-                diaSemana: diaSemanaNum,
+                diasSemana: diasSemana.map(Number),
                 horaInicio,
                 horaFin
             };
@@ -148,11 +147,18 @@ class HorariosController {
                 res.status(400).json({ success: false, message: 'El ID debe ser un número válido' });
                 return;
             }
+            const doctorId = req.user?.userId;
+            if (!doctorId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
             const dto = {
                 id,
-                doctorId: req.body.doctorId !== undefined ? Number(req.body.doctorId) : undefined,
+                doctorId,
                 nombre: req.body.nombre,
-                diaSemana: req.body.diaSemana !== undefined ? Number(req.body.diaSemana) : undefined,
+                diasSemana: Array.isArray(req.body.diasSemana)
+                    ? req.body.diasSemana.map(Number)
+                    : undefined,
                 horaInicio: req.body.horaInicio,
                 horaFin: req.body.horaFin,
                 estado: req.body.estado
@@ -178,7 +184,12 @@ class HorariosController {
                 res.status(400).json({ success: false, message: 'El ID debe ser un número válido' });
                 return;
             }
-            const horarioEliminado = await this.gestionarHorariosUseCase.eliminar(id);
+            const doctorId = req.user?.userId;
+            if (!doctorId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const horarioEliminado = await this.gestionarHorariosUseCase.eliminar(id, doctorId);
             res.status(200).json({
                 success: true,
                 data: horarioEliminado,
@@ -216,6 +227,35 @@ class HorariosController {
         }
         catch (error) {
             this.manejarError(error, res, 500);
+        }
+    }
+    /**
+     * POST /horarios/verificar-conflictos
+     * Recibe { horarioIds: number[] } y devuelve si hay conflictos entre ellos.
+     */
+    async verificarConflictos(req, res) {
+        try {
+            const { horarioIds } = req.body;
+            if (!Array.isArray(horarioIds) || horarioIds.length === 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'El campo horarioIds debe ser un array con al menos 2 IDs de horarios.'
+                });
+                return;
+            }
+            const ids = horarioIds.map(Number).filter(n => !isNaN(n) && n > 0);
+            if (ids.length < 2) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Se necesitan al menos 2 IDs de horarios válidos para comparar.'
+                });
+                return;
+            }
+            const resultado = await this.gestionarHorariosUseCase.verificarConflictos(ids);
+            res.status(200).json({ success: true, data: resultado });
+        }
+        catch (error) {
+            this.manejarError(error, res);
         }
     }
     manejarError(error, res, statusCode = 400) {

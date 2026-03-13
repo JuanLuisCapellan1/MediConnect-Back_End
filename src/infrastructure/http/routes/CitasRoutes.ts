@@ -23,6 +23,9 @@ router.get('/calendario', autenticarJWT, requireRole('Paciente', 'Doctor'), tran
 // GET /citas/mis-doctores — Paciente obtiene todos los doctores con quienes ha tenido citas
 router.get('/mis-doctores', autenticarJWT, requireRole('Paciente'), translationMiddleware, (req, res) => ctrl().misDoctores(req, res));
 
+// GET /citas/mis-pacientes — Doctor obtiene todos sus pacientes con información detallada
+router.get('/mis-pacientes', autenticarJWT, requireRole('Doctor'), translationMiddleware, (req, res) => ctrl().listarMisPacientes(req, res));
+
 // ── POST /citas ───────────────────────────────────────────────────────
 
 // POST /citas — Paciente agenda una cita

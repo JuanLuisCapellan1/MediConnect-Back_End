@@ -56,8 +56,8 @@ let GestionarUniversidadesUseCase = class GestionarUniversidadesUseCase {
         if (pagina < 1) {
             throw new Error('La página debe ser mayor a 0');
         }
-        if (limite < 1 || limite > 100) {
-            throw new Error('El límite debe estar entre 1 y 100');
+        if (limite < 1 || limite > 1000) {
+            throw new Error('El límite debe estar entre 1 y 1000');
         }
         // Si se especifica un paisId, validar que existe
         if (filtro.paisId && filtro.paisId > 0) {

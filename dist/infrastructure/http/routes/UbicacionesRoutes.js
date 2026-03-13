@@ -5,78 +5,67 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const tsyringe_1 = require("tsyringe");
 const UbicacionesController_1 = require("../controllers/UbicacionesController");
+const autenticacion_1 = require("../middlewares/autenticacion");
+const roleMiddleware_1 = require("../middlewares/roleMiddleware");
+const TranslationMiddleware_1 = require("../middlewares/TranslationMiddleware");
 const router = (0, express_1.Router)();
-const ubicacionesController = tsyringe_1.container.resolve(UbicacionesController_1.UbicacionesController);
+const controller = new UbicacionesController_1.UbicacionesController();
+// ─── Rutas autenticadas del doctor (ANTES de las rutas con :id) ───────────────
 /**
- * @route POST /ubicaciones
- * @description Crea una nueva Ubicacion
- * @body {barrioId: number, direccion: string, subBarrioId?: number, codigoPostal?: string}
- * @returns {Ubicacion} La ubicación creada
+ * GET /ubicaciones/mis-ubicaciones
+ * Lista todas las ubicaciones del doctor autenticado (principal + horarios + servicios)
  */
-router.post('/', (req, res) => ubicacionesController.crear(req, res));
+router.get('/mis-ubicaciones', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => controller.listarMisUbicaciones(req, res));
 /**
- * @route GET /ubicaciones
- * @description Lista todas las Ubicaciones
- * @returns {Ubicacion[]} Array de ubicaciones
+ * POST /ubicaciones/mis-ubicaciones
+ * Crea una nueva ubicación y la asigna como ubicación principal del doctor autenticado
  */
-router.get('/', (req, res) => ubicacionesController.listarTodas(req, res));
+router.post('/mis-ubicaciones', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => controller.crearMiUbicacion(req, res));
+// ─── Rutas públicas ───────────────────────────────────────────────────────────
 /**
- * @route GET /ubicaciones/barrio/:barrioId
- * @description Lista Ubicaciones de un barrio específico
- * @param {number} barrioId - ID del barrio
- * @returns {Ubicacion[]} Array de ubicaciones del barrio
+ * POST /ubicaciones
+ * Crear una nueva ubicación
  */
-router.get('/barrio/:barrioId', (req, res) => ubicacionesController.listarPorBarrio(req, res));
+router.post('/', (req, res) => controller.crear(req, res));
 /**
- * @route GET /ubicaciones/subbarrio/:subBarrioId
- * @description Lista Ubicaciones de un SubBarrio específico
- * @param {number} subBarrioId - ID del subbarrio
- * @returns {Ubicacion[]} Array de ubicaciones del subbarrio
+ * GET /ubicaciones
+ * Listar todas las ubicaciones
  */
-router.get('/subbarrio/:subBarrioId', (req, res) => ubicacionesController.listarPorSubBarrio(req, res));
+router.get('/', TranslationMiddleware_1.translationMiddleware, (req, res) => controller.listarTodas(req, res));
 /**
- * @route GET /ubicaciones/buscar/direccion/:direccion
- * @description Busca Ubicaciones por dirección (búsqueda parcial, case-insensitive)
- * @param {string} direccion - Parte de la dirección a buscar
- * @returns {Ubicacion[]} Array de ubicaciones que coinciden
+ * GET /ubicaciones/barrio/:barrioId
+ * Listar ubicaciones por barrio
  */
-router.get('/buscar/direccion/:direccion', (req, res) => ubicacionesController.buscarPorDireccion(req, res));
+router.get('/barrio/:barrioId', TranslationMiddleware_1.translationMiddleware, (req, res) => controller.listarPorBarrio(req, res));
 /**
- * @route GET /ubicaciones/buscar/codigopostal/:codigoPostal
- * @description Busca Ubicaciones por código postal
- * @param {string} codigoPostal - Código postal
- * @returns {Ubicacion[]} Array de ubicaciones que coinciden
+ * GET /ubicaciones/buscar/direccion/:direccion
+ * Buscar ubicaciones por dirección
  */
-router.get('/buscar/codigopostal/:codigoPostal', (req, res) => ubicacionesController.buscarPorCodigoPostal(req, res));
+router.get('/buscar/direccion/:direccion', TranslationMiddleware_1.translationMiddleware, (req, res) => controller.buscarPorDireccion(req, res));
 /**
- * @route GET /ubicaciones/buscar/estado/:estado
- * @description Busca Ubicaciones por estado
- * @param {string} estado - Estado a buscar (Activo, Eliminado, etc.)
- * @returns {Ubicacion[]} Array de ubicaciones que coinciden
+ * GET /ubicaciones/buscar/codigopostal/:codigoPostal
+ * Buscar ubicaciones por código postal
  */
-router.get('/buscar/estado/:estado', (req, res) => ubicacionesController.buscarPorEstado(req, res));
+router.get('/buscar/codigopostal/:codigoPostal', TranslationMiddleware_1.translationMiddleware, (req, res) => controller.buscarPorCodigoPostal(req, res));
 /**
- * @route GET /ubicaciones/:id
- * @description Busca una Ubicacion por ID
- * @param {number} id - ID de la ubicación
- * @returns {Ubicacion|null} La ubicación encontrada o null
+ * GET /ubicaciones/buscar/estado/:estado
+ * Buscar ubicaciones por estado
  */
-router.get('/:id', (req, res) => ubicacionesController.buscarPorId(req, res));
+router.get('/buscar/estado/:estado', TranslationMiddleware_1.translationMiddleware, (req, res) => controller.buscarPorEstado(req, res));
 /**
- * @route PUT /ubicaciones/:id
- * @description Actualiza una Ubicacion existente
- * @param {number} id - ID de la ubicación
- * @body {barrioId?: number, subBarrioId?: number, direccion?: string, codigoPostal?: string, estado?: string}
- * @returns {Ubicacion} La ubicación actualizada
+ * GET /ubicaciones/:id
+ * Buscar ubicación por ID
  */
-router.put('/:id', (req, res) => ubicacionesController.actualizar(req, res));
+router.get('/:id', TranslationMiddleware_1.translationMiddleware, (req, res) => controller.buscarPorId(req, res));
 /**
- * @route DELETE /ubicaciones/:id
- * @description Elimina una Ubicacion (eliminación lógica)
- * @param {number} id - ID de la ubicación
- * @returns {Ubicacion} La ubicación eliminada
+ * PUT /ubicaciones/:id
+ * Actualizar una ubicación
  */
-router.delete('/:id', (req, res) => ubicacionesController.eliminar(req, res));
+router.put('/:id', (req, res) => controller.actualizar(req, res));
+/**
+ * DELETE /ubicaciones/:id
+ * Eliminar una ubicación
+ */
+router.delete('/:id', (req, res) => controller.eliminar(req, res));
 exports.default = router;

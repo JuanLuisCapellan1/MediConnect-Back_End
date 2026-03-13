@@ -6,22 +6,86 @@ class PrismaPacienteRepository {
     constructor(prisma) {
         this.prisma = prisma;
     }
+    /** Include completo utilizado en todos los métodos de lectura */
+    get pacienteInclude() {
+        return {
+            usuario: {
+                select: {
+                    email: true,
+                    telefono: true,
+                    fotoPerfil: true,
+                    rol: true,
+                },
+            },
+            ubicacion: {
+                select: {
+                    id: true,
+                    nombre: true,
+                    direccion: true,
+                    codigoPostal: true,
+                    barrio: {
+                        select: {
+                            id: true,
+                            nombre: true,
+                            seccion: {
+                                select: {
+                                    id: true,
+                                    nombre: true,
+                                    distritoMunicipal: {
+                                        select: {
+                                            id: true,
+                                            nombre: true,
+                                            municipio: {
+                                                select: {
+                                                    id: true,
+                                                    nombre: true,
+                                                    provincia: {
+                                                        select: { id: true, nombre: true }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            seguros: {
+                where: { estado: { not: 'Eliminado' } },
+                include: {
+                    seguro: true,
+                    tipoSeguro: true,
+                },
+                orderBy: { creadoEn: 'desc' },
+            },
+            caracteristicas: {
+                where: { estado: { not: 'Eliminado' } },
+                include: {
+                    condicion: true,
+                },
+                orderBy: { registradoEn: 'desc' },
+            },
+        };
+    }
     mapearEntidad(data) {
-        return new Paciente_1.Paciente(data.usuarioId, data.usuarioId, data.nombre, data.apellido, data.tipoDocIdentificacion, data.numero_documento_identificacion, data.foto_documento, data.fechaNacimiento, data.genero, data.altura ? parseFloat(data.altura.toString()) : null, data.peso ? parseFloat(data.peso.toString()) : null, data.tipoSangre, data.ubicacionId, data.estado, data.creadoEn, data.actualizadoEn);
+        const base = new Paciente_1.Paciente(data.usuarioId, data.usuarioId, data.nombre, data.apellido, data.tipoDocIdentificacion, data.numero_documento_identificacion, data.foto_documento, data.fechaNacimiento, data.genero, data.altura ? parseFloat(data.altura.toString()) : null, data.peso ? parseFloat(data.peso.toString()) : null, data.tipoSangre, data.ubicacionId, data.estado, data.creadoEn, data.actualizadoEn);
+        return {
+            ...base,
+            email: data.usuario?.email ?? null,
+            telefono: data.usuario?.telefono ?? null,
+            fotoPerfil: data.usuario?.fotoPerfil ?? null,
+            rol: data.usuario?.rol ?? null,
+            ubicacion: data.ubicacion ?? null,
+            seguros: data.seguros ?? [],
+            condicionesMedicas: data.caracteristicas ?? [],
+        };
     }
     async obtenerPorId(id) {
         const paciente = await this.prisma.paciente.findUnique({
             where: { usuarioId: id },
-            include: {
-                usuario: {
-                    select: {
-                        email: true,
-                        telefono: true,
-                        fotoPerfil: true,
-                    },
-                },
-                ubicacion: true,
-            },
+            include: this.pacienteInclude,
         });
         return paciente ? this.mapearEntidad(paciente) : null;
     }
@@ -57,16 +121,7 @@ class PrismaPacienteRepository {
                 skip,
                 take: limite,
                 orderBy: { creadoEn: 'desc' },
-                include: {
-                    usuario: {
-                        select: {
-                            email: true,
-                            telefono: true,
-                            fotoPerfil: true,
-                        },
-                    },
-                    ubicacion: true,
-                },
+                include: this.pacienteInclude,
             }),
             this.prisma.paciente.count({ where }),
         ]);
@@ -106,16 +161,7 @@ class PrismaPacienteRepository {
         const pacienteActualizado = await this.prisma.paciente.update({
             where: { usuarioId },
             data: dataToUpdate,
-            include: {
-                usuario: {
-                    select: {
-                        email: true,
-                        telefono: true,
-                        fotoPerfil: true,
-                    },
-                },
-                ubicacion: true,
-            },
+            include: this.pacienteInclude,
         });
         return this.mapearEntidad(pacienteActualizado);
     }

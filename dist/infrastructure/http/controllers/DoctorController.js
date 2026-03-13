@@ -56,6 +56,7 @@ class DoctorController {
     async listar(req, res) {
         try {
             const useCase = tsyringe_1.container.resolve(GestionarDoctoresUseCase_1.GestionarDoctoresUseCase);
+            const esPaciente = req.user?.rol === 'Paciente';
             const getString = (value) => {
                 if (Array.isArray(value))
                     return value[0];
@@ -64,14 +65,21 @@ class DoctorController {
             const filtros = {
                 nombre: getString(req.query.nombre),
                 apellido: getString(req.query.apellido),
-                estado: getString(req.query.estado),
-                estadoVerificacion: getString(req.query.estadoVerificacion),
                 genero: getString(req.query.genero),
                 nacionalidad: getString(req.query.nacionalidad),
                 especialidadId: req.query.especialidadId ? parseInt(req.query.especialidadId) : undefined,
                 pagina: req.query.pagina ? parseInt(req.query.pagina) : undefined,
                 limite: req.query.limite ? parseInt(req.query.limite) : undefined,
             };
+            if (esPaciente) {
+                // Los pacientes solo ven doctores activos y verificados
+                filtros.estado = 'Activo';
+                filtros.estadoVerificacion = 'Aprobado';
+            }
+            else {
+                filtros.estado = getString(req.query.estado);
+                filtros.estadoVerificacion = getString(req.query.estadoVerificacion);
+            }
             const resultado = await useCase.listar(filtros);
             return res.status(200).json({
                 success: true,
@@ -92,7 +100,29 @@ class DoctorController {
         try {
             const useCase = tsyringe_1.container.resolve(GestionarDoctoresUseCase_1.GestionarDoctoresUseCase);
             const id = parseInt(req.params.id);
-            const doctor = await useCase.obtenerPorId(id);
+            const esPaciente = req.user?.rol === 'Paciente';
+            const pacienteId = esPaciente ? req.user?.userId : undefined;
+            if (isNaN(id)) {
+                return res.status(400).json({ success: false, message: 'ID inválido.' });
+            }
+            // Para pacientes usamos obtenerPerfilCompleto (datos públicos)
+            // Para admins también está bien, ya que tiene más info
+            const doctor = esPaciente
+                ? await useCase['doctorRepository'].obtenerPerfilCompleto(id)
+                : await useCase.obtenerPorId(id);
+            if (!doctor) {
+                return res.status(404).json({ success: false, message: 'Doctor no encontrado.' });
+            }
+            // Si es paciente, ocultamos datos sensibles y calculamos isFavorite
+            if (esPaciente) {
+                delete doctor.documentos;
+                delete doctor.comentarioVerificacion;
+                delete doctor.estadoAccionVerificacion;
+                delete doctor.fechaResolucionVerificacion;
+                // Verificar si el doctor está en los favoritos del paciente
+                const favRepo = tsyringe_1.container.resolve('FavoritoRepository');
+                doctor.isFavorite = await favRepo.existe(pacienteId, id);
+            }
             return res.status(200).json({
                 success: true,
                 data: doctor,
@@ -279,6 +309,106 @@ class DoctorController {
                 success: true,
                 message: 'Doctor eliminado exitosamente.',
             });
+        }
+        catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+    /**
+     * POST /doctores/comparar
+     * Compara hasta 4 doctores seleccionados por el paciente.
+     * Body: { ids: number[] }
+     */
+    async compararDoctores(req, res) {
+        try {
+            const useCase = tsyringe_1.container.resolve(GestionarDoctoresUseCase_1.GestionarDoctoresUseCase);
+            const { ids } = req.body;
+            if (!Array.isArray(ids) || ids.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El campo "ids" debe ser un arreglo con al menos un ID de doctor.',
+                });
+            }
+            const idsNumericos = ids.map((id) => parseInt(id)).filter((id) => !isNaN(id));
+            if (idsNumericos.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Los IDs proporcionados no son válidos.',
+                });
+            }
+            const doctores = await useCase.compararDoctores(idsNumericos);
+            return res.status(200).json({
+                success: true,
+                total: doctores.length,
+                data: doctores,
+            });
+        }
+        catch (error) {
+            if (error.message?.includes('Solo se pueden comparar')) {
+                return res.status(400).json({ success: false, message: error.message });
+            }
+            return this.manejarError(error, res);
+        }
+    }
+    // GET /doctores/estadisticas/resumen
+    async resumenDoctor(req, res) {
+        try {
+            const useCase = tsyringe_1.container.resolve(GestionarDoctoresUseCase_1.GestionarDoctoresUseCase);
+            const doctorId = req.user?.userId;
+            if (!doctorId)
+                return res.status(401).json({ success: false, message: 'No autenticado' });
+            const data = await useCase.resumenDoctor(doctorId);
+            return res.status(200).json({ success: true, data });
+        }
+        catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+    // GET /doctores/estadisticas/servicios
+    async estadisticasServicios(req, res) {
+        try {
+            const useCase = tsyringe_1.container.resolve(GestionarDoctoresUseCase_1.GestionarDoctoresUseCase);
+            const doctorId = req.user?.userId;
+            if (!doctorId)
+                return res.status(401).json({ success: false, message: 'No autenticado' });
+            const data = await useCase.estadisticasServiciosDoctor(doctorId);
+            return res.status(200).json({ success: true, data });
+        }
+        catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+    // GET /doctores/estadisticas/productividad
+    async productividadDoctor(req, res) {
+        try {
+            const useCase = tsyringe_1.container.resolve(GestionarDoctoresUseCase_1.GestionarDoctoresUseCase);
+            const doctorId = req.user?.userId;
+            if (!doctorId)
+                return res.status(401).json({ success: false, message: 'No autenticado' });
+            const periodosValidos = ['semana', 'mes', '3meses', 'año', 'todo'];
+            const periodo = req.query.periodo ?? 'mes';
+            if (!periodosValidos.includes(periodo)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `El parámetro "periodo" debe ser uno de: ${periodosValidos.join(', ')}.`,
+                });
+            }
+            const data = await useCase.productividadDoctor(doctorId, periodo);
+            return res.status(200).json({ success: true, ...data });
+        }
+        catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+    // GET /doctores/estadisticas/servicios-mas-utilizados
+    async serviciosMasUtilizados(req, res) {
+        try {
+            const useCase = tsyringe_1.container.resolve(GestionarDoctoresUseCase_1.GestionarDoctoresUseCase);
+            const doctorId = req.user?.userId;
+            if (!doctorId)
+                return res.status(401).json({ success: false, message: 'No autenticado' });
+            const data = await useCase.serviciosMasUtilizados(doctorId);
+            return res.status(200).json({ success: true, ...data });
         }
         catch (error) {
             return this.manejarError(error, res);

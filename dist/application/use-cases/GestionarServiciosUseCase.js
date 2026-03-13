@@ -1,21 +1,53 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GestionarServiciosUseCase = void 0;
 const MAX_IMAGENES = 10;
 const TIPOS_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 const BUCKET = 'public-assets';
 class GestionarServiciosUseCase {
-    constructor(servicioRepository, storageService) {
+    constructor(servicioRepository, storageService, enviarNotifUC) {
         this.servicioRepository = servicioRepository;
         this.storageService = storageService;
+        this.enviarNotifUC = enviarNotifUC;
     }
     // ─── Crear ────────────────────────────────────────────────────────────────
     async crear(doctorId, dto, imagenes = []) {
         this.validarImagenes(imagenes);
-        if (dto.sedes)
-            this.validarSedes(dto.sedes);
         this.validarModalidad(dto.modalidad);
-        const servicio = await this.servicioRepository.crear(doctorId, dto.tipoServicioId, dto.especialidadId, dto.nombre.trim(), dto.descripcion?.trim() ?? null, dto.precio, dto.duracionMinutos, dto.sesiones ?? 1, dto.maxPacientesDia ?? null, dto.modalidad, dto.sedes);
+        const servicio = await this.servicioRepository.crear(doctorId, dto.especialidadId, dto.nombre.trim(), dto.descripcion?.trim() ?? null, dto.precio, dto.duracionMinutos, dto.sesiones ?? 1, dto.maxPacientesDia ?? null, dto.modalidad, dto.centroSaludIds, dto.ubicacionIds, dto.horarioIds);
         if (imagenes.length > 0) {
             await this.subirYGuardarImagenes(servicio.id, doctorId, imagenes);
         }
@@ -35,8 +67,6 @@ class GestionarServiciosUseCase {
         const f = {};
         if (filtros?.especialidadId)
             f.especialidadId = filtros.especialidadId;
-        if (filtros?.tipoServicioId)
-            f.tipoServicioId = filtros.tipoServicioId;
         if (filtros?.estado)
             f.estado = filtros.estado;
         if (filtros?.precioMin !== undefined)
@@ -45,13 +75,10 @@ class GestionarServiciosUseCase {
             f.precioMax = filtros.precioMax;
         return this.servicioRepository.listarPorDoctor(doctorId, f);
     }
-    /** Obtiene todos los servicios ofrecidos en un centro de salud */
     async listarPorCentro(centroId, filtros) {
         const f = {};
         if (filtros?.especialidadId)
             f.especialidadId = filtros.especialidadId;
-        if (filtros?.tipoServicioId)
-            f.tipoServicioId = filtros.tipoServicioId;
         if (filtros?.estado)
             f.estado = filtros.estado;
         if (filtros?.precioMin !== undefined)
@@ -69,15 +96,12 @@ class GestionarServiciosUseCase {
             throw new Error('No tienes permiso para modificar este servicio');
         if (existente.estado === 'Eliminado')
             throw new Error('No se puede modificar un servicio eliminado');
-        if (dto.sedesAgregar)
-            this.validarSedes(dto.sedesAgregar);
         if (dto.modalidad)
             this.validarModalidad(dto.modalidad);
         if (dto.estado !== undefined && !['Activo', 'Inactivo'].includes(dto.estado)) {
             throw new Error('Estado inválido. Valores permitidos: Activo, Inactivo');
         }
         return this.servicioRepository.actualizar(dto.id, {
-            tipoServicioId: dto.tipoServicioId,
             especialidadId: dto.especialidadId,
             nombre: dto.nombre?.trim(),
             descripcion: dto.descripcion?.trim(),
@@ -87,21 +111,49 @@ class GestionarServiciosUseCase {
             maxPacientesDia: dto.maxPacientesDia,
             modalidad: dto.modalidad,
             estado: dto.estado,
-            sedesAgregar: dto.sedesAgregar,
-            sedesEliminar: dto.sedesEliminar,
-            horariosEliminar: dto.horariosEliminar
+            centroSaludIds: dto.centroSaludIds,
+            ubicacionIds: dto.ubicacionIds,
+            horarioIds: dto.horarioIds,
         });
     }
     // ─── Eliminar / Desactivar ────────────────────────────────────────────────
     async eliminar(id, doctorId) {
-        const s = await this._verificarPropiedad(id, doctorId);
+        await this._verificarPropiedad(id, doctorId);
         return this.servicioRepository.eliminar(id);
     }
     async desactivar(id, doctorId) {
         const s = await this._verificarPropiedad(id, doctorId);
         if (s.estado === 'Inactivo')
             throw new Error('El servicio ya está inactivo');
-        return this.servicioRepository.desactivar(id);
+        const resultado = await this.servicioRepository.desactivar(id);
+        // ─ Notificar a pacientes con citas futuras en este servicio ─────────
+        try {
+            const { PrismaClient } = await Promise.resolve().then(() => __importStar(require('@prisma/client')));
+            const prisma = new PrismaClient();
+            const citasAfectadas = await prisma.cita.findMany({
+                where: {
+                    servicioId: id,
+                    estado: { in: ['Programada', 'Reprogramada'] },
+                    fechaInicio: { gt: new Date() },
+                },
+                select: { id: true, pacienteId: true },
+            });
+            await prisma.$disconnect();
+            for (const cita of citasAfectadas) {
+                this.enviarNotifUC.execute({
+                    usuarioId: cita.pacienteId,
+                    titulo: 'Servicio Médico Desactivado',
+                    mensaje: 'Un servicio al que tienes citas programadas ha sido desactivado por el médico. Por favor, contacta con tu doctor.',
+                    tipoAlerta: 'Advertencia',
+                    tipoEntidad: 'Cita',
+                    entidadId: cita.id,
+                }).catch((e) => console.error('notif desactivarServicio:', e));
+            }
+        }
+        catch (e) {
+            console.error('GestionarServiciosUseCase.desactivar: error al notificar:', e);
+        }
+        return resultado;
     }
     // ─── Imágenes ─────────────────────────────────────────────────────────────
     async agregarImagenes(servicioId, doctorId, imagenes) {
@@ -128,70 +180,11 @@ class GestionarServiciosUseCase {
         await this.servicioRepository.eliminarImagen(imagenId);
     }
     // ─── Validaciones ─────────────────────────────────────────────────────────
-    /**
-     * Valida el array de sedes:
-     * - Cada sede tiene centroSaludId XOR ubicacionId (no ambos, no ninguno)
-     * - Cada sede tiene al menos un horario
-     * - Cada horario tiene horaInicio < horaFin
-     * - No hay horarios que se solapen dentro del mismo diaSemana en el conjunto total
-     */
-    validarSedes(sedes) {
-        if (sedes.length === 0)
-            return;
-        // Mapa por dia para detectar choques entre todas las sedes del request
-        const rangosPorDia = new Map();
-        for (const sede of sedes) {
-            const tieneCentro = sede.centroSaludId !== undefined && sede.centroSaludId !== null;
-            const tieneUbicacion = sede.ubicacionId !== undefined && sede.ubicacionId !== null;
-            if (tieneCentro && tieneUbicacion) {
-                throw new Error('Cada sede debe tener centroSaludId O ubicacionId, no ambos');
-            }
-            if (!tieneCentro && !tieneUbicacion) {
-                throw new Error('Cada sede debe especificar centroSaludId o ubicacionId');
-            }
-            if (!sede.horarios || sede.horarios.length === 0) {
-                const label = tieneCentro ? `centro ${sede.centroSaludId}` : `ubicación ${sede.ubicacionId}`;
-                throw new Error(`La sede (${label}) debe tener al menos un horario`);
-            }
-            for (const h of sede.horarios) {
-                this.validarFormatoHorario(h);
-                const inicioMin = this.horaAMinutos(h.horaInicio);
-                const finMin = this.horaAMinutos(h.horaFin);
-                if (inicioMin >= finMin) {
-                    throw new Error(`El horario "${h.nombre}" tiene horaInicio >= horaFin`);
-                }
-                const existentes = rangosPorDia.get(h.diaSemana) ?? [];
-                for (const r of existentes) {
-                    if (inicioMin < r.fin && finMin > r.inicio) {
-                        throw new Error(`El horario "${h.nombre}" (día ${h.diaSemana} ${h.horaInicio}-${h.horaFin}) ` +
-                            `choca con "${r.nombre}"`);
-                    }
-                }
-                existentes.push({ inicio: inicioMin, fin: finMin, nombre: h.nombre });
-                rangosPorDia.set(h.diaSemana, existentes);
-            }
-        }
-    }
     validarModalidad(modalidad) {
         const permitidos = ['Presencial', 'Teleconsulta', 'Mixta'];
         if (!permitidos.includes(modalidad)) {
             throw new Error(`Modalidad inválida. Valores permitidos: ${permitidos.join(', ')}`);
         }
-    }
-    validarFormatoHorario(h) {
-        const re = /^([01]\d|2[0-3]):([0-5]\d)$/;
-        if (!re.test(h.horaInicio))
-            throw new Error(`horaInicio inválida: "${h.horaInicio}" (usa HH:MM)`);
-        if (!re.test(h.horaFin))
-            throw new Error(`horaFin inválida: "${h.horaFin}" (usa HH:MM)`);
-        if (h.diaSemana < 1 || h.diaSemana > 7)
-            throw new Error(`diaSemana inválido: ${h.diaSemana} (1-7)`);
-        if (!h.nombre?.trim())
-            throw new Error('El nombre del horario es requerido');
-    }
-    horaAMinutos(hora) {
-        const [h, m] = hora.split(':').map(Number);
-        return h * 60 + m;
     }
     validarImagenes(imgs) {
         if (imgs.length > MAX_IMAGENES)
@@ -223,6 +216,19 @@ class GestionarServiciosUseCase {
         if (s.doctorId !== doctorId)
             throw new Error('No tienes permiso para modificar este servicio');
         return s;
+    }
+    // ─── Buscar por cercanía geográfica ──────────────────────────────────────
+    async buscarCercanos(lat, lng, radioKm, filtros, pacienteId) {
+        if (isNaN(lat) || lat < -90 || lat > 90) {
+            throw new Error('La latitud debe ser un número entre -90 y 90');
+        }
+        if (isNaN(lng) || lng < -180 || lng > 180) {
+            throw new Error('La longitud debe ser un número entre -180 y 180');
+        }
+        if (isNaN(radioKm) || radioKm < 0 || radioKm > 15) {
+            throw new Error('El radio debe ser un número entre 0 y 15 km');
+        }
+        return this.servicioRepository.buscarCercanos(lat, lng, radioKm, filtros, pacienteId);
     }
 }
 exports.GestionarServiciosUseCase = GestionarServiciosUseCase;

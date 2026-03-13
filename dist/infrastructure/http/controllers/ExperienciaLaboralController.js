@@ -62,7 +62,6 @@ let ExperienciaLaboralController = class ExperienciaLaboralController {
         };
         this.obtenerPorId = async (req, res) => {
             try {
-                const doctorId = req.usuarioId; // Obtener doctor autenticado del JWT
                 const id = parseInt(req.params.id);
                 if (isNaN(id)) {
                     res.status(400).json({
@@ -72,14 +71,6 @@ let ExperienciaLaboralController = class ExperienciaLaboralController {
                     return;
                 }
                 const experiencia = await this.gestionarExperienciasLaboralesUseCase.obtenerPorId(id);
-                // Verificar que la experiencia pertenece al doctor autenticado
-                if (experiencia.doctorId !== doctorId) {
-                    res.status(403).json({
-                        success: false,
-                        message: 'No tienes permiso para acceder a esta experiencia laboral',
-                    });
-                    return;
-                }
                 res.status(200).json({
                     message: 'Experiencia laboral obtenida exitosamente',
                     success: true,
@@ -226,6 +217,42 @@ let ExperienciaLaboralController = class ExperienciaLaboralController {
                         message: 'Error interno del servidor',
                     });
                 }
+            }
+        };
+        /**
+         * GET /experiencias-laborales/doctor/:doctorId
+         * Obtener todas las experiencias laborales activas de un doctor específico
+         * Acceso público (cualquier usuario autenticado puede ver el perfil de un doctor)
+         */
+        this.obtenerPorDoctor = async (req, res) => {
+            try {
+                const doctorId = parseInt(req.params.doctorId);
+                if (isNaN(doctorId)) {
+                    res.status(400).json({
+                        success: false,
+                        message: 'ID de doctor inválido',
+                    });
+                    return;
+                }
+                const filtro = {
+                    doctorId,
+                    estado: 'Activo',
+                    pagina: req.query.pagina ? parseInt(req.query.pagina) : 1,
+                    limite: req.query.limite ? parseInt(req.query.limite) : 20,
+                };
+                const resultado = await this.gestionarExperienciasLaboralesUseCase.obtenerTodos(filtro);
+                res.status(200).json({
+                    message: 'Experiencias laborales del doctor obtenidas exitosamente',
+                    success: true,
+                    data: resultado,
+                });
+            }
+            catch (error) {
+                console.error('Error al obtener experiencias del doctor:', error);
+                res.status(500).json({
+                    success: false,
+                    message: 'Error interno del servidor',
+                });
             }
         };
     }

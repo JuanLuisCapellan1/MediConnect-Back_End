@@ -66,35 +66,9 @@ __decorate([
     __metadata("design:type", Number)
 ], CompletarPerfilCentroSaludDto.prototype, "tipoCentroId", void 0);
 __decorate([
-    (0, class_validator_1.IsNotEmpty)({ message: 'La dirección es requerida' }),
-    (0, class_validator_1.IsString)({ message: 'La dirección debe ser texto' }),
-    (0, class_validator_1.MinLength)(5, { message: 'La dirección debe tener al menos 5 caracteres' }),
-    (0, class_validator_1.MaxLength)(255, { message: 'La dirección no puede exceder 255 caracteres' }),
-    __metadata("design:type", String)
-], CompletarPerfilCentroSaludDto.prototype, "direccion", void 0);
-__decorate([
-    (0, class_validator_1.IsNotEmpty)({ message: 'El barrio es requerido' }),
-    (0, class_validator_1.IsNumber)({}, { message: 'El barrio debe ser un número' }),
-    (0, class_validator_1.IsPositive)({ message: 'El barrio debe ser un ID válido' }),
+    (0, class_validator_1.IsNotEmpty)({ message: 'El ID de ubicación es requerido' }),
+    (0, class_validator_1.IsNumber)({}, { message: 'ubicacionId debe ser un número' }),
+    (0, class_validator_1.IsPositive)({ message: 'ubicacionId debe ser un ID válido' }),
     (0, class_transformer_1.Transform)(({ value }) => Number(value)),
     __metadata("design:type", Number)
-], CompletarPerfilCentroSaludDto.prototype, "barrioId", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsNumber)({}, { message: 'El sub-barrio debe ser un número' }),
-    (0, class_validator_1.IsPositive)({ message: 'El sub-barrio debe ser un ID válido' }),
-    (0, class_transformer_1.Transform)(({ value }) => (value ? Number(value) : undefined)),
-    __metadata("design:type", Number)
-], CompletarPerfilCentroSaludDto.prototype, "subBarrioId", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_transformer_1.Transform)(({ value }) => (value === '' ? undefined : value)),
-    (0, class_validator_1.IsString)({ message: 'El código postal debe ser texto' }),
-    (0, class_validator_1.MaxLength)(20, { message: 'El código postal no puede exceder 20 caracteres' }),
-    __metadata("design:type", String)
-], CompletarPerfilCentroSaludDto.prototype, "codigoPostal", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)({ message: 'El punto geográfico debe ser GeoJSON' }),
-    __metadata("design:type", String)
-], CompletarPerfilCentroSaludDto.prototype, "puntoGeografico", void 0);
+], CompletarPerfilCentroSaludDto.prototype, "ubicacionId", void 0);

@@ -1108,4 +1108,34 @@ export class GestionarCitasUseCase {
     async misDoctores(pacienteId: number): Promise<any[]> {
         return await this.citaRepo.misDoctores(pacienteId);
     }
+
+    // ─── PACIENTES DEL DOCTOR ──────────────────────────────────────────────────
+
+    async listarPacientesDelDoctor(
+        doctorId: number,
+        filtros: {
+            pagina?: number;
+            limite?: number;
+            ordenar?: 'nombre' | 'ultimaCita' | 'totalCitas';
+            direccion?: 'asc' | 'desc';
+            buscar?: string;
+            genero?: string;
+            condicionId?: number;
+            alergiaId?: number;
+            especialidadId?: number;
+            servicioId?: number;
+            ubicacionId?: number;
+            ultimaCitaDesde?: string;
+            ultimaCitaHasta?: string;
+        }
+    ): Promise<{ datos: any[]; total: number }> {
+        // Convertir fechas string a Date si se proporcionan
+        const filtrosRepositorio = {
+            ...filtros,
+            ultimaCitaDesde: filtros.ultimaCitaDesde ? new Date(filtros.ultimaCitaDesde) : undefined,
+            ultimaCitaHasta: filtros.ultimaCitaHasta ? new Date(filtros.ultimaCitaHasta) : undefined,
+        };
+
+        return await this.citaRepo.listarPacientesDelDoctor(doctorId, filtrosRepositorio);
+    }
 }

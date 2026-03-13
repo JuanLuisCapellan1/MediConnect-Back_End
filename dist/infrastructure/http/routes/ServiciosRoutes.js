@@ -15,8 +15,10 @@ const express_1 = require("express");
 const multer_1 = __importDefault(require("multer"));
 const tsyringe_1 = require("tsyringe");
 const ServiciosController_1 = require("../controllers/ServiciosController");
+const CitaController_1 = require("../controllers/CitaController");
 const autenticacion_1 = require("../middlewares/autenticacion");
 const roleMiddleware_1 = require("../middlewares/roleMiddleware");
+const TranslationMiddleware_1 = require("../middlewares/TranslationMiddleware");
 const router = (0, express_1.Router)();
 const serviciosController = tsyringe_1.container.resolve(ServiciosController_1.ServiciosController);
 // Multer en memoria (máx 5MB por archivo, máx 10 archivos)
@@ -42,6 +44,13 @@ router.use(autenticacion_1.autenticarJWT);
  */
 router.post('/', (0, roleMiddleware_1.requireRole)('Doctor'), upload.array('imagenes', 10), (req, res) => serviciosController.crear(req, res));
 /**
+ * @route GET /servicios/cercanos
+ * @description Busca servicios activos dentro de un radio geográfico (0-15 km)
+ * @access Doctor, Administrador, Paciente
+ * IMPORTANTE: debe ir antes de /:id
+ */
+router.get('/cercanos', (0, roleMiddleware_1.requireRole)('Doctor', 'Administrador', 'Paciente'), TranslationMiddleware_1.translationMiddleware, (req, res) => serviciosController.buscarCercanos(req, res));
+/**
  * @route GET /servicios/mis-servicios
  * @description Lista los servicios del doctor autenticado con filtros opcionales
  * @access Doctor
@@ -60,6 +69,27 @@ router.get('/doctor/:doctorId', (0, roleMiddleware_1.requireRole)('Doctor', 'Adm
  * @access Doctor, Administrador, Paciente
  */
 router.get('/centro/:centroId', (0, roleMiddleware_1.requireRole)('Doctor', 'Administrador', 'Paciente'), (req, res) => serviciosController.listarPorCentro(req, res));
+/**
+ * @route GET /servicios/doctor/:doctorId/disponibilidad
+ * @description Resumen de disponibilidad por día para todos los servicios del doctor
+ * @access Paciente, Doctor, Administrador
+ * IMPORTANTE: debe ir antes de /:id
+ */
+router.get('/doctor/:doctorId/disponibilidad', (0, roleMiddleware_1.requireRole)('Paciente', 'Doctor', 'Administrador'), TranslationMiddleware_1.translationMiddleware, (req, res) => tsyringe_1.container.resolve(CitaController_1.CitaController).disponibilidadDoctor(req, res));
+/**
+ * @route GET /servicios/:id/slots-disponibles
+ * @description Retorna solo los slots disponibles de un servicio en una fecha (sin los ocupados)
+ * @access Paciente, Doctor, Administrador
+ * IMPORTANTE: debe ir antes de /:id
+ */
+router.get('/:id/slots-disponibles', (0, roleMiddleware_1.requireRole)('Paciente', 'Doctor', 'Administrador'), TranslationMiddleware_1.translationMiddleware, (req, res) => tsyringe_1.container.resolve(CitaController_1.CitaController).slotsDisponiblesParaServicio(req, res));
+/**
+ * @route GET /servicios/:id/slots
+ * @description Consulta los slots de disponibilidad de un servicio en una fecha (YYYY-MM-DD)
+ * @access Paciente, Doctor, Administrador
+ * IMPORTANTE: debe ir antes de /:id
+ */
+router.get('/:id/slots', (0, roleMiddleware_1.requireRole)('Paciente', 'Doctor', 'Administrador'), (req, res) => tsyringe_1.container.resolve(CitaController_1.CitaController).slotsDisponibles(req, res));
 /**
  * @route GET /servicios/:id
  * @description Obtiene el detalle completo de un servicio

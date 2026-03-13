@@ -15,6 +15,8 @@ const EliminarMiSeguroUseCase_1 = require("../../../application/use-cases/seguro
 const AgregarSeguroDoctorUseCase_1 = require("../../../application/use-cases/seguros/AgregarSeguroDoctorUseCase");
 const ObtenerSegurosAceptadosUseCase_1 = require("../../../application/use-cases/seguros/ObtenerSegurosAceptadosUseCase");
 const EliminarSeguroAceptadoUseCase_1 = require("../../../application/use-cases/seguros/EliminarSeguroAceptadoUseCase");
+const ObtenerSegurosPopularesUseCase_1 = require("../../../application/use-cases/seguros/ObtenerSegurosPopularesUseCase");
+const VerificarCompatibilidadSeguroUseCase_1 = require("../../../application/use-cases/seguros/VerificarCompatibilidadSeguroUseCase");
 // DTOs
 const SeguroMedicoDtos_1 = require("../../../application/dtos/SeguroMedicoDtos");
 class SeguroMedicoController {
@@ -242,6 +244,78 @@ class SeguroMedicoController {
         }
     }
     // ============================================
+    // Público - Ver seguros aceptados de un doctor
+    // ============================================
+    /**
+     * GET /api/seguros/doctor/:doctorId/seguros-aceptados
+     * Obtener los seguros que acepta un doctor específico
+     * Visible para cualquier usuario autenticado (pacientes, otros doctores, etc.)
+     */
+    async obtenerSegurosAceptadosPorDoctor(req, res) {
+        try {
+            const doctorId = parseInt(String(req.params.doctorId));
+            if (isNaN(doctorId)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'ID de doctor inválido',
+                });
+                return;
+            }
+            const useCase = tsyringe_1.container.resolve(ObtenerSegurosAceptadosUseCase_1.ObtenerSegurosAceptadosUseCase);
+            const seguros = await useCase.execute(doctorId);
+            res.status(200).json({
+                success: true,
+                message: 'Seguros aceptados por el doctor obtenidos exitosamente',
+                data: seguros,
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ============================================
+    // Verificar compatibilidad de seguro
+    // ============================================
+    /**
+     * GET /api/seguros/verificar-compatibilidad/:seguroId/:tipoSeguroId/doctor/:doctorId
+     * Recibe seguroId y tipoSeguroId como path params.
+     * El paciente se identifica por el token JWT.
+     */
+    async verificarCompatibilidad(req, res) {
+        try {
+            const seguroId = parseInt(String(req.params.seguroId));
+            const tipoSeguroId = parseInt(String(req.params.tipoSeguroId));
+            const doctorId = parseInt(String(req.params.doctorId));
+            const pacienteId = req.user?.userId;
+            if (isNaN(seguroId) || seguroId <= 0) {
+                res.status(400).json({ success: false, message: 'seguroId inválido.' });
+                return;
+            }
+            if (isNaN(tipoSeguroId) || tipoSeguroId <= 0) {
+                res.status(400).json({ success: false, message: 'tipoSeguroId inválido.' });
+                return;
+            }
+            if (isNaN(doctorId) || doctorId <= 0) {
+                res.status(400).json({ success: false, message: 'doctorId inválido.' });
+                return;
+            }
+            if (!pacienteId) {
+                res.status(401).json({ success: false, message: 'No autenticado.' });
+                return;
+            }
+            const useCase = tsyringe_1.container.resolve(VerificarCompatibilidadSeguroUseCase_1.VerificarCompatibilidadSeguroUseCase);
+            const resultado = await useCase.execute(seguroId, tipoSeguroId, doctorId, pacienteId);
+            res.status(200).json({
+                success: true,
+                message: resultado.mensaje,
+                data: resultado,
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ============================================
     // Manejo de errores
     // ============================================
     manejarError(error, res) {
@@ -257,6 +331,37 @@ class SeguroMedicoController {
             success: false,
             message: 'Error interno del servidor',
         });
+    }
+    // ============================================
+    // Rankings
+    // ============================================
+    /**
+     * GET /api/seguros/mas-utilizados
+     * Devuelve los seguros más utilizados por pacientes, ordenados por popularidad.
+     * Accesible por cualquier usuario autenticado.
+     */
+    async masUtilizados(req, res) {
+        try {
+            const limite = req.query.limite ? parseInt(req.query.limite) : 10;
+            if (isNaN(limite) || limite < 1) {
+                res.status(400).json({
+                    success: false,
+                    message: 'El parámetro “limite” debe ser un número positivo',
+                });
+                return;
+            }
+            const useCase = tsyringe_1.container.resolve(ObtenerSegurosPopularesUseCase_1.ObtenerSegurosPopularesUseCase);
+            const ranking = await useCase.ejecutar(limite);
+            res.status(200).json({
+                success: true,
+                mensaje: 'Seguros más utilizados obtenidos exitosamente',
+                total: ranking.length,
+                data: ranking,
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
     }
 }
 exports.SeguroMedicoController = SeguroMedicoController;

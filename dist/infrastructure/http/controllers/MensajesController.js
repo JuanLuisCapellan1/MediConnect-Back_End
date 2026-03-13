@@ -19,13 +19,17 @@ class MensajesController {
                     error: 'No autorizado'
                 });
             }
+            const limite = parseInt(req.query.limite) || 50;
+            const pagina = parseInt(req.query.pagina) || 1;
             const filtros = {
                 conversacionId,
                 usuarioId,
                 tipo: req.query.tipo,
                 busqueda: req.query.busqueda,
-                limite: parseInt(req.query.limite) || 50,
-                offset: parseInt(req.query.offset) || 0,
+                limite,
+                pagina,
+                // offset sigue siendo compatible si se pasa explícitamente
+                offset: req.query.offset ? parseInt(req.query.offset) : undefined,
                 antesDeId: req.query.antesDeId ? parseInt(req.query.antesDeId) : undefined
             };
             const useCase = tsyringe_1.container.resolve(GestionarMensajesUseCase_1.GestionarMensajesUseCase);
@@ -33,7 +37,13 @@ class MensajesController {
             return res.status(200).json({
                 success: true,
                 mensaje: 'Mensajes obtenidos exitosamente',
-                data: resultado
+                paginacion: {
+                    pagina: resultado.pagina,
+                    limite: resultado.limite,
+                    total: resultado.total,
+                    hayMas: resultado.hayMas,
+                },
+                data: resultado.mensajes,
             });
         }
         catch (error) {
@@ -88,7 +98,11 @@ class MensajesController {
             // (esto lo manejaremos cuando el otro usuario abra la conversación)
             return res.status(201).json({
                 mensaje: 'Mensaje enviado exitosamente',
-                data: mensaje.toJSON()
+                data: mensajeCompleto ?? {
+                    ...mensaje.toJSON(),
+                    remitente: null,
+                },
+                esPropio: true,
             });
         }
         catch (error) {

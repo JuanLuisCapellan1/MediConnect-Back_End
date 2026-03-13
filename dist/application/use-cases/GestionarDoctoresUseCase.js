@@ -18,8 +18,9 @@ const DoctorValidator_1 = require("../../domain/validators/Doctores/DoctorValida
 const EstadoValidator_1 = require("../../domain/validators/Estados/EstadoValidator");
 const DoctorNoEncontradoError_1 = require("../../domain/errors/Doctores/DoctorNoEncontradoError");
 let GestionarDoctoresUseCase = class GestionarDoctoresUseCase {
-    constructor(doctorRepository, validator, estadoValidator) {
+    constructor(doctorRepository, citaRepository, validator, estadoValidator) {
         this.doctorRepository = doctorRepository;
+        this.citaRepository = citaRepository;
         this.validator = validator;
         this.estadoValidator = estadoValidator;
     }
@@ -65,18 +66,43 @@ let GestionarDoctoresUseCase = class GestionarDoctoresUseCase {
         await this.obtenerPorUsuarioId(usuarioId);
         await this.doctorRepository.eliminar(usuarioId);
     }
+    async compararDoctores(ids) {
+        if (!ids || ids.length === 0) {
+            throw new Error('Debe proporcionar al menos un ID de doctor.');
+        }
+        if (ids.length > 4) {
+            throw new Error('Solo se pueden comparar hasta 4 doctores a la vez.');
+        }
+        return await this.doctorRepository.compararDoctores(ids);
+    }
     normalizarEstado(estado) {
         if (!estado)
             return estado;
         return estado.charAt(0).toUpperCase() + estado.slice(1).toLowerCase();
+    }
+    // ─── ESTADÍSTICAS DE DOCTOR ──────────────────────────────────────────────
+    async resumenDoctor(doctorId) {
+        return await this.citaRepository.resumenDoctor(doctorId);
+    }
+    async estadisticasServiciosDoctor(doctorId) {
+        return await this.citaRepository.estadisticasServicios(doctorId);
+    }
+    async productividadDoctor(doctorId, periodo) {
+        const periodosValidos = ['semana', 'mes', '3meses', 'año', 'todo'];
+        const p = periodosValidos.includes(periodo) ? periodo : 'mes';
+        return await this.citaRepository.productividadDoctor(doctorId, p);
+    }
+    async serviciosMasUtilizados(doctorId) {
+        return await this.citaRepository.serviciosMasUtilizados(doctorId);
     }
 };
 exports.GestionarDoctoresUseCase = GestionarDoctoresUseCase;
 exports.GestionarDoctoresUseCase = GestionarDoctoresUseCase = __decorate([
     (0, tsyringe_1.injectable)(),
     __param(0, (0, tsyringe_1.inject)('DoctorRepository')),
-    __param(1, (0, tsyringe_1.inject)(DoctorValidator_1.DoctorValidator)),
-    __param(2, (0, tsyringe_1.inject)(EstadoValidator_1.EstadoValidator)),
-    __metadata("design:paramtypes", [Object, DoctorValidator_1.DoctorValidator,
+    __param(1, (0, tsyringe_1.inject)('CitaRepository')),
+    __param(2, (0, tsyringe_1.inject)(DoctorValidator_1.DoctorValidator)),
+    __param(3, (0, tsyringe_1.inject)(EstadoValidator_1.EstadoValidator)),
+    __metadata("design:paramtypes", [Object, Object, DoctorValidator_1.DoctorValidator,
         EstadoValidator_1.EstadoValidator])
 ], GestionarDoctoresUseCase);

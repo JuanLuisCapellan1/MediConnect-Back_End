@@ -46,6 +46,12 @@ router.get('/dia/:diaSemana', (req, res) => horariosController.listarPorDia(req,
  */
 router.get('/estado/:estado', (req, res) => horariosController.listarPorEstado(req, res));
 /**
+ * @route POST /horarios/verificar-conflictos
+ * @description Verifica si hay conflictos entre los horarios indicados por ID
+ * @access Doctor, Administrador
+ */
+router.post('/verificar-conflictos', (req, res) => horariosController.verificarConflictos(req, res));
+/**
  * @route GET /horarios/:id
  * @description Busca un horario por ID
  * @access Doctor, Administrador

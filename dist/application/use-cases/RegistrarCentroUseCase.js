@@ -99,15 +99,14 @@ let RegistrarCentroUseCase = class RegistrarCentroUseCase {
                     },
                 });
             }
-            const ubicacion = await tx.ubicacion.create({
-                data: {
-                    direccion: dto.direccion,
-                    barrioId: dto.barrioId,
-                    subBarrioId: dto.subBarrioId ?? null,
-                    estado: 'Activo',
-                    creadoEn: new Date(),
-                },
+            // USAR UBICACIÓN EXISTENTE
+            const ubicacionExistente = await tx.ubicacion.findUnique({
+                where: { id: dto.ubicacionId },
             });
+            if (!ubicacionExistente || ubicacionExistente.estado === 'Eliminado') {
+                throw new Error(`La ubicación con ID ${dto.ubicacionId} no existe o está eliminada`);
+            }
+            const ubicacionId = dto.ubicacionId;
             // CREAR O REACTIVAR CENTRO SALUD
             const centroEliminado = await tx.centroSalud.findFirst({
                 where: { usuarioId: usuario.id },
@@ -120,7 +119,7 @@ let RegistrarCentroUseCase = class RegistrarCentroUseCase {
                         nombreComercial: dto.nombreComercial,
                         rnc: dto.rnc ?? '',
                         tipoCentroId: dto.tipoCentroId,
-                        ubicacionId: ubicacion.id,
+                        ubicacionId: ubicacionId,
                         sitio_web: dto.sitioWeb ?? null,
                         descripcion: dto.descripcion ?? null,
                         certificacion_sanitaria: certificadoUrl,
@@ -138,7 +137,7 @@ let RegistrarCentroUseCase = class RegistrarCentroUseCase {
                         nombreComercial: dto.nombreComercial,
                         rnc: dto.rnc ?? '',
                         tipoCentroId: dto.tipoCentroId,
-                        ubicacionId: ubicacion.id,
+                        ubicacionId: ubicacionId,
                         sitio_web: dto.sitioWeb ?? null,
                         descripcion: dto.descripcion ?? null,
                         certificacion_sanitaria: certificadoUrl,
@@ -157,7 +156,7 @@ let RegistrarCentroUseCase = class RegistrarCentroUseCase {
                     tipoAccionId: tipoAccion.id,
                     emisorId: usuario.id,
                     detalle: `Solicitud de registro del centro: ${dto.nombreComercial}`,
-                    comentarioEmisor: `Dirección: ${dto.direccion}. RNC: ${dto.rnc ?? 'N/A'}`,
+                    comentarioEmisor: `Ubicación ID: ${dto.ubicacionId}. RNC: ${dto.rnc ?? 'N/A'}`,
                     fechaEmision: new Date(),
                     fechaVencimiento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
                     estado: 'Pendiente',

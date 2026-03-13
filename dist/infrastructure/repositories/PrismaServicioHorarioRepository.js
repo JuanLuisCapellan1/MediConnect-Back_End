@@ -26,7 +26,7 @@ class PrismaServicioHorarioRepository {
             horario: data.horario ? {
                 id: data.horario.id,
                 nombre: data.horario.nombre,
-                diaSemana: data.horario.diaSemana,
+                diasSemana: (data.horario.horarios_dias ?? []).map((hd) => hd.dia_semana),
                 horaInicio: data.horario.horaInicio,
                 horaFin: data.horario.horaFin,
                 estado: data.horario.estado,
@@ -83,10 +83,12 @@ class PrismaServicioHorarioRepository {
                     select: {
                         id: true,
                         nombre: true,
-                        diaSemana: true,
                         horaInicio: true,
                         horaFin: true,
                         estado: true,
+                    },
+                    include: {
+                        horarios_dias: { select: { dia_semana: true } },
                     },
                 },
             },
@@ -111,10 +113,12 @@ class PrismaServicioHorarioRepository {
                     select: {
                         id: true,
                         nombre: true,
-                        diaSemana: true,
                         horaInicio: true,
                         horaFin: true,
                         estado: true,
+                    },
+                    include: {
+                        horarios_dias: { select: { dia_semana: true } },
                     },
                 },
             },
@@ -142,10 +146,12 @@ class PrismaServicioHorarioRepository {
                     select: {
                         id: true,
                         nombre: true,
-                        diaSemana: true,
                         horaInicio: true,
                         horaFin: true,
                         estado: true,
+                    },
+                    include: {
+                        horarios_dias: { select: { dia_semana: true } },
                     },
                 },
             },
@@ -182,10 +188,12 @@ class PrismaServicioHorarioRepository {
                         select: {
                             id: true,
                             nombre: true,
-                            diaSemana: true,
                             horaInicio: true,
                             horaFin: true,
                             estado: true,
+                        },
+                        include: {
+                            horarios_dias: { select: { dia_semana: true } },
                         },
                     },
                 },

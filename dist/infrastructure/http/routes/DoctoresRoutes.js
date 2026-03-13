@@ -10,6 +10,7 @@ const DoctorController_1 = require("../controllers/DoctorController");
 const DoctorIdiomaController_1 = require("../controllers/DoctorIdiomaController");
 const DoctorEspecialidadController_1 = require("../controllers/DoctorEspecialidadController");
 const CentrosSaludController_1 = require("../controllers/CentrosSaludController");
+const CitaController_1 = require("../controllers/CitaController");
 const autenticacion_1 = require("../middlewares/autenticacion");
 const roleMiddleware_1 = require("../middlewares/roleMiddleware");
 const TranslationMiddleware_1 = require("../middlewares/TranslationMiddleware");
@@ -21,9 +22,9 @@ const doctorIdiomaController = new DoctorIdiomaController_1.DoctorIdiomaControll
 const doctorEspecialidadController = new DoctorEspecialidadController_1.DoctorEspecialidadController();
 /**
  * GET /doctores
- * Listar doctores (solo Admin)
+ * Listar doctores (Admin: todos; Paciente: solo activos y verificados)
  */
-router.get('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin'), (req, res) => doctorController.listar(req, res));
+router.get('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin', 'Paciente'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.listar(req, res));
 /**
  * GET /doctores/me
  * Obtener perfil del doctor autenticado con toda su información
@@ -38,7 +39,7 @@ router.patch('/me', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireR
  * GET /doctores/mis-documentos
  * Obtener estado de documentos del doctor autenticado
  */
-router.get('/mis-documentos', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorController.obtenerEstadoDocumentos(req, res));
+router.get('/mis-documentos', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.obtenerEstadoDocumentos(req, res));
 /**
  * PUT /doctores/documentos/:id
  * Actualizar un documento rechazado
@@ -72,10 +73,16 @@ router.patch('/idiomas/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1
  */
 router.delete('/idiomas/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorIdiomaController.eliminar(req, res));
 /**
+ * POST /doctores/comparar
+ * Comparar hasta 4 doctores (solo Paciente)
+ * Body: { ids: number[] }
+ */
+router.post('/comparar', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Paciente'), (req, res) => doctorController.compararDoctores(req, res));
+/**
  * GET /doctores/especialidades
  * Listar especialidades del doctor autenticado
  */
-router.get('/especialidades', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorEspecialidadController.obtener(req, res));
+router.get('/especialidades', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorEspecialidadController.obtener(req, res));
 /**
  * PUT /doctores/especialidades
  * Reemplazar configuración completa de especialidades
@@ -93,13 +100,63 @@ router.patch('/especialidades/:id_especialidad', autenticacion_1.autenticarJWT, 
 router.delete('/especialidades/:id_especialidad', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorEspecialidadController.eliminar(req, res));
 // ─── Solicitudes de alianza (lado Doctor) — ANTES de /:id para evitar captura ─
 router.post('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => tsyringe_1.container.resolve(CentrosSaludController_1.CentrosSaludController).doctorEnviarSolicitud(req, res));
-router.get('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => tsyringe_1.container.resolve(CentrosSaludController_1.CentrosSaludController).doctorListarSolicitudes(req, res));
+router.get('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => tsyringe_1.container.resolve(CentrosSaludController_1.CentrosSaludController).doctorListarSolicitudes(req, res));
 router.put('/solicitudes-alianza/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => tsyringe_1.container.resolve(CentrosSaludController_1.CentrosSaludController).doctorResponderSolicitud(req, res));
+// ─── Periodos de Inactividad del Doctor (antes de /:id) ─────────────
+/**
+ * POST /doctores/inactividad
+ * Doctor registra un período de inactividad y cancela citas en ese rango
+ */
+router.post('/inactividad', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => tsyringe_1.container.resolve(CitaController_1.CitaController).registrarInactividad(req, res));
+/**
+ * GET /doctores/inactividad
+ * Doctor lista sus periodos de inactividad
+ */
+router.get('/inactividad', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => tsyringe_1.container.resolve(CitaController_1.CitaController).listarInactividades(req, res));
+/**
+ * DELETE /doctores/inactividad/:periodoId
+ * Doctor cancela un periodo de inactividad propio
+ */
+router.delete('/inactividad/:periodoId', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => tsyringe_1.container.resolve(CitaController_1.CitaController).cancelarInactividad(req, res));
+// ─── Estadísticas del Doctor (antes de /:id) ──────────────────────────────────
+/**
+ * GET /doctores/estadisticas/pacientes
+ * Estadísticas globales de pacientes del doctor autenticado.
+ * Filtros opcionales: fechaDesde, fechaHasta, servicioId
+ */
+router.get('/estadisticas/pacientes', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => tsyringe_1.container.resolve(CitaController_1.CitaController).estadisticasPacientes(req, res));
+/**
+ * GET /doctores/estadisticas/citas
+ * Estadísticas globales de citas del doctor autenticado.
+ * Filtros opcionales: fechaDesde, fechaHasta, servicioId
+ */
+router.get('/estadisticas/citas', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => tsyringe_1.container.resolve(CitaController_1.CitaController).estadisticasCitas(req, res));
+/**
+ * GET /doctores/estadisticas/resumen
+ * Resumen general: total pacientes, total consultas completadas, dinero ganado.
+ */
+router.get('/estadisticas/resumen', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.resumenDoctor(req, res));
+/**
+ * GET /doctores/estadisticas/servicios
+ * Estadísticas de servicios: activos, inactivos, total y promedio de rating.
+ */
+router.get('/estadisticas/servicios', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.estadisticasServicios(req, res));
+/**
+ * GET /doctores/estadisticas/productividad
+ * Análisis de consultas e ingresos agrupados por sub-período.
+ * Query param: periodo = semana | mes | 3meses | año | todo
+ */
+router.get('/estadisticas/productividad', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.productividadDoctor(req, res));
+/**
+ * GET /doctores/estadisticas/servicios-mas-utilizados
+ * Servicios más utilizados (pie chart) y lista completa de servicios del doctor.
+ */
+router.get('/estadisticas/servicios-mas-utilizados', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.serviciosMasUtilizados(req, res));
 /**
  * GET /doctores/:id
- * Obtener doctor por ID (solo Admin)
+ * Obtener doctor por ID (cualquier usuario autenticado)
  */
-router.get('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin'), (req, res) => doctorController.obtenerPorId(req, res));
+router.get('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin', 'Paciente', 'Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.obtenerPorId(req, res));
 /**
  * PATCH /doctores/:id
  * Actualizar doctor por ID (solo Admin)

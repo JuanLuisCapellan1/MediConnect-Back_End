@@ -114,4 +114,20 @@ export interface ICitaRepository {
     }>;
 
     misDoctores(pacienteId: number): Promise<any[]>;
+    
+    listarPacientesDelDoctor(doctorId: number, filtros: {
+        pagina?: number;
+        limite?: number;
+        ordenar?: 'nombre' | 'ultimaCita' | 'totalCitas';
+        direccion?: 'asc' | 'desc';
+        buscar?: string;
+        genero?: string;
+        condicionId?: number;
+        alergiaId?: number;
+        especialidadId?: number;
+        servicioId?: number;
+        ubicacionId?: number;
+        ultimaCitaDesde?: Date;
+        ultimaCitaHasta?: Date;
+    }): Promise<{ datos: any[]; total: number }>;
 }

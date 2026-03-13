@@ -1,7 +1,6 @@
 "use strict";
 /**
- * GestionarUbicacionesUseCase.ts
- * Casos de uso para la gestión de Ubicaciones
+ * GestionarUbicacionesUseCase.ts — sin subBarrioId tras eliminar sub_barrios
  */
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
@@ -24,91 +23,65 @@ let GestionarUbicacionesUseCase = class GestionarUbicacionesUseCase {
         this.validator = validator;
         this.repository = repository;
     }
-    /**
-     * Crea una nueva Ubicacion
-     */
     async crear(dto) {
-        await this.validator.validarCreacion(dto.barrioId, dto.direccion, dto.subBarrioId);
+        await this.validator.validarCreacion(dto.barrioId, dto.direccion);
         if (dto.codigoPostal) {
             this.validator.validarCodigoPostal(dto.codigoPostal);
         }
         if (dto.puntoGeografico) {
             this.validator.validarPuntoGeografico(dto.puntoGeografico);
         }
-        return await this.repository.crear(dto.barrioId, dto.direccion, dto.subBarrioId, dto.codigoPostal, dto.puntoGeografico);
+        return await this.repository.crear(dto.barrioId, dto.direccion, dto.codigoPostal, dto.puntoGeografico, dto.nombre);
     }
-    /**
-     * Lista todas las Ubicaciones
-     */
     async listarTodas() {
         return await this.repository.listarTodas();
     }
-    /**
-     * Lista Ubicaciones por barrio
-     */
     async listarPorBarrio(barrioId) {
         return await this.repository.listarPorBarrio(barrioId);
     }
-    /**
-     * Lista Ubicaciones por SubBarrio
-     */
-    async listarPorSubBarrio(subBarrioId) {
-        return await this.repository.listarPorSubBarrio(subBarrioId);
-    }
-    /**
-     * Busca una Ubicacion por ID
-     */
     async buscarPorId(id) {
         return await this.repository.buscarPorId(id);
     }
-    /**
-     * Busca Ubicaciones por dirección
-     */
     async buscarPorDireccion(direccion) {
         return await this.repository.buscarPorDireccion(direccion);
     }
-    /**
-     * Busca Ubicaciones por código postal
-     */
     async buscarPorCodigoPostal(codigoPostal) {
         return await this.repository.buscarPorCodigoPostal(codigoPostal);
     }
-    /**
-     * Busca Ubicaciones por estado
-     */
     async buscarPorEstado(estado) {
         return await this.repository.buscarPorEstado(estado);
     }
-    /**
-     * Actualiza una Ubicacion
-     */
     async actualizar(dto) {
-        // Validar que la ubicación exista
         const ubicacionExistente = await this.repository.buscarPorId(dto.id);
         if (!ubicacionExistente) {
             throw new Error(`Ubicacion con ID ${dto.id} no existe`);
         }
-        // Validar cambios de barrio si es necesario
-        if (dto.barrioId !== undefined || dto.subBarrioId !== undefined) {
-            const barrioId = dto.barrioId !== undefined ? dto.barrioId : ubicacionExistente.barrioId;
-            const subBarrioId = dto.subBarrioId !== undefined ? dto.subBarrioId : (ubicacionExistente.subBarrioId || undefined);
-            await this.validator.validarActualizacionUbicacion(barrioId, subBarrioId, dto.id);
+        if (dto.barrioId !== undefined) {
+            await this.validator.validarActualizacionUbicacion(dto.barrioId, undefined, dto.id);
         }
-        // Validar código postal si es proporcionado
         if (dto.codigoPostal !== undefined) {
             this.validator.validarCodigoPostal(dto.codigoPostal);
         }
-        // Validar punto geográfico si es proporcionado
         if (dto.puntoGeografico !== undefined) {
             this.validator.validarPuntoGeografico(dto.puntoGeografico);
         }
-        return await this.repository.actualizar(dto.id, dto.barrioId, dto.subBarrioId, dto.direccion, dto.codigoPostal, dto.estado, dto.puntoGeografico);
+        return await this.repository.actualizar(dto.id, dto.barrioId, dto.direccion, dto.codigoPostal, dto.estado, dto.puntoGeografico, dto.nombre);
     }
-    /**
-     * Elimina una Ubicacion
-     */
     async eliminar(id) {
         return await this.repository.eliminar(id);
+    }
+    async listarPorDoctor(doctorId) {
+        return await this.repository.listarPorDoctor(doctorId);
+    }
+    async crearParaDoctor(doctorId, dto) {
+        await this.validator.validarCreacion(dto.barrioId, dto.direccion);
+        if (dto.codigoPostal) {
+            this.validator.validarCodigoPostal(dto.codigoPostal);
+        }
+        if (dto.puntoGeografico) {
+            this.validator.validarPuntoGeografico(dto.puntoGeografico);
+        }
+        return await this.repository.crearParaDoctor(doctorId, dto.barrioId, dto.direccion, dto.codigoPostal, dto.puntoGeografico, dto.nombre);
     }
 };
 exports.GestionarUbicacionesUseCase = GestionarUbicacionesUseCase;

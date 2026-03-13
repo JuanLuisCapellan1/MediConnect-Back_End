@@ -428,6 +428,44 @@ export class CitaController {
         } catch (error) { this.manejarError(error, res); }
     }
 
+    // GET /citas/mis-pacientes — Pacientes del doctor con información detallada
+    async listarMisPacientes(req: Request, res: Response): Promise<void> {
+        try {
+            const doctorId = req.user?.userId;
+            if (!doctorId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+
+            const {
+                pagina, limite,
+                buscar, genero, condicionId, alergiaId,
+                especialidadId, servicioId, ubicacionId,
+                ultimaCitaDesde, ultimaCitaHasta
+            } = req.query;
+
+            const filtros = {
+                pagina: pagina ? Number(pagina) : 1,
+                limite: limite ? Number(limite) : 10,
+                buscar: buscar as string | undefined,
+                genero: genero as string | undefined,
+                condicionId: condicionId ? Number(condicionId) : undefined,
+                alergiaId: alergiaId ? Number(alergiaId) : undefined,
+                especialidadId: especialidadId ? Number(especialidadId) : undefined,
+                servicioId: servicioId ? Number(servicioId) : undefined,
+                ubicacionId: ubicacionId ? Number(ubicacionId) : undefined,
+                ultimaCitaDesde: ultimaCitaDesde as string | undefined,
+                ultimaCitaHasta: ultimaCitaHasta as string | undefined,
+            };
+
+            const { datos, total } = await this.citasUseCase.listarPacientesDelDoctor(doctorId, filtros);
+            const lim = filtros.limite;
+            const pag = filtros.pagina;
+            res.status(200).json({
+                success: true,
+                data: datos,
+                paginacion: { total, pagina: pag, limite: lim, totalPaginas: Math.ceil(total / lim) },
+            });
+        } catch (error) { this.manejarError(error, res); }
+    }
+
     private manejarError(error: any, res: Response): void {
         const msg: string = error?.message ?? 'Error interno del servidor';
         if (msg.includes('no encontrad') || msg.includes('no existe')) {

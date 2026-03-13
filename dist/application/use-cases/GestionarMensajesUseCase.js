@@ -20,12 +20,14 @@ const AccesoMensajeDenegadoError_1 = require("../../domain/errors/Mensajes/Acces
 const MensajeInvalidoError_1 = require("../../domain/errors/Mensajes/MensajeInvalidoError");
 const ConversacionNoEncontradaError_1 = require("../../domain/errors/Conversaciones/ConversacionNoEncontradaError");
 const AccesoConversacionDenegadoError_1 = require("../../domain/errors/Conversaciones/AccesoConversacionDenegadoError");
+const EnviarNotificacionUseCase_1 = require("./notificaciones/EnviarNotificacionUseCase");
 let GestionarMensajesUseCase = class GestionarMensajesUseCase {
-    constructor(mensajesRepository, conversacionesRepository, lecturasRepository, mediaRepository) {
+    constructor(mensajesRepository, conversacionesRepository, lecturasRepository, mediaRepository, enviarNotifUC) {
         this.mensajesRepository = mensajesRepository;
         this.conversacionesRepository = conversacionesRepository;
         this.lecturasRepository = lecturasRepository;
         this.mediaRepository = mediaRepository;
+        this.enviarNotifUC = enviarNotifUC;
     }
     /**
      * Crea un nuevo mensaje en una conversación
@@ -59,7 +61,19 @@ let GestionarMensajesUseCase = class GestionarMensajesUseCase {
             throw new MensajeInvalidoError_1.MensajeInvalidoError('El mensaje debe tener contenido de texto o un archivo adjunto');
         }
         const mensajeCreado = await this.mensajesRepository.crear(nuevoMensaje);
-        // Actualizar el timestamp de la conversación (ya se hace en el repositorio)
+        // ─ Notificar al otro participante (no al remitente) ────────────────────
+        const conv = conversacion;
+        const destinatarioId = conv.emisorId === dto.remitenteId ? conv.receptorId : conv.emisorId;
+        if (destinatarioId !== undefined && destinatarioId !== dto.remitenteId) {
+            this.enviarNotifUC.execute({
+                usuarioId: destinatarioId,
+                titulo: 'Nuevo Mensaje',
+                mensaje: 'Tienes un nuevo mensaje en tu conversación.',
+                tipoAlerta: 'Informacion',
+                tipoEntidad: 'Mensaje',
+                entidadId: mensajeCreado.id,
+            }).catch((e) => console.error('notif crearMensaje:', e));
+        }
         return mensajeCreado;
     }
     /**
@@ -76,14 +90,7 @@ let GestionarMensajesUseCase = class GestionarMensajesUseCase {
      * Obtiene los mensajes de una conversación
      */
     async obtenerPorConversacion(filtros) {
-        const mensajes = await this.mensajesRepository.obtenerPorConversacion(filtros);
-        const limite = filtros.limite || 50;
-        const hayMas = mensajes.length === limite;
-        return {
-            mensajes,
-            total: mensajes.length,
-            hayMas
-        };
+        return await this.mensajesRepository.obtenerPorConversacion(filtros);
     }
     /**
      * Obtiene un mensaje por ID
@@ -190,5 +197,6 @@ exports.GestionarMensajesUseCase = GestionarMensajesUseCase = __decorate([
     __param(1, (0, tsyringe_1.inject)('ConversacionesRepository')),
     __param(2, (0, tsyringe_1.inject)('LecturasConversacionRepository')),
     __param(3, (0, tsyringe_1.inject)('MediaRepository')),
-    __metadata("design:paramtypes", [Object, Object, Object, Object])
+    __param(4, (0, tsyringe_1.inject)(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase)),
+    __metadata("design:paramtypes", [Object, Object, Object, Object, EnviarNotificacionUseCase_1.EnviarNotificacionUseCase])
 ], GestionarMensajesUseCase);

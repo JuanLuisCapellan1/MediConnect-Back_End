@@ -1,7 +1,6 @@
 "use strict";
 /**
  * IUbicacionesRepository.ts
- * Interfaz del repositorio para operaciones de persistencia de Ubicaciones
- * Define el contrato que debe cumplir cualquier implementación de repositorio
+ * Interfaz del repositorio para Ubicaciones
  */
 Object.defineProperty(exports, "__esModule", { value: true });

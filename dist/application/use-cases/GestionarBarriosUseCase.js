@@ -92,6 +92,21 @@ let GestionarBarriosUseCase = class GestionarBarriosUseCase {
     async eliminar(id) {
         return await this.barrioRepo.eliminar(id);
     }
+    /**
+     * Busca el barrio cuyo polígono contiene el punto (longitud, latitud).
+     * @param longitud - Longitud (X) del punto
+     * @param latitud  - Latitud (Y) del punto
+     */
+    async buscarPorCoordenadas(longitud, latitud) {
+        return await this.barrioRepo.buscarPorCoordenadas(longitud, latitud);
+    }
+    /**
+     * Obtiene un barrio con su geometría completa (GeoJSON).
+     * @param id - ID del barrio
+     */
+    async obtenerGeometria(id) {
+        return await this.barrioRepo.obtenerGeometria(id);
+    }
 };
 exports.GestionarBarriosUseCase = GestionarBarriosUseCase;
 exports.GestionarBarriosUseCase = GestionarBarriosUseCase = __decorate([

@@ -58,6 +58,11 @@ let PrismaMensajesRepository = class PrismaMensajesRepository {
         if (!conversacion) {
             throw new Error('No tienes acceso a esta conversación');
         }
+        const limite = filtros.limite || 50;
+        const pagina = filtros.pagina && filtros.pagina > 0 ? filtros.pagina : 1;
+        const skip = filtros.offset !== undefined
+            ? filtros.offset
+            : (pagina - 1) * limite;
         const where = {
             conversacionId: filtros.conversacionId,
             estado: { not: 'Eliminado' }
@@ -74,65 +79,65 @@ let PrismaMensajesRepository = class PrismaMensajesRepository {
         if (filtros.antesDeId) {
             where.id = { lt: filtros.antesDeId };
         }
-        const mensajes = await this.prisma.mensaje.findMany({
-            where,
-            include: {
-                remitente: {
-                    select: {
-                        id: true,
-                        fotoPerfil: true,
-                        paciente: {
-                            select: {
-                                nombre: true,
-                                apellido: true
-                            }
-                        },
-                        doctor: {
-                            select: {
-                                nombre: true,
-                                apellido: true
-                            }
+        // Contar total y obtener mensajes en paralelo
+        const [total, mensajes] = await Promise.all([
+            this.prisma.mensaje.count({ where }),
+            this.prisma.mensaje.findMany({
+                where,
+                include: {
+                    remitente: {
+                        select: {
+                            id: true,
+                            fotoPerfil: true,
+                            paciente: { select: { nombre: true, apellido: true } },
+                            doctor: { select: { nombre: true, apellido: true } }
+                        }
+                    },
+                    media: {
+                        select: {
+                            id: true,
+                            archivo: true,
+                            nombre: true,
+                            tipoMime: true,
+                            tamanioBytes: true
                         }
                     }
                 },
-                media: {
-                    select: {
-                        id: true,
-                        archivo: true,
-                        nombre: true,
-                        tipoMime: true,
-                        tamanioBytes: true
-                    }
-                }
-            },
-            orderBy: { enviadoEn: 'desc' },
-            take: filtros.limite || 50,
-            skip: filtros.offset || 0
-        });
-        return mensajes.map(m => ({
-            id: m.id,
-            conversacionId: m.conversacionId,
-            remitenteId: m.remitenteId,
-            contenido: m.contenido || undefined,
-            tipo: m.tipo,
-            mediaId: m.mediaId || undefined,
-            estado: m.estado,
-            enviadoEn: m.enviadoEn,
-            remitente: {
-                id: m.remitente.id,
-                nombre: m.remitente.paciente?.nombre || m.remitente.doctor?.nombre || 'Sin nombre',
-                apellido: m.remitente.paciente?.apellido || m.remitente.doctor?.apellido || '',
-                fotoPerfil: m.remitente.fotoPerfil || undefined
-            },
-            media: m.media ? {
-                id: m.media.id,
-                archivo: m.media.archivo,
-                nombre: m.media.nombre || undefined,
-                tipoMime: m.media.tipoMime || undefined,
-                tamanioBytes: m.media.tamanioBytes ? Number(m.media.tamanioBytes) : undefined
-            } : undefined,
-            esPropio: m.remitenteId === filtros.usuarioId
-        }));
+                orderBy: { id: 'desc' }, // Mayor ID = más reciente
+                take: limite,
+                skip
+            })
+        ]);
+        return {
+            mensajes: mensajes.map(m => ({
+                id: m.id,
+                conversacionId: m.conversacionId,
+                remitenteId: m.remitenteId,
+                contenido: m.contenido || undefined,
+                tipo: m.tipo,
+                mediaId: m.mediaId || undefined,
+                estado: m.estado,
+                enviadoEn: m.enviadoEn,
+                remitente: {
+                    id: m.remitente.id,
+                    nombre: m.remitente.paciente?.nombre || m.remitente.doctor?.nombre || 'Sin nombre',
+                    apellido: m.remitente.paciente?.apellido || m.remitente.doctor?.apellido || '',
+                    fotoPerfil: m.remitente.fotoPerfil || undefined
+                },
+                media: m.media ? {
+                    id: m.media.id,
+                    archivo: m.media.archivo,
+                    nombre: m.media.nombre || undefined,
+                    tipoMime: m.media.tipoMime || undefined,
+                    tamanioBytes: m.media.tamanioBytes ? Number(m.media.tamanioBytes) : undefined
+                } : undefined,
+                esPropio: m.remitenteId === filtros.usuarioId
+            })),
+            total,
+            pagina,
+            limite,
+            hayMas: skip + mensajes.length < total
+        };
     }
     async actualizar(id, datos) {
         try {

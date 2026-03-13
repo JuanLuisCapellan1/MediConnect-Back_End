@@ -12,6 +12,12 @@ dotenv_1.default.config();
 BigInt.prototype.toJSON = function () {
     return this.toString();
 };
+// Fix para serialización de Decimal (Prisma) en JSON
+// Evita el formato interno {"s":1,"e":3,"d":[...]} y devuelve un número normal
+const library_1 = require("@prisma/client/runtime/library");
+library_1.Decimal.prototype.toJSON = function () {
+    return parseFloat(this.toString());
+};
 require("./shared/container"); // Configuración del contenedor de inyección
 const express_1 = __importDefault(require("express"));
 const http_1 = require("http");

@@ -232,6 +232,89 @@ class PrismaSeguroMedicoRepository {
         });
         return count > 0;
     }
+    /**
+     * Devuelve los seguros más utilizados por pacientes (con estado Activo),
+     * ordenados de mayor a menor número de pacientes activos.
+     */
+    async obtenerMasUtilizadosPorPacientes(limite = 10) {
+        // Agrupar por seguroId y contar pacientes activos
+        const grupos = await this.prisma.pacienteSeguro.groupBy({
+            by: ['seguroId'],
+            where: { estado: 'Activo' },
+            _count: { seguroId: true },
+            orderBy: { _count: { seguroId: 'desc' } },
+            take: limite,
+        });
+        if (grupos.length === 0)
+            return [];
+        // Obtener los datos completos de cada seguro
+        const seguroIds = grupos.map(g => g.seguroId);
+        const seguros = await this.prisma.seguroMedico.findMany({
+            where: { id: { in: seguroIds } },
+        });
+        // Mapear manteniendo el orden del ranking
+        return grupos.map(grupo => {
+            const seguro = seguros.find(s => s.id === grupo.seguroId);
+            return {
+                id: seguro.id,
+                nombre: seguro.nombre,
+                urlImage: seguro.urlImage,
+                estado: seguro.estado,
+                totalPacientes: grupo._count.seguroId,
+            };
+        });
+    }
+    async verificarCompatibilidadSeguro(seguroId, tipoSeguroId, doctorId, pacienteId) {
+        // 1. Obtener nombres del seguro y tipo de seguro
+        const [seguro, tipoSeguro] = await Promise.all([
+            this.prisma.seguroMedico.findUnique({
+                where: { id: seguroId },
+                select: { nombre: true },
+            }),
+            this.prisma.tipoSeguro.findUnique({
+                where: { id: tipoSeguroId },
+                select: { nombre: true },
+            }),
+        ]);
+        if (!seguro || !tipoSeguro) {
+            throw new Error(!seguro
+                ? `No existe un seguro médico con ID ${seguroId}.`
+                : `No existe un tipo de seguro con ID ${tipoSeguroId}.`);
+        }
+        // 2. Verificar en paralelo: doctor acepta + paciente tiene
+        const [doctorSeguro, pacienteSeguro] = await Promise.all([
+            this.prisma.doctorSeguro.findFirst({
+                where: { doctorId, seguroId, tipoSeguroId, estado: 'Activo' },
+            }),
+            this.prisma.pacienteSeguro.findFirst({
+                where: { pacienteId, seguroId, tipoSeguroId, estado: 'Activo' },
+            }),
+        ]);
+        const doctorAcepta = doctorSeguro !== null;
+        const pacienteTiene = pacienteSeguro !== null;
+        const compatible = doctorAcepta && pacienteTiene;
+        let mensaje;
+        if (compatible) {
+            mensaje = `Compatible: el doctor acepta y el paciente tiene el seguro "${seguro.nombre}" (plan: ${tipoSeguro.nombre}).`;
+        }
+        else if (!doctorAcepta && !pacienteTiene) {
+            mensaje = `El doctor no acepta el seguro "${seguro.nombre}" (plan: ${tipoSeguro.nombre}) y el paciente tampoco lo tiene registrado.`;
+        }
+        else if (!doctorAcepta) {
+            mensaje = `El doctor no acepta el seguro "${seguro.nombre}" (plan: ${tipoSeguro.nombre}).`;
+        }
+        else {
+            mensaje = `El paciente no tiene registrado el seguro "${seguro.nombre}" (plan: ${tipoSeguro.nombre}) como activo.`;
+        }
+        return {
+            seguroNombre: seguro.nombre,
+            tipoSeguroNombre: tipoSeguro.nombre,
+            doctorAcepta,
+            pacienteTiene,
+            compatible,
+            mensaje,
+        };
+    }
     // ============================================
     // Mappers
     // ============================================

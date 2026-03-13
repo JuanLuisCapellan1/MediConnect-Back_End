@@ -654,9 +654,9 @@ model LogTeleconsulta {
   fin             DateTime?    @map("fecha_hora_fin") @db.Timestamptz(6)
   duracionMinutos Int?         @map("duracion_minutos")
   salaReunion     String?      @map("id_sala_reunion") @db.VarChar(100)
-  urlPaciente     String?      @map("url_paciente")
   estado          String       @default("Iniciada") @db.VarChar(20)
   creadoEn        DateTime     @default(now()) @map("creado_en") @db.Timestamptz(6)
+  urlPaciente     String?      @map("url_paciente")
   cita            Cita         @relation(fields: [citaId], references: [id])
   conversacion    Conversacion @relation(fields: [conversacionId], references: [id])
 

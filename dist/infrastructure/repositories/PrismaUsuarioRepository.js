@@ -151,7 +151,6 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                 data: {
                     direccion: data.ubicacion.direccion,
                     barrioId: Number(data.ubicacion.id_barrio),
-                    subBarrioId: data.ubicacion.id_sub_barrio ? Number(data.ubicacion.id_sub_barrio) : null,
                     estado: 'Activo',
                     creadoEn: new Date(),
                 },
@@ -161,7 +160,6 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
             await tx.doctor.create({
                 data: {
                     usuarioId: usuario.id,
-                    ubicacionId: ubicacion.id,
                     nombre: data.doctor.nombre,
                     apellido: data.doctor.apellido,
                     tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
@@ -283,7 +281,33 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
         const usuario = await client_1.prisma.usuario.findUnique({
             where: { id },
             include: {
-                paciente: true,
+                paciente: {
+                    include: {
+                        usuario: {
+                            select: {
+                                email: true,
+                                telefono: true,
+                                fotoPerfil: true,
+                                rol: true,
+                            },
+                        },
+                        seguros: {
+                            where: { estado: { not: 'Eliminado' } },
+                            include: {
+                                seguro: true,
+                                tipoSeguro: true,
+                            },
+                            orderBy: { creadoEn: 'desc' },
+                        },
+                        caracteristicas: {
+                            where: { estado: { not: 'Eliminado' } },
+                            include: {
+                                condicion: true,
+                            },
+                            orderBy: { registradoEn: 'desc' },
+                        },
+                    },
+                },
                 doctor: {
                     include: {
                         usuario: {
@@ -294,7 +318,7 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                                 emailVerificado: true,
                             },
                         },
-                        ubicacion: true,
+                        ubicaciones: true,
                         formaciones: {
                             where: {
                                 estado: 'Activo',
@@ -347,8 +371,11 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                             where: {
                                 estado: 'Activo',
                             },
+                            include: {
+                                horarios_dias: { select: { dia_semana: true } },
+                            },
                             orderBy: {
-                                diaSemana: 'asc',
+                                creadoEn: 'asc',
                             },
                         },
                         servicios: {
@@ -714,12 +741,12 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                     data: {
                         direccion: data.ubicacion.direccion,
                         barrioId: Number(data.ubicacion.id_barrio),
-                        subBarrioId: data.ubicacion.id_sub_barrio ? Number(data.ubicacion.id_sub_barrio) : null,
                         estado: 'Activo',
                         creadoEn: new Date(),
+                        id_doctor: usuario.id,
                     },
                 });
-                ubicacionId = ubicacion.id;
+                // ubicacionId ya no está en Doctor — la ubicación referencia al doctor
             }
             // 3. CREAR O REACTIVAR PERFIL DOCTOR
             const doctorEliminado = await tx.doctor.findFirst({
@@ -732,7 +759,6 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                 await tx.doctor.update({
                     where: { usuarioId: usuario.id },
                     data: {
-                        ubicacionId: ubicacionId,
                         nombre: data.doctor.nombre,
                         apellido: data.doctor.apellido,
                         tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,
@@ -753,7 +779,6 @@ let PrismaUsuarioRepository = class PrismaUsuarioRepository {
                 await tx.doctor.create({
                     data: {
                         usuarioId: usuario.id,
-                        ubicacionId: ubicacionId,
                         nombre: data.doctor.nombre,
                         apellido: data.doctor.apellido,
                         tipoDocIdentificacion: data.doctor.tipo_documento_identificacion,

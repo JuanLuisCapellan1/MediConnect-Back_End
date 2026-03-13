@@ -1126,5 +1126,229 @@ export class PrismaCitaRepository implements ICitaRepository {
 
         return [...seenDoctors.values()];
     }
+
+    // ─── PACIENTES DEL DOCTOR ─────────────────────────────────────────────────
+    async listarPacientesDelDoctor(
+        doctorId: number,
+        filtros: {
+            pagina?: number;
+            limite?: number;
+            buscar?: string;
+            genero?: string;
+            condicionId?: number;
+            alergiaId?: number;
+            especialidadId?: number;
+            servicioId?: number;
+            ubicacionId?: number;
+            ultimaCitaDesde?: Date;
+            ultimaCitaHasta?: Date;
+        }
+    ): Promise<{ datos: any[]; total: number }> {
+        const pagina = filtros.pagina ?? 1;
+        const limite = filtros.limite ?? 10;
+        const skip = (pagina - 1) * limite;
+
+        // Obtener todas las citas del doctor con información del paciente
+        const citas = await (this.prisma.cita as any).findMany({
+            where: { doctorUsuarioId: doctorId },
+            include: {
+                paciente: {
+                    include: {
+                        usuario: {
+                            select: { email: true, telefono: true, fotoPerfil: true },
+                        },
+                        caracteristicas: {
+                            where: { estado: 'Activo' },
+                            include: {
+                                condicion: {
+                                    select: { id: true, nombre: true, tipo: true },
+                                },
+                            },
+                        },
+                    },
+                },
+                servicio: {
+                    include: {
+                        especialidad: { select: { id: true, nombre: true } },
+                        servicios_ubicaciones: {
+                            include: {
+                                ubicacion: {
+                                    select: { id: true, nombre: true },
+                                },
+                            },
+                        },
+                    },
+                },
+                ubicacion: {
+                    include: {
+                        barrio: {
+                            include: {
+                                seccion: {
+                                    include: {
+                                        distritoMunicipal: {
+                                            include: {
+                                                municipio: {
+                                                    include: {
+                                                        provincia: { select: { id: true, nombre: true } },
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: { fechaInicio: 'desc' },
+        });
+
+        // Agrupar por paciente y obtener información única
+        const mapaPacientes = new Map<number, any>();
+
+        for (const cita of citas) {
+            const pacienteId = cita.pacienteId;
+            
+            if (!mapaPacientes.has(pacienteId)) {
+                const pac = cita.paciente;
+                const fechaNac = new Date(pac.fechaNacimiento);
+                const hoy = new Date();
+                const edad = hoy.getFullYear() - fechaNac.getFullYear() - 
+                    (hoy.getMonth() < fechaNac.getMonth() || 
+                     (hoy.getMonth() === fechaNac.getMonth() && hoy.getDate() < fechaNac.getDate()) ? 1 : 0);
+
+                // Procesar ubicación del servicio/centro de la cita
+                let ubicacionUltimaCitaFormatted: any = null;
+                
+                // Obtener ubicación del servicio (desde servicios_ubicaciones)
+                const servicioUbicacion = cita.servicio?.servicios_ubicaciones?.[0]?.ubicacion;
+                
+                if (servicioUbicacion) {
+                    ubicacionUltimaCitaFormatted = {
+                        id: servicioUbicacion.id,
+                        nombre: servicioUbicacion.nombre ?? null,
+                    };
+                }
+
+                // Procesar condiciones (alergias y condiciones médicas)
+                const condiciones = (pac.caracteristicas ?? []).map((c: any) => ({
+                    id: c.condicion.id,
+                    nombre: c.condicion.nombre,
+                    tipo: c.condicion.tipo,
+                }));
+
+                mapaPacientes.set(pacienteId, {
+                    pacienteId,
+                    nombre: pac.nombre,
+                    apellido: pac.apellido,
+                    email: pac.usuario?.email ?? null,
+                    telefono: pac.usuario?.telefono ?? null,
+                    fotoPerfil: pac.usuario?.fotoPerfil ?? null,
+                    edad,
+                    genero: pac.genero,
+                    tipoDocIdentificacion: pac.tipoDocIdentificacion,
+                    numeroDocIdentificacion: pac.numero_documento_identificacion,
+                    peso: pac.peso ? Number(pac.peso.toString()) : null,
+                    altura: pac.altura ?? null,
+                    tipoSangre: pac.tipoSangre ?? null,
+                    ubicacionUltimaCita: ubicacionUltimaCitaFormatted,
+                    condiciones: {
+                        total: condiciones.length,
+                        lista: condiciones,
+                    },
+                    ultimaCita: {
+                        citaId: cita.id,
+                        fecha: cita.fechaInicio ? cita.fechaInicio.toISOString().substring(0, 10) : null,
+                        hora: cita.fechaInicio ? cita.fechaInicio.toISOString().substring(11, 16) : null,
+                        estado: cita.estado,
+                        modalidad: cita.modalidad,
+                        servicio: cita.servicio ? {
+                            id: cita.servicio.id,
+                            nombre: cita.servicio.nombre,
+                            especialidad: cita.servicio.especialidad,
+                        } : null,
+                    },
+                    totalCitas: 1,
+                    _fechaUltimaCita: cita.fechaInicio, // para ordenar
+                    _servicioId: cita.servicioId,
+                    _especialidadId: cita.servicio?.especialidad?.id,
+                    _ubicacionId: cita.ubicacionId,
+                    _condicionIds: condiciones.map((c: any) => c.id),
+                });
+            } else {
+                // Incrementar contador de citas
+                const existente = mapaPacientes.get(pacienteId)!;
+                existente.totalCitas = (existente.totalCitas ?? 0) + 1;
+            }
+        }
+
+        // Convertir a array
+        let pacientes = [...mapaPacientes.values()];
+
+        // ── APLICAR FILTROS ────────────────────────────────────────────────────────
+        if (filtros.buscar) {
+            const buscar = filtros.buscar.toLowerCase();
+            pacientes = pacientes.filter(p =>
+                `${p.nombre} ${p.apellido}`.toLowerCase().includes(buscar) ||
+                p.ultimaCita?.servicio?.nombre?.toLowerCase().includes(buscar) ||
+                p.ultimaCita?.servicio?.especialidad?.nombre?.toLowerCase().includes(buscar)
+            );
+        }
+
+        if (filtros.genero) {
+            pacientes = pacientes.filter(p => p.genero === filtros.genero);
+        }
+
+        if (filtros.condicionId) {
+            pacientes = pacientes.filter(p =>
+                p._condicionIds && p._condicionIds.includes(filtros.condicionId)
+            );
+        }
+
+        if (filtros.alergiaId) {
+            pacientes = pacientes.filter(p =>
+                p.condiciones.lista.some((c: any) => c.id === filtros.alergiaId && c.tipo === 'Alergia')
+            );
+        }
+
+        if (filtros.especialidadId) {
+            pacientes = pacientes.filter(p => p._especialidadId === filtros.especialidadId);
+        }
+
+        if (filtros.servicioId) {
+            pacientes = pacientes.filter(p => p._servicioId === filtros.servicioId);
+        }
+
+        if (filtros.ubicacionId) {
+            pacientes = pacientes.filter(p => p._ubicacionId === filtros.ubicacionId);
+        }
+
+        if (filtros.ultimaCitaDesde || filtros.ultimaCitaHasta) {
+            pacientes = pacientes.filter(p => {
+                const fecha = p._fechaUltimaCita;
+                if (!fecha) return false;
+
+                if (filtros.ultimaCitaDesde && fecha < filtros.ultimaCitaDesde) return false;
+                if (filtros.ultimaCitaHasta && fecha > filtros.ultimaCitaHasta) return false;
+
+                return true;
+            });
+        }
+
+        // Limpiar campos temporales
+        pacientes = pacientes.map(p => {
+            const { _fechaUltimaCita, _servicioId, _especialidadId, _ubicacionId, _condicionIds, ...rest } = p;
+            return rest;
+        });
+
+        // Aplicar paginación
+        const total = pacientes.length;
+        const datosPaginados = pacientes.slice(skip, skip + limite);
+
+        return { datos: datosPaginados, total };
+    }
 }
+
+
 

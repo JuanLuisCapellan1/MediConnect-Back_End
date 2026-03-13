@@ -10,11 +10,9 @@ const PrismaMunicipiosRepository_1 = require("../../infrastructure/repositories/
 const PrismaDistritosMunicipalesRepository_1 = require("../../infrastructure/repositories/PrismaDistritosMunicipalesRepository");
 const PrismaSeccionesRepository_1 = require("../../infrastructure/repositories/PrismaSeccionesRepository");
 const PrismaBarriosRepository_1 = require("../../infrastructure/repositories/PrismaBarriosRepository");
-const PrismaSubBarriosRepository_1 = require("../../infrastructure/repositories/PrismaSubBarriosRepository");
 const PrismaUbicacionesRepository_1 = require("../../infrastructure/repositories/PrismaUbicacionesRepository");
 const PrismaHorariosRepository_1 = require("../../infrastructure/repositories/PrismaHorariosRepository");
 const PrismaServicioHorarioRepository_1 = require("../../infrastructure/repositories/PrismaServicioHorarioRepository");
-const PrismaTipoServicioRepository_1 = require("../../infrastructure/repositories/PrismaTipoServicioRepository");
 const PrismaEspecialidadRepository_1 = require("../../infrastructure/repositories/PrismaEspecialidadRepository");
 const PrismaPacienteRepository_1 = require("../../infrastructure/repositories/PrismaPacienteRepository");
 const PrismaDoctorRepository_1 = require("../../infrastructure/repositories/PrismaDoctorRepository");
@@ -24,7 +22,7 @@ const PrismaExperienciaLaboralRepository_1 = require("../../infrastructure/repos
 const PrismaFormacionAcademicaRepository_1 = require("../../infrastructure/repositories/PrismaFormacionAcademicaRepository");
 const PrismaPaisRepository_1 = require("../../infrastructure/repositories/PrismaPaisRepository");
 const PrismaUniversidadRepository_1 = require("../../infrastructure/repositories/PrismaUniversidadRepository");
-// Implementaciones de tu compañero
+const PrismaSolicitudAlianzaRepository_1 = require("../../infrastructure/repositories/PrismaSolicitudAlianzaRepository");
 const PrismaNotificacionesRepository_1 = require("../../infrastructure/repositories/PrismaNotificacionesRepository");
 const PrismaConversacionesRepository_1 = require("../../infrastructure/repositories/PrismaConversacionesRepository");
 const PrismaMensajesRepository_1 = require("../../infrastructure/repositories/PrismaMensajesRepository");
@@ -35,6 +33,16 @@ const PrismaCondicionMedicaRepository_1 = require("../../infrastructure/reposito
 const PrismaSeguroMedicoRepository_1 = require("../../infrastructure/repositories/PrismaSeguroMedicoRepository");
 const PrismaTipoSeguroRepository_1 = require("../../infrastructure/repositories/PrismaTipoSeguroRepository");
 const PrismaServicioRepository_1 = require("../../infrastructure/repositories/PrismaServicioRepository");
+const PrismaFavoritoRepository_1 = require("../../infrastructure/repositories/PrismaFavoritoRepository");
+const PrismaCitaRepository_1 = require("../../infrastructure/repositories/PrismaCitaRepository");
+const PrismaGrupoCitaRepository_1 = require("../../infrastructure/repositories/PrismaGrupoCitaRepository");
+const PrismaInactividadRepository_1 = require("../../infrastructure/repositories/PrismaInactividadRepository");
+const CitaController_1 = require("../../infrastructure/http/controllers/CitaController");
+const TeleconsultaController_1 = require("../../infrastructure/http/controllers/TeleconsultaController");
+const FinalizarTeleconsultaUseCase_1 = require("../../application/use-cases/teleconsultas/FinalizarTeleconsultaUseCase");
+const MediaController_1 = require("../../infrastructure/http/controllers/MediaController");
+const PrismaResenaRepository_1 = require("../../infrastructure/repositories/PrismaResenaRepository");
+const ResenaController_1 = require("../../infrastructure/http/controllers/ResenaController");
 const BcryptPasswordHasher_1 = require("../../infrastructure/external-services/BcryptPasswordHasher");
 const LibreTranslateService_1 = require("../../infrastructure/external-services/LibreTranslateService");
 const RedisCacheService_1 = require("../../infrastructure/external-services/RedisCacheService");
@@ -44,18 +52,17 @@ const client_1 = require("../../infrastructure/database/prisma/client");
 const SupabaseStorageService_1 = require("../../infrastructure/external-services/SupabaseStorageService");
 const NodemailerEmailService_1 = require("../../infrastructure/external-services/NodemailerEmailService");
 const AuthService_1 = require("../../infrastructure/external-services/AuthService");
+const DailyVideoService_1 = require("../../infrastructure/external-services/DailyVideoService");
 // Validadores
 const ProvinciaValidator_1 = require("../../domain/validators/Provincias/ProvinciaValidator");
 const MunicipioValidator_1 = require("../../domain/validators/Municipios/MunicipioValidator");
 const DistritoMunicipalValidator_1 = require("../../domain/validators/DistritosMunicipales/DistritoMunicipalValidator");
 const SeccionValidator_1 = require("../../domain/validators/Secciones/SeccionValidator");
 const BarrioValidator_1 = require("../../domain/validators/Barrios/BarrioValidator");
-const SubBarrioValidator_1 = require("../../domain/validators/SubBarrios/SubBarrioValidator");
 const UbicacionValidator_1 = require("../../domain/validators/Ubicaciones/UbicacionValidator");
 const HorarioValidator_1 = require("../../domain/validators/Horarios/HorarioValidator");
 const EstadoValidator_1 = require("../../domain/validators/Estados/EstadoValidator");
 const ValidadorServicioHorario_1 = require("../../domain/validators/ServiciosHorarios/ValidadorServicioHorario");
-const TipoServicioValidator_1 = require("../../domain/validators/TiposServicios/TipoServicioValidator");
 const EspecialidadValidator_1 = require("../../domain/validators/Especialidades/EspecialidadValidator");
 const PacienteValidator_1 = require("../../domain/validators/Pacientes/PacienteValidator");
 const DoctorValidator_1 = require("../../domain/validators/Doctores/DoctorValidator");
@@ -69,21 +76,18 @@ const GestionarProvinciasUseCase_1 = require("../../application/use-cases/Gestio
 const GestionarMunicipiosUseCase_1 = require("../../application/use-cases/GestionarMunicipiosUseCase");
 const GestionarDistritosMunicipalesUseCase_1 = require("../../application/use-cases/GestionarDistritosMunicipalesUseCase");
 const GestionarBarriosUseCase_1 = require("../../application/use-cases/GestionarBarriosUseCase");
-const GestionarSubBarriosUseCase_1 = require("../../application/use-cases/GestionarSubBarriosUseCase");
 const GestionarUbicacionesUseCase_1 = require("../../application/use-cases/GestionarUbicacionesUseCase");
 const GestionarHorariosUseCase_1 = require("../../application/use-cases/GestionarHorariosUseCase");
 const GestionarSeccionesUseCase_1 = require("../../application/use-cases/GestionarSeccionesUseCase");
 const RegistrarUsuarioUseCase_1 = require("../../application/use-cases/RegistrarUsuarioUseCase");
-// Tus UseCases
 const SolicitarCodigoRegistroUseCase_1 = require("../../application/use-cases/SolicitarCodigoRegistroUseCase");
 const ValidarCodigoRegistroUseCase_1 = require("../../application/use-cases/ValidarCodigoRegistroUseCase");
 const RegistrarDoctorUseCase_1 = require("../../application/use-cases/RegistrarDoctorUseCase");
 const VerificarDocumentoUseCase_1 = require("../../application/use-cases/VerificarDocumentoUseCase");
+const AprobarRechazarDocumentoUseCase_1 = require("../../application/use-cases/AprobarRechazarDocumentoUseCase");
 const RegistrarPacienteUseCase_1 = require("../../application/use-cases/RegistrarPacienteUseCase");
 const LoginGoogleUseCase_1 = require("../../application/use-cases/LoginGoogleUseCase");
 const LoginUseCase_1 = require("../../application/use-cases/LoginUseCase");
-// UseCases de tu compañero
-const GestionarTiposServiciosUseCase_1 = require("../../application/use-cases/GestionarTiposServiciosUseCase");
 const GestionarEspecialidadesUseCase_1 = require("../../application/use-cases/GestionarEspecialidadesUseCase");
 const GestionarPacientesUseCase_1 = require("../../application/use-cases/GestionarPacientesUseCase");
 const GestionarDoctoresUseCase_1 = require("../../application/use-cases/GestionarDoctoresUseCase");
@@ -98,6 +102,10 @@ const GestionarPaisesUseCase_1 = require("../../application/use-cases/GestionarP
 const GestionarUniversidadesUseCase_1 = require("../../application/use-cases/GestionarUniversidadesUseCase");
 const GestionarServicioHorariosUseCase_1 = require("../../application/use-cases/GestionarServicioHorariosUseCase");
 const GestionarNotificacionesUseCase_1 = require("../../application/use-cases/GestionarNotificacionesUseCase");
+const EnviarNotificacionUseCase_1 = require("../../application/use-cases/notificaciones/EnviarNotificacionUseCase");
+const ObtenerNotificacionesUseCase_1 = require("../../application/use-cases/notificaciones/ObtenerNotificacionesUseCase");
+const MarcarNotificacionLeidaUseCase_1 = require("../../application/use-cases/notificaciones/MarcarNotificacionLeidaUseCase");
+const NotificacionesController_1 = require("../../infrastructure/http/controllers/NotificacionesController");
 const RefreshAccessTokenUseCase_1 = require("../../application/use-cases/RefreshAccessTokenUseCase");
 const CompletarPerfilCentroSaludUseCase_1 = require("../../application/use-cases/CompletarPerfilCentroSaludUseCase");
 const RegistrarCentroUseCase_1 = require("../../application/use-cases/RegistrarCentroUseCase");
@@ -108,27 +116,26 @@ const EliminarCuentaUseCase_1 = require("../../application/use-cases/EliminarCue
 const CentrosSaludController_1 = require("../../infrastructure/http/controllers/CentrosSaludController");
 const GestionarCondicionesMedicasUseCase_1 = require("../../application/use-cases/GestionarCondicionesMedicasUseCase");
 const GestionarServiciosUseCase_1 = require("../../application/use-cases/GestionarServiciosUseCase");
+const GestionarFavoritosUseCase_1 = require("../../application/use-cases/GestionarFavoritosUseCase");
+const GestionarCentroSaludUseCase_1 = require("../../application/use-cases/GestionarCentroSaludUseCase");
+const GestionarSolicitudesAlianzaUseCase_1 = require("../../application/use-cases/GestionarSolicitudesAlianzaUseCase");
+const GestionarCitasUseCase_1 = require("../../application/use-cases/GestionarCitasUseCase");
+const GestionarResenasUseCase_1 = require("../../application/use-cases/GestionarResenasUseCase");
+const IniciarTeleconsultaUseCase_1 = require("../../application/use-cases/teleconsultas/IniciarTeleconsultaUseCase");
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
-// Registrar PrismaClient como singleton
 tsyringe_1.container.register('PrismaClient', {
     useValue: client_1.prisma
 });
-// Registrar RedisCacheService como singleton
 const redisCacheService = new RedisCacheService_1.RedisCacheService();
 tsyringe_1.container.register(RedisCacheService_1.RedisCacheService, {
     useValue: redisCacheService
 });
-// Registrar AuthService como singleton (Tuyo)
 tsyringe_1.container.registerSingleton(AuthService_1.AuthService, AuthService_1.AuthService);
-// Registrar EmailService (Tuyo)
 tsyringe_1.container.register('EmailService', {
     useClass: NodemailerEmailService_1.NodemailerEmailService
 });
-// Registrar ChatWebSocketService como singleton (Compañero)
 tsyringe_1.container.registerSingleton(ChatWebSocketService_1.ChatWebSocketService);
-// Registrar NotificacionesWebSocketService como singleton (Compañero)
 tsyringe_1.container.registerSingleton(NotificacionesWebSocketService_1.NotificacionesWebSocketService);
-// ===== REGISTRAR VALIDADORES =====
 tsyringe_1.container.register(ProvinciaValidator_1.ProvinciaValidator, {
     useFactory: () => {
         const provinciasRepository = tsyringe_1.container.resolve('ProvinciasRepository');
@@ -164,18 +171,10 @@ tsyringe_1.container.register(BarrioValidator_1.BarrioValidator, {
         return new BarrioValidator_1.BarrioValidator(barriosRepository, seccionesRepository);
     }
 });
-tsyringe_1.container.register(SubBarrioValidator_1.SubBarrioValidator, {
-    useFactory: () => {
-        const subBarriosRepository = tsyringe_1.container.resolve('SubBarriosRepository');
-        const barriosRepository = tsyringe_1.container.resolve('BarriosRepository');
-        return new SubBarrioValidator_1.SubBarrioValidator(subBarriosRepository, barriosRepository);
-    }
-});
 tsyringe_1.container.register(UbicacionValidator_1.UbicacionValidator, {
     useFactory: () => {
         const barriosRepository = tsyringe_1.container.resolve('BarriosRepository');
-        const subBarriosRepository = tsyringe_1.container.resolve('SubBarriosRepository');
-        return new UbicacionValidator_1.UbicacionValidator(barriosRepository, subBarriosRepository);
+        return new UbicacionValidator_1.UbicacionValidator(barriosRepository);
     }
 });
 tsyringe_1.container.register(HorarioValidator_1.HorarioValidator, {
@@ -188,12 +187,6 @@ tsyringe_1.container.register(HorarioValidator_1.HorarioValidator, {
 tsyringe_1.container.register(ValidadorServicioHorario_1.ValidadorServicioHorario, {
     useFactory: () => {
         return new ValidadorServicioHorario_1.ValidadorServicioHorario();
-    }
-});
-tsyringe_1.container.register(TipoServicioValidator_1.TipoServicioValidator, {
-    useFactory: () => {
-        const repo = tsyringe_1.container.resolve('TipoServicioRepository');
-        return new TipoServicioValidator_1.TipoServicioValidator(repo);
     }
 });
 tsyringe_1.container.register(EspecialidadValidator_1.EspecialidadValidator, {
@@ -283,13 +276,6 @@ tsyringe_1.container.register('BarriosRepository', {
         return new PrismaBarriosRepository_1.PrismaBarriosRepository(prismaClient, redisCache);
     }
 });
-tsyringe_1.container.register('SubBarriosRepository', {
-    useFactory: () => {
-        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
-        const redisCache = tsyringe_1.container.resolve(RedisCacheService_1.RedisCacheService);
-        return new PrismaSubBarriosRepository_1.PrismaSubBarriosRepository(prismaClient, redisCache);
-    }
-});
 tsyringe_1.container.register('UbicacionesRepository', {
     useFactory: () => {
         const prismaClient = tsyringe_1.container.resolve('PrismaClient');
@@ -308,12 +294,6 @@ tsyringe_1.container.register('ServicioHorarioRepository', {
     useFactory: () => {
         const prismaClient = tsyringe_1.container.resolve('PrismaClient');
         return new PrismaServicioHorarioRepository_1.PrismaServicioHorarioRepository(prismaClient);
-    }
-});
-tsyringe_1.container.register('TipoServicioRepository', {
-    useFactory: () => {
-        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
-        return new PrismaTipoServicioRepository_1.PrismaTipoServicioRepository(prismaClient);
     }
 });
 tsyringe_1.container.register('EspecialidadRepository', {
@@ -354,9 +334,6 @@ tsyringe_1.container.register('CentroSaludRepository', {
         return new PrismaCentroSaludRepository_1.PrismaCentroSaludRepository(prismaClient, redisCache);
     }
 });
-const PrismaSolicitudAlianzaRepository_1 = require("../../infrastructure/repositories/PrismaSolicitudAlianzaRepository");
-const GestionarCentroSaludUseCase_1 = require("../../application/use-cases/GestionarCentroSaludUseCase");
-const GestionarSolicitudesAlianzaUseCase_1 = require("../../application/use-cases/GestionarSolicitudesAlianzaUseCase");
 tsyringe_1.container.register('SolicitudAlianzaRepository', {
     useFactory: () => {
         const prismaClient = tsyringe_1.container.resolve('PrismaClient');
@@ -374,7 +351,8 @@ tsyringe_1.container.register(GestionarSolicitudesAlianzaUseCase_1.GestionarSoli
     useFactory: () => {
         const solicitudRepo = tsyringe_1.container.resolve('SolicitudAlianzaRepository');
         const centroRepo = tsyringe_1.container.resolve('CentroSaludRepository');
-        return new GestionarSolicitudesAlianzaUseCase_1.GestionarSolicitudesAlianzaUseCase(solicitudRepo, centroRepo);
+        const enviarNotifUC = tsyringe_1.container.resolve(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase);
+        return new GestionarSolicitudesAlianzaUseCase_1.GestionarSolicitudesAlianzaUseCase(solicitudRepo, centroRepo, enviarNotifUC);
     }
 });
 tsyringe_1.container.register('IExperienciaLaboralRepository', {
@@ -437,6 +415,20 @@ tsyringe_1.container.register('ServicioRepository', {
         return new PrismaServicioRepository_1.PrismaServicioRepository(prismaClient, redisCache);
     }
 });
+tsyringe_1.container.register('FavoritoRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        return new PrismaFavoritoRepository_1.PrismaFavoritoRepository(prismaClient);
+    }
+});
+tsyringe_1.container.register(GestionarFavoritosUseCase_1.GestionarFavoritosUseCase, {
+    useFactory: () => {
+        const favRepo = tsyringe_1.container.resolve('FavoritoRepository');
+        const doctorRepo = tsyringe_1.container.resolve('DoctorRepository');
+        const enviarNotifUC = tsyringe_1.container.resolve(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase);
+        return new GestionarFavoritosUseCase_1.GestionarFavoritosUseCase(favRepo, doctorRepo, enviarNotifUC);
+    }
+});
 // ===== REGISTRAR USE CASES =====
 tsyringe_1.container.register(GestionarProvinciasUseCase_1.GestionarProvinciasUseCase, {
     useFactory: () => {
@@ -478,14 +470,6 @@ tsyringe_1.container.register(GestionarBarriosUseCase_1.GestionarBarriosUseCase,
         return new GestionarBarriosUseCase_1.GestionarBarriosUseCase(barriosRepository, barrioValidator, estadoValidator);
     }
 });
-tsyringe_1.container.register(GestionarSubBarriosUseCase_1.GestionarSubBarriosUseCase, {
-    useFactory: () => {
-        const subBarriosRepository = tsyringe_1.container.resolve('SubBarriosRepository');
-        const subBarrioValidator = tsyringe_1.container.resolve(SubBarrioValidator_1.SubBarrioValidator);
-        const estadoValidator = tsyringe_1.container.resolve(EstadoValidator_1.EstadoValidator);
-        return new GestionarSubBarriosUseCase_1.GestionarSubBarriosUseCase(subBarriosRepository, subBarrioValidator, estadoValidator);
-    }
-});
 tsyringe_1.container.register(GestionarUbicacionesUseCase_1.GestionarUbicacionesUseCase, {
     useFactory: () => {
         const ubicacionesRepository = tsyringe_1.container.resolve('UbicacionesRepository');
@@ -498,7 +482,8 @@ tsyringe_1.container.register(GestionarHorariosUseCase_1.GestionarHorariosUseCas
         const horariosRepository = tsyringe_1.container.resolve('HorariosRepository');
         const horarioValidator = tsyringe_1.container.resolve(HorarioValidator_1.HorarioValidator);
         const estadoValidator = tsyringe_1.container.resolve(EstadoValidator_1.EstadoValidator);
-        return new GestionarHorariosUseCase_1.GestionarHorariosUseCase(horariosRepository, horarioValidator, estadoValidator);
+        const enviarNotifUC = tsyringe_1.container.resolve(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase);
+        return new GestionarHorariosUseCase_1.GestionarHorariosUseCase(horariosRepository, horarioValidator, estadoValidator, enviarNotifUC);
     }
 });
 tsyringe_1.container.register(RegistrarUsuarioUseCase_1.RegistrarUsuarioUseCase, {
@@ -531,11 +516,18 @@ tsyringe_1.container.register(RegistrarDoctorUseCase_1.RegistrarDoctorUseCase, {
         const passwordHasher = tsyringe_1.container.resolve('PasswordHasher');
         const storageService = tsyringe_1.container.resolve('StorageService');
         const authService = tsyringe_1.container.resolve(AuthService_1.AuthService);
-        return new RegistrarDoctorUseCase_1.RegistrarDoctorUseCase(usuarioRepository, especialidadRepository, passwordHasher, storageService, authService);
+        const enviarNotifUC = tsyringe_1.container.resolve(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase);
+        return new RegistrarDoctorUseCase_1.RegistrarDoctorUseCase(usuarioRepository, especialidadRepository, passwordHasher, storageService, authService, enviarNotifUC);
     }
 });
 tsyringe_1.container.register('VerificarDocumentoUseCase', {
     useClass: VerificarDocumentoUseCase_1.VerificarDocumentoUseCase,
+});
+tsyringe_1.container.register(AprobarRechazarDocumentoUseCase_1.AprobarRechazarDocumentoUseCase, {
+    useFactory: () => {
+        const enviarNotifUC = tsyringe_1.container.resolve(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase);
+        return new AprobarRechazarDocumentoUseCase_1.AprobarRechazarDocumentoUseCase(enviarNotifUC);
+    }
 });
 tsyringe_1.container.register(RegistrarPacienteUseCase_1.RegistrarPacienteUseCase, {
     useFactory: () => {
@@ -562,14 +554,6 @@ tsyringe_1.container.register(LoginUseCase_1.LoginUseCase, {
         return new LoginUseCase_1.LoginUseCase(usuarioRepository, passwordHasher, authService);
     }
 });
-tsyringe_1.container.register(GestionarTiposServiciosUseCase_1.GestionarTiposServiciosUseCase, {
-    useFactory: () => {
-        const repo = tsyringe_1.container.resolve('TipoServicioRepository');
-        const validator = tsyringe_1.container.resolve(TipoServicioValidator_1.TipoServicioValidator);
-        const estadoValidator = tsyringe_1.container.resolve(EstadoValidator_1.EstadoValidator);
-        return new GestionarTiposServiciosUseCase_1.GestionarTiposServiciosUseCase(repo, validator, estadoValidator);
-    }
-});
 tsyringe_1.container.register(GestionarEspecialidadesUseCase_1.GestionarEspecialidadesUseCase, {
     useFactory: () => {
         const repo = tsyringe_1.container.resolve('EspecialidadRepository');
@@ -589,9 +573,10 @@ tsyringe_1.container.register(GestionarPacientesUseCase_1.GestionarPacientesUseC
 tsyringe_1.container.register(GestionarDoctoresUseCase_1.GestionarDoctoresUseCase, {
     useFactory: () => {
         const repo = tsyringe_1.container.resolve('DoctorRepository');
+        const citaRepo = tsyringe_1.container.resolve('CitaRepository');
         const validator = tsyringe_1.container.resolve(DoctorValidator_1.DoctorValidator);
         const estadoValidator = tsyringe_1.container.resolve(EstadoValidator_1.EstadoValidator);
-        return new GestionarDoctoresUseCase_1.GestionarDoctoresUseCase(repo, validator, estadoValidator);
+        return new GestionarDoctoresUseCase_1.GestionarDoctoresUseCase(repo, citaRepo, validator, estadoValidator);
     }
 });
 tsyringe_1.container.register(GestionarDoctorIdiomasUseCase_1.GestionarDoctorIdiomasUseCase, {
@@ -682,13 +667,15 @@ tsyringe_1.container.register(GestionarMensajesUseCase_1.GestionarMensajesUseCas
         const conversacionesRepository = tsyringe_1.container.resolve('ConversacionesRepository');
         const lecturasRepository = tsyringe_1.container.resolve('LecturasConversacionRepository');
         const mediaRepository = tsyringe_1.container.resolve('MediaRepository');
-        return new GestionarMensajesUseCase_1.GestionarMensajesUseCase(mensajesRepository, conversacionesRepository, lecturasRepository, mediaRepository);
+        const enviarNotifUC = tsyringe_1.container.resolve(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase);
+        return new GestionarMensajesUseCase_1.GestionarMensajesUseCase(mensajesRepository, conversacionesRepository, lecturasRepository, mediaRepository, enviarNotifUC);
     }
 });
 tsyringe_1.container.register(GestionarMediaUseCase_1.GestionarMediaUseCase, {
     useFactory: () => {
         const mediaRepository = tsyringe_1.container.resolve('MediaRepository');
-        return new GestionarMediaUseCase_1.GestionarMediaUseCase(mediaRepository);
+        const storageService = tsyringe_1.container.resolve('StorageService');
+        return new GestionarMediaUseCase_1.GestionarMediaUseCase(mediaRepository, storageService);
     }
 });
 tsyringe_1.container.register(GestionarCondicionesMedicasUseCase_1.GestionarCondicionesMedicasUseCase, {
@@ -781,6 +768,133 @@ tsyringe_1.container.register(GestionarServiciosUseCase_1.GestionarServiciosUseC
     useFactory: () => {
         const servicioRepository = tsyringe_1.container.resolve('ServicioRepository');
         const storageService = tsyringe_1.container.resolve('StorageService');
-        return new GestionarServiciosUseCase_1.GestionarServiciosUseCase(servicioRepository, storageService);
+        const enviarNotifUC = tsyringe_1.container.resolve(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase);
+        return new GestionarServiciosUseCase_1.GestionarServiciosUseCase(servicioRepository, storageService, enviarNotifUC);
+    }
+});
+tsyringe_1.container.register('CitaRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        return new PrismaCitaRepository_1.PrismaCitaRepository(prismaClient);
+    }
+});
+tsyringe_1.container.register('GrupoCitaRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        return new PrismaGrupoCitaRepository_1.PrismaGrupoCitaRepository(prismaClient);
+    }
+});
+tsyringe_1.container.register('InactividadRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        return new PrismaInactividadRepository_1.PrismaInactividadRepository(prismaClient);
+    }
+});
+tsyringe_1.container.register(GestionarCitasUseCase_1.GestionarCitasUseCase, {
+    useFactory: () => {
+        const citaRepo = tsyringe_1.container.resolve('CitaRepository');
+        const doctorRepo = tsyringe_1.container.resolve('DoctorRepository');
+        const pacienteRepo = tsyringe_1.container.resolve('PacienteRepository');
+        const inactividadRepo = tsyringe_1.container.resolve('InactividadRepository');
+        const enviarNotifUC = tsyringe_1.container.resolve(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase);
+        return new GestionarCitasUseCase_1.GestionarCitasUseCase(citaRepo, doctorRepo, pacienteRepo, inactividadRepo, enviarNotifUC);
+    }
+});
+tsyringe_1.container.register(CitaController_1.CitaController, {
+    useFactory: () => {
+        const useCase = tsyringe_1.container.resolve(GestionarCitasUseCase_1.GestionarCitasUseCase);
+        return new CitaController_1.CitaController(useCase);
+    }
+});
+tsyringe_1.container.register('VideoService', {
+    useClass: DailyVideoService_1.DailyVideoService,
+});
+tsyringe_1.container.register(IniciarTeleconsultaUseCase_1.IniciarTeleconsultaUseCase, {
+    useFactory: () => {
+        const citaRepo = tsyringe_1.container.resolve('CitaRepository');
+        const conversacionesRepo = tsyringe_1.container.resolve('ConversacionesRepository');
+        const videoService = tsyringe_1.container.resolve('VideoService');
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        const enviarNotifUC = tsyringe_1.container.resolve(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase);
+        return new IniciarTeleconsultaUseCase_1.IniciarTeleconsultaUseCase(citaRepo, conversacionesRepo, videoService, prismaClient, enviarNotifUC);
+    }
+});
+tsyringe_1.container.register(FinalizarTeleconsultaUseCase_1.FinalizarTeleconsultaUseCase, {
+    useFactory: () => {
+        const citaRepo = tsyringe_1.container.resolve('CitaRepository');
+        const videoService = tsyringe_1.container.resolve('VideoService');
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        const enviarNotifUC = tsyringe_1.container.resolve(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase);
+        return new FinalizarTeleconsultaUseCase_1.FinalizarTeleconsultaUseCase(citaRepo, videoService, prismaClient, enviarNotifUC);
+    }
+});
+tsyringe_1.container.register(TeleconsultaController_1.TeleconsultaController, {
+    useFactory: () => {
+        const iniciarUseCase = tsyringe_1.container.resolve(IniciarTeleconsultaUseCase_1.IniciarTeleconsultaUseCase);
+        const finalizarUseCase = tsyringe_1.container.resolve(FinalizarTeleconsultaUseCase_1.FinalizarTeleconsultaUseCase);
+        return new TeleconsultaController_1.TeleconsultaController(iniciarUseCase, finalizarUseCase);
+    }
+});
+tsyringe_1.container.register('ResenaRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        return new PrismaResenaRepository_1.PrismaResenaRepository(prismaClient);
+    }
+});
+tsyringe_1.container.register(GestionarResenasUseCase_1.GestionarResenasUseCase, {
+    useFactory: () => {
+        const resenaRepo = tsyringe_1.container.resolve('ResenaRepository');
+        const enviarNotifUC = tsyringe_1.container.resolve(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase);
+        return new GestionarResenasUseCase_1.GestionarResenasUseCase(resenaRepo, enviarNotifUC);
+    }
+});
+tsyringe_1.container.register(ResenaController_1.ResenaController, {
+    useFactory: () => {
+        const useCase = tsyringe_1.container.resolve(GestionarResenasUseCase_1.GestionarResenasUseCase);
+        return new ResenaController_1.ResenaController(useCase);
+    }
+});
+tsyringe_1.container.register(MediaController_1.MediaController, {
+    useFactory: () => new MediaController_1.MediaController()
+});
+// ─── Notificaciones ───────────────────────────────────────────────────────────
+tsyringe_1.container.register('NotificacionesRepository', {
+    useFactory: () => {
+        const prismaClient = tsyringe_1.container.resolve('PrismaClient');
+        return new PrismaNotificacionesRepository_1.PrismaNotificacionesRepository(prismaClient);
+    }
+});
+tsyringe_1.container.register(GestionarNotificacionesUseCase_1.GestionarNotificacionesUseCase, {
+    useFactory: () => {
+        const repo = tsyringe_1.container.resolve('NotificacionesRepository');
+        return new GestionarNotificacionesUseCase_1.GestionarNotificacionesUseCase(repo);
+    }
+});
+tsyringe_1.container.register(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase, {
+    useFactory: () => {
+        const repo = tsyringe_1.container.resolve('NotificacionesRepository');
+        const ws = tsyringe_1.container.resolve(NotificacionesWebSocketService_1.NotificacionesWebSocketService);
+        return new EnviarNotificacionUseCase_1.EnviarNotificacionUseCase(repo, ws);
+    }
+});
+tsyringe_1.container.register(ObtenerNotificacionesUseCase_1.ObtenerNotificacionesUseCase, {
+    useFactory: () => {
+        const repo = tsyringe_1.container.resolve('NotificacionesRepository');
+        return new ObtenerNotificacionesUseCase_1.ObtenerNotificacionesUseCase(repo);
+    }
+});
+tsyringe_1.container.register(MarcarNotificacionLeidaUseCase_1.MarcarNotificacionLeidaUseCase, {
+    useFactory: () => {
+        const repo = tsyringe_1.container.resolve('NotificacionesRepository');
+        const ws = tsyringe_1.container.resolve(NotificacionesWebSocketService_1.NotificacionesWebSocketService);
+        return new MarcarNotificacionLeidaUseCase_1.MarcarNotificacionLeidaUseCase(repo, ws);
+    }
+});
+tsyringe_1.container.register(NotificacionesController_1.NotificacionesController, {
+    useFactory: () => {
+        const obtenerUC = tsyringe_1.container.resolve(ObtenerNotificacionesUseCase_1.ObtenerNotificacionesUseCase);
+        const marcarUC = tsyringe_1.container.resolve(MarcarNotificacionLeidaUseCase_1.MarcarNotificacionLeidaUseCase);
+        const gestionarUC = tsyringe_1.container.resolve(GestionarNotificacionesUseCase_1.GestionarNotificacionesUseCase);
+        return new NotificacionesController_1.NotificacionesController(obtenerUC, marcarUC, gestionarUC);
     }
 });

@@ -73,7 +73,6 @@ let FormacionAcademicaController = class FormacionAcademicaController {
         };
         this.obtenerPorId = async (req, res) => {
             try {
-                const doctorId = req.usuarioId; // Obtener doctor autenticado del JWT
                 const id = parseInt(req.params.id);
                 if (isNaN(id)) {
                     res.status(400).json({
@@ -83,14 +82,6 @@ let FormacionAcademicaController = class FormacionAcademicaController {
                     return;
                 }
                 const formacion = await this.gestionarFormacionesAcademicasUseCase.obtenerPorId(id);
-                // Verificar que la formación pertenece al doctor autenticado
-                if (formacion.doctorId !== doctorId) {
-                    res.status(403).json({
-                        success: false,
-                        message: 'No tienes permiso para acceder a esta formación académica',
-                    });
-                    return;
-                }
                 res.status(200).json({
                     message: 'Formación académica obtenida exitosamente',
                     success: true,
@@ -327,6 +318,38 @@ let FormacionAcademicaController = class FormacionAcademicaController {
             }
             catch (error) {
                 console.error('Error al obtener universidades por país:', error);
+                res.status(500).json({
+                    success: false,
+                    message: 'Error interno del servidor',
+                });
+            }
+        };
+        /**
+         * GET /formaciones-academicas/doctor/:doctorId
+         * Obtener todas las formaciones académicas activas de un doctor específico
+         * Acceso público (cualquier usuario autenticado puede ver el perfil de un doctor)
+         */
+        this.obtenerPorDoctor = async (req, res) => {
+            try {
+                const doctorId = parseInt(req.params.doctorId);
+                if (isNaN(doctorId)) {
+                    res.status(400).json({
+                        success: false,
+                        message: 'ID de doctor inválido',
+                    });
+                    return;
+                }
+                const pagina = req.query.pagina ? parseInt(req.query.pagina) : 1;
+                const limite = req.query.limite ? parseInt(req.query.limite) : 20;
+                const resultado = await this.gestionarFormacionesAcademicasUseCase.obtenerPorDoctor(doctorId, pagina, limite);
+                res.status(200).json({
+                    message: 'Formaciones académicas del doctor obtenidas exitosamente',
+                    success: true,
+                    data: resultado,
+                });
+            }
+            catch (error) {
+                console.error('Error al obtener formaciones del doctor:', error);
                 res.status(500).json({
                     success: false,
                     message: 'Error interno del servidor',

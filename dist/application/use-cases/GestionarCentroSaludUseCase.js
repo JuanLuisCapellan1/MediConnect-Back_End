@@ -80,6 +80,27 @@ let GestionarCentroSaludUseCase = class GestionarCentroSaludUseCase {
             throw new Error('Centro de salud no encontrado');
         return await this.centroRepo.listarDoctoresAsociados(centroId);
     }
+    // ─── ANALÍTICAS ───────────────────────────────────────────────────────────
+    async estadisticasGenerales(centroId) {
+        const centro = await this.centroRepo.obtenerPorId(centroId);
+        if (!centro)
+            throw new Error('Centro de salud no encontrado');
+        return await this.centroRepo.estadisticasGenerales(centroId);
+    }
+    async crecimientoMedicos(centroId, periodo) {
+        const centro = await this.centroRepo.obtenerPorId(centroId);
+        if (!centro)
+            throw new Error('Centro de salud no encontrado');
+        const periodosValidos = ['semana', 'mes', '3meses', 'año', 'todo'];
+        const p = periodosValidos.includes(periodo) ? periodo : 'mes';
+        return await this.centroRepo.crecimientoMedicos(centroId, p);
+    }
+    async distribucionEspecialidades(centroId) {
+        const centro = await this.centroRepo.obtenerPorId(centroId);
+        if (!centro)
+            throw new Error('Centro de salud no encontrado');
+        return await this.centroRepo.distribucionEspecialidades(centroId);
+    }
 };
 exports.GestionarCentroSaludUseCase = GestionarCentroSaludUseCase;
 exports.GestionarCentroSaludUseCase = GestionarCentroSaludUseCase = __decorate([
