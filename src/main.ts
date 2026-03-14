@@ -32,6 +32,9 @@ import path from 'path';
 import routes from './infrastructure/http/routes';
 import { NotificacionesWebSocketService } from './infrastructure/external-services/NotificacionesWebSocketService';
 import { ChatWebSocketService } from './infrastructure/external-services/ChatWebSocketService';
+import { AutoGestionCitasService } from './infrastructure/jobs/AutoGestionCitasService';
+import { EnviarNotificacionUseCase } from './application/use-cases/notificaciones/EnviarNotificacionUseCase';
+import { PrismaClient } from '@prisma/client';
 
 const app = express();
 const httpServer = createServer(app);
@@ -70,6 +73,12 @@ wsService.inicializar(httpServer);
 // Inicializar Chat WebSocket
 const chatWsService = container.resolve(ChatWebSocketService);
 chatWsService.inicializar(wsService.obtenerIO()!);
+
+// Iniciar cron de gestión automática de no-shows
+const prismaForCron = new PrismaClient();
+const enviarNotifUCForCron = container.resolve(EnviarNotificacionUseCase);
+const autoGestionCitas = new AutoGestionCitasService(prismaForCron, enviarNotifUCForCron);
+autoGestionCitas.iniciar();
 
 // Iniciar servidor
 httpServer.listen(PORT, () => {

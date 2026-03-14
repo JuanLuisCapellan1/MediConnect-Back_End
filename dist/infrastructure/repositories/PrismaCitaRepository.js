@@ -1102,6 +1102,7 @@ class PrismaCitaRepository {
                     _servicioId: cita.servicioId,
                     _especialidadId: cita.servicio?.especialidad?.id,
                     _ubicacionId: cita.ubicacionId,
+                    _ubicacionServicioId: cita.servicio?.servicios_ubicaciones?.[0]?.ubicacion?.id, // ID de ubicación del servicio
                     _condicionIds: condiciones.map((c) => c.id),
                 });
             }
@@ -1123,11 +1124,25 @@ class PrismaCitaRepository {
         if (filtros.genero) {
             pacientes = pacientes.filter(p => p.genero === filtros.genero);
         }
-        if (filtros.condicionId) {
-            pacientes = pacientes.filter(p => p._condicionIds && p._condicionIds.includes(filtros.condicionId));
+        if (filtros.tieneCondiciones !== undefined) {
+            if (filtros.tieneCondiciones === true) {
+                // Mostrar solo pacientes que tengan al menos una condición
+                pacientes = pacientes.filter(p => p.condiciones.total > 0);
+            }
+            else {
+                // Mostrar solo pacientes sin condiciones
+                pacientes = pacientes.filter(p => p.condiciones.total === 0);
+            }
         }
-        if (filtros.alergiaId) {
-            pacientes = pacientes.filter(p => p.condiciones.lista.some((c) => c.id === filtros.alergiaId && c.tipo === 'Alergia'));
+        if (filtros.tieneAlergias !== undefined) {
+            if (filtros.tieneAlergias === true) {
+                // Mostrar solo pacientes que tengan al menos una alergia
+                pacientes = pacientes.filter(p => p.condiciones.lista.some((c) => c.tipo === 'Alergia'));
+            }
+            else {
+                // Mostrar solo pacientes sin alergias
+                pacientes = pacientes.filter(p => !p.condiciones.lista.some((c) => c.tipo === 'Alergia'));
+            }
         }
         if (filtros.especialidadId) {
             pacientes = pacientes.filter(p => p._especialidadId === filtros.especialidadId);
@@ -1136,7 +1151,7 @@ class PrismaCitaRepository {
             pacientes = pacientes.filter(p => p._servicioId === filtros.servicioId);
         }
         if (filtros.ubicacionId) {
-            pacientes = pacientes.filter(p => p._ubicacionId === filtros.ubicacionId);
+            pacientes = pacientes.filter(p => p._ubicacionServicioId === filtros.ubicacionId);
         }
         if (filtros.ultimaCitaDesde || filtros.ultimaCitaHasta) {
             pacientes = pacientes.filter(p => {
@@ -1152,7 +1167,7 @@ class PrismaCitaRepository {
         }
         // Limpiar campos temporales
         pacientes = pacientes.map(p => {
-            const { _fechaUltimaCita, _servicioId, _especialidadId, _ubicacionId, _condicionIds, ...rest } = p;
+            const { _fechaUltimaCita, _servicioId, _especialidadId, _ubicacionId, _ubicacionServicioId, _condicionIds, ...rest } = p;
             return rest;
         });
         // Aplicar paginación

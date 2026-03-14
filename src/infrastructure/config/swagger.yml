@@ -9091,16 +9091,16 @@ paths:
             type: string
             enum: ["M", "F"]
           description: Filtrar por género (M=Masculino, F=Femenino)
-        - name: condicionId
+        - name: tieneCondiciones
           in: query
           schema:
-            type: integer
-          description: Filtrar por ID de condición médica
-        - name: alergiaId
+            type: boolean
+          description: Filtrar pacientes que tengan (true) o no tengan (false) al menos una condición médica
+        - name: tieneAlergias
           in: query
           schema:
-            type: integer
-          description: Filtrar por ID de alergia
+            type: boolean
+          description: Filtrar pacientes que tengan (true) o no tengan (false) al menos una alergia
         - name: especialidadId
           in: query
           schema:
@@ -9970,6 +9970,88 @@ paths:
           description: No autorizado (requiere rol Paciente)
         '500':
           description: Error interno del servidor
+
+  /doctores/pacientes-info/{pacienteId}:
+    get:
+      summary: Obtener información completa de un paciente (solo doctor autorizado)
+      tags:
+        - Doctores
+      description: |
+        Permite a un doctor obtener toda la información de un paciente, 
+        siempre y cuando el doctor haya tenido citas con ese paciente.
+        
+        **Seguridad:** Solo el doctor que ha tratado al paciente puede acceder.
+        Si el doctor intenta ver un paciente con el que no ha tenido citas, 
+        recibe un error 403 Forbidden.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pacienteId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID del paciente
+          example: 5
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+            example: 'en'
+          description: 'Idioma destino para traducción automática'
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            example: 'es'
+          description: 'Idioma fuente para traducción automática'
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+            example: 'nombre,apellido,biografia'
+          description: 'Campos a traducir (separados por coma)'
+      responses:
+        '200':
+          description: Información completa del paciente obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    description: Objeto completo del paciente con toda su información
+        '400':
+          description: ID de paciente inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado (falta token JWT)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Doctor no autorizado (no tiene citas con este paciente)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /doctores/{id}:
     get:

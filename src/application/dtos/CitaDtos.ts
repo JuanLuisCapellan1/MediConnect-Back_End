@@ -150,8 +150,8 @@ export interface FiltroPacientesDelDoctorDto {
     genero?: string; // Filtrar por género: 'M', 'F'
     
     // Filtros médicos
-    condicionId?: number; // Filtrar por ID de condición específica
-    alergiaId?: number; // Filtrar por ID de alergia específica
+    tieneCondiciones?: boolean; // Filtrar pacientes que tengan al menos una condición
+    tieneAlergias?: boolean; // Filtrar pacientes que tengan al menos una alergia
     
     // Filtros de especialidad y ubicación
     especialidadId?: number; // Filtrar por especialidad de la cita

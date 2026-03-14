@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { container } from 'tsyringe';
 import { GestionarDoctoresUseCase } from '../../../application/use-cases/GestionarDoctoresUseCase';
+import { GestionarPacientesUseCase } from '../../../application/use-cases/GestionarPacientesUseCase';
 import { DoctorNoEncontradoError } from '../../../domain/errors/Doctores/DoctorNoEncontradoError';
 import { ExequaturYaExisteError } from '../../../domain/errors/Doctores/ExequaturYaExisteError';
 import { DocumentoDoctorYaExisteError } from '../../../domain/errors/Doctores/DocumentoDoctorYaExisteError';
@@ -409,6 +410,46 @@ export class DoctorController {
             const data = await useCase.serviciosMasUtilizados(doctorId);
             return res.status(200).json({ success: true, ...data });
         } catch (error) { return this.manejarError(error, res); }
+    }
+
+    // GET /doctores/pacientes-info/:pacienteId
+    async obtenerPaciente(req: Request, res: Response): Promise<Response> {
+        try {
+            const doctorId = (req as any).user?.userId;
+            if (!doctorId) {
+                return res.status(401).json({ success: false, message: 'No autenticado' });
+            }
+
+            const pacienteId = parseInt(req.params.pacienteId as string);
+            if (isNaN(pacienteId)) {
+                return res.status(400).json({ success: false, message: 'ID de paciente inválido' });
+            }
+
+            // Verificar que el doctor tiene al menos una cita con este paciente
+            const citaRepository = container.resolve<any>('CitaRepository');
+            const citasDelDoctor = await citaRepository.listarPorDoctor(doctorId, {});
+            
+            const tieneCitaConPaciente = citasDelDoctor.datos.some((cita: any) => cita.pacienteId === pacienteId);
+            
+            if (!tieneCitaConPaciente) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'No tienes permiso para ver la información de este paciente. '
+                        + 'Solo puedes ver pacientes con los que has tenido citas.',
+                });
+            }
+
+            // Obtener información completa del paciente
+            const pacienteUseCase = container.resolve(GestionarPacientesUseCase);
+            const paciente = await pacienteUseCase.obtenerPorUsuarioId(pacienteId);
+
+            return res.status(200).json({
+                success: true,
+                data: paciente,
+            });
+        } catch (error) {
+            return this.manejarError(error, res);
+        }
     }
 
     private manejarError(error: any, res: Response): Response {

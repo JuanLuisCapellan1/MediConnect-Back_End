@@ -193,6 +193,19 @@ router.delete(
 );
 
 
+/**
+ * GET /doctores/pacientes-info/:pacienteId
+ * Doctor obtiene toda la información de un paciente
+ * Solo si el doctor ha tenido citas con ese paciente
+ */
+router.get(
+    '/pacientes-info/:pacienteId',
+    autenticarJWT,
+    requireRole('Doctor'),
+    translationMiddleware,
+    (req, res) => doctorController.obtenerPaciente(req, res)
+);
+
 // ─── Solicitudes de alianza (lado Doctor) — ANTES de /:id para evitar captura ─
 router.post(
     '/solicitudes-alianza',

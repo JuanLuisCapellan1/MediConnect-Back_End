@@ -504,14 +504,14 @@ let CitaController = class CitaController {
                 res.status(401).json({ success: false, message: 'No autenticado' });
                 return;
             }
-            const { pagina, limite, buscar, genero, condicionId, alergiaId, especialidadId, servicioId, ubicacionId, ultimaCitaDesde, ultimaCitaHasta } = req.query;
+            const { pagina, limite, buscar, genero, tieneCondiciones, tieneAlergias, especialidadId, servicioId, ubicacionId, ultimaCitaDesde, ultimaCitaHasta } = req.query;
             const filtros = {
                 pagina: pagina ? Number(pagina) : 1,
                 limite: limite ? Number(limite) : 10,
                 buscar: buscar,
                 genero: genero,
-                condicionId: condicionId ? Number(condicionId) : undefined,
-                alergiaId: alergiaId ? Number(alergiaId) : undefined,
+                tieneCondiciones: tieneCondiciones === 'true' ? true : tieneCondiciones === 'false' ? false : undefined,
+                tieneAlergias: tieneAlergias === 'true' ? true : tieneAlergias === 'false' ? false : undefined,
                 especialidadId: especialidadId ? Number(especialidadId) : undefined,
                 servicioId: servicioId ? Number(servicioId) : undefined,
                 ubicacionId: ubicacionId ? Number(ubicacionId) : undefined,

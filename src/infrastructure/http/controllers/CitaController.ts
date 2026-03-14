@@ -436,7 +436,7 @@ export class CitaController {
 
             const {
                 pagina, limite,
-                buscar, genero, condicionId, alergiaId,
+                buscar, genero, tieneCondiciones, tieneAlergias,
                 especialidadId, servicioId, ubicacionId,
                 ultimaCitaDesde, ultimaCitaHasta
             } = req.query;
@@ -446,8 +446,8 @@ export class CitaController {
                 limite: limite ? Number(limite) : 10,
                 buscar: buscar as string | undefined,
                 genero: genero as string | undefined,
-                condicionId: condicionId ? Number(condicionId) : undefined,
-                alergiaId: alergiaId ? Number(alergiaId) : undefined,
+                tieneCondiciones: tieneCondiciones === 'true' ? true : tieneCondiciones === 'false' ? false : undefined,
+                tieneAlergias: tieneAlergias === 'true' ? true : tieneAlergias === 'false' ? false : undefined,
                 especialidadId: especialidadId ? Number(especialidadId) : undefined,
                 servicioId: servicioId ? Number(servicioId) : undefined,
                 ubicacionId: ubicacionId ? Number(ubicacionId) : undefined,

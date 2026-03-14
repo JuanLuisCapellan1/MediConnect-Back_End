@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DoctorController = void 0;
 const tsyringe_1 = require("tsyringe");
 const GestionarDoctoresUseCase_1 = require("../../../application/use-cases/GestionarDoctoresUseCase");
+const GestionarPacientesUseCase_1 = require("../../../application/use-cases/GestionarPacientesUseCase");
 const DoctorNoEncontradoError_1 = require("../../../domain/errors/Doctores/DoctorNoEncontradoError");
 const ExequaturYaExisteError_1 = require("../../../domain/errors/Doctores/ExequaturYaExisteError");
 const DocumentoDoctorYaExisteError_1 = require("../../../domain/errors/Doctores/DocumentoDoctorYaExisteError");
@@ -409,6 +410,40 @@ class DoctorController {
                 return res.status(401).json({ success: false, message: 'No autenticado' });
             const data = await useCase.serviciosMasUtilizados(doctorId);
             return res.status(200).json({ success: true, ...data });
+        }
+        catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+    // GET /doctores/pacientes-info/:pacienteId
+    async obtenerPaciente(req, res) {
+        try {
+            const doctorId = req.user?.userId;
+            if (!doctorId) {
+                return res.status(401).json({ success: false, message: 'No autenticado' });
+            }
+            const pacienteId = parseInt(req.params.pacienteId);
+            if (isNaN(pacienteId)) {
+                return res.status(400).json({ success: false, message: 'ID de paciente inválido' });
+            }
+            // Verificar que el doctor tiene al menos una cita con este paciente
+            const citaRepository = tsyringe_1.container.resolve('CitaRepository');
+            const citasDelDoctor = await citaRepository.listarPorDoctor(doctorId, {});
+            const tieneCitaConPaciente = citasDelDoctor.datos.some((cita) => cita.pacienteId === pacienteId);
+            if (!tieneCitaConPaciente) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'No tienes permiso para ver la información de este paciente. '
+                        + 'Solo puedes ver pacientes con los que has tenido citas.',
+                });
+            }
+            // Obtener información completa del paciente
+            const pacienteUseCase = tsyringe_1.container.resolve(GestionarPacientesUseCase_1.GestionarPacientesUseCase);
+            const paciente = await pacienteUseCase.obtenerPorUsuarioId(pacienteId);
+            return res.status(200).json({
+                success: true,
+                data: paciente,
+            });
         }
         catch (error) {
             return this.manejarError(error, res);

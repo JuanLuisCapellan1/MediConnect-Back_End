@@ -98,6 +98,12 @@ router.patch('/especialidades/:id_especialidad', autenticacion_1.autenticarJWT, 
  * Eliminar una especialidad secundaria
  */
 router.delete('/especialidades/:id_especialidad', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => doctorEspecialidadController.eliminar(req, res));
+/**
+ * GET /doctores/pacientes-info/:pacienteId
+ * Doctor obtiene toda la información de un paciente
+ * Solo si el doctor ha tenido citas con ese paciente
+ */
+router.get('/pacientes-info/:pacienteId', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.obtenerPaciente(req, res));
 // ─── Solicitudes de alianza (lado Doctor) — ANTES de /:id para evitar captura ─
 router.post('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => tsyringe_1.container.resolve(CentrosSaludController_1.CentrosSaludController).doctorEnviarSolicitud(req, res));
 router.get('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => tsyringe_1.container.resolve(CentrosSaludController_1.CentrosSaludController).doctorListarSolicitudes(req, res));
