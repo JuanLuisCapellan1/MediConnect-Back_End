@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { container } from 'tsyringe';
 import { GestionarDoctoresUseCase } from '../../../application/use-cases/GestionarDoctoresUseCase';
 import { GestionarPacientesUseCase } from '../../../application/use-cases/GestionarPacientesUseCase';
+import { GestionarCitasUseCase } from '../../../application/use-cases/GestionarCitasUseCase';
 import { DoctorNoEncontradoError } from '../../../domain/errors/Doctores/DoctorNoEncontradoError';
 import { ExequaturYaExisteError } from '../../../domain/errors/Doctores/ExequaturYaExisteError';
 import { DocumentoDoctorYaExisteError } from '../../../domain/errors/Doctores/DocumentoDoctorYaExisteError';
@@ -428,9 +429,9 @@ export class DoctorController {
             // Verificar que el doctor tiene al menos una cita con este paciente
             const citaRepository = container.resolve<any>('CitaRepository');
             const citasDelDoctor = await citaRepository.listarPorDoctor(doctorId, {});
-            
+
             const tieneCitaConPaciente = citasDelDoctor.datos.some((cita: any) => cita.pacienteId === pacienteId);
-            
+
             if (!tieneCitaConPaciente) {
                 return res.status(403).json({
                     success: false,
@@ -439,13 +440,20 @@ export class DoctorController {
                 });
             }
 
-            // Obtener información completa del paciente
+            // 1. Obtener información completa del paciente y sus imágenes de perfil
             const pacienteUseCase = container.resolve(GestionarPacientesUseCase);
             const paciente = await pacienteUseCase.obtenerPorUsuarioId(pacienteId);
 
+            // 2. Extraer futuras citas usando el Use Case correcto
+            const gestionarCitasUseCase = container.resolve(GestionarCitasUseCase);
+            const futurasCitasFormateadas = await gestionarCitasUseCase.listarFuturasCitas(doctorId, pacienteId);
+
             return res.status(200).json({
                 success: true,
-                data: paciente,
+                data: {
+                    ...paciente,
+                    futurasCitas: futurasCitasFormateadas
+                },
             });
         } catch (error) {
             return this.manejarError(error, res);

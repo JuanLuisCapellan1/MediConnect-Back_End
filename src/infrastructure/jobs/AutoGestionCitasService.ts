@@ -49,7 +49,7 @@ export class AutoGestionCitasService {
 
     // ── Lógica principal ──────────────────────────────────────────────────────
     private async _procesarNoShows(): Promise<number> {
-        const ahora = new Date();
+        const ahora = this._obtenerAhoraLocalComoUTC();
 
         // 1. Obtener candidatas (estados posibles + sin historial)
         const candidatas = await (this.prisma.cita as any).findMany({
@@ -93,6 +93,31 @@ export class AutoGestionCitasService {
         }
 
         return noShows.length;
+    }
+
+    // Helper: Como la BD guarda las fechas combinadas (ej: 4:30 PM local = 16:30Z UTC naive),
+    // debemos comparar 'ahora' usando el mismo criterio naive sobre la zona local (America/Santo_Domingo).
+    private _obtenerAhoraLocalComoUTC(): Date {
+        const d = new Date();
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/Santo_Domingo',
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hour12: false
+        });
+        const parts = formatter.formatToParts(d);
+        const p: Record<string, string> = {};
+        for (const part of parts) {
+            if (part.type !== 'literal') p[part.type] = part.value;
+        }
+
+        // El formato de hora "24:00" en algunos motores significa "00:00" del día siguiente; 
+        // hour12: false suele dar '24' para la medianoche en Node.js antiguo, lo tratamos.
+        let hour = p.hour;
+        if (hour === '24') hour = '00';
+
+        const fechaIsoNaive = `${p.year}-${p.month}-${p.day}T${hour}:${p.minute}:${p.second}.000Z`;
+        return new Date(fechaIsoNaive);
     }
 
     private async _notificar(cita: any): Promise<void> {

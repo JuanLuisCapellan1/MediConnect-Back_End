@@ -5,7 +5,7 @@ const CITA_INCLUDE = {
     paciente: {
         include: {
             usuario: {
-                select: { email: true, telefono: true, fotoPerfil: true },
+                select: { email: true, telefono: true, fotoPerfil: true, banner: true },
             },
             // Alergias y condiciones médicas del paciente
             caracteristicas: {
@@ -440,7 +440,11 @@ export class PrismaCitaRepository implements ICitaRepository {
 
     // ─── Mapper: añade campos de fecha/hora separados ─────────────────────────
     private _mapCita(cita: any): any {
-        const toN = (v: any) => v != null ? Number(v) : null;
+        const toN = (v: any) => {
+            if (v == null) return null;
+            if (typeof v === 'number') return v;
+            return parseFloat(String(v));
+        };
         const toDateStr = (d: Date) => d.toISOString().substring(0, 10);   // "YYYY-MM-DD"
         const toTimeStr = (d: Date) => d.toISOString().substring(11, 16);  // "HH:MM"
 
@@ -508,6 +512,54 @@ export class PrismaCitaRepository implements ICitaRepository {
             doctor,
             servicio,
             horario,
+        };
+    }
+
+    private _mapHistorial(historial: any): any {
+        const toN = (v: any) => {
+            if (v == null) return null;
+            if (typeof v === 'number') return v;
+            return parseFloat(String(v));
+        };
+
+        // Mapear la cita con el método existente
+        const citaMapeada = this._mapCita(historial.cita);
+
+        // Convertir decimales del paciente
+        const pacienteMapeado = historial.cita.paciente
+            ? {
+                ...historial.cita.paciente,
+                peso: toN(historial.cita.paciente.peso),
+                altura: toN(historial.cita.paciente.altura),
+            }
+            : null;
+
+        // Convertir decimales del doctor
+        const doctorMapeado = historial.cita.doctor
+            ? {
+                ...historial.cita.doctor,
+                calificacionPromedio: toN(historial.cita.doctor.calificacionPromedio),
+            }
+            : null;
+
+        // Convertir decimales del servicio
+        const servicioMapeado = historial.cita.servicio
+            ? {
+                ...historial.cita.servicio,
+                precio: toN(historial.cita.servicio.precio),
+                calificacionPromedio: toN(historial.cita.servicio.calificacionPromedio),
+            }
+            : null;
+
+        return {
+            ...historial,
+            cita: {
+                ...citaMapeada,
+                paciente: pacienteMapeado,
+                doctor: doctorMapeado,
+                servicio: servicioMapeado,
+                totalAPagar: toN(historial.cita.totalAPagar),
+            },
         };
     }
 
@@ -584,21 +636,52 @@ export class PrismaCitaRepository implements ICitaRepository {
     }
 
     async buscarHistorialPorCita(citaId: number): Promise<any | null> {
-        return await this.prisma.historialConsulta.findUnique({
+        const historial = await this.prisma.historialConsulta.findUnique({
             where: { citaId },
             include: {
                 cita: {
                     include: {
+                        paciente: {
+                            include: {
+                                usuario: {
+                                    select: {
+                                        email: true,
+                                        fotoPerfil: true,
+                                        banner: true,
+                                    },
+                                },
+                                ubicacion: {
+                                    select: {
+                                        id: true,
+                                        nombre: true,
+                                        direccion: true,
+                                    },
+                                },
+                                caracteristicas: {
+                                    where: { estado: 'Activo' },
+                                    include: {
+                                        condicion: {
+                                            select: { id: true, nombre: true, tipo: true },
+                                        },
+                                    },
+                                },
+                            },
+                        },
                         doctor: {
                             include: {
-                                usuario: { select: { email: true, fotoPerfil: true } },
+                                usuario: {
+                                    select: {
+                                        email: true,
+                                        fotoPerfil: true,
+                                        banner: true,
+                                    },
+                                },
                                 especialidades: {
                                     where: { es_principal: true },
                                     include: { especialidades: { select: { nombre: true } } },
                                 },
                             },
                         },
-                        paciente: { include: { usuario: { select: { email: true } } } },
                         servicio: { include: { especialidad: true } },
                         seguro: { select: { nombre: true, urlImage: true } },
                         tipoSeguro: { select: { nombre: true } },
@@ -607,6 +690,8 @@ export class PrismaCitaRepository implements ICitaRepository {
                 adjuntos: { include: { media: true } },
             },
         });
+
+        return historial ? this._mapHistorial(historial) : null;
     }
 
     async listarHistorialPaciente(
@@ -623,9 +708,41 @@ export class PrismaCitaRepository implements ICitaRepository {
                 include: {
                     cita: {
                         include: {
+                            paciente: {
+                                include: {
+                                    usuario: {
+                                        select: {
+                                            email: true,
+                                            fotoPerfil: true,
+                                            banner: true,
+                                        },
+                                    },
+                                    ubicacion: {
+                                        select: {
+                                            id: true,
+                                            nombre: true,
+                                            direccion: true,
+                                        },
+                                    },
+                                    caracteristicas: {
+                                        where: { estado: 'Activo' },
+                                        include: {
+                                            condicion: {
+                                                select: { id: true, nombre: true, tipo: true },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
                             doctor: {
                                 include: {
-                                    usuario: { select: { email: true, fotoPerfil: true } },
+                                    usuario: {
+                                        select: {
+                                            email: true,
+                                            fotoPerfil: true,
+                                            banner: true,
+                                        },
+                                    },
                                     especialidades: {
                                         where: { es_principal: true },
                                         include: { especialidades: { select: { nombre: true } } },
@@ -646,7 +763,7 @@ export class PrismaCitaRepository implements ICitaRepository {
             this.prisma.historialConsulta.count({ where: { pacienteId } }),
         ]);
 
-        return { datos, total };
+        return { datos: datos.map((d) => this._mapHistorial(d)), total };
     }
 
     // ─── ESTADÍSTICAS DE PACIENTES ─────────────────────────────────────────────
@@ -1209,21 +1326,21 @@ export class PrismaCitaRepository implements ICitaRepository {
 
         for (const cita of citas) {
             const pacienteId = cita.pacienteId;
-            
+
             if (!mapaPacientes.has(pacienteId)) {
                 const pac = cita.paciente;
                 const fechaNac = new Date(pac.fechaNacimiento);
                 const hoy = new Date();
-                const edad = hoy.getFullYear() - fechaNac.getFullYear() - 
-                    (hoy.getMonth() < fechaNac.getMonth() || 
-                     (hoy.getMonth() === fechaNac.getMonth() && hoy.getDate() < fechaNac.getDate()) ? 1 : 0);
+                const edad = hoy.getFullYear() - fechaNac.getFullYear() -
+                    (hoy.getMonth() < fechaNac.getMonth() ||
+                        (hoy.getMonth() === fechaNac.getMonth() && hoy.getDate() < fechaNac.getDate()) ? 1 : 0);
 
                 // Procesar ubicación del servicio/centro de la cita
                 let ubicacionUltimaCitaFormatted: any = null;
-                
+
                 // Obtener ubicación del servicio (desde servicios_ubicaciones)
                 const servicioUbicacion = cita.servicio?.servicios_ubicaciones?.[0]?.ubicacion;
-                
+
                 if (servicioUbicacion) {
                     ubicacionUltimaCitaFormatted = {
                         id: servicioUbicacion.id,
@@ -1360,6 +1477,36 @@ export class PrismaCitaRepository implements ICitaRepository {
         const datosPaginados = pacientes.slice(skip, skip + limite);
 
         return { datos: datosPaginados, total };
+    }
+
+    // ─── OPTIMIZACIÓN: FUTURAS CITAS ENTRE DOCTOR Y PACIENTE ────────────────────
+    async listarFuturasCitas(doctorId: number, pacienteId: number, desde: Date): Promise<any[]> {
+        const futurasCitas = await (this.prisma.cita as any).findMany({
+            where: {
+                doctorUsuarioId: doctorId,
+                pacienteId: pacienteId,
+                estado: { in: ['Programada', 'Reprogramada'] },
+                fechaInicio: { gte: desde }
+            },
+            orderBy: { fechaInicio: 'asc' },
+            include: { servicio: { include: { especialidad: true } } }
+        });
+
+        return futurasCitas.map((c: any) => ({
+            citaId: c.id,
+            fecha: c.fechaInicio ? c.fechaInicio.toISOString().substring(0, 10) : null,
+            hora: c.fechaInicio ? c.fechaInicio.toISOString().substring(11, 16) : null,
+            estado: c.estado,
+            modalidad: c.modalidad,
+            servicio: c.servicio ? {
+                id: c.servicio.id,
+                nombre: c.servicio.nombre,
+                especialidad: c.servicio.especialidad ? {
+                    id: c.servicio.especialidad.id,
+                    nombre: c.servicio.especialidad.nombre
+                } : null
+            } : null
+        }));
     }
 }
 

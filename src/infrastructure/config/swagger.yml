@@ -442,7 +442,7 @@ paths:
                   message:
                     type: string
                     example: "Código validado correctamente."
-                  data:
+
                     type: object
                     properties:
                       token:
@@ -947,7 +947,7 @@ paths:
                   message:
                     type: string
                     example: "Código validado correctamente."
-                  data:
+
                     type: object
                     properties:
                       token:
@@ -1020,7 +1020,7 @@ paths:
                   message:
                     type: string
                     example: "Banner actualizado exitosamente"
-                  data:
+
                     type: object
                     properties:
                       bannerUrl:
@@ -1376,7 +1376,7 @@ paths:
                   message:
                     type: string
                     example: "Foto de perfil actualizada exitosamente"
-                  data:
+
                     type: object
                     properties:
                       fotoPerfilUrl:
@@ -1770,7 +1770,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Provincia'
@@ -1816,7 +1816,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Provincia'
                   message:
                     type: string
@@ -1883,7 +1883,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Provincia'
                   message:
                     type: string
@@ -1945,7 +1945,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Provincia'
                   message:
                     type: string
@@ -1995,7 +1995,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Provincia'
                   message:
                     type: string
@@ -2070,7 +2070,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Provincia'
@@ -2140,7 +2140,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Provincia'
@@ -2200,7 +2200,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Municipio'
@@ -2252,7 +2252,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Municipio'
                   message:
                     type: string
@@ -2319,7 +2319,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Municipio'
                   message:
                     type: string
@@ -2385,7 +2385,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Municipio'
                   message:
                     type: string
@@ -2435,7 +2435,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Municipio'
                   message:
                     type: string
@@ -2502,7 +2502,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Municipio'
@@ -2583,7 +2583,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Municipio'
@@ -2650,7 +2650,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Municipio'
@@ -2710,7 +2710,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/DistritoMunicipal'
@@ -2762,7 +2762,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/DistritoMunicipal'
                   message:
                     type: string
@@ -2829,7 +2829,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/DistritoMunicipal'
                   message:
                     type: string
@@ -2895,7 +2895,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/DistritoMunicipal'
                   message:
                     type: string
@@ -2945,7 +2945,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/DistritoMunicipal'
                   message:
                     type: string
@@ -3012,7 +3012,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/DistritoMunicipal'
@@ -3093,7 +3093,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/DistritoMunicipal'
@@ -3160,7 +3160,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/DistritoMunicipal'
@@ -3220,7 +3220,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Seccion'
@@ -3277,7 +3277,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Seccion'
                   message:
                     type: string
@@ -3344,7 +3344,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Seccion'
                   message:
                     type: string
@@ -3416,7 +3416,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Seccion'
                   message:
                     type: string
@@ -3466,7 +3466,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Seccion'
                   message:
                     type: string
@@ -3533,7 +3533,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Seccion'
@@ -3588,7 +3588,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Seccion'
@@ -3669,7 +3669,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Seccion'
                   message:
                     type: string
@@ -3737,7 +3737,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Seccion'
@@ -3797,7 +3797,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Barrio'
@@ -3848,7 +3848,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Barrio'
                   message:
                     type: string
@@ -3915,7 +3915,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Barrio'
                   message:
                     type: string
@@ -3980,7 +3980,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Barrio'
                   message:
                     type: string
@@ -4030,7 +4030,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Barrio'
                   message:
                     type: string
@@ -4097,7 +4097,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Barrio'
@@ -4178,7 +4178,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Barrio'
@@ -4245,7 +4245,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Barrio'
@@ -4303,7 +4303,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Barrio'
                   message:
                     type: string
@@ -4354,7 +4354,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       id:
@@ -4956,7 +4956,7 @@ paths:
                   count:
                     type: integer
                     example: 2
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Ubicacion'
@@ -5045,7 +5045,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Ubicacion'
                   message:
                     type: string
@@ -5259,7 +5259,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       conflicto:
@@ -5727,7 +5727,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       IMAGE:
@@ -5801,7 +5801,7 @@ paths:
                   total:
                     type: integer
                     example: 3
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Media'
@@ -5850,7 +5850,7 @@ paths:
                   message:
                     type: string
                     example: "Archivo subido exitosamente"
-                  data:
+
                     $ref: '#/components/schemas/Media'
         '400':
           description: |
@@ -5887,7 +5887,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Media'
         '404':
           description: Archivo no encontrado o eliminado
@@ -5932,7 +5932,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Media'
         '404':
           description: Archivo no encontrado
@@ -6650,7 +6650,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Especialidad'
@@ -6710,7 +6710,7 @@ paths:
                   message:
                     type: string
                     example: "Especialidad creada exitosamente."
-                  data:
+
                     $ref: '#/components/schemas/Especialidad'
         '400':
           description: Datos inválidos
@@ -6785,7 +6785,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Especialidad'
         '404':
           description: Especialidad no encontrada
@@ -6850,7 +6850,7 @@ paths:
                     message: 
                       type: string
                       example: "Especialidad actualizada exitosamente."
-                    data:
+  
                       $ref: '#/components/schemas/Especialidad'
         '400':
           description: Datos inválidos
@@ -7013,7 +7013,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/CondicionMedica'
@@ -7078,7 +7078,7 @@ paths:
                   message:
                     type: string
                     example: "Condición médica creada exitosamente."
-                  data:
+
                     $ref: '#/components/schemas/CondicionMedica'
         '400':
           description: Datos inválidos
@@ -7130,7 +7130,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/CondicionMedica'
         '404':
           description: Condición médica no encontrada
@@ -7199,7 +7199,7 @@ paths:
                   message:
                     type: string
                     example: "Condición médica actualizada exitosamente."
-                  data:
+
                     $ref: '#/components/schemas/CondicionMedica'
         '404':
           description: Condición médica no encontrada
@@ -7325,7 +7325,7 @@ paths:
                   message:
                     type: string
                     example: "Condición asignada al paciente exitosamente."
-                  data:
+
                     $ref: '#/components/schemas/CaracteristicaEspecial'
         '400':
           description: Condición ya asignada o datos inválidos
@@ -7389,7 +7389,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/CaracteristicaEspecial'
@@ -7447,7 +7447,7 @@ paths:
                   message:
                     type: string
                     example: "Condición del paciente actualizada exitosamente."
-                  data:
+
                     $ref: '#/components/schemas/CaracteristicaEspecial'
         '400':
           description: La condición no está asignada a este paciente
@@ -7571,7 +7571,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/CondicionMedica'
@@ -7634,7 +7634,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/CondicionMedica'
@@ -7682,7 +7682,7 @@ paths:
                   message:
                     type: string
                     example: "Alergia agregada exitosamente."
-                  data:
+
                     type: object
                     description: Alergia del catálogo con las notas del paciente incluidas
                     properties:
@@ -7762,7 +7762,7 @@ paths:
                   message:
                     type: string
                     example: "Alergia actualizada exitosamente."
-                  data:
+
                     $ref: '#/components/schemas/CondicionMedica'
         '400':
           description: Error de validación (no es una alergia, no existe en tu perfil, etc.)
@@ -7852,7 +7852,7 @@ paths:
                   message:
                     type: string
                     example: "Condición creada exitosamente."
-                  data:
+
                     type: object
                     description: Condición personal creada con las notas del paciente incluidas
                     properties:
@@ -7945,7 +7945,7 @@ paths:
                   message:
                     type: string
                     example: "Condiciones obtenidas exitosamente."
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/CondicionMedica'
@@ -8013,7 +8013,7 @@ paths:
                   message:
                     type: string
                     example: "Condición actualizada exitosamente."
-                  data:
+
                     $ref: '#/components/schemas/CondicionMedica'
         '400':
           description: Error de validación (condición no existe en tu perfil)
@@ -8143,7 +8143,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Paciente'
@@ -8210,7 +8210,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Paciente'
         '401':
           description: No autenticado
@@ -8281,7 +8281,7 @@ paths:
                   message:
                     type: string
                     example: "Perfil actualizado exitosamente."
-                  data:
+
                     $ref: '#/components/schemas/Paciente'
         '401':
           description: No autenticado
@@ -8345,7 +8345,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Paciente'
         '401':
           description: No autenticado
@@ -8398,7 +8398,7 @@ paths:
                     type: boolean
                   message:
                     type: string
-                  data:
+
                     $ref: '#/components/schemas/Paciente'
         '401':
           description: No autenticado
@@ -8610,7 +8610,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/CitaDetalle'
@@ -8792,7 +8792,7 @@ paths:
                   total:
                     type: integer
                     example: 3
-                  data:
+
                     type: array
                     items:
                       type: object
@@ -8958,7 +8958,7 @@ paths:
                 properties:
                   success:
                     type: boolean
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/HistorialConsulta'
@@ -9040,7 +9040,7 @@ paths:
                 properties:
                   success:
                     type: boolean
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/CitaDetalle'
@@ -9162,7 +9162,7 @@ paths:
                 properties:
                   success:
                     type: boolean
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/PacienteDelDoctor'
@@ -9226,7 +9226,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/CitaDetalle'
         '401':
           description: No autenticado
@@ -9307,7 +9307,7 @@ paths:
                 properties:
                   success:
                     type: boolean
-                  data:
+
                     $ref: '#/components/schemas/CitaDetalle'
                   message:
                     type: string
@@ -9417,7 +9417,7 @@ paths:
                 properties:
                   success:
                     type: boolean
-                  data:
+
                     $ref: '#/components/schemas/CitaDetalle'
                   message:
                     type: string
@@ -9482,7 +9482,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/HistorialConsulta'
                   message:
                     type: string
@@ -9549,7 +9549,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/HistorialConsulta'
         '401':
           description: No autenticado
@@ -9657,7 +9657,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Doctor'
@@ -9724,7 +9724,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Doctor'
         '401':
           description: No autenticado
@@ -9796,7 +9796,7 @@ paths:
                   message:
                     type: string
                     example: "Perfil actualizado exitosamente."
-                  data:
+
                     $ref: '#/components/schemas/Doctor'
         '401':
           description: No autenticado
@@ -9858,7 +9858,7 @@ paths:
                     type: integer
                     description: Cantidad de doctores encontrados
                     example: 2
-                  data:
+
                     type: array
                     items:
                       type: object
@@ -10025,9 +10025,53 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
+
                     type: object
-                    description: Objeto completo del paciente con toda su información
+                    description: Objeto completo del paciente con fotos y citas futuras
+                    allOf:
+                      - $ref: '#/components/schemas/Paciente'
+                    properties:
+                      fotoPerfil:
+                        type: string
+                        format: uri
+                        nullable: true
+                      bannerUrl:
+                        type: string
+                        format: uri
+                        nullable: true
+                      futurasCitas:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            citaId:
+                              type: integer
+                            fecha:
+                              type: string
+                              format: date
+                            hora:
+                              type: string
+                            estado:
+                              type: string
+                            modalidad:
+                              type: string
+                            servicio:
+                              type: object
+                              nullable: true
+                              properties:
+                                id:
+                                  type: integer
+                                nombre:
+                                  type: string
+                                especialidad:
+                                  type: object
+                                  nullable: true
+                                  properties:
+                                    id:
+                                      type: integer
+                                    nombre:
+                                      type: string
         '400':
           description: ID de paciente inválido
           content:
@@ -10110,7 +10154,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     allOf:
                       - $ref: '#/components/schemas/Doctor'
                       - type: object
@@ -10176,7 +10220,7 @@ paths:
                     type: boolean
                   message:
                     type: string
-                  data:
+
                     $ref: '#/components/schemas/Doctor'
         '401':
           description: No autenticado
@@ -10273,7 +10317,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       estadisticas:
@@ -10464,7 +10508,7 @@ paths:
                   message:
                     type: string
                     example: "Certificación agregada exitosamente. Se ha creado una acción de revisión."
-                  data:
+
                     type: object
                     properties:
                       documentoId:
@@ -10522,7 +10566,7 @@ paths:
                   message:
                     type: string
                     example: "Idioma agregado exitosamente."
-                  data:
+
                     $ref: '#/components/schemas/DoctorIdioma'
         '400':
           description: Solicitud inválida
@@ -10586,7 +10630,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/DoctorIdioma'
@@ -10643,7 +10687,7 @@ paths:
                   message:
                     type: string
                     example: "Idioma actualizado exitosamente."
-                  data:
+
                     $ref: '#/components/schemas/DoctorIdioma'
         '401':
           description: No autenticado
@@ -10738,7 +10782,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/EspecialidadDoctor'
@@ -10797,7 +10841,7 @@ paths:
                   message:
                     type: string
                     example: "Especialidades actualizadas exitosamente."
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/EspecialidadDoctor'
@@ -10849,7 +10893,7 @@ paths:
                   message:
                     type: string
                     example: "Especialidad principal actualizada exitosamente."
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/EspecialidadDoctor'
@@ -10959,7 +11003,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       type: object
@@ -11035,7 +11079,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       id:
@@ -11136,7 +11180,7 @@ paths:
                   message:
                     type: string
                     example: "Documento aprobado exitosamente"
-                  data:
+
                     type: object
                     properties:
                       accionId:
@@ -11238,7 +11282,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/TipoCentroSalud'
@@ -11290,7 +11334,7 @@ paths:
                     example: true
                   message:
                     type: string
-                  data:
+
                     $ref: '#/components/schemas/TipoCentroSalud'
         '400':
           description: Datos inválidos
@@ -11324,7 +11368,7 @@ paths:
                 properties:
                   success:
                     type: boolean
-                  data:
+
                     $ref: '#/components/schemas/TipoCentroSalud'
         '404':
           description: Tipo de centro de salud no encontrado
@@ -11368,7 +11412,7 @@ paths:
                       type: boolean
                     message: 
                       type: string
-                    data:
+  
                       $ref: '#/components/schemas/TipoCentroSalud'
         '404':
           description: Tipo de centro de salud no encontrado
@@ -11495,7 +11539,7 @@ paths:
                 properties:
                   success:
                     type: boolean
-                  data:
+
                     type: object
                     properties:
                       id:
@@ -11571,7 +11615,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       totalMedicos:
@@ -11775,7 +11819,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/CentroSaludPerfil'
         '401':
           description: No autenticado
@@ -11838,7 +11882,7 @@ paths:
                   message:
                     type: string
                     example: "Perfil actualizado exitosamente"
-                  data:
+
                     $ref: '#/components/schemas/CentroSaludPerfil'
         '400':
           description: Datos inválidos
@@ -11888,7 +11932,7 @@ paths:
                   message:
                     type: string
                     example: "Foto actualizada exitosamente"
-                  data:
+
                     $ref: '#/components/schemas/CentroSaludPerfil'
         '400':
           description: Archivo inválido o no proporcionado
@@ -11924,7 +11968,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/UbicacionDetalle'
         '401':
           description: No autenticado
@@ -11973,7 +12017,7 @@ paths:
                   message:
                     type: string
                     example: "Ubicación actualizada exitosamente"
-                  data:
+
                     $ref: '#/components/schemas/UbicacionDetalle'
         '400':
           description: Barrio inválido o datos incorrectos
@@ -12011,7 +12055,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       type: object
@@ -12115,7 +12159,7 @@ paths:
                   message:
                     type: string
                     example: "Solicitud de alianza enviada exitosamente"
-                  data:
+
                     $ref: '#/components/schemas/SolicitudAlianza'
         '400':
           description: Datos inválidos
@@ -12156,7 +12200,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/SolicitudAlianza'
@@ -12221,7 +12265,7 @@ paths:
                   message:
                     type: string
                     example: "Solicitud aceptada exitosamente"
-                  data:
+
                     $ref: '#/components/schemas/SolicitudAlianza'
         '400':
           description: Estado inválido o solicitud no en estado Pendiente
@@ -12493,7 +12537,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       totalPacientes:
@@ -12558,7 +12602,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       totalServicios:
@@ -12648,7 +12692,7 @@ paths:
                         type: integer
                         nullable: true
                         example: 3
-                  data:
+
                     type: object
                     properties:
                       totalPacientes:
@@ -12749,7 +12793,7 @@ paths:
                         type: integer
                         nullable: true
                         example: 3
-                  data:
+
                     type: object
                     properties:
                       totalCitas:
@@ -12843,7 +12887,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       periodo:
@@ -12928,7 +12972,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       type: object
@@ -12993,7 +13037,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       id_periodo:
@@ -13060,7 +13104,7 @@ paths:
                   message:
                     type: string
                     example: "Solicitud de alianza enviada exitosamente"
-                  data:
+
                     $ref: '#/components/schemas/SolicitudAlianza'
         '400':
           description: Datos inválidos
@@ -13126,7 +13170,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/SolicitudAlianza'
@@ -13191,7 +13235,7 @@ paths:
                   message:
                     type: string
                     example: "Solicitud aceptada exitosamente"
-                  data:
+
                     $ref: '#/components/schemas/SolicitudAlianza'
         '400':
           description: Estado inválido o solicitud no en estado Pendiente
@@ -13289,7 +13333,7 @@ paths:
                   message:
                     type: string
                     example: "Experiencias laborales del doctor obtenidas exitosamente"
-                  data:
+
                     type: object
                     properties:
                       experiencias:
@@ -13397,7 +13441,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/ExperienciaLaboral'
         '400':
           description: Datos inválidos
@@ -13482,7 +13526,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       experiencias:
@@ -13547,7 +13591,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/ExperienciaLaboral'
         '400':
           description: ID inválido
@@ -13619,7 +13663,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/ExperienciaLaboral'
         '400':
           description: Datos inválidos
@@ -13737,7 +13781,7 @@ paths:
                   message:
                     type: string
                     example: "Formaciones académicas del doctor obtenidas exitosamente"
-                  data:
+
                     type: object
                     properties:
                       formaciones:
@@ -13854,7 +13898,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/FormacionAcademica'
         '400':
           description: Datos inválidos (fechas inválidas, formación duplicada, campos faltantes, etc.)
@@ -13951,7 +13995,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       formaciones:
@@ -14030,7 +14074,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/FormacionAcademica'
         '400':
           description: ID inválido
@@ -14121,7 +14165,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/FormacionAcademica'
         '400':
           description: Datos inválidos (fechas inválidas, formación duplicada, etc.)
@@ -14258,7 +14302,7 @@ paths:
                   mensaje:
                     type: string
                     example: "Login exitoso"
-                  data:
+
                     type: object
                     properties:
                       token:
@@ -14416,7 +14460,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       notificaciones:
@@ -14474,7 +14518,7 @@ paths:
                   message:
                     type: string
                     example: "5 notificaciones marcadas como leídas."
-                  data:
+
                     type: object
                     properties:
                       cantidadMarcadas:
@@ -14515,7 +14559,7 @@ paths:
                   message:
                     type: string
                     example: "10 notificaciones marcadas como leídas."
-                  data:
+
                     type: object
                     properties:
                       cantidadMarcadas:
@@ -14547,7 +14591,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       contador:
@@ -14590,7 +14634,7 @@ paths:
                   message:
                     type: string
                     example: "Notificación marcada como leída."
-                  data:
+
                     $ref: '#/components/schemas/Notificacion'
         '400':
           description: ID de notificación inválido
@@ -14904,7 +14948,7 @@ paths:
                         type: boolean
                         description: Si hay más páginas disponibles
                         example: true
-                  data:
+
                     type: array
                     description: Mensajes ordenados de más reciente a más antiguo
                     items:
@@ -15138,7 +15182,7 @@ paths:
                   message:
                     type: string
                     example: "Seguro creado exitosamente"
-                  data:
+
                     $ref: '#/components/schemas/SeguroMedico'
         '400':
           description: Error de validación
@@ -15201,7 +15245,7 @@ paths:
                     type: boolean
                   message:
                     type: string
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/SeguroMedico'
@@ -15356,7 +15400,7 @@ paths:
                   total:
                     type: integer
                     example: 5
-                  data:
+
                     type: array
                     items:
                       type: object
@@ -15534,7 +15578,7 @@ paths:
                   message:
                     type: string
                     example: "Seguros aceptados por el doctor obtenidos exitosamente"
-                  data:
+
                     type: array
                     items:
                       type: object
@@ -15649,7 +15693,7 @@ paths:
                   message:
                     type: string
                     example: 'Compatible: el doctor acepta y el paciente tiene el seguro "ARS Humano" (plan: Plan Familiar).'
-                  data:
+
                     type: object
                     properties:
                       seguroNombre:
@@ -15802,7 +15846,7 @@ paths:
                     example: true
                   message:
                     type: string
-                  data:
+
                     type: object
                     properties:
                       id:
@@ -15889,7 +15933,7 @@ paths:
                     type: boolean
                   message:
                     type: string
-                  data:
+
                     type: array
                     items:
                       type: object
@@ -15949,7 +15993,7 @@ paths:
                     example: true
                   message:
                     type: string
-                  data:
+
                     type: array
                     items:
                       type: object
@@ -16161,7 +16205,7 @@ paths:
                     type: integer
                     description: Cantidad de servicios encontrados en el radio
                     example: 4
-                  data:
+
                     type: array
                     items:
                       allOf:
@@ -16290,7 +16334,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/ServicioDetalle'
                   message:
                     type: string
@@ -16347,7 +16391,7 @@ paths:
                   fecha:
                     type: string
                     example: "2026-03-10"
-                  data:
+
                     type: array
                     items:
                       type: object
@@ -16458,7 +16502,7 @@ paths:
                     type: integer
                     description: Cantidad de slots disponibles
                     example: 12
-                  data:
+
                     type: array
                     items:
                       type: object
@@ -16576,7 +16620,7 @@ paths:
                   dias:
                     type: integer
                     example: 7
-                  data:
+
                     type: array
                     items:
                       type: object
@@ -16661,7 +16705,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/ServicioDetalle'
         '400':
           description: ID inválido
@@ -16778,7 +16822,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/ServicioResumen'
                   message:
                     type: string
@@ -16949,7 +16993,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/ServicioResumen'
@@ -17041,7 +17085,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/ServicioResumen'
@@ -17098,7 +17142,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/ServicioImagen'
@@ -17240,7 +17284,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       paises:
@@ -17291,7 +17335,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Pais'
         '400':
           description: Datos inválidos o país duplicado
@@ -17358,7 +17402,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Pais'
         '404':
           description: País no encontrado
@@ -17409,7 +17453,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Pais'
         '400':
           description: Datos inválidos
@@ -17537,7 +17581,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: object
                     properties:
                       universidades:
@@ -17589,7 +17633,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Universidad'
         '400':
           description: Datos inválidos
@@ -17658,7 +17702,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Universidad'
         '404':
           description: Universidad no encontrada
@@ -17709,7 +17753,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Universidad'
         '400':
           description: Datos inválidos
@@ -17812,7 +17856,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Universidad'
@@ -17875,7 +17919,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     $ref: '#/components/schemas/Resena'
                   message:
                     type: string
@@ -17956,7 +18000,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/Resena'
@@ -18028,7 +18072,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/ResenaResumen'
@@ -18096,7 +18140,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/ResenaResumen'
@@ -18207,7 +18251,7 @@ paths:
                     type: integer
                     example: 2
                     description: Cantidad de favoritos activos
-                  data:
+
                     type: array
                     items:
                       $ref: '#/components/schemas/DoctorFavorito'
@@ -18260,7 +18304,7 @@ paths:
                   mensaje:
                     type: string
                     example: Doctor agregado a favoritos exitosamente
-                  data:
+
                     $ref: '#/components/schemas/DoctorFavorito'
         '400':
           description: doctorId inválido
@@ -18333,18 +18377,20 @@ paths:
         - Teleconsultas
       description: |
         Permite al **Doctor** autenticado iniciar una teleconsulta para una cita médica.
+        **Si la cita ya está `En curso`**, el doctor recuperará su enlace anterior (ideal para reconectarse si salió por error de la llamada).
 
         **Flujo interno:**
         1. Verifica que la cita exista y pertenezca al doctor autenticado.
-        2. Comprueba que el estado de la cita sea `Programada`.
-        3. Valida que no sea más de **15 minutos antes** del inicio programado (sin límite de tiempo posterior mientras la cita siga `Programada`).
-        4. Busca o crea la `Conversacion` entre doctor y paciente.
-        5. Crea una sala privada en **Daily.co** y genera dos tokens:
-           - **Owner token** para el doctor (`urlAcceso` en la respuesta).
+        2. Comprueba que el estado de la cita sea `Programada` o `En curso`.
+        3. Si la cita ya está `En curso`, busca el `LogTeleconsulta` previo, re-envía la notificación al paciente y devuelve la `urlAcceso` antigua del doctor.
+        4. Si está `Programada`, valida que no sea más de **15 minutos antes** del inicio programado.
+        5. Busca o crea la `Conversacion` entre doctor y paciente.
+        6. Crea una sala privada en **Daily.co** y genera dos tokens:
+           - **Owner token** para el doctor (`urlAcceso` en la respuesta, guardado en `LogTeleconsulta.urlDoctor`).
            - **Participant token** para el paciente (guardado en `LogTeleconsulta.urlPaciente`; el paciente lo obtiene via `GET /{citaId}/url-acceso`).
-        6. Registra el `LogTeleconsulta` con estado `Iniciada`, guardando ambas URLs.
-        7. Cambia el estado de la `Cita` a `En curso`.
-        8. Notifica al paciente en tiempo real vía WebSocket con el enlace de acceso.
+        7. Registra el `LogTeleconsulta` con estado `Iniciada`, guardando ambas URLs.
+        8. Cambia el estado de la `Cita` a `En curso`.
+        9. Notifica al paciente en tiempo real vía WebSocket con el enlace de acceso.
 
         **Acceso:** Solo el Doctor dueño de la cita.
       security:
@@ -18372,13 +18418,13 @@ paths:
                   message:
                     type: string
                     example: Teleconsulta iniciada exitosamente.
-                  data:
+
                     $ref: '#/components/schemas/IniciarTeleconsultaResponse'
         '400':
           description: |
             Alguna de estas condiciones:
-            - La cita no está en estado `Programada`.
-            - El doctor intenta iniciar más de 15 minutos antes de la hora programada.
+            - La cita no está en estado `Programada` ni `En curso`.
+            - El doctor intenta iniciar una cita `Programada` más de 15 minutos antes de la hora.
             - `citaId` inválido.
           content:
             application/json:
@@ -18458,7 +18504,7 @@ paths:
                   message:
                     type: string
                     example: "Teleconsulta finalizada. Duración: 28 minuto(s)."
-                  data:
+
                     $ref: '#/components/schemas/FinalizarTeleconsultaResponse'
         '400':
           description: |
@@ -18533,7 +18579,7 @@ paths:
                   message:
                     type: string
                     example: URL de acceso obtenida exitosamente.
-                  data:
+
                     type: object
                     properties:
                       urlAcceso:

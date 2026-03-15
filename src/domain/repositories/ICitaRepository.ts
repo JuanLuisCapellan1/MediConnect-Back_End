@@ -114,7 +114,7 @@ export interface ICitaRepository {
     }>;
 
     misDoctores(pacienteId: number): Promise<any[]>;
-    
+
     listarPacientesDelDoctor(doctorId: number, filtros: {
         pagina?: number;
         limite?: number;
@@ -130,4 +130,6 @@ export interface ICitaRepository {
         ultimaCitaDesde?: Date;
         ultimaCitaHasta?: Date;
     }): Promise<{ datos: any[]; total: number }>;
+
+    listarFuturasCitas(doctorId: number, pacienteId: number, desde: Date): Promise<any[]>;
 }

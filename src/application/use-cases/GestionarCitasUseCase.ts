@@ -466,7 +466,13 @@ export class GestionarCitasUseCase {
             throw new Error('No tienes permisos para ver esta cita.');
         }
 
-        return cita;
+        // Obtener historial si existe
+        const historial = await this.citaRepo.buscarHistorialPorCita(citaId);
+
+        return {
+            cita,
+            historial: historial || null,
+        };
     }
 
     // ===================================================================
@@ -650,8 +656,8 @@ export class GestionarCitasUseCase {
         if (cita.doctorUsuarioId !== doctorId) {
             throw new Error('No tienes permisos para diagnosticar esta cita.');
         }
-        if (!['Programada', 'En Progreso', 'Reprogramada'].includes(cita.estado)) {
-            throw new Error('Solo puedes diagnosticar citas en estado Programada, En Progreso o Reprogramada.');
+        if (!['Programada', 'En Progreso', 'Reprogramada', 'En curso'].includes(cita.estado)) {
+            throw new Error('Solo puedes diagnosticar citas en estado Programada, En Progreso, Reprogramada o En curso.');
         }
 
         const historialExistente = await this.citaRepo.buscarHistorialPorCita(citaId);
@@ -683,10 +689,11 @@ export class GestionarCitasUseCase {
         }
 
         // Calcular fechaFin como fechaInicio + duración del servicio.
-        // NO se usa new Date() porque la cita puede ser futura y la constraint
-        // chk_citas_fechas exige fechaFin >= fechaInicio.
+        // Combinar fecha (YYYY-MM-DD) y hora (HH:MM) para obtener una fecha válida
+        const fechaCompleta = `${cita.fechaInicio}T${cita.horaInicio}:00.000Z`;
+        const fechaInicioDate = new Date(fechaCompleta);
         const duracionMs = (cita.servicio?.duracionMinutos ?? 30) * 60 * 1000;
-        const fechaFin = new Date(new Date(cita.fechaInicio).getTime() + duracionMs);
+        const fechaFin = new Date(fechaInicioDate.getTime() + duracionMs);
 
         await this.citaRepo.actualizar(citaId, {
             estado: 'Completada',
@@ -1137,5 +1144,28 @@ export class GestionarCitasUseCase {
         };
 
         return await this.citaRepo.listarPacientesDelDoctor(doctorId, filtrosRepositorio);
+    }
+
+    // ===================================================================
+    // Futuras citas entre doctor y paciente para vistas combinadas
+    // ===================================================================
+    async listarFuturasCitas(doctorId: number, pacienteId: number): Promise<any[]> {
+        // En MediConnect, las fechas se guardan como "Naive UTC" basadas en AST (America/Santo_Domingo)
+        // Construimos la fecha naive "ahora" para filtrar correctamente
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/Santo_Domingo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        });
+        const partes = formatter.formatToParts(new Date());
+        const d = Object.fromEntries(partes.map((p) => [p.type, p.value]));
+        const ahoraAST = new Date(`${d.year}-${d.month}-${d.day}T${d.hour}:${d.minute}:${d.second}.000Z`);
+
+        return await this.citaRepo.listarFuturasCitas(doctorId, pacienteId, ahoraAST);
     }
 }
