@@ -37,6 +37,7 @@ exports.DoctorController = void 0;
 const tsyringe_1 = require("tsyringe");
 const GestionarDoctoresUseCase_1 = require("../../../application/use-cases/GestionarDoctoresUseCase");
 const GestionarPacientesUseCase_1 = require("../../../application/use-cases/GestionarPacientesUseCase");
+const GestionarCitasUseCase_1 = require("../../../application/use-cases/GestionarCitasUseCase");
 const DoctorNoEncontradoError_1 = require("../../../domain/errors/Doctores/DoctorNoEncontradoError");
 const ExequaturYaExisteError_1 = require("../../../domain/errors/Doctores/ExequaturYaExisteError");
 const DocumentoDoctorYaExisteError_1 = require("../../../domain/errors/Doctores/DocumentoDoctorYaExisteError");
@@ -437,12 +438,18 @@ class DoctorController {
                         + 'Solo puedes ver pacientes con los que has tenido citas.',
                 });
             }
-            // Obtener información completa del paciente
+            // 1. Obtener información completa del paciente y sus imágenes de perfil
             const pacienteUseCase = tsyringe_1.container.resolve(GestionarPacientesUseCase_1.GestionarPacientesUseCase);
             const paciente = await pacienteUseCase.obtenerPorUsuarioId(pacienteId);
+            // 2. Extraer futuras citas usando el Use Case correcto
+            const gestionarCitasUseCase = tsyringe_1.container.resolve(GestionarCitasUseCase_1.GestionarCitasUseCase);
+            const futurasCitasFormateadas = await gestionarCitasUseCase.listarFuturasCitas(doctorId, pacienteId);
             return res.status(200).json({
                 success: true,
-                data: paciente,
+                data: {
+                    ...paciente,
+                    futurasCitas: futurasCitasFormateadas
+                },
             });
         }
         catch (error) {

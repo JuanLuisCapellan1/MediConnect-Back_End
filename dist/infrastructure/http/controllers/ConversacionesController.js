@@ -107,10 +107,9 @@ class ConversacionesController {
             const conversacion = await useCase.crear(dto);
             // Notificar al receptor via WebSocket
             const wsService = tsyringe_1.container.resolve(ChatWebSocketService_1.ChatWebSocketService);
-            wsService.notificarNuevaConversacion(receptorId, conversacion, {
+            wsService.notificarNuevaConversacion(parseInt(receptorId), conversacion, {
                 emisor: {
                     id: usuarioId
-                    // Aquí podrías incluir más datos del emisor si los tienes disponibles
                 }
             });
             return res.status(201).json({

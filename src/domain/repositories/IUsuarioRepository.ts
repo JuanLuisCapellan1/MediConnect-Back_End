@@ -152,6 +152,12 @@ export interface IUsuarioRepository {
    * - Acción de Auditoría
    */
   saveDoctorWithDocuments(data: SaveDoctorWithDocumentsData): Promise<Usuario>;
+
+  /**
+   * Helper de Seguridad: Intercepta IDs que podrían pertenecer a perfiles en vez de usuarios.
+   * Busca el usuarioId equivalente en la base de datos y lo devuelve, sino retorna el mismo ID.
+   */
+  resolverIdPerfilAUsuario(idSospechoso: number): Promise<number>;
 }
 
 export interface SaveDoctorWithDocumentsData {

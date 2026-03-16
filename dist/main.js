@@ -30,6 +30,10 @@ const path_1 = __importDefault(require("path"));
 const routes_1 = __importDefault(require("./infrastructure/http/routes"));
 const NotificacionesWebSocketService_1 = require("./infrastructure/external-services/NotificacionesWebSocketService");
 const ChatWebSocketService_1 = require("./infrastructure/external-services/ChatWebSocketService");
+const AutoGestionCitasService_1 = require("./infrastructure/jobs/AutoGestionCitasService");
+const NotificarMensajesPendientesService_1 = require("./infrastructure/jobs/NotificarMensajesPendientesService");
+const EnviarNotificacionUseCase_1 = require("./application/use-cases/notificaciones/EnviarNotificacionUseCase");
+const client_1 = require("@prisma/client");
 const app = (0, express_1.default)();
 const httpServer = (0, http_1.createServer)(app);
 const PORT = process.env.PORT || 3000;
@@ -58,6 +62,14 @@ wsService.inicializar(httpServer);
 // Inicializar Chat WebSocket
 const chatWsService = tsyringe_1.container.resolve(ChatWebSocketService_1.ChatWebSocketService);
 chatWsService.inicializar(wsService.obtenerIO());
+// Iniciar cron de gestión automática de no-shows
+const prismaForCron = new client_1.PrismaClient();
+const enviarNotifUCForCron = tsyringe_1.container.resolve(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase);
+const autoGestionCitas = new AutoGestionCitasService_1.AutoGestionCitasService(prismaForCron, enviarNotifUCForCron);
+autoGestionCitas.iniciar();
+// Iniciar cron de notificación de mensajes pendientes (chat)
+const notificarMensajesPendientes = new NotificarMensajesPendientesService_1.NotificarMensajesPendientesService(prismaForCron, enviarNotifUCForCron);
+notificarMensajesPendientes.iniciar();
 // Iniciar servidor
 httpServer.listen(PORT, () => {
     console.log(`🚀 Servidor MediConnect corriendo en http://localhost:${PORT}`);

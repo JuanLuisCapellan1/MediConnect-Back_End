@@ -37,9 +37,26 @@ let IniciarTeleconsultaUseCase = class IniciarTeleconsultaUseCase {
             throw new Error('No tienes permisos para iniciar esta teleconsulta.');
         }
         // ─── 3. Verificar que la cita esté en estado 'Programada' ────────────
-        if (cita.estado !== 'Programada') {
-            throw new Error(`Solo se puede iniciar una teleconsulta en estado 'Programada'. ` +
+        // ─── 3. Verificar que la cita esté en estado 'Programada' o 'En curso' ───
+        if (cita.estado !== 'Programada' && cita.estado !== 'En curso') {
+            throw new Error(`Solo se puede iniciar o retomar una teleconsulta en estado 'Programada' o 'En curso'. ` +
                 `Estado actual: '${cita.estado}'.`);
+        }
+        // ─── 3.5 Si ya está "En curso", intentar retomar la sala activa ────────
+        if (cita.estado === 'En curso') {
+            const logActivo = await this.prisma.logTeleconsulta.findFirst({
+                where: { citaId, estado: 'Iniciada' },
+                orderBy: { creadoEn: 'desc' }
+            });
+            if (logActivo && logActivo.urlDoctor) {
+                // Notificar de nuevo al paciente por si acaso se desconectó
+                this._notificarPaciente(cita.pacienteId, logActivo.urlPaciente, citaId);
+                return {
+                    urlAcceso: logActivo.urlDoctor,
+                    logId: logActivo.id,
+                };
+            }
+            // Si por algún motivo está "En curso" pero no hay log, seguimos el flujo para crear sala
         }
         // ─── 4. Validar ventana horaria ────────────────────────────────────────
         // Solo se bloquea si el doctor intenta abrir demasiado temprano.
@@ -48,7 +65,7 @@ let IniciarTeleconsultaUseCase = class IniciarTeleconsultaUseCase {
         const ahora = new Date();
         const fechaInicio = new Date(cita.fechaInicio);
         const aperturaMs = fechaInicio.getTime() - this.VENTANA_ANTES_MINUTOS * 60000;
-        if (ahora.getTime() < aperturaMs) {
+        if (cita.estado === 'Programada' && ahora.getTime() < aperturaMs) {
             const minutosRestantes = Math.ceil((aperturaMs - ahora.getTime()) / 60000);
             throw new Error(`Aún no puedes iniciar la teleconsulta. ` +
                 `Podrás hacerlo a partir de ${minutosRestantes} minuto(s) antes de la hora programada.`);
@@ -78,19 +95,26 @@ let IniciarTeleconsultaUseCase = class IniciarTeleconsultaUseCase {
                 inicio: ahora,
                 salaReunion: nombreSala,
                 urlPaciente,
+                urlDoctor: urlAcceso,
                 estado: 'Iniciada',
             },
         });
         // ─── 8. Actualizar estado de la Cita a 'En curso' ────────────────────
         await this.citaRepo.actualizar(citaId, { estado: 'En curso' });
         // ─── 9. Notificar al paciente en tiempo real ──────────────────────────
-        // En el modelo Prisma, Paciente.usuarioId = @id, así que cita.pacienteId
-        // es directamente el usuarioId del paciente — no necesitamos otra query.
+        this._notificarPaciente(pacienteId, urlPaciente, citaId);
+        // ─── 10. Retornar resultado ───────────────────────────────────────────
+        return {
+            urlAcceso,
+            logId: log.id,
+        };
+    }
+    async _notificarPaciente(pacienteId, urlPaciente, citaId) {
         try {
             await this.enviarNotifUC.execute({
                 usuarioId: pacienteId,
                 titulo: '¡Llamada Entrante!',
-                mensaje: `El doctor ha iniciado la videollamada. Úté al enlace para unirte: ${urlPaciente}`,
+                mensaje: `¡Hola! El doctor ya se encuentra en la sala de espera virtual para su consulta. Por favor, acceda a la plataforma para iniciar la videollamada.`,
                 tipoAlerta: 'Urgente',
                 tipoEntidad: 'Teleconsulta',
                 entidadId: citaId,
@@ -99,11 +123,6 @@ let IniciarTeleconsultaUseCase = class IniciarTeleconsultaUseCase {
         catch (notifErr) {
             console.error('IniciarTeleconsultaUseCase: error al notificar al paciente:', notifErr);
         }
-        // ─── 10. Retornar resultado ───────────────────────────────────────────
-        return {
-            urlAcceso,
-            logId: log.id,
-        };
     }
 };
 exports.IniciarTeleconsultaUseCase = IniciarTeleconsultaUseCase;

@@ -1,11 +1,13 @@
 import { injectable, inject } from 'tsyringe';
 import { INotificacionesRepository } from '../../../domain/repositories/INotificacionesRepository';
-import { Notificacion } from '../../../domain/entities/Notificacion';
+import { Notificacion, TipoAlerta } from '../../../domain/entities/Notificacion';
 
 export interface ObtenerNotificacionesInput {
     usuarioId: number;
     limite?: number;
-    soloNoLeidas?: boolean;
+    offset?: number;
+    leidas?: boolean;
+    tipoAlerta?: TipoAlerta;
 }
 
 @injectable()
@@ -22,9 +24,10 @@ export class ObtenerNotificacionesUseCase {
     }> {
         const filtros = {
             usuarioId: input.usuarioId,
-            leidas: input.soloNoLeidas ? false : undefined,
+            leidas: input.leidas,
             limite: input.limite ?? 50,
-            offset: 0,
+            offset: input.offset ?? 0,
+            tipoAlerta: input.tipoAlerta,
         };
 
         const [notificaciones, noLeidas] = await Promise.all([

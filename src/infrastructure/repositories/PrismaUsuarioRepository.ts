@@ -1026,4 +1026,30 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
       return usuario;
     });
   }
+
+  async resolverIdPerfilAUsuario(idSospechoso: number): Promise<number> {
+    // Intento 1: ¿Es un Paciente?
+    const paciente = await prisma.paciente.findFirst({ where: { usuarioId: idSospechoso } });
+    if (paciente) {
+      console.warn(`[CHAT SEC] Sustituido perfil Paciente -> usuarioId: ${paciente.usuarioId}`);
+      return paciente.usuarioId;
+    }
+
+    // Intento 2: ¿Es un Doctor?
+    const doctor = await prisma.doctor.findFirst({ where: { usuarioId: idSospechoso } });
+    if (doctor) {
+      console.warn(`[CHAT SEC] Sustituido perfil Doctor -> usuarioId: ${doctor.usuarioId}`);
+      return doctor.usuarioId;
+    }
+
+    // Intento 3: ¿Es un CentroSalud?
+    const centro = await prisma.centroSalud.findFirst({ where: { usuarioId: idSospechoso } });
+    if (centro) {
+      console.warn(`[CHAT SEC] Sustituido perfil CentroSalud -> usuarioId: ${centro.usuarioId}`);
+      return centro.usuarioId;
+    }
+
+    // Si no se encontró ningún cruce, devolvemos el ID original
+    return idSospechoso;
+  }
 }

@@ -33,6 +33,7 @@ import routes from './infrastructure/http/routes';
 import { NotificacionesWebSocketService } from './infrastructure/external-services/NotificacionesWebSocketService';
 import { ChatWebSocketService } from './infrastructure/external-services/ChatWebSocketService';
 import { AutoGestionCitasService } from './infrastructure/jobs/AutoGestionCitasService';
+import { NotificarMensajesPendientesService } from './infrastructure/jobs/NotificarMensajesPendientesService';
 import { EnviarNotificacionUseCase } from './application/use-cases/notificaciones/EnviarNotificacionUseCase';
 import { PrismaClient } from '@prisma/client';
 
@@ -79,6 +80,13 @@ const prismaForCron = new PrismaClient();
 const enviarNotifUCForCron = container.resolve(EnviarNotificacionUseCase);
 const autoGestionCitas = new AutoGestionCitasService(prismaForCron, enviarNotifUCForCron);
 autoGestionCitas.iniciar();
+
+// Iniciar cron de notificación de mensajes pendientes (chat)
+const notificarMensajesPendientes = new NotificarMensajesPendientesService(
+  prismaForCron,
+  enviarNotifUCForCron
+);
+notificarMensajesPendientes.iniciar();
 
 // Iniciar servidor
 httpServer.listen(PORT, () => {

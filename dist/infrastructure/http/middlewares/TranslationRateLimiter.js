@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.translationRateLimitMiddleware = exports.TranslationRateLimiter = void 0;
 exports.createTranslationRateLimiter = createTranslationRateLimiter;
 class TranslationRateLimiter {
-    constructor(windowMs = 15 * 60 * 1000, maxRequests = 100) {
+    constructor(windowMs = 15 * 60 * 1000, maxRequests = 1000) {
         this.requests = new Map();
         this.windowMs = windowMs; // 15 minutos por defecto
         this.maxRequests = maxRequests; // 100 peticiones por defecto
@@ -106,7 +106,7 @@ exports.TranslationRateLimiter = TranslationRateLimiter;
 /**
  * Middleware factory para rate limiting de traducciones
  */
-function createTranslationRateLimiter(windowMs = 15 * 60 * 1000, maxRequests = 100) {
+function createTranslationRateLimiter(windowMs = 15 * 60 * 1000, maxRequests = 1000) {
     const limiter = TranslationRateLimiter.getInstance(windowMs, maxRequests);
     return (req, res, next) => {
         // Solo aplicar rate limiting si hay parámetros de traducción

@@ -21,9 +21,10 @@ let ObtenerNotificacionesUseCase = class ObtenerNotificacionesUseCase {
     async execute(input) {
         const filtros = {
             usuarioId: input.usuarioId,
-            leidas: input.soloNoLeidas ? false : undefined,
+            leidas: input.leidas,
             limite: input.limite ?? 50,
-            offset: 0,
+            offset: input.offset ?? 0,
+            tipoAlerta: input.tipoAlerta,
         };
         const [notificaciones, noLeidas] = await Promise.all([
             this.repo.obtenerPorUsuario(filtros),

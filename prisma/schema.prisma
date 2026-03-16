@@ -638,6 +638,7 @@ model LecturaConversacion {
   usuarioId            Int          @map("id_usuario")
   ultimoMensajeLeidoId Int?         @map("id_ultimo_mensaje_leido")
   leidoEn              DateTime     @default(now()) @map("leido_en") @db.Timestamptz(6)
+  ultimaNotificacionEn DateTime?    @map("ultima_notificacion_en") @db.Timestamptz(6)
   conversacion         Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
   ultimoMensaje        Mensaje?     @relation(fields: [ultimoMensajeLeidoId], references: [id])
   usuario              Usuario      @relation(fields: [usuarioId], references: [id])

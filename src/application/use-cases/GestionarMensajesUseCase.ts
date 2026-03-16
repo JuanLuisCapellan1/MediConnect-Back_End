@@ -88,21 +88,9 @@ export class GestionarMensajesUseCase {
 
     const mensajeCreado = await this.mensajesRepository.crear(nuevoMensaje);
 
-    // ─ Notificar al otro participante (no al remitente) ────────────────────
-    const conv = conversacion as any;
-    const destinatarioId: number | undefined =
-      conv.emisorId === dto.remitenteId ? conv.receptorId : conv.emisorId;
+    // ─ La notificación en tiempo real ("Tienes un nuevo mensaje") ha sido delegada
+    // al cronjob NotificarMensajesPendientesService que alerta si tras 20 min no fue leído. 
 
-    if (destinatarioId !== undefined && destinatarioId !== dto.remitenteId) {
-      this.enviarNotifUC.execute({
-        usuarioId: destinatarioId,
-        titulo: 'Nuevo Mensaje',
-        mensaje: 'Tienes un nuevo mensaje en tu conversación.',
-        tipoAlerta: 'Informacion',
-        tipoEntidad: 'Mensaje',
-        entidadId: mensajeCreado.id,
-      }).catch((e: any) => console.error('notif crearMensaje:', e));
-    }
 
     return mensajeCreado;
   }

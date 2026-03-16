@@ -14375,7 +14375,6 @@ paths:
         **Filtros disponibles:**
         - `leidas=false` → solo no leídas (para el panel de campana)
         - `tipoAlerta` → filtrar por severidad
-        - `tipoEntidad` → filtrar por módulo (Cita, Mensaje, etc.)
         - `limite` / `offset` → paginación
 
         **Traducción automática:**
@@ -14402,19 +14401,6 @@ paths:
               - Urgente
           description: Filtrar por tipo/severidad de la alerta
           example: Informacion
-        - name: tipoEntidad
-          in: query
-          schema:
-            type: string
-            enum:
-              - Cita
-              - Teleconsulta
-              - Alianza
-              - Resena
-              - Perfil
-              - Mensaje
-          description: Filtrar por módulo relacionado
-          example: Cita
         - name: limite
           in: query
           schema:

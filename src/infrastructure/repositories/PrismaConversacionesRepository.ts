@@ -2,16 +2,16 @@ import { injectable, inject } from 'tsyringe';
 import { PrismaClient } from '@prisma/client';
 import { IConversacionesRepository } from '../../domain/repositories/IConversacionesRepository';
 import { Conversacion, EstadoConversacion } from '../../domain/entities/Conversacion';
-import { 
-  FiltroConversacionesDto, 
-  ConversacionConUltimoMensajeDto 
+import {
+  FiltroConversacionesDto,
+  ConversacionConUltimoMensajeDto
 } from '../../application/dtos/ConversacionDtos';
 
 @injectable()
 export class PrismaConversacionesRepository implements IConversacionesRepository {
   constructor(
     @inject('PrismaClient') private prisma: PrismaClient
-  ) {}
+  ) { }
 
   async crear(conversacion: Conversacion): Promise<Conversacion> {
     const conversacionCreada = await this.prisma.conversacion.create({
@@ -72,37 +72,37 @@ export class PrismaConversacionesRepository implements IConversacionesRepository
             email: true,
             fotoPerfil: true,
             paciente: {
-                select: {
-                    nombre: true,
-                    apellido: true
-                }
+              select: {
+                nombre: true,
+                apellido: true
+              }
             },
             doctor: {
-                select: {
-                    nombre: true,
-                    apellido: true
-                }
+              select: {
+                nombre: true,
+                apellido: true
+              }
             }
           }
         },
         receptor: {
-            select: {
-                id: true,
-                email: true,
-                fotoPerfil: true,
-                paciente: {
-                    select: {
-                        nombre: true,
-                        apellido: true
-                    }
-                },
-                doctor: {
-                    select: {
-                        nombre: true,
-                        apellido: true
-                    }
-                }
+          select: {
+            id: true,
+            email: true,
+            fotoPerfil: true,
+            paciente: {
+              select: {
+                nombre: true,
+                apellido: true
+              }
+            },
+            doctor: {
+              select: {
+                nombre: true,
+                apellido: true
+              }
             }
+          }
         },
         mensajes: {
           orderBy: { enviadoEn: 'desc' },
@@ -142,7 +142,7 @@ export class PrismaConversacionesRepository implements IConversacionesRepository
             where: {
               conversacionId: conv.id,
               remitenteId: { not: filtros.usuarioId },
-              id: lectura?.ultimoMensajeLeidoId 
+              id: lectura?.ultimoMensajeLeidoId
                 ? { gt: lectura.ultimoMensajeLeidoId }
                 : undefined
             }
@@ -179,7 +179,7 @@ export class PrismaConversacionesRepository implements IConversacionesRepository
     // Aplicar filtro de búsqueda si existe
     if (filtros.busqueda) {
       const busquedaLower = filtros.busqueda.toLowerCase();
-      return conversacionesConInfo.filter(conv => 
+      return conversacionesConInfo.filter(conv =>
         conv.otroUsuario.nombre.toLowerCase().includes(busquedaLower) ||
         conv.otroUsuario.apellido.toLowerCase().includes(busquedaLower) ||
         conv.otroUsuario.email.toLowerCase().includes(busquedaLower)
@@ -347,7 +347,7 @@ export class PrismaConversacionesRepository implements IConversacionesRepository
         where: {
           conversacionId: conversacion.id,
           remitenteId: { not: usuarioId },
-          id: lectura?.ultimoMensajeLeidoId 
+          id: lectura?.ultimoMensajeLeidoId
             ? { gt: lectura.ultimoMensajeLeidoId }
             : undefined
         }

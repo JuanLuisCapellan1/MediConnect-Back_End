@@ -34,16 +34,23 @@ export class NotificacionesController {
 
   // ─── GET /notificaciones ─────────────────────────────────────────────────
   // Obtiene las notificaciones del usuario autenticado (creadoEn DESC).
-  // Query: ?leidas=false  ?tipoAlerta=Informacion  ?tipoEntidad=Cita  ?limite=50  ?offset=0
+  // Query: ?leidas=false  ?tipoAlerta=Informacion  ?limite=50  ?offset=0
   async obtenerNotificaciones(req: Request, res: Response): Promise<void> {
     const usuarioId = this.uid(req);
     if (!usuarioId) { this.noAuth(res); return; }
 
     try {
+      const offsetParam = parseInt(req.query.offset as string, 10);
+      let leidasParam: boolean | undefined = undefined;
+      if (req.query.leidas === 'true') leidasParam = true;
+      else if (req.query.leidas === 'false') leidasParam = false;
+
       const resultado = await this.obtenerUC.execute({
         usuarioId,
         limite: Number(req.query.limite) || 50,
-        soloNoLeidas: req.query.leidas === 'false' ? true : undefined,
+        offset: isNaN(offsetParam) ? 0 : offsetParam,
+        leidas: leidasParam,
+        tipoAlerta: req.query.tipoAlerta as any,
       });
 
       res.status(200).json({

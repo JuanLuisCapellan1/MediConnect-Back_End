@@ -134,7 +134,7 @@ export class IniciarTeleconsultaUseCase {
             await this.enviarNotifUC.execute({
                 usuarioId: pacienteId,
                 titulo: '¡Llamada Entrante!',
-                mensaje: `El doctor ha iniciado o retomado la videollamada. Únete al enlace para ingresar: ${urlPaciente}`,
+                mensaje: `¡Hola! El doctor ya se encuentra en la sala de espera virtual para su consulta. Por favor, acceda a la plataforma para iniciar la videollamada.`,
                 tipoAlerta: 'Urgente',
                 tipoEntidad: 'Teleconsulta',
                 entidadId: citaId,

@@ -61,19 +61,8 @@ let GestionarMensajesUseCase = class GestionarMensajesUseCase {
             throw new MensajeInvalidoError_1.MensajeInvalidoError('El mensaje debe tener contenido de texto o un archivo adjunto');
         }
         const mensajeCreado = await this.mensajesRepository.crear(nuevoMensaje);
-        // ─ Notificar al otro participante (no al remitente) ────────────────────
-        const conv = conversacion;
-        const destinatarioId = conv.emisorId === dto.remitenteId ? conv.receptorId : conv.emisorId;
-        if (destinatarioId !== undefined && destinatarioId !== dto.remitenteId) {
-            this.enviarNotifUC.execute({
-                usuarioId: destinatarioId,
-                titulo: 'Nuevo Mensaje',
-                mensaje: 'Tienes un nuevo mensaje en tu conversación.',
-                tipoAlerta: 'Informacion',
-                tipoEntidad: 'Mensaje',
-                entidadId: mensajeCreado.id,
-            }).catch((e) => console.error('notif crearMensaje:', e));
-        }
+        // ─ La notificación en tiempo real ("Tienes un nuevo mensaje") ha sido delegada
+        // al cronjob NotificarMensajesPendientesService que alerta si tras 20 min no fue leído. 
         return mensajeCreado;
     }
     /**

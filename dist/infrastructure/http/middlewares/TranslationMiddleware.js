@@ -171,17 +171,12 @@ const translationMiddleware = async (req, res, next) => {
                         }
                     }
                     else {
-                        // ── CAMPO NO LISTADO: si es objeto/array, descender con el árbol raíz
-                        // (mantiene el comportamiento legacy: campos planos funcionan a cualquier nivel)
-                        if (Array.isArray(value)) {
-                            result[key] = await translateWithCache(value, fieldTree);
-                        }
-                        else if (typeof value === 'object' && !(value instanceof Date)) {
-                            result[key] = await translateWithCache(value, fieldTree);
-                        }
-                        else {
-                            result[key] = value;
-                        }
+                        // ── CAMPO NO LISTADO: 
+                        // Si el modo estricto NO nos instruye entrar a este objeto (no hay dot-notation para él),
+                        // detenemos la recursividad profunda asumiendo que el cliente no lo pidió explícitamente.
+                        // Esto previene ~10,000 iteraciones en joins grandes de Prisma (como listados de doctores).
+                        // Retornamos el valor intacto sin descender.
+                        result[key] = value;
                     }
                 }
                 return result;
