@@ -35,6 +35,7 @@ export class AutoGestionCitasService {
 
         cron.schedule(CRON_EXPRESSION, async () => {
             try {
+                await this._procesarEnCurso();
                 await this._procesarNoShows();
             } catch (err) {
                 console.error('❌ AutoGestionCitasService: error en ciclo:', err);
@@ -44,18 +45,57 @@ export class AutoGestionCitasService {
 
     // ── Ejecución manual (útil para testing) ─────────────────────────────────
     async ejecutarAhora(): Promise<number> {
+        await this._procesarEnCurso();
         return this._procesarNoShows();
+    }
+
+    // ── Marcar citas presenciales como "En curso" cuando llega su hora ───────
+    private async _procesarEnCurso(): Promise<number> {
+        const ahora = this._obtenerAhoraLocalComoUTC();
+
+        // Buscar citas presenciales Programadas/Reprogramadas cuya hora ya llegó
+        const candidatas = await (this.prisma.cita as any).findMany({
+            where: {
+                estado: { in: ['Programada', 'Reprogramada'] },
+                modalidad: 'Presencial',
+                fechaInicio: { lte: ahora },
+                historial: null,        // sin diagnóstico aún
+            },
+            select: { id: true },
+        });
+
+        if (candidatas.length === 0) return 0;
+
+        const ids = candidatas.map((c: any) => c.id);
+        console.log(`⏰ AutoGestionCitasService: ${ids.length} cita(s) presencial(es) → marcando 'En curso' [${ids.join(', ')}]`);
+
+        await (this.prisma.cita as any).updateMany({
+            where: { id: { in: ids } },
+            data: {
+                estado: 'En curso',
+                actualizadoEn: ahora,
+            },
+        });
+
+        return ids.length;
     }
 
     // ── Lógica principal ──────────────────────────────────────────────────────
     private async _procesarNoShows(): Promise<number> {
         const ahora = this._obtenerAhoraLocalComoUTC();
 
-        // 1. Obtener candidatas (estados posibles + sin historial)
+        // 1. Obtener candidatas por modalidad con diferentes criterios de estado:
+        //    - Presencial: SOLO 'En curso' (deben haber pasado por _procesarEnCurso primero)
+        //    - Teleconsulta/otras: 'Programada' o 'En curso' (comportamiento original)
         const candidatas = await (this.prisma.cita as any).findMany({
             where: {
-                estado: { in: ['Programada', 'En curso'] },
                 historial: null,        // sin diagnóstico
+                OR: [
+                    // Citas presenciales: solo cuando ya estén en curso
+                    { modalidad: 'Presencial', estado: 'En curso' },
+                    // Otras modalidades (Teleconsulta, etc.): estado Programada o En curso
+                    { modalidad: { not: 'Presencial' }, estado: { in: ['Programada', 'En curso'] } },
+                ],
             },
             include: {
                 servicio: { select: { duracionMinutos: true } },
@@ -69,7 +109,7 @@ export class AutoGestionCitasService {
             const limite = new Date(fechaFin.getTime() + GRACE_MINUTOS * 60_000);
             const debeCancelar = ahora >= limite;
 
-            console.log(`🔎 [CRON-DEBUG] Evaluando Cita ID: ${c.id}`);
+            console.log(`🔎 [CRON-DEBUG] Evaluando Cita ID: ${c.id} [${c.modalidad}]`);
             console.log(`   - ahora: ${ahora.toISOString()}`);
             console.log(`   - c.fechaInicio: ${c.fechaInicio.toISOString()}`);
             console.log(`   - limite: ${limite.toISOString()}`);

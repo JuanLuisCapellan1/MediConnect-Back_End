@@ -62,7 +62,23 @@ const CITA_INCLUDE = {
     tipoSeguro: { select: { id: true, nombre: true } },
     ubicacion: {
         include: {
-            barrio: { select: { id: true, nombre: true } },
+            barrio: {
+                include: {
+                    seccion: {
+                        include: {
+                            distritoMunicipal: {
+                                include: {
+                                    municipio: {
+                                        include: {
+                                            provincia: { select: { id: true, nombre: true } },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
     },
     historial: {
@@ -297,17 +313,27 @@ export class PrismaCitaRepository implements ICitaRepository {
             (this.prisma.cita as any).findMany({
                 where,
                 include: CITA_INCLUDE,
-                orderBy: { fechaInicio: 'asc' },
+                orderBy: { fechaInicio: 'desc' },
                 skip,
                 take: limite,
             }),
             (this.prisma.cita as any).count({ where }),
         ]);
 
-        // ── Enriquecer ubicaciones de citas con coords + dirección completa ──
+        // ── Enriquecer ubicaciones de citas con coords + cadena geográfica completa (solo Presencial) ──
         const ubicacionIds: number[] = citas
+            .filter((c: any) => c.modalidad === 'Presencial')
             .map((c: any) => c.ubicacionId)
             .filter((id: any): id is number => id != null);
+
+        const geoMap = new Map<number, {
+            id: number;
+            latitud: number | null;
+            longitud: number | null;
+            barrio_nombre: string | null;
+            municipio_nombre: string | null;
+            provincia_nombre: string | null;
+        }>();
 
         if (ubicacionIds.length > 0) {
             const uniqueIds = [...new Set(ubicacionIds)];
@@ -334,23 +360,37 @@ export class PrismaCitaRepository implements ICitaRepository {
                 LEFT JOIN provincias            p  ON p.id_provincia            = m.id_provincia
                 WHERE u.id_ubicacion IN (${Prisma.join(uniqueIds)})
             `;
-
-            const geoMap = new Map<number, typeof geoRows[0]>();
             for (const row of geoRows) geoMap.set(Number(row.id), row);
+        }
 
-            for (const cita of citas) {
-                if (!cita.ubicacion || !cita.ubicacionId) continue;
-                const geo = geoMap.get(cita.ubicacionId);
-                if (!geo) continue;
+        for (const cita of citas) {
+            // Si la cita no es Presencial, limpiar la ubicación para no exponer datos irrelevantes
+            if (cita.modalidad !== 'Presencial') {
+                cita.ubicacion = null;
+                continue;
+            }
+            if (!cita.ubicacion || !cita.ubicacionId) continue;
 
-                if (geo.latitud != null) cita.ubicacion.latitud = Number(geo.latitud);
+            const geo = geoMap.get(cita.ubicacionId);
+
+            if (geo) {
+                if (geo.latitud != null)  cita.ubicacion.latitud  = Number(geo.latitud);
                 if (geo.longitud != null) cita.ubicacion.longitud = Number(geo.longitud);
 
+                // Fallback: si seccion.distritoMunicipal es null, inyectar municipio directo en seccion
+                const seccion = cita.ubicacion.barrio?.seccion;
+                if (seccion && !seccion.distritoMunicipal && geo.municipio_nombre) {
+                    seccion.municipio = {
+                        nombre: geo.municipio_nombre,
+                        provincia: geo.provincia_nombre ? { nombre: geo.provincia_nombre } : null,
+                    };
+                }
+
                 const partes: string[] = [];
-                if (cita.ubicacion.direccion) partes.push(cita.ubicacion.direccion.trim());
-                if (geo.barrio_nombre) partes.push(geo.barrio_nombre.trim());
-                if (geo.municipio_nombre) partes.push(geo.municipio_nombre.trim());
-                if (geo.provincia_nombre) partes.push(geo.provincia_nombre.trim());
+                if (cita.ubicacion.direccion)  partes.push(cita.ubicacion.direccion.trim());
+                if (geo.barrio_nombre)         partes.push(geo.barrio_nombre.trim());
+                if (geo.municipio_nombre)      partes.push(geo.municipio_nombre.trim());
+                if (geo.provincia_nombre)      partes.push(geo.provincia_nombre.trim());
                 cita.ubicacion.direccionCompleta = partes.join(', ');
             }
         }

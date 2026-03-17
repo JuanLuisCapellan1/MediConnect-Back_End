@@ -547,18 +547,16 @@ model Cita {
 }
 
 model HistorialConsulta {
-  id            Int                @id @default(autoincrement()) @map("id_historial")
-  citaId        Int                @unique @map("id_cita")
-  pacienteId    Int                @map("id_paciente")
-  resumen       String             @map("resumen_consulta")
-  diagnostico   String
-  tratamiento   String?            @map("tratamiento_sugerido")
-  observacion   String?
-  creadoEn      DateTime           @default(now()) @map("creado_en") @db.Timestamptz(6)
-  actualizadoEn DateTime?          @map("actualizado_en") @db.Timestamptz(6)
-  adjuntos      AdjuntoHistorial[]
-  cita          Cita               @relation(fields: [citaId], references: [id])
-  paciente      Paciente           @relation(fields: [pacienteId], references: [usuarioId])
+  id                      Int                @id @default(autoincrement()) @map("id_historial")
+  citaId                  Int                @unique @map("id_cita")
+  pacienteId              Int                @map("id_paciente")
+  nombre_diagnostico      String
+  descripcion_diagnostico String
+  creadoEn                DateTime           @default(now()) @map("creado_en") @db.Timestamptz(6)
+  actualizadoEn           DateTime?          @map("actualizado_en") @db.Timestamptz(6)
+  adjuntos                AdjuntoHistorial[]
+  cita                    Cita               @relation(fields: [citaId], references: [id])
+  paciente                Paciente           @relation(fields: [pacienteId], references: [usuarioId])
 
   @@map("historial_consultas")
 }
