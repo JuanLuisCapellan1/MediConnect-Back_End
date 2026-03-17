@@ -1083,7 +1083,8 @@ container.register(GestionarCitasUseCase, {
     const pacienteRepo = container.resolve<IPacienteRepository>('PacienteRepository');
     const inactividadRepo = container.resolve<IInactividadRepository>('InactividadRepository');
     const enviarNotifUC = container.resolve(EnviarNotificacionUseCase);
-    return new GestionarCitasUseCase(citaRepo, doctorRepo, pacienteRepo, inactividadRepo, enviarNotifUC);
+    const storageService = container.resolve(SupabaseStorageService);
+    return new GestionarCitasUseCase(citaRepo, doctorRepo, pacienteRepo, inactividadRepo, enviarNotifUC, storageService);
   }
 });
 

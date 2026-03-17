@@ -37,10 +37,8 @@ export interface ReprogramarCitaDto {
 }
 
 export interface DiagnosticarCitaDto {
-    resumen: string;
-    diagnostico: string;
-    tratamiento?: string;
-    observacion?: string;
+    nombreDiagnostico: string;
+    descripcionDiagnostico: string;
 }
 
 export interface FiltroCitasDto {

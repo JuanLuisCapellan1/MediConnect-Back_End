@@ -54,10 +54,8 @@ export interface ICitaRepository {
     crearHistorial(datos: {
         citaId: number;
         pacienteId: number;
-        resumen: string;
-        diagnostico: string;
-        tratamiento?: string;
-        observacion?: string;
+        nombreDiagnostico: string;
+        descripcionDiagnostico: string;
     }): Promise<any>;
 
     buscarHistorialPorCita(citaId: number): Promise<any | null>;

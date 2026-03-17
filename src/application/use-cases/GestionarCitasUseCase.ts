@@ -13,6 +13,8 @@ import {
     CrearPeriodoInactividadDto,
 } from '../dtos/CitaDtos';
 import { EnviarNotificacionUseCase } from './notificaciones/EnviarNotificacionUseCase';
+import { SupabaseStorageService } from '../../infrastructure/external-services/SupabaseStorageService';
+import { prisma as prismaSingleton } from '../../infrastructure/database/prisma/client';
 
 @injectable()
 export class GestionarCitasUseCase {
@@ -22,6 +24,7 @@ export class GestionarCitasUseCase {
         @inject('PacienteRepository') private pacienteRepo: IPacienteRepository,
         @inject('InactividadRepository') private inactividadRepo: IInactividadRepository,
         @inject(EnviarNotificacionUseCase) private enviarNotifUC: EnviarNotificacionUseCase,
+        @inject(SupabaseStorageService) private storage: SupabaseStorageService,
     ) { }
 
     // ===================================================================
@@ -650,6 +653,7 @@ export class GestionarCitasUseCase {
         citaId: number,
         doctorId: number,
         dto: DiagnosticarCitaDto,
+        archivos: Express.Multer.File[] = [],
     ): Promise<any> {
         const cita = await this.citaRepo.buscarPorId(citaId);
         if (!cita) throw new Error('Cita no encontrada.');
@@ -660,36 +664,66 @@ export class GestionarCitasUseCase {
             throw new Error('Solo puedes diagnosticar citas en estado Programada, En Progreso, Reprogramada o En curso.');
         }
 
+        // ── 1. Subir archivos a Supabase (si hay) ───────────────────────
+        const mediaCreados: { id: number }[] = [];
+        for (const archivo of archivos) {
+            const ext = this._getExtension(archivo.mimetype);
+            const fileName = `historiales/${citaId}/doc-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+            const url = await this.storage.uploadFile(
+                archivo.buffer,
+                fileName,
+                'secure-documents',
+                archivo.mimetype,
+            );
+
+            const media = await prismaSingleton.media.create({
+                data: {
+                    archivo: url,
+                    nombre: archivo.originalname,
+                    tipoMime: archivo.mimetype,
+                    tamanioBytes: BigInt(archivo.size),
+                    estado: 'Activo',
+                },
+            });
+            mediaCreados.push({ id: media.id });
+        }
+
+        // ── 2. Crear o actualizar historial ──────────────────────────────
         const historialExistente = await this.citaRepo.buscarHistorialPorCita(citaId);
-        let historial: any;
+        let historialId: number;
 
         if (historialExistente) {
-            const { PrismaClient } = await import('@prisma/client');
-            const prisma = new PrismaClient();
-            historial = await prisma.historialConsulta.update({
+            await prismaSingleton.historialConsulta.update({
                 where: { citaId },
                 data: {
-                    resumen: dto.resumen,
-                    diagnostico: dto.diagnostico,
-                    tratamiento: dto.tratamiento,
-                    observacion: dto.observacion,
+                    nombre_diagnostico: dto.nombreDiagnostico,     // eslint-disable-line @typescript-eslint/naming-convention
+                    descripcion_diagnostico: dto.descripcionDiagnostico, // eslint-disable-line @typescript-eslint/naming-convention
                     actualizadoEn: new Date(),
                 },
             });
-            await prisma.$disconnect();
+            historialId = historialExistente.id;
         } else {
-            historial = await this.citaRepo.crearHistorial({
+            const nuevo = await this.citaRepo.crearHistorial({
                 citaId,
                 pacienteId: cita.pacienteId,
-                resumen: dto.resumen,
-                diagnostico: dto.diagnostico,
-                tratamiento: dto.tratamiento,
-                observacion: dto.observacion,
+                nombreDiagnostico: dto.nombreDiagnostico,
+                descripcionDiagnostico: dto.descripcionDiagnostico,
+            });
+            historialId = nuevo.id;
+        }
+
+        // ── 3. Vincular media al historial ───────────────────────────────
+        if (mediaCreados.length > 0) {
+            await prismaSingleton.adjuntoHistorial.createMany({
+                data: mediaCreados.map(m => ({
+                    mediaId: m.id,
+                    historialId,
+                })),
+                skipDuplicates: true,
             });
         }
 
-        // Calcular fechaFin como fechaInicio + duración del servicio.
-        // Combinar fecha (YYYY-MM-DD) y hora (HH:MM) para obtener una fecha válida
+        // ── 4. Marcar cita como Completada ───────────────────────────────
         const fechaCompleta = `${cita.fechaInicio}T${cita.horaInicio}:00.000Z`;
         const fechaInicioDate = new Date(fechaCompleta);
         const duracionMs = (cita.servicio?.duracionMinutos ?? 30) * 60 * 1000;
@@ -700,7 +734,7 @@ export class GestionarCitasUseCase {
             fechaFin,
         });
 
-        // ─ Notificar al paciente que su historial/diagnóstico está disponible ─
+        // ── 5. Notificar al paciente ─────────────────────────────────────
         this.enviarNotifUC.execute({
             usuarioId: cita.pacienteId,
             titulo: 'Historial Médico Actualizado',
@@ -710,7 +744,20 @@ export class GestionarCitasUseCase {
             entidadId: citaId,
         }).catch((e: any) => console.error('notif diagnosticarCita:', e));
 
-        return historial;
+        // ── 6. Retornar historial completo con adjuntos ──────────────────
+        return this.citaRepo.buscarHistorialPorCita(citaId);
+    }
+
+    private _getExtension(mimeType: string): string {
+        const map: Record<string, string> = {
+            'image/jpeg': 'jpg',
+            'image/png': 'png',
+            'image/webp': 'webp',
+            'application/pdf': 'pdf',
+            'application/msword': 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+        };
+        return map[mimeType] ?? 'bin';
     }
 
     // ===================================================================

@@ -4,8 +4,28 @@ import { CitaController } from '../controllers/CitaController';
 import { autenticarJWT } from '../middlewares/autenticacion';
 import { requireRole } from '../middlewares/roleMiddleware';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
+import multer from 'multer';
 
 const router = Router();
+
+// Multer para adjuntos de diagnóstico (memoria, máx 10 archivos, 10 MB c/u)
+const uploadAdjuntos = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024, files: 10 },
+    fileFilter: (_req, file, cb) => {
+        const ALLOWED = [
+            'image/jpeg', 'image/png', 'image/webp',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+        if (ALLOWED.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Tipo de archivo no permitido. Use JPG, PNG, WEBP, PDF, DOC o DOCX.'));
+        }
+    },
+});
 
 const ctrl = () => container.resolve(CitaController);
 
@@ -54,6 +74,6 @@ router.patch('/:id/cancelar', autenticarJWT, requireRole('Paciente', 'Doctor'), 
 router.patch('/:id/reprogramar', autenticarJWT, requireRole('Doctor'), (req, res) => ctrl().reprogramar(req, res));
 
 // POST /citas/:id/diagnosticar — Doctor diagnostica y completa
-router.post('/:id/diagnosticar', autenticarJWT, requireRole('Doctor'), (req, res) => ctrl().diagnosticar(req, res));
+router.post('/:id/diagnosticar', autenticarJWT, requireRole('Doctor'), uploadAdjuntos.array('archivos', 10), (req, res) => ctrl().diagnosticar(req, res));
 
 export default router;

@@ -9439,8 +9439,13 @@ paths:
         - Citas
       description: |
         Permite al **Doctor** registrar el diagnóstico de la consulta y marca la cita como **Completada**.
-        - Disponible para citas en estado `Programada`, `En Progreso` o `Reprogramada`.
+        - Disponible para citas en estado `Programada`, `En Progreso`, `Reprogramada` o `En curso`.
         - Crea o actualiza el `HistorialConsulta` asociado a la cita.
+        - Acepta **documentos adjuntos** (imágenes o documentos) que se almacenan en Supabase (`secure-documents`).
+        - Envía **`multipart/form-data`** (no JSON).
+
+        **Tipos de archivo permitidos:** JPG, PNG, WEBP, PDF, DOC, DOCX  
+        **Límite:** máx 10 archivos, 10 MB por archivo.
       security:
         - bearerAuth: []
       parameters:
@@ -9449,28 +9454,31 @@ paths:
           required: true
           schema:
             type: integer
+          example: 42
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
               type: object
               required:
-                - resumen
-                - diagnostico
+                - nombreDiagnostico
+                - descripcionDiagnostico
               properties:
-                resumen:
+                nombreDiagnostico:
                   type: string
-                  example: "Paciente acude por dolor de cabeza persistente de 3 días de evolución."
-                diagnostico:
+                  description: Nombre o título del diagnóstico
+                  example: "Hipertensión arterial esencial"
+                descripcionDiagnostico:
                   type: string
-                  example: "Migraña tensional"
-                tratamiento:
-                  type: string
-                  example: "Ibuprofeno 400mg cada 8h por 5 días, reposo relativo"
-                observacion:
-                  type: string
-                  example: "Regresar si el dolor persiste más de 7 días"
+                  description: Descripción detallada del diagnóstico
+                  example: "Paciente presenta presión arterial elevada (150/95 mmHg). Se recomienda seguimiento y ajuste de tratamiento."
+                archivos:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Documentos adjuntos opcionales (imágenes, PDFs, etc.). Máx 10, 10 MB c/u.
       responses:
         '200':
           description: Diagnóstico registrado y cita marcada como Completada
@@ -9482,11 +9490,59 @@ paths:
                   success:
                     type: boolean
                     example: true
-
-                    $ref: '#/components/schemas/HistorialConsulta'
                   message:
                     type: string
                     example: "Diagnóstico registrado. Cita marcada como Completada."
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 10
+                      citaId:
+                        type: integer
+                        example: 42
+                      pacienteId:
+                        type: integer
+                        example: 5
+                      nombre_diagnostico:
+                        type: string
+                        example: "Hipertensión arterial esencial"
+                      descripcion_diagnostico:
+                        type: string
+                        example: "Paciente presenta presión arterial elevada..."
+                      creadoEn:
+                        type: string
+                        format: date-time
+                      adjuntos:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            mediaId:
+                              type: integer
+                              example: 7
+                            historialId:
+                              type: integer
+                              example: 10
+                            media:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                archivo:
+                                  type: string
+                                  description: URL firmada de Supabase (válida 7 días)
+                                  example: "https://...supabase.co/..."
+                                nombre:
+                                  type: string
+                                  example: "resultado-laboratorio.pdf"
+                                tipoMime:
+                                  type: string
+                                  example: "application/pdf"
+                                tamanioBytes:
+                                  type: integer
+                                  example: 204800
         '400':
           description: Estado de cita inválido para diagnosticar o campos requeridos faltantes
         '401':
@@ -9497,6 +9553,7 @@ paths:
           description: Cita no encontrada
         '500':
           description: Error interno del servidor
+
 
   /citas/{id}/historial:
     get:

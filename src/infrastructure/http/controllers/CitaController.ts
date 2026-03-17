@@ -228,13 +228,21 @@ export class CitaController {
             const citaId = Number(req.params.id);
             if (isNaN(citaId)) { res.status(400).json({ success: false, message: 'ID de cita inválido.' }); return; }
 
-            const { resumen, diagnostico, tratamiento, observacion } = req.body;
-            if (!resumen?.trim() || !diagnostico?.trim()) {
-                res.status(400).json({ success: false, message: 'resumen y diagnostico son requeridos.' });
+            const { nombreDiagnostico, descripcionDiagnostico } = req.body;
+            if (!nombreDiagnostico?.trim() || !descripcionDiagnostico?.trim()) {
+                res.status(400).json({ success: false, message: 'nombreDiagnostico y descripcionDiagnostico son requeridos.' });
                 return;
             }
 
-            const data = await this.citasUseCase.diagnosticarCita(citaId, doctorId, { resumen, diagnostico, tratamiento, observacion });
+            // Archivos adjuntos (pueden no haber)
+            const archivos = (req.files as Express.Multer.File[]) ?? [];
+
+            const data = await this.citasUseCase.diagnosticarCita(
+                citaId,
+                doctorId,
+                { nombreDiagnostico, descripcionDiagnostico },
+                archivos,
+            );
             res.status(200).json({ success: true, data, message: 'Diagnóstico registrado. Cita marcada como Completada.' });
         } catch (error) { this.manejarError(error, res); }
     }

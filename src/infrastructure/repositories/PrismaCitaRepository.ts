@@ -649,19 +649,15 @@ export class PrismaCitaRepository implements ICitaRepository {
     async crearHistorial(datos: {
         citaId: number;
         pacienteId: number;
-        resumen: string;
-        diagnostico: string;
-        tratamiento?: string;
-        observacion?: string;
+        nombreDiagnostico: string;
+        descripcionDiagnostico: string;
     }): Promise<any> {
         return await this.prisma.historialConsulta.create({
             data: {
                 citaId: datos.citaId,
                 pacienteId: datos.pacienteId,
-                resumen: datos.resumen,
-                diagnostico: datos.diagnostico,
-                tratamiento: datos.tratamiento ?? null,
-                observacion: datos.observacion ?? null,
+                nombre_diagnostico: datos.nombreDiagnostico,  // eslint-disable-line @typescript-eslint/naming-convention
+                descripcion_diagnostico: datos.descripcionDiagnostico,  // eslint-disable-line @typescript-eslint/naming-convention
             },
             include: {
                 cita: {

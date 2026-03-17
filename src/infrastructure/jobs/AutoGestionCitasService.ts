@@ -8,20 +8,18 @@ const CRON_EXPRESSION = '*/5 * * * *'; // Cada 5 minutos
 /**
  * AutoGestionCitasService
  *
- * Cron job que corre cada 5 minutos y detecta citas sin diagnóstico.
+ * Cron job que corre cada 5 minutos y gestiona el ciclo de vida de las citas.
  *
- * CONDICIÓN DE NO-SHOW:
- *   (fechaInicio + duracionServicio + GRACE_MINUTOS) <= AHORA
- *   AND  historialConsulta IS NULL   (sin diagnóstico)
- *   AND  estado IN ('Programada', 'En curso')
+ * NOTA DE TIMEZONE:
+ *   Las fechas se almacenan en UTC real (via _combinarFechaHora con sufijo Z).
+ *   El cron usa new Date() (UTC real) para comparar, garantizando consistencia.
  *
- * ACCIÓN:
- *   1. Cambia estado → 'Cancelada'
- *   2. motivoCancelacion → 'Paciente no se presentó'
- *   3. Notifica al doctor  → WS + DB
- *   4. Notifica al paciente → WS + DB
+ * FLUJO PRESENCIAL:
+ *   1. _procesarEnCurso  → Programada/Reprogramada + fechaInicio<=ahora → "En curso"
+ *   2. _procesarNoShows  → En curso + (fechaInicio+duracion+grace)<=ahora → "Cancelada"
  *
- * Aplica a AMBAS modalidades: Presencial y Teleconsulta.
+ * FLUJO TELECONSULTA:
+ *   _procesarNoShows → Programada/En curso + (fechaInicio+duracion+grace)<=ahora → "Cancelada"
  */
 export class AutoGestionCitasService {
 
@@ -51,7 +49,7 @@ export class AutoGestionCitasService {
 
     // ── Marcar citas presenciales como "En curso" cuando llega su hora ───────
     private async _procesarEnCurso(): Promise<number> {
-        const ahora = this._obtenerAhoraLocalComoUTC();
+        const ahora = new Date(); // UTC real, consistente con cómo se guarda fechaInicio
 
         // Buscar citas presenciales Programadas/Reprogramadas cuya hora ya llegó
         const candidatas = await (this.prisma.cita as any).findMany({
@@ -82,7 +80,7 @@ export class AutoGestionCitasService {
 
     // ── Lógica principal ──────────────────────────────────────────────────────
     private async _procesarNoShows(): Promise<number> {
-        const ahora = this._obtenerAhoraLocalComoUTC();
+        const ahora = new Date(); // UTC real
 
         // 1. Obtener candidatas por modalidad con diferentes criterios de estado:
         //    - Presencial: SOLO 'En curso' (deben haber pasado por _procesarEnCurso primero)
@@ -109,11 +107,11 @@ export class AutoGestionCitasService {
             const limite = new Date(fechaFin.getTime() + GRACE_MINUTOS * 60_000);
             const debeCancelar = ahora >= limite;
 
-            console.log(`🔎 [CRON-DEBUG] Evaluando Cita ID: ${c.id} [${c.modalidad}]`);
-            console.log(`   - ahora: ${ahora.toISOString()}`);
-            console.log(`   - c.fechaInicio: ${c.fechaInicio.toISOString()}`);
-            console.log(`   - limite: ${limite.toISOString()}`);
-            console.log(`   - Cancela?: ${debeCancelar}`);
+            console.log(`🔎 [CRON-DEBUG] Evaluando Cita ID: ${c.id} [${c.modalidad}] estado=${c.estado}`);
+            console.log(`   - ahora (UTC):      ${ahora.toISOString()}`);
+            console.log(`   - fechaInicio (UTC): ${c.fechaInicio.toISOString()}`);
+            console.log(`   - límite (UTC):      ${limite.toISOString()}`);
+            console.log(`   - ¿Cancela?:         ${debeCancelar}`);
 
             return debeCancelar;
         });
@@ -141,31 +139,6 @@ export class AutoGestionCitasService {
         }
 
         return noShows.length;
-    }
-
-    // Helper: Como la BD guarda las fechas combinadas (ej: 4:30 PM local = 16:30Z UTC naive),
-    // debemos comparar 'ahora' usando el mismo criterio naive sobre la zona local (America/Santo_Domingo).
-    private _obtenerAhoraLocalComoUTC(): Date {
-        const d = new Date();
-        const formatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: 'America/Santo_Domingo',
-            year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit', second: '2-digit',
-            hour12: false
-        });
-        const parts = formatter.formatToParts(d);
-        const p: Record<string, string> = {};
-        for (const part of parts) {
-            if (part.type !== 'literal') p[part.type] = part.value;
-        }
-
-        // El formato de hora "24:00" en algunos motores significa "00:00" del día siguiente; 
-        // hour12: false suele dar '24' para la medianoche en Node.js antiguo, lo tratamos.
-        let hour = p.hour;
-        if (hour === '24') hour = '00';
-
-        const fechaIsoNaive = `${p.year}-${p.month}-${p.day}T${hour}:${p.minute}:${p.second}.000Z`;
-        return new Date(fechaIsoNaive);
     }
 
     private async _notificar(cita: any): Promise<void> {
