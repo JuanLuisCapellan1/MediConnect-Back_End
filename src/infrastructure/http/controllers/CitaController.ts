@@ -267,6 +267,29 @@ export class CitaController {
         } catch (error) { this.manejarError(error, res); }
     }
 
+    // GET /citas/historial/:pacienteId — Historial de un paciente (Doctor)
+    async historialPacienteDoctor(req: Request, res: Response): Promise<void> {
+        try {
+            const doctorId = req.user?.userId;
+            if (!doctorId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+
+            const pacienteId = Number(req.params.pacienteId);
+            if (isNaN(pacienteId)) { res.status(400).json({ success: false, message: 'ID de paciente inválido.' }); return; }
+
+            const pagina = req.query.pagina ? Number(req.query.pagina) : undefined;
+            const limite = req.query.limite ? Number(req.query.limite) : undefined;
+
+            const { datos, total } = await this.citasUseCase.obtenerHistorialPacientePorDoctor(doctorId, pacienteId, { pagina, limite });
+            const lim = limite ?? 10;
+            const pag = pagina ?? 1;
+            res.status(200).json({
+                success: true,
+                data: datos,
+                paginacion: { total, pagina: pag, limite: lim, totalPaginas: Math.ceil(total / lim) },
+            });
+        } catch (error) { this.manejarError(error, res); }
+    }
+
     // GET /citas/:id/historial — Historial de una cita específica
     async historialCita(req: Request, res: Response): Promise<void> {
         try {

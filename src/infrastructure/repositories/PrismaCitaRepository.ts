@@ -802,6 +802,85 @@ export class PrismaCitaRepository implements ICitaRepository {
         return { datos: datos.map((d) => this._mapHistorial(d)), total };
     }
 
+    async listarHistorialPacientePorDoctor(
+        doctorId: number,
+        pacienteId: number,
+        filtros: { pagina?: number; limite?: number }
+    ): Promise<{ datos: any[]; total: number }> {
+        // Validar que el paciente haya tenido al menos una cita con este doctor
+        const citaExistente = await (this.prisma.cita as any).findFirst({
+            where: { doctorUsuarioId: doctorId, pacienteId },
+            select: { id: true },
+        });
+
+        if (!citaExistente) {
+            throw new Error('Este paciente no ha tenido citas con el doctor autenticado.');
+        }
+
+        const pagina = filtros.pagina ?? 1;
+        const limite = filtros.limite ?? 10;
+        const skip = (pagina - 1) * limite;
+
+        const [datos, total] = await Promise.all([
+            this.prisma.historialConsulta.findMany({
+                where: { pacienteId },
+                include: {
+                    cita: {
+                        include: {
+                            paciente: {
+                                include: {
+                                    usuario: {
+                                        select: {
+                                            email: true,
+                                            fotoPerfil: true,
+                                            banner: true,
+                                        },
+                                    },
+                                    ubicacion: {
+                                        select: { id: true, nombre: true, direccion: true },
+                                    },
+                                    caracteristicas: {
+                                        where: { estado: 'Activo' },
+                                        include: {
+                                            condicion: {
+                                                select: { id: true, nombre: true, tipo: true },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                            doctor: {
+                                include: {
+                                    usuario: {
+                                        select: {
+                                            email: true,
+                                            fotoPerfil: true,
+                                            banner: true,
+                                        },
+                                    },
+                                    especialidades: {
+                                        where: { es_principal: true },
+                                        include: { especialidades: { select: { nombre: true } } },
+                                    },
+                                },
+                            },
+                            servicio: { include: { especialidad: true } },
+                            seguro: { select: { nombre: true, urlImage: true } },
+                            tipoSeguro: { select: { nombre: true } },
+                        },
+                    },
+                    adjuntos: { include: { media: true } },
+                },
+                orderBy: { creadoEn: 'desc' },
+                skip,
+                take: limite,
+            }),
+            this.prisma.historialConsulta.count({ where: { pacienteId } }),
+        ]);
+
+        return { datos: datos.map((d) => this._mapHistorial(d)), total };
+    }
+
     // ─── ESTADÍSTICAS DE PACIENTES ─────────────────────────────────────────────
     async estadisticasPacientes(
         doctorId: number,

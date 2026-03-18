@@ -795,6 +795,17 @@ export class GestionarCitasUseCase {
     }
 
     // ===================================================================
+    // DOCTOR: Historial completo de un paciente suyo
+    // ===================================================================
+    async obtenerHistorialPacientePorDoctor(
+        doctorId: number,
+        pacienteId: number,
+        filtros: { pagina?: number; limite?: number },
+    ): Promise<{ datos: any[]; total: number }> {
+        return await this.citaRepo.listarHistorialPacientePorDoctor(doctorId, pacienteId, filtros);
+    }
+
+    // ===================================================================
     // DOCTOR: Registrar periodo de inactividad
     // ===================================================================
     async registrarInactividad(

@@ -8971,6 +8971,86 @@ paths:
         '500':
           description: Error interno del servidor
 
+  /citas/historial/{pacienteId}:
+    get:
+      summary: Historial de consultas de un paciente (Doctor)
+      tags:
+        - Citas
+      description: |-
+        Permite al **Doctor** autenticado consultar el historial clínico completo de uno de sus pacientes.
+
+        **Restricción:** Solo se puede consultar el historial de pacientes que hayan tenido al menos una cita con el doctor autenticado.
+        Si el paciente no ha tenido citas con el doctor, retorna **403**.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=nombre_diagnostico,descripcion_diagnostico` para traducir el historial clínico.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pacienteId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 5
+          description: ID del paciente cuyo historial se desea consultar
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre_diagnostico,descripcion_diagnostico"
+          description: Campos a traducir separados por coma
+      responses:
+        '200':
+          description: Historial obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HistorialConsulta'
+                  paginacion:
+                    $ref: '#/components/schemas/Paginacion'
+        '400':
+          description: ID de paciente inválido
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado — el paciente no tiene citas con este doctor
+        '500':
+          description: Error interno del servidor
+
   /citas/doctor:
     get:
       summary: Listar citas del doctor
