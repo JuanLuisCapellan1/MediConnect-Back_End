@@ -785,7 +785,7 @@ export class PrismaCitaRepository implements ICitaRepository {
                                     },
                                 },
                             },
-                            servicio: { include: { especialidad: true } },
+                            servicio: { include: { especialidad: true, ubicaciones: true } },
                             seguro: { select: { nombre: true, urlImage: true } },
                             tipoSeguro: { select: { nombre: true } },
                         },
@@ -864,7 +864,7 @@ export class PrismaCitaRepository implements ICitaRepository {
                                     },
                                 },
                             },
-                            servicio: { include: { especialidad: true } },
+                            servicio: { include: { especialidad: true, ubicaciones: true } },
                             seguro: { select: { nombre: true, urlImage: true } },
                             tipoSeguro: { select: { nombre: true } },
                         },
@@ -879,6 +879,25 @@ export class PrismaCitaRepository implements ICitaRepository {
         ]);
 
         return { datos: datos.map((d) => this._mapHistorial(d)), total };
+    }
+
+    async listarServiciosPaciente(
+        pacienteId: number
+    ): Promise<{ id: number; nombre: string; estado: string }[]> {
+        const citas = await (this.prisma.cita as any).findMany({
+            where: { pacienteId },
+            select: {
+                servicioId: true,
+                servicio: { select: { id: true, nombre: true, estado: true } },
+            },
+            distinct: ['servicioId'],
+            orderBy: { servicio: { nombre: 'asc' } },
+        });
+
+        return citas
+            .map((c: any) => c.servicio)
+            .filter(Boolean)
+            .map((s: any) => ({ id: s.id, nombre: s.nombre, estado: s.estado }));
     }
 
     // ─── ESTADÍSTICAS DE PACIENTES ─────────────────────────────────────────────

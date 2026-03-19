@@ -11,6 +11,7 @@ export interface LoginResult {
     id: number;
     email: string;
     rol: string;
+    telefono?: string | null;
     fotoPerfil?: string | null;
     banner?: string | null;
     paciente?: any | null;
@@ -69,6 +70,7 @@ export class LoginUseCase {
         id: base.id,
         email: base.email,
         rol: base.rol,
+        telefono: base.telefono ?? null,
         fotoPerfil: fotoPerfil ?? null,
         banner: banner ?? null,
         paciente: base.paciente ?? null,

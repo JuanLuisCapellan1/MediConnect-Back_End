@@ -8,6 +8,10 @@ export interface ActualizarCentroSaludDto {
     tipoCentroId?: number;
     sitio_web?: string;
     descripcion?: string;
+    /** Teléfono de contacto del centro (se guarda en tabla usuario) */
+    telefono?: string;
+    /** Dirección del centro (se guarda en tabla ubicacion) */
+    direccion?: string;
 }
 
 export interface ActualizarUbicacionCentroDto {

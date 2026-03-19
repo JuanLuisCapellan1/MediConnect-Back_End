@@ -43,13 +43,6 @@ centrosSaludRouter.put(
   (req, res) => controller.actualizarPerfil(req, res)
 );
 
-centrosSaludRouter.put(
-  '/mi-perfil/foto',
-  autenticarJWT,
-  requireRole('Centro'),
-  uploadFoto.fields([{ name: 'fotoPerfil', maxCount: 1 }]),
-  (req, res) => controller.actualizarFoto(req, res)
-);
 
 // ─── Ubicación ─────────────────────────────────────────────────────────────────
 centrosSaludRouter.get(

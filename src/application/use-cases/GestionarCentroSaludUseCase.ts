@@ -35,6 +35,8 @@ export class GestionarCentroSaludUseCase {
             tipoCentroId: dto.tipoCentroId,
             sitio_web: dto.sitio_web,
             descripcion: dto.descripcion,
+            telefono: dto.telefono?.trim(),
+            direccion: dto.direccion?.trim(),
         });
     }
 

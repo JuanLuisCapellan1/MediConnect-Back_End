@@ -32,23 +32,52 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
     tipoCentroId?: number;
     sitio_web?: string;
     descripcion?: string;
+    telefono?: string;
+    direccion?: string;
   }): Promise<any> {
     const dataUpdate: any = { actualizadoEn: new Date() };
     if (datos.nombreComercial !== undefined) dataUpdate.nombreComercial = datos.nombreComercial;
     if (datos.rnc !== undefined) dataUpdate.rnc = datos.rnc;
-    if (datos.tipoCentroId !== undefined) dataUpdate.tipoCentroId = datos.tipoCentroId;
     if (datos.sitio_web !== undefined) dataUpdate.sitio_web = datos.sitio_web;
     if (datos.descripcion !== undefined) dataUpdate.descripcion = datos.descripcion;
 
-    return await this.prisma.centroSalud.update({
+    // Actualizar teléfono en tabla usuario (nested update de Prisma)
+    if (datos.telefono !== undefined) {
+      dataUpdate.usuario = { update: { telefono: datos.telefono } };
+    }
+
+    // tipoCentro se actualiza con connect en Prisma
+    if (datos.tipoCentroId !== undefined) {
+      dataUpdate.tipoCentro = { connect: { id: datos.tipoCentroId } };
+    }
+
+    const centro = await this.prisma.centroSalud.update({
       where: { usuarioId },
       data: dataUpdate,
       include: {
         usuario: { select: { id: true, email: true, telefono: true, fotoPerfil: true } },
         tipoCentro: true,
-        ubicacion: { include: { barrio: { include: { seccion: true } } } }
-      }
+        ubicacion: { include: { barrio: { include: { seccion: true } } } },
+      },
     });
+
+    // Actualizar dirección en tabla ubicacion si se proporciona
+    if (datos.direccion !== undefined && (centro as any).ubicacionId) {
+      await this.prisma.ubicacion.update({
+        where: { id: (centro as any).ubicacionId },
+        data: { direccion: datos.direccion },
+      });
+      return this.prisma.centroSalud.findUnique({
+        where: { usuarioId },
+        include: {
+          usuario: { select: { id: true, email: true, telefono: true, fotoPerfil: true } },
+          tipoCentro: true,
+          ubicacion: { include: { barrio: { include: { seccion: true } } } },
+        },
+      });
+    }
+
+    return centro;
   }
 
   async actualizarFotoPerfil(usuarioId: number, url: string): Promise<any> {

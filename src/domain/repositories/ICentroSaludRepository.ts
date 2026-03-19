@@ -13,6 +13,8 @@ export interface ICentroSaludRepository {
     tipoCentroId?: number;
     sitio_web?: string;
     descripcion?: string;
+    telefono?: string;
+    direccion?: string;
   }): Promise<any>;
   actualizarFotoPerfil(usuarioId: number, url: string): Promise<any>;
 

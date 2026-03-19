@@ -290,6 +290,33 @@ export class CitaController {
         } catch (error) { this.manejarError(error, res); }
     }
 
+    // GET /citas/servicios — Servicios en los que el paciente ha tenido citas
+    async serviciosPaciente(req: Request, res: Response): Promise<void> {
+        try {
+            const userId = req.user?.userId;
+            const rol = req.user?.rol as string;
+            if (!userId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+
+            let pacienteId: number;
+            let doctorId: number | undefined;
+
+            if (rol === 'Paciente') {
+                pacienteId = userId;
+            } else {
+                // Doctor debe enviar ?pacienteId=X
+                pacienteId = Number(req.query.pacienteId);
+                if (isNaN(pacienteId) || pacienteId <= 0) {
+                    res.status(400).json({ success: false, message: 'pacienteId es requerido para el rol Doctor.' });
+                    return;
+                }
+                doctorId = userId;
+            }
+
+            const data = await this.citasUseCase.obtenerServiciosPaciente(pacienteId, doctorId);
+            res.status(200).json({ success: true, data });
+        } catch (error) { this.manejarError(error, res); }
+    }
+
     // GET /citas/:id/historial — Historial de una cita específica
     async historialCita(req: Request, res: Response): Promise<void> {
         try {

@@ -9133,6 +9133,63 @@ paths:
         '500':
           description: Error interno del servidor
 
+  /citas/servicios:
+    get:
+      summary: Servicios en los que el paciente ha tenido citas
+      tags:
+        - Citas
+      description: |-
+        Devuelve el listado **único** de servicios en los cuales el paciente ha agendado al menos una cita.
+        Responde únicamente con el **ID**, **nombre** y **estado** de cada servicio.
+
+        **Roles:**
+        - `Paciente`: devuelve sus propios servicios automáticamente.
+        - `Doctor`: debe enviar `?pacienteId=X`. Solo puede consultar pacientes que hayan tenido citas con él.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pacienteId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 5
+          description: "**Solo para rol Doctor.** ID del paciente a consultar."
+      responses:
+        '200':
+          description: Lista de servicios obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 12
+                        nombre:
+                          type: string
+                          example: "Consulta General"
+                        estado:
+                          type: string
+                          enum: ["Activo", "Inactivo", "Eliminado"]
+                          example: "Activo"
+        '400':
+          description: "Rol Doctor — falta el parámetro pacienteId"
+        '401':
+          description: No autenticado
+        '403':
+          description: "Rol Doctor — el paciente no tiene citas con el doctor autenticado"
+        '500':
+          description: Error interno del servidor
+
   /citas/mis-pacientes:
     get:
       summary: Listar pacientes del doctor con filtros avanzados
@@ -12005,6 +12062,14 @@ paths:
                   type: string
                   maxLength: 1000
                   example: "Centro médico especializado en atención primaria"
+                telefono:
+                  type: string
+                  example: "+1 809 555 0000"
+                  description: "Teléfono de contacto. Se actualiza en la tabla de usuario."
+                direccion:
+                  type: string
+                  example: "Av. Lincoln #45, Piantini"
+                  description: "Dirección del centro. Se actualiza en la tabla de ubicación."
       responses:
         '200':
           description: Perfil actualizado exitosamente
@@ -12034,55 +12099,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /centros-salud/mi-perfil/foto:
-    put:
-      summary: Actualizar foto de perfil del centro de salud
-      tags:
-        - CentrosSalud
-      security:
-        - bearerAuth: []
-      description: "Sube o reemplaza la foto de perfil del centro. Formatos aceptados: JPG, PNG, WebP. Tamaño máximo 5MB."
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-                - fotoPerfil
-              properties:
-                fotoPerfil:
-                  type: string
-                  format: binary
-                  description: Imagen en JPG, PNG o WebP (máx. 5MB)
-      responses:
-        '200':
-          description: Foto actualizada exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  message:
-                    type: string
-                    example: "Foto actualizada exitosamente"
+  # /centros-salud/mi-perfil/foto — ELIMINADO
+  # Este endpoint fue removido. Para actualizar la foto de perfil o el banner usa:
+  #   PATCH /auth/foto-perfil
+  #   PATCH /auth/banner
 
-                    $ref: '#/components/schemas/CentroSaludPerfil'
-        '400':
-          description: Archivo inválido o no proporcionado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: No autenticado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   # ─── CENTROS DE SALUD: UBICACIÓN ────────────────────────────────────────────
 
@@ -20867,6 +20888,21 @@ components:
                   properties:
                     nombre:
                       type: string
+                ubicaciones:
+                  type: array
+                  description: "Lista de ubicaciones (centros de salud) donde se presta el servicio"
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 3
+                      nombre:
+                        type: string
+                        example: "Clínica del Este - Sede Central"
+                      direccion:
+                        type: string
+                        example: "Av. Lincoln #45, Piantini"
 
     Doctor:
 

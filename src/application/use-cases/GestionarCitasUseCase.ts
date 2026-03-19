@@ -806,6 +806,20 @@ export class GestionarCitasUseCase {
     }
 
     // ===================================================================
+    // PACIENTE / DOCTOR: Servicios en los que el paciente ha tenido citas
+    // ===================================================================
+    async obtenerServiciosPaciente(
+        pacienteId: number,
+        doctorId?: number,   // si se proporciona, valida relación doctor-paciente
+    ): Promise<{ id: number; nombre: string; estado: string }[]> {
+        if (doctorId !== undefined) {
+            // Delega en el repo que internamente hace findFirst
+            await this.citaRepo.listarHistorialPacientePorDoctor(doctorId, pacienteId, { pagina: 1, limite: 1 });
+        }
+        return this.citaRepo.listarServiciosPaciente(pacienteId);
+    }
+
+    // ===================================================================
     // DOCTOR: Registrar periodo de inactividad
     // ===================================================================
     async registrarInactividad(
