@@ -80,6 +80,8 @@ tags:
     description: Gestión de teleconsultas médicas por videollamada usando Daily.co como proveedor. El backend actúa como Signaling Server (crea la sala, registra el log y retorna la URL de acceso).
   - name: Búsqueda
     description: Endpoint unificado para buscar doctores y centros de salud con o sin filtro geográfico (PostGIS). Acepta filtros combinados por especialidad, idioma, turno, modalidad, seguro y más.
+  - name: EstadisticasAdmin
+    description: Endpoints de estadísticas del dashboard administrativo. Requieren autenticación y rol Administrador.
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -6676,6 +6678,9 @@ paths:
       summary: Crear una nueva especialidad médica
       tags:
         - Especialidades
+      description: Crea una nueva especialidad médica. **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -6811,7 +6816,9 @@ paths:
       summary: Actualizar especialidad médica
       tags:
         - Especialidades
-      description: Actualiza parcialmente una especialidad médica. Todos los campos son opcionales.
+      description: Actualiza parcialmente una especialidad médica (Soft Delete incluido). **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
@@ -6896,8 +6903,10 @@ paths:
       tags:
         - Especialidades
       description: |
-        Realiza una eliminación lógica de la especialidad, cambiando su estado a "Eliminado".
-        El registro no se borra físicamente de la base de datos.
+        Realiza una eliminación lógica (Soft Delete) de la especialidad, cambiando su estado a "Eliminado".
+        El registro no se borra físicamente de la base de datos. **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
@@ -6941,6 +6950,125 @@ paths:
 
 
   # --- CONDICIONES MÉDICAS ENDPOINTS ---
+  /condiciones-medicas/admin/alergias:
+    get:
+      summary: Listar catálogo de Alergias (Admin)
+      tags:
+        - CondicionesMedicas
+      description: |
+        Lista **todas** las alergias del catálogo maestro, incluyendo las inactivas y eliminadas.
+        A diferencia de `/alergias/disponibles` (solo activas para Pacientes), este endpoint
+        permite al administrador gestionar el ciclo de vida completo del catálogo.
+
+        Soporta filtros por `estado`, `nombre` y paginación.
+        Soporta traducción automática: `?target=en&translate_fields=nombre,descripcion`
+
+        **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: nombre
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filtrar por nombre (búsqueda parcial, case-insensitive)
+          example: "Polen"
+        - name: estado
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+          description: Filtrar por estado. Sin este parámetro devuelve todos.
+        - name: pagina
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,descripcion"
+      responses:
+        '200':
+          description: Alergias del catálogo obtenidas exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        nombre:
+                          type: string
+                          example: "Alergia al Polen"
+                        descripcion:
+                          type: string
+                          nullable: true
+                          example: "Reacción alérgica al polen de plantas"
+                        tipo:
+                          type: string
+                          example: "Alergia"
+                        estado:
+                          type: string
+                          enum: ["Activo", "Inactivo", "Eliminado"]
+                          example: "Activo"
+                  paginacion:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      pagina:
+                        type: integer
+                      limite:
+                        type: integer
+                      totalPaginas:
+                        type: integer
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Rol insuficiente (requiere Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /condiciones-medicas:
     get:
       summary: Listar condiciones médicas
@@ -11502,6 +11630,9 @@ paths:
       summary: Crear un nuevo tipo de centro de salud
       tags:
         - TiposCentrosSalud
+      description: Crea un nuevo tipo de centro de salud. **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -11577,6 +11708,9 @@ paths:
       summary: Actualizar tipo de centro de salud
       tags:
         - TiposCentrosSalud
+      description: Actualiza un tipo de centro de salud. **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
@@ -11618,9 +11752,12 @@ paths:
                  $ref: '#/components/schemas/ErrorResponse'
 
     delete:
-      summary: Eliminar tipo de centro de salud
+      summary: Eliminar tipo de centro de salud (Soft Delete)
       tags:
         - TiposCentrosSalud
+      description: Elimina lógicamente un tipo de centro de salud. **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
@@ -19018,6 +19155,383 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  # ============================================================
+  # ESTADÍSTICAS DEL ADMINISTRADOR
+  # ============================================================
+
+  /admin/estadisticas/resumen:
+    get:
+      summary: KPIs principales del dashboard
+      tags:
+        - EstadisticasAdmin
+      description: |
+        Retorna los totales de **pacientes**, **doctores** y **centros de salud** registrados,
+        junto con el porcentaje de cambio respecto al mes anterior.
+        
+        **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: KPIs obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      pacientes:
+                        $ref: '#/components/schemas/KpiEntidadDto'
+                      doctores:
+                        $ref: '#/components/schemas/KpiEntidadDto'
+                      centrosSalud:
+                        $ref: '#/components/schemas/KpiEntidadDto'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Rol insuficiente (requiere Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/estadisticas/consultas-mensuales:
+    get:
+      summary: Citas agrupadas por mes
+      tags:
+        - EstadisticasAdmin
+      description: |
+        Retorna el conteo de citas agrupado mes a mes para el año indicado.
+        Usado para el **gráfico de barras** de consultas mensuales.
+        
+        **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: anio
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 2026
+          description: Año a consultar. Por defecto el año actual.
+      responses:
+        '200':
+          description: Consultas mensuales obtenidas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      anio:
+                        type: integer
+                        example: 2026
+                      datos:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            mes:
+                              type: integer
+                              example: 1
+                            nombreMes:
+                              type: string
+                              example: "Ene"
+                            total:
+                              type: integer
+                              example: 670
+        '401':
+          description: No autenticado
+        '403':
+          description: Rol insuficiente
+        '500':
+          description: Error interno del servidor
+
+  /admin/estadisticas/actividad-uso:
+    get:
+      summary: Usuarios activos por mes
+      tags:
+        - EstadisticasAdmin
+      description: |
+        Retorna la cantidad de usuarios únicos (pacientes + doctores) con actividad
+        en citas por cada mes del año indicado.
+        Usado para el **gráfico de área** de actividad de uso.
+        
+        **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: anio
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 2026
+          description: Año a consultar. Por defecto el año actual.
+      responses:
+        '200':
+          description: Actividad de uso obtenida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      anio:
+                        type: integer
+                        example: 2026
+                      datos:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            mes:
+                              type: integer
+                              example: 6
+                            nombreMes:
+                              type: string
+                              example: "Jun"
+                            usuariosActivos:
+                              type: integer
+                              example: 1830
+        '401':
+          description: No autenticado
+        '403':
+          description: Rol insuficiente
+        '500':
+          description: Error interno del servidor
+
+  /admin/estadisticas/servicios-populares:
+    get:
+      summary: Servicios más utilizados en citas
+      tags:
+        - EstadisticasAdmin
+      description: |
+        Retorna los servicios más solicitados en citas, ordenados por frecuencia descendente.
+        Incluye el porcentaje respecto al total.
+        Usado para el **gráfico de torta** de servicios más utilizados.
+
+        **Traducción Automática:**
+        El campo `nombre` del servicio puede traducirse usando:
+        `?target=en&translate_fields=nombre`
+
+        **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limite
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 5
+            example: 5
+          description: Número máximo de servicios a retornar.
+        - name: anio
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 2026
+          description: Filtrar por año. Sin este parámetro incluye todos los registros.
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática del campo `nombre`.
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen (por defecto español).
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir separados por coma (ej. `nombre`).
+      responses:
+
+        '200':
+          description: Servicios populares obtenidos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      totalCitas:
+                        type: integer
+                        example: 850
+                      datos:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            nombre:
+                              type: string
+                              example: "Consulta médica"
+                            total:
+                              type: integer
+                              example: 450
+                            porcentaje:
+                              type: number
+                              example: 52.9
+        '401':
+          description: No autenticado
+        '403':
+          description: Rol insuficiente
+        '500':
+          description: Error interno del servidor
+
+  /admin/estadisticas/teleconsultas-vs-presenciales:
+    get:
+      summary: Comparativa TeleConsulta vs Presencial
+      tags:
+        - EstadisticasAdmin
+      description: |
+        Retorna el conteo y porcentaje de citas según su modalidad:
+        **Presencial** vs **Teleconsulta**.
+        Usado para el **gráfico de torta** de TeleConsulta vs Consultas Presenciales.
+        
+        **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: anio
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 2026
+          description: Filtrar por año. Sin este parámetro incluye todos los registros.
+      responses:
+        '200':
+          description: Comparativa de modalidades obtenida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      presencial:
+                        type: integer
+                        example: 380
+                      teleconsulta:
+                        type: integer
+                        example: 120
+                      totalCitas:
+                        type: integer
+                        example: 500
+                      porcentajePresencial:
+                        type: number
+                        example: 76.0
+                      porcentajeTeleconsulta:
+                        type: number
+                        example: 24.0
+        '401':
+          description: No autenticado
+        '403':
+          description: Rol insuficiente
+        '500':
+          description: Error interno del servidor
+
+  /admin/estadisticas/promedio-edad:
+    get:
+      summary: Distribución de edades de pacientes y doctores
+      tags:
+        - EstadisticasAdmin
+      description: |
+        Retorna el promedio de edad de pacientes y doctores, junto con
+        la distribución por rangos etários: `0-18`, `19-30`, `31-45`, `46-60`, `60+`.
+        Usado para el **gráfico de área** de promedio de edad de usuarios.
+        
+        **Requiere rol Administrador.**
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Distribución de edades obtenida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      promedioEdadPacientes:
+                        type: number
+                        example: 34.5
+                      promedioEdadDoctores:
+                        type: number
+                        example: 42.1
+                      distribucion:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            rango:
+                              type: string
+                              example: "19-30"
+                            pacientes:
+                              type: integer
+                              example: 120
+                            doctores:
+                              type: integer
+                              example: 15
+        '401':
+          description: No autenticado
+        '403':
+          description: Rol insuficiente
+        '500':
+          description: Error interno del servidor
+
 components:
   schemas:
     # ─── Media ───────────────────────────────────────────────────────────────
@@ -20246,6 +20760,22 @@ components:
             nombreComercial:
               type: string
               example: "Clínica del Centro"
+
+    KpiEntidadDto:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total acumulado de registros
+          example: 412
+        totalMesAnterior:
+          type: integer
+          description: Total de nuevos registros en el mes anterior
+          example: 45
+        cambioPorcentaje:
+          type: number
+          description: Cambio porcentual respecto al mes anterior (positivo = crecimiento)
+          example: 12.0
 
     ErrorResponse:
       type: object

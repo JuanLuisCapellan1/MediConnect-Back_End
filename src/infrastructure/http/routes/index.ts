@@ -38,6 +38,7 @@ import ResenasRoutes from './ResenasRoutes';
 import MediaRoutes from './MediaRoutes';
 import FavoritosRoutes from './FavoritosRoutes';
 import BusquedaRoutes from './BusquedaRoutes';
+import EstadisticasAdminRoutes from './EstadisticasAdminRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -154,5 +155,8 @@ router.use('/media', MediaRoutes);
 
 // Rutas de Búsqueda Unificada
 router.use('/busqueda', BusquedaRoutes);
+
+// Rutas de Estadísticas del Admin
+router.use('/admin/estadisticas', EstadisticasAdminRoutes);
 
 export default router;
