@@ -57,7 +57,12 @@ export class FinalizarTeleconsultaUseCase {
         });
 
         // ─── 6. Cita queda 'En curso' hasta que el doctor diagnostique ────────
-        await this.citaRepo.actualizar(citaId, { estado: 'En curso' } as any);
+        // GUARD: si ya está Completada (el doctor ya diagnosticó antes de finalizar
+        // la llamada), NO sobrescribir el estado.
+        if (cita.estado !== 'Completada') {
+            await this.citaRepo.actualizar(citaId, { estado: 'En curso' } as any);
+        }
+
 
         // ─── 7. Destruir sala en Daily.co (fire-and-forget) ───────────────────
         if (log.salaReunion) {

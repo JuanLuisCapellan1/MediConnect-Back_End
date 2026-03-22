@@ -724,15 +724,16 @@ export class GestionarCitasUseCase {
         }
 
         // ── 4. Marcar cita como Completada ───────────────────────────────
-        const fechaCompleta = `${cita.fechaInicio}T${cita.horaInicio}:00.000Z`;
-        const fechaInicioDate = new Date(fechaCompleta);
-        const duracionMs = (cita.servicio?.duracionMinutos ?? 30) * 60 * 1000;
-        const fechaFin = new Date(fechaInicioDate.getTime() + duracionMs);
-
-        await this.citaRepo.actualizar(citaId, {
-            estado: 'Completada',
-            fechaFin,
-        });
+        // Usamos SQL directo para garantizar la escritura sin importar como
+        // esté configurado el mapper o el accessor del PrismaClient.
+        const duracionMin = (cita.servicio?.duracionMinutos ?? 30);
+        await prismaSingleton.$executeRaw`
+            UPDATE citas
+            SET estado        = 'Completada',
+                fecha_hora_fin = fecha_hora_inicio + (${duracionMin} * interval '1 minute'),
+                actualizado_en = NOW()
+            WHERE id_cita = ${citaId}
+        `;
 
         // ── 5. Notificar al paciente ─────────────────────────────────────
         this.enviarNotifUC.execute({
