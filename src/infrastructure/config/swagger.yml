@@ -1333,6 +1333,86 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /auth/password/cambiar-autenticado:
+    patch:
+      summary: Cambiar contraseña (usuario autenticado)
+      tags:
+        - Autenticación
+      description: |-
+        Cambia la contraseña del usuario que ya ha iniciado sesión.
+        Requiere la contraseña actual como verificación de identidad adicional.
+        Aplica validación fuerte de seguridad en la nueva contraseña.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - passwordActual
+                - nuevaPassword
+                - confirmarPassword
+              properties:
+                passwordActual:
+                  type: string
+                  format: password
+                  description: Contraseña actual para verificar la identidad.
+                  example: "MiClave123!"
+                nuevaPassword:
+                  type: string
+                  format: password
+                  minLength: 8
+                  pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()\-_=+\[\]{};'':\"\\|,.<>\/?]).{8,}$'
+                  description: "Nueva contraseña segura (mín. 8 caracteres, 1 mayús, 1 minús, 1 num, 1 símb)."
+                  example: "NuevaClav3!"
+                confirmarPassword:
+                  type: string
+                  format: password
+                  description: Repita la nueva contraseña para confirmarla.
+                  example: "NuevaClav3!"
+      responses:
+        '200':
+          description: Contraseña modificada correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Contraseña actualizada correctamente."
+        '400':
+          description: Error de validación (contraseñas no coinciden, misma contraseña, política incumplida, o usuario sin contraseña local).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Las contraseñas no coinciden."
+        '401':
+          description: No autenticado o contraseña actual incorrecta.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "La contraseña actual es incorrecta."
+
   /auth/foto-perfil:
     patch:
       summary: Actualizar foto de perfil del usuario autenticado

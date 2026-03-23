@@ -16,6 +16,7 @@ import { RefreshTokenUseCase } from '../../../application/use-cases/RefreshToken
 import { SolicitarRecuperacionPasswordUseCase } from '../../../application/use-cases/SolicitarRecuperacionPasswordUseCase';
 import { ValidarCodigoRecuperacionPasswordUseCase } from '../../../application/use-cases/ValidarCodigoRecuperacionPasswordUseCase';
 import { CambiarPasswordConTokenUseCase } from '../../../application/use-cases/CambiarPasswordConTokenUseCase';
+import { CambiarPasswordAutenticadoUseCase } from '../../../application/use-cases/CambiarPasswordAutenticadoUseCase';
 import { RefreshAccessTokenUseCase } from '../../../application/use-cases/RefreshAccessTokenUseCase';
 import { AttachPasswordToGoogleAccountUseCase } from '../../../application/use-cases/AttachPasswordToGoogleAccountUseCase';
 import { ActualizarFotoPerfilUseCase } from '../../../application/use-cases/ActualizarFotoPerfilUseCase';
@@ -435,6 +436,58 @@ export class AuthController {
         message: 'Contraseña actualizada correctamente.',
       });
     } catch (error) {
+      this.manejarError(error, res);
+    }
+  }
+
+  /**
+   * PATCH /auth/password/cambiar-autenticado
+   * Cambia la contraseña del usuario ya autenticado (JWT).
+   * Requiere: Bearer token válido + contraseña actual + nueva contraseña.
+   * Ideal para el flujo de Configuración de perfil.
+   */
+  async cambiarPasswordAutenticado(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioId = (req as any).user?.userId;
+      if (!usuarioId) {
+        res.status(401).json({ success: false, message: 'No autorizado. Debe iniciar sesión.' });
+        return;
+      }
+
+      const { passwordActual, nuevaPassword, confirmarPassword } = req.body as {
+        passwordActual?: string;
+        nuevaPassword?: string;
+        confirmarPassword?: string;
+      };
+
+      if (!passwordActual || !nuevaPassword || !confirmarPassword) {
+        res.status(400).json({
+          success: false,
+          message: 'Se requieren: passwordActual, nuevaPassword y confirmarPassword.',
+        });
+        return;
+      }
+
+      const useCase = container.resolve(CambiarPasswordAutenticadoUseCase);
+      await useCase.execute(usuarioId, passwordActual, nuevaPassword, confirmarPassword);
+
+      res.status(200).json({ success: true, message: 'Contraseña actualizada correctamente.' });
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes('actual es incorrecta')) {
+          res.status(401).json({ success: false, message: error.message });
+          return;
+        }
+        if (
+          error.message.includes('no coinciden') ||
+          error.message.includes('igual a la contraseña actual') ||
+          error.message.includes('contraseña local') ||
+          error.message.includes('política')
+        ) {
+          res.status(400).json({ success: false, message: error.message });
+          return;
+        }
+      }
       this.manejarError(error, res);
     }
   }

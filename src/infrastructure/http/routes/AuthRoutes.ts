@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { AuthController } from '../controllers/AuthController';
+import { autenticarJWT } from '../middlewares/autenticacion';
 
 const routerAuth = Router();
 
@@ -173,12 +174,22 @@ routerAuth.post('/password/cambiar', (req, res) =>
 );
 
 /**
+ * PATCH /auth/password/cambiar-autenticado
+ * Cambia la contraseña del usuario ya autenticado (JWT).
+ * Requiere: Bearer token + passwordActual + nuevaPassword + confirmarPassword
+ */
+routerAuth.patch(
+  '/password/cambiar-autenticado',
+  autenticarJWT,
+  (req, res) => authController.cambiarPasswordAutenticado(req, res)
+);
+
+/**
  * PATCH /auth/foto-perfil
  * Actualiza la foto de perfil del usuario autenticado
  * Requiere: JWT token en Authorization header
  * Body: multipart/form-data con campo 'fotoPerfil'
  */
-import { autenticarJWT } from '../middlewares/autenticacion';
 
 routerAuth.patch(
   '/foto-perfil',
