@@ -8,6 +8,7 @@ import {
 } from '../dtos/TipoCentroSaludDtos';
 import { TipoCentroSaludNoEncontradoError } from '../../domain/errors/TiposCentrosSalud/TipoCentroSaludNoEncontradoError';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
+import { TranslationHydrator } from '../../infrastructure/services/TranslationHydrator';
 
 @injectable()
 export class GestionarTiposCentrosSaludUseCase {
@@ -17,7 +18,9 @@ export class GestionarTiposCentrosSaludUseCase {
     @inject(TipoCentroSaludValidator)
     private validator: TipoCentroSaludValidator,
     @inject(EstadoValidator)
-    private estadoValidator: EstadoValidator
+    private estadoValidator: EstadoValidator,
+    @inject(TranslationHydrator)
+    private readonly hydrator: TranslationHydrator,
   ) {}
 
   async crear(dto: CrearTipoCentroSaludDto) {
@@ -26,7 +29,9 @@ export class GestionarTiposCentrosSaludUseCase {
       await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo']);
     }
     await this.validator.validarCreacion(dto.nombre);
-    return await this.tipoCentroSaludRepository.crear(dto);
+    const resultado = await this.tipoCentroSaludRepository.crear(dto);
+    this.hydrator.hydrateStrings([dto.nombre]).catch(() => {});
+    return resultado;
   }
 
   async obtenerPorId(id: number) {
@@ -59,7 +64,9 @@ export class GestionarTiposCentrosSaludUseCase {
       await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo', 'Eliminado']);
     }
 
-    return await this.tipoCentroSaludRepository.actualizar(id, dto);
+    const resultado = await this.tipoCentroSaludRepository.actualizar(id, dto);
+    if (dto.nombre) this.hydrator.hydrateStrings([dto.nombre]).catch(() => {});
+    return resultado;
   }
 
   async eliminar(id: number) {

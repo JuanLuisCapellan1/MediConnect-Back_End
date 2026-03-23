@@ -36,6 +36,7 @@ import { AutoGestionCitasService } from './infrastructure/jobs/AutoGestionCitasS
 import { NotificarMensajesPendientesService } from './infrastructure/jobs/NotificarMensajesPendientesService';
 import { EnviarNotificacionUseCase } from './application/use-cases/notificaciones/EnviarNotificacionUseCase';
 import { PrismaClient } from '@prisma/client';
+import { TranslationWarmUpService } from './infrastructure/services/TranslationWarmUpService';
 
 const app = express();
 const httpServer = createServer(app);
@@ -87,6 +88,10 @@ const notificarMensajesPendientes = new NotificarMensajesPendientesService(
   enviarNotifUCForCron
 );
 notificarMensajesPendientes.iniciar();
+
+// Precalentar caché de traducción (fire-and-forget, no bloquea el arranque)
+const warmUpService = new TranslationWarmUpService(prismaForCron);
+warmUpService.run().catch(err => console.error('❌ [WarmUp] Error no capturado:', err));
 
 // Iniciar servidor
 httpServer.listen(PORT, () => {

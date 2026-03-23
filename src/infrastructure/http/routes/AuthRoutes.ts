@@ -226,4 +226,16 @@ routerAuth.patch(
   (req, res) => authController.cambiarEmail(req, res)
 );
 
+/**
+ * POST /auth/verificar-identidad
+ * Verifica la contraseña del usuario autenticado para confirmar su identidad.
+ * Útil antes de operaciones sensibles (cambio de email, eliminación de cuenta, etc.)
+ * Requiere: JWT válido. Body: { password: string }
+ */
+routerAuth.post(
+  '/verificar-identidad',
+  autenticarJWT,
+  (req, res) => authController.verificarIdentidad(req, res)
+);
+
 export default routerAuth;

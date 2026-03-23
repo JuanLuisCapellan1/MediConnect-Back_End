@@ -2,6 +2,7 @@ import { inject, injectable } from 'tsyringe';
 import { AuthService } from '../../infrastructure/external-services/AuthService';
 import { IUsuarioRepository } from '../../domain/repositories/IUsuarioRepository';
 import { IPasswordHasher } from '../interfaces/IPasswordHasher';
+import { validarPasswordSegura } from '../../shared/utils/PasswordPolicy';
 
 @injectable()
 export class AttachPasswordToGoogleAccountUseCase {
@@ -30,6 +31,9 @@ export class AttachPasswordToGoogleAccountUseCase {
     if (usuario.password) {
       throw new Error('El usuario ya tiene contraseña local. Use login con email y contraseña.');
     }
+
+    // Validar política de contraseña segura
+    validarPasswordSegura(newPassword);
 
     // Hashear y actualizar contraseña
     const hashed = await this.passwordHasher.hash(newPassword);

@@ -7,12 +7,14 @@ import { CrearUbicacionDto, ActualizarUbicacionDto } from '../../application/dto
 import { Ubicacion } from '../../domain/entities/Ubicacion';
 import { UbicacionValidator } from '../../domain/validators/Ubicaciones/UbicacionValidator';
 import { IUbicacionesRepository } from '../../domain/repositories/IUbicacionesRepository';
+import { TranslationHydrator } from '../../infrastructure/services/TranslationHydrator';
 
 @injectable()
 export class GestionarUbicacionesUseCase {
   constructor(
     @inject('UbicacionValidator') private validator: UbicacionValidator,
-    @inject('IUbicacionesRepository') private repository: IUbicacionesRepository
+    @inject('IUbicacionesRepository') private repository: IUbicacionesRepository,
+    @inject(TranslationHydrator) private readonly hydrator?: TranslationHydrator,
   ) { }
 
   async crear(dto: CrearUbicacionDto): Promise<Ubicacion> {
@@ -26,13 +28,15 @@ export class GestionarUbicacionesUseCase {
       this.validator.validarPuntoGeografico(dto.puntoGeografico);
     }
 
-    return await this.repository.crear(
+    const resultado = await this.repository.crear(
       dto.barrioId,
       dto.direccion,
       dto.codigoPostal,
       dto.puntoGeografico,
       dto.nombre
     );
+    if (dto.nombre) this.hydrator?.hydrateStrings([dto.nombre]).catch(() => {});
+    return resultado;
   }
 
   async listarTodas(): Promise<Ubicacion[]> {
@@ -77,7 +81,7 @@ export class GestionarUbicacionesUseCase {
       this.validator.validarPuntoGeografico(dto.puntoGeografico);
     }
 
-    return await this.repository.actualizar(
+    const resultado = await this.repository.actualizar(
       dto.id,
       dto.barrioId,
       dto.direccion,
@@ -86,6 +90,8 @@ export class GestionarUbicacionesUseCase {
       dto.puntoGeografico,
       dto.nombre
     );
+    if (dto.nombre) this.hydrator?.hydrateStrings([dto.nombre]).catch(() => {});
+    return resultado;
   }
 
   async eliminar(id: number): Promise<Ubicacion> {
@@ -107,7 +113,7 @@ export class GestionarUbicacionesUseCase {
       this.validator.validarPuntoGeografico(dto.puntoGeografico);
     }
 
-    return await this.repository.crearParaDoctor(
+    const resultado = await this.repository.crearParaDoctor(
       doctorId,
       dto.barrioId,
       dto.direccion,
@@ -115,6 +121,8 @@ export class GestionarUbicacionesUseCase {
       dto.puntoGeografico,
       dto.nombre
     );
+    if (dto.nombre) this.hydrator?.hydrateStrings([dto.nombre]).catch(() => {});
+    return resultado;
   }
 }
 

@@ -86,7 +86,9 @@ import { ResenaController } from '../../infrastructure/http/controllers/ResenaCo
 
 import { BcryptPasswordHasher } from '../../infrastructure/external-services/BcryptPasswordHasher';
 import { LibreTranslateService } from '../../infrastructure/external-services/LibreTranslateService';
+import { TranslationHydrator } from '../../infrastructure/services/TranslationHydrator';
 import { RedisCacheService } from '../../infrastructure/external-services/RedisCacheService';
+
 import { NotificacionesWebSocketService } from '../../infrastructure/external-services/NotificacionesWebSocketService';
 import { ChatWebSocketService } from '../../infrastructure/external-services/ChatWebSocketService';
 import { prisma } from '../../infrastructure/database/prisma/client';
@@ -157,6 +159,7 @@ import { ActualizarFotoPerfilUseCase } from '../../application/use-cases/Actuali
 import { ActualizarBannerUseCase } from '../../application/use-cases/ActualizarBannerUseCase';
 import { CambiarEmailUseCase } from '../../application/use-cases/CambiarEmailUseCase';
 import { EliminarCuentaUseCase } from '../../application/use-cases/EliminarCuentaUseCase';
+import { VerificarIdentidadUseCase } from '../../application/use-cases/VerificarIdentidadUseCase';
 import { CentrosSaludController } from '../../infrastructure/http/controllers/CentrosSaludController';
 import { GestionarCondicionesMedicasUseCase } from '../../application/use-cases/GestionarCondicionesMedicasUseCase';
 import { GestionarServiciosUseCase } from '../../application/use-cases/GestionarServiciosUseCase';
@@ -684,7 +687,8 @@ container.register(GestionarUbicacionesUseCase, {
   useFactory: () => {
     const ubicacionesRepository = container.resolve<IUbicacionesRepository>('UbicacionesRepository');
     const ubicacionValidator = container.resolve(UbicacionValidator);
-    return new GestionarUbicacionesUseCase(ubicacionValidator, ubicacionesRepository);
+    const hydrator = container.resolve(TranslationHydrator);
+    return new GestionarUbicacionesUseCase(ubicacionValidator, ubicacionesRepository, hydrator);
   }
 });
 
@@ -781,7 +785,8 @@ container.register(GestionarEspecialidadesUseCase, {
     const repo = container.resolve<IEspecialidadRepository>('EspecialidadRepository');
     const validator = container.resolve(EspecialidadValidator);
     const estadoValidator = container.resolve(EstadoValidator);
-    return new GestionarEspecialidadesUseCase(repo, validator, estadoValidator);
+    const hydrator = container.resolve(TranslationHydrator);
+    return new GestionarEspecialidadesUseCase(repo, validator, estadoValidator, hydrator);
   }
 });
 
@@ -816,7 +821,8 @@ container.register(GestionarTiposCentrosSaludUseCase, {
     const repo = container.resolve<ITipoCentroSaludRepository>('TipoCentroSaludRepository');
     const validator = container.resolve(TipoCentroSaludValidator);
     const estadoValidator = container.resolve(EstadoValidator);
-    return new GestionarTiposCentrosSaludUseCase(repo, validator, estadoValidator);
+    const hydrator = container.resolve(TranslationHydrator);
+    return new GestionarTiposCentrosSaludUseCase(repo, validator, estadoValidator, hydrator);
   }
 });
 
@@ -926,7 +932,8 @@ container.register(GestionarCondicionesMedicasUseCase, {
     const repo = container.resolve<ICondicionMedicaRepository>('CondicionMedicaRepository');
     const validator = container.resolve(CondicionMedicaValidator);
     const estadoValidator = container.resolve(EstadoValidator);
-    return new GestionarCondicionesMedicasUseCase(repo, validator, estadoValidator);
+    const hydrator = container.resolve(TranslationHydrator);
+    return new GestionarCondicionesMedicasUseCase(repo, validator, estadoValidator, hydrator);
   }
 });
 
@@ -1046,12 +1053,21 @@ container.register(EliminarCuentaUseCase, {
   }
 });
 
+container.register(VerificarIdentidadUseCase, {
+  useFactory: () => {
+    const usuarioRepo = container.resolve<IUsuarioRepository>('UsuarioRepository');
+    const passwordHasher = container.resolve<IPasswordHasher>('PasswordHasher');
+    return new VerificarIdentidadUseCase(usuarioRepo, passwordHasher);
+  }
+});
+
 container.register(GestionarServiciosUseCase, {
   useFactory: () => {
     const servicioRepository = container.resolve<IServicioRepository>('ServicioRepository');
     const storageService = container.resolve<IStorageService>('StorageService');
     const enviarNotifUC = container.resolve(EnviarNotificacionUseCase);
-    return new GestionarServiciosUseCase(servicioRepository, storageService, enviarNotifUC);
+    const hydrator = container.resolve(TranslationHydrator);
+    return new GestionarServiciosUseCase(servicioRepository, storageService, enviarNotifUC, hydrator);
   }
 });
 

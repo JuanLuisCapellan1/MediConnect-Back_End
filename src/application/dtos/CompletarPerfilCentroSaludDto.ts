@@ -10,11 +10,12 @@ import {
   IsPositive,
   Matches,
 } from 'class-validator';
+import { STRONG_PASSWORD_REGEX, STRONG_PASSWORD_MESSAGE } from '../../shared/utils/PasswordPolicy';
 
 export class CompletarPerfilCentroSaludDto {
   @IsNotEmpty({ message: 'La contraseña es requerida' })
   @IsString({ message: 'La contraseña debe ser texto' })
-  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
+  @Matches(STRONG_PASSWORD_REGEX, { message: STRONG_PASSWORD_MESSAGE })
   @MaxLength(100, { message: 'La contraseña no puede exceder 100 caracteres' })
   password!: string;
 

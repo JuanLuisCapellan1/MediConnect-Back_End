@@ -1,5 +1,6 @@
 import { Transform, Type } from 'class-transformer';
 import { IsNotEmpty, IsString, IsOptional, IsNumber, IsDate, IsEnum, ValidateNested, Min, Max, MinLength, MaxLength, Matches } from 'class-validator';
+import { STRONG_PASSWORD_REGEX, STRONG_PASSWORD_MESSAGE } from '../../shared/utils/PasswordPolicy';
 
 /**
  * DTO para registro de pacientes
@@ -26,7 +27,7 @@ export class RegistrarPacienteDto {
 
   @IsNotEmpty({ message: 'La contraseña es requerida' })
   @IsString()
-  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
+  @Matches(STRONG_PASSWORD_REGEX, { message: STRONG_PASSWORD_MESSAGE })
   @MaxLength(100, { message: 'La contraseña no puede exceder 100 caracteres' })
   password!: string;
 

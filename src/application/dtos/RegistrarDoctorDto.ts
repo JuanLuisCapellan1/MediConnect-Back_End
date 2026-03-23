@@ -11,10 +11,12 @@ import {
   MaxDate,
   MinLength,
   MaxLength,
+  Matches,
   IsNumber,
   Min,
   Max
 } from 'class-validator';
+import { STRONG_PASSWORD_REGEX, STRONG_PASSWORD_MESSAGE } from '../../shared/utils/PasswordPolicy';
 
 
 export class FormacionAcademicaDto {
@@ -88,7 +90,7 @@ export class RegistrarDoctorDto {
 
   @IsNotEmpty({ message: 'La contraseña es requerida' })
   @IsString()
-  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
+  @Matches(STRONG_PASSWORD_REGEX, { message: STRONG_PASSWORD_MESSAGE })
   @MaxLength(100, { message: 'La contraseña no puede exceder 100 caracteres' })
   password!: string;
 

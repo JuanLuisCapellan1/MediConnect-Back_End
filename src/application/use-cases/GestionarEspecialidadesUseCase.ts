@@ -8,6 +8,7 @@ import {
 } from '../dtos/EspecialidadDtos';
 import { EspecialidadNoEncontradaError } from '../../domain/errors/Especialidades/EspecialidadNoEncontradaError';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
+import { TranslationHydrator } from '../../infrastructure/services/TranslationHydrator';
 
 @injectable()
 export class GestionarEspecialidadesUseCase {
@@ -17,7 +18,9 @@ export class GestionarEspecialidadesUseCase {
         @inject(EspecialidadValidator)
         private validator: EspecialidadValidator,
         @inject(EstadoValidator)
-        private estadoValidator: EstadoValidator
+        private estadoValidator: EstadoValidator,
+        @inject(TranslationHydrator)
+        private readonly hydrator: TranslationHydrator,
     ) { }
 
     async crear(dto: CrearEspecialidadDto) {
@@ -26,7 +29,10 @@ export class GestionarEspecialidadesUseCase {
             await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo']);
         }
         await this.validator.validarCreacion(dto.nombre);
-        return await this.especialidadRepository.crear(dto);
+        const resultado = await this.especialidadRepository.crear(dto);
+        // Hidratar caché con el nuevo nombre (fire-and-forget)
+        this.hydrator.hydrateStrings([dto.nombre]).catch(() => {});
+        return resultado;
     }
 
     async obtenerPorId(id: number) {
@@ -59,7 +65,10 @@ export class GestionarEspecialidadesUseCase {
             await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo', 'Eliminado']);
         }
 
-        return await this.especialidadRepository.actualizar(id, dto);
+        const resultado = await this.especialidadRepository.actualizar(id, dto);
+        // Hidratar caché si el nombre fue modificado (fire-and-forget)
+        if (dto.nombre) this.hydrator.hydrateStrings([dto.nombre]).catch(() => {});
+        return resultado;
     }
 
     async eliminar(id: number) {

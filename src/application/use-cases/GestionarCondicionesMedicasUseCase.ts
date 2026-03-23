@@ -17,6 +17,7 @@ import {
 
 import { CondicionMedicaNoEncontradaError } from '../../domain/errors/CondicionesMedicas/CondicionMedicaNoEncontradaError';
 import { EstadoValidator } from '../../domain/validators/Estados/EstadoValidator';
+import { TranslationHydrator } from '../../infrastructure/services/TranslationHydrator';
 
 @injectable()
 export class GestionarCondicionesMedicasUseCase {
@@ -26,7 +27,9 @@ export class GestionarCondicionesMedicasUseCase {
         @inject(CondicionMedicaValidator)
         private validator: CondicionMedicaValidator,
         @inject(EstadoValidator)
-        private estadoValidator: EstadoValidator
+        private estadoValidator: EstadoValidator,
+        @inject(TranslationHydrator)
+        private readonly hydrator: TranslationHydrator,
     ) { }
 
     async crear(dto: CrearCondicionMedicaDto) {
@@ -39,7 +42,11 @@ export class GestionarCondicionesMedicasUseCase {
         // Validar nombre único
         await this.validator.validarCreacion(dto.nombre);
 
-        return await this.condicionMedicaRepository.crear(dto);
+        const resultado = await this.condicionMedicaRepository.crear(dto);
+        // Hidratar caché con nombre y descripción (fire-and-forget)
+        const stringsCrear = [dto.nombre, dto.descripcion].filter(Boolean) as string[];
+        this.hydrator.hydrateStrings(stringsCrear).catch(() => {});
+        return resultado;
     }
 
     async obtenerPorId(id: number) {
@@ -80,7 +87,11 @@ export class GestionarCondicionesMedicasUseCase {
             await this.estadoValidator.validarEstado(dto.estado, ['Activa', 'Inactiva', 'Eliminada']);
         }
 
-        return await this.condicionMedicaRepository.actualizar(id, dto);
+        const resultado = await this.condicionMedicaRepository.actualizar(id, dto);
+        // Hidratar caché con campos actualizados (fire-and-forget)
+        const stringsToHydrate = [dto.nombre, dto.descripcion].filter(Boolean) as string[];
+        if (stringsToHydrate.length > 0) this.hydrator.hydrateStrings(stringsToHydrate).catch(() => {});
+        return resultado;
     }
 
     async eliminar(id: number) {

@@ -18,8 +18,9 @@ interface CacheKey {
 export class TranslationCache {
   private static instance: TranslationCache;
   private cache: Map<string, CacheEntry>;
-  private readonly MAX_CACHE_SIZE = 1000; // Máximo de entradas en caché
-  private readonly CACHE_TTL = 3600000; // 1 hora en milisegundos
+  private readonly MAX_CACHE_SIZE = 5000; // Máximo de entradas en caché
+  private readonly CACHE_TTL = 86400000; // 24 horas en milisegundos (datos médicos raramente cambian)
+
 
   private constructor() {
     this.cache = new Map();

@@ -1095,9 +1095,10 @@ paths:
               properties:
                 password:
                   type: string
+                  format: password
                   minLength: 8
-                  description: Contraseña actual del usuario (mínimo 8 caracteres)
-                  example: "MiPassword123"
+                  description: "Contraseña actual del usuario. Mín. 8 caracteres con mayúscula, minúscula, número y símbolo (ej: MiClave123!)"
+                  example: "MiClave123!"
                 confirmacion:
                   type: string
                   enum: ["ELIMINAR CUENTA"]
@@ -1523,6 +1524,92 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Error interno del servidor (error en Supabase o base de datos).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+
+  /auth/verificar-identidad:
+    post:
+      summary: Verificar identidad del usuario autenticado
+      tags:
+        - Autenticación
+      description: |-
+        Confirma la identidad del usuario autenticado validando su contraseña actual.
+
+        **Casos de uso típicos:**
+        - Antes de cambiar el email
+        - Antes de eliminar la cuenta
+        - Antes de ver información sensible
+
+        **Seguridad:**
+        - Requiere JWT válido
+        - El mensaje de error es uniforme para contraseña incorrecta y usuario no encontrado (anti-enumeración)
+        - No emite ningún token adicional
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  format: password
+                  description: "Contraseña actual del usuario. Mín. 8 caracteres con mayúscula, minúscula, número y símbolo"
+                  example: "MiClave123!"
+            examples:
+              verificacion_valida:
+                summary: Verificación exitosa
+                value:
+                  password: "MiClave123!"
+      responses:
+        '200':
+          description: Identidad verificada correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  verificado:
+                    type: boolean
+                    example: true
+        '400':
+          description: Contraseña no proporcionada o cuenta sin contraseña local
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Esta cuenta no tiene contraseña local. Inicia sesión con Google."
+        '401':
+          description: Contraseña incorrecta o JWT ausente/inválido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Credenciales inválidas."
+        '500':
+          description: Error interno del servidor
           content:
             application/json:
               schema:
@@ -15922,14 +16009,14 @@ paths:
           required: true
           schema:
             type: integer
-          description: ID del seguro médico (ej: ARS Humano)
+          description: "ID del seguro médico (ej: ARS Humano)"
           example: 2
         - name: tipoSeguroId
           in: path
           required: true
           schema:
             type: integer
-          description: ID del tipo/plan de seguro (ej: Plan Familiar)
+          description: "ID del tipo/plan de seguro (ej: Plan Familiar)"
           example: 1
         - name: doctorId
           in: path

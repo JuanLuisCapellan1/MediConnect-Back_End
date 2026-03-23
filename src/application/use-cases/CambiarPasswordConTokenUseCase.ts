@@ -2,6 +2,7 @@ import { inject, injectable } from 'tsyringe';
 import { IUsuarioRepository } from '../../domain/repositories/IUsuarioRepository';
 import { IPasswordHasher } from '../interfaces/IPasswordHasher';
 import { AuthService } from '../../infrastructure/external-services/AuthService';
+import { validarPasswordSegura } from '../../shared/utils/PasswordPolicy';
 
 @injectable()
 export class CambiarPasswordConTokenUseCase {
@@ -16,9 +17,7 @@ export class CambiarPasswordConTokenUseCase {
       throw new Error('Las contraseñas no coinciden.');
     }
 
-    if (nuevaPassword.length < 6) {
-      throw new Error('La contraseña debe tener al menos 6 caracteres.');
-    }
+    validarPasswordSegura(nuevaPassword);
 
     const email = this.authService.validatePasswordResetToken(token);
     if (!email) {

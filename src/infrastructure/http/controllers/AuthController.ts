@@ -23,6 +23,7 @@ import { ActualizarBannerUseCase } from '../../../application/use-cases/Actualiz
 import { VerificarDocumentoUseCase } from '../../../application/use-cases/VerificarDocumentoUseCase';
 import { CambiarEmailUseCase } from '../../../application/use-cases/CambiarEmailUseCase';
 import { EliminarCuentaUseCase } from '../../../application/use-cases/EliminarCuentaUseCase';
+import { VerificarIdentidadUseCase } from '../../../application/use-cases/VerificarIdentidadUseCase';
 
 // DTOs (Tuyos)
 import { RegistrarPacienteDto } from '../../../application/dtos/RegistrarPacienteDto';
@@ -605,6 +606,43 @@ export class AuthController {
   // ===========================================================================
   // HELPERS PRIVADOS
   // ===========================================================================
+
+  /**
+   * POST /auth/verificar-identidad
+   * Verifica la contraseña del usuario autenticado (prueba de identidad).
+   * Requiere JWT válido en Authorization header.
+   * Body: { password: string }
+   */
+  async verificarIdentidad(req: Request, res: Response): Promise<void> {
+    try {
+      const usuarioId = (req as any).user?.userId;
+      if (!usuarioId) {
+        res.status(401).json({ success: false, message: 'No autorizado.' });
+        return;
+      }
+
+      const { password } = req.body as { password?: string };
+      if (!password) {
+        res.status(400).json({ success: false, message: 'La contraseña es requerida.' });
+        return;
+      }
+
+      const useCase = container.resolve(VerificarIdentidadUseCase);
+      await useCase.execute(usuarioId, password);
+
+      res.status(200).json({ success: true, verificado: true });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Credenciales inválidas.') {
+        res.status(401).json({ success: false, message: 'Credenciales inválidas.' });
+        return;
+      }
+      if (error instanceof Error && error.message.includes('contraseña local')) {
+        res.status(400).json({ success: false, message: error.message });
+        return;
+      }
+      this.manejarError(error, res);
+    }
+  }
 
   private extraerToken(req: Request): string | null {
     // Intentar obtener el header preservado primero (middleware preserveAuthHeaders)

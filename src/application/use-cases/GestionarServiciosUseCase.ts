@@ -11,6 +11,7 @@ import {
     FiltrosServicioDto,
 } from '../dtos/ServicioDtos';
 import { EnviarNotificacionUseCase } from './notificaciones/EnviarNotificacionUseCase';
+import { TranslationHydrator } from '../../infrastructure/services/TranslationHydrator';
 
 const MAX_IMAGENES = 10;
 const TIPOS_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -28,6 +29,7 @@ export class GestionarServiciosUseCase {
         private readonly servicioRepository: IServicioRepository,
         private readonly storageService: IStorageService,
         private readonly enviarNotifUC: EnviarNotificacionUseCase,
+        private readonly hydrator?: TranslationHydrator,
     ) { }
 
     // ─── Crear ────────────────────────────────────────────────────────────────
@@ -49,6 +51,10 @@ export class GestionarServiciosUseCase {
             dto.ubicacionIds,
             dto.horarioIds
         );
+
+        // Hidratar caché con nombre y descripción (fire-and-forget)
+        const stringsServicio = [dto.nombre.trim(), dto.descripcion?.trim()].filter(Boolean) as string[];
+        this.hydrator?.hydrateStrings(stringsServicio).catch(() => {});
 
         if (imagenes.length > 0) {
             await this.subirYGuardarImagenes(servicio.id, doctorId, imagenes);
@@ -99,7 +105,7 @@ export class GestionarServiciosUseCase {
             throw new Error('Estado inválido. Valores permitidos: Activo, Inactivo');
         }
 
-        return this.servicioRepository.actualizar(dto.id, {
+        const resultado = await this.servicioRepository.actualizar(dto.id, {
             especialidadId: dto.especialidadId,
             nombre: dto.nombre?.trim(),
             descripcion: dto.descripcion?.trim(),
@@ -113,6 +119,10 @@ export class GestionarServiciosUseCase {
             ubicacionIds: dto.ubicacionIds,
             horarioIds: dto.horarioIds,
         });
+        // Hidratar caché si cambiaron nombre o descripción (fire-and-forget)
+        const stringsAct = [dto.nombre?.trim(), dto.descripcion?.trim()].filter(Boolean) as string[];
+        if (stringsAct.length > 0) this.hydrator?.hydrateStrings(stringsAct).catch(() => {});
+        return resultado;
     }
 
     // ─── Eliminar / Desactivar ────────────────────────────────────────────────
