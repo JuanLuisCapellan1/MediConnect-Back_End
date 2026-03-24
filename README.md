@@ -37,13 +37,13 @@ Sigue estos pasos para levantar el entorno de desarrollo:
 ### 1. Clonar el repositorio
 ```bash
 git clone https://github.com/JuanLuisCapellan1/MediConnect-Back_End
-cd mediconnect-backend
+cd MediConnect-Back_End
 ```
 ---
 
 ### 2. Instalar dependencias
 ```bash
-npm minstall
+npm install
 ```
 ---
 
@@ -71,7 +71,7 @@ JWT_SECRET="cambiar_esto_por_un_secreto_seguro"
 #### Servicios Docker (Infraestructura Local)
 ##### URL interna para conectar con el contenedor de traducción
 ```bash
-TRANSLATION_API_URL="http://localhost:5000"
+TRANSLATION_API_URL="http://localhost:5001"
 ```
 
 ##### URL de conexión para Redis Cache

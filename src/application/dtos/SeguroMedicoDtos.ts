@@ -12,6 +12,11 @@ export class CrearSeguroMedicoDto {
     @IsString()
     @IsOptional()
     urlImage?: string;
+
+    @IsOptional()
+    @IsInt({ each: true, message: 'Cada elemento de tiposPermitidos debe ser un número entero' })
+    @Type(() => Number)
+    tiposPermitidos?: number[];
 }
 
 /**
@@ -30,6 +35,11 @@ export class ActualizarSeguroMedicoDto {
     @IsOptional()
     @IsIn(['Activo', 'Inactivo'], { message: 'El estado debe ser Activo o Inactivo' })
     estado?: string;
+
+    @IsOptional()
+    @IsInt({ each: true, message: 'Cada elemento de tiposPermitidos debe ser un número entero' })
+    @Type(() => Number)
+    tiposPermitidos?: number[];
 }
 
 /**

@@ -38,6 +38,14 @@ export interface ISeguroMedicoRepository {
     verificarSeguroExistenteDoctor(doctorId: number, seguroId: number, tipoSeguroId: number): Promise<boolean>;
 
     // ============================================
+    // Relación SeguroMedico ↔ TipoSeguro (Admin)
+    // ============================================
+    tipoPertenecEAlSeguro(seguroId: number, tipoSeguroId: number): Promise<boolean>;
+    agregarTipoASeguro(seguroId: number, tipoSeguroId: number): Promise<any>;
+    eliminarTipoDeSeguro(seguroId: number, tipoSeguroId: number): Promise<void>;
+    obtenerTiposDeSeguro(seguroId: number): Promise<any[]>;
+
+    // ============================================
     // Utilidades
     // ============================================
     existeNombre(nombre: string, excluirId?: number): Promise<boolean>;

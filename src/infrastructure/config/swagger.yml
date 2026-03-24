@@ -15616,6 +15616,12 @@ paths:
                 urlImage:
                   type: string
                   example: "https://example.com/logo.png"
+                tiposPermitidos:
+                  type: array
+                  description: "Lista de IDs de tipos de seguro asociados"
+                  items:
+                    type: integer
+                  example: [1, 2, 3]
       responses:
         '201':
           description: Seguro creado exitosamente
@@ -15732,6 +15738,12 @@ paths:
                 estado:
                   type: string
                   enum: [Activo, Inactivo]
+                tiposPermitidos:
+                  type: array
+                  description: "Lista de IDs de tipos de seguro asociados. Enviar vacío [] para borrar todas las relaciones."
+                  items:
+                    type: integer
+                  example: [1, 3]
       responses:
         '200':
           description: Seguro actualizado exitosamente
@@ -15752,6 +15764,113 @@ paths:
       responses:
         '200':
           description: Seguro eliminado exitosamente
+
+  /seguros/{id}/tipos:
+    get:
+      tags:
+        - Seguros
+      summary: Listar tipos de plan de un seguro (Admin)
+      description: |
+        Lista todos los tipos de seguro (planes) permitidos y asociados a esta aseguradora.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: ID del Seguro Médico
+      responses:
+        '200':
+          description: Tipos de seguro obtenidos exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Tipos de seguro obtenidos exitosamente"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        nombre:
+                          type: string
+                          example: "Plan Básico"
+                        descripcion:
+                          type: string
+                          example: "Cobertura estándar"
+                        estado:
+                          type: string
+                          example: "Activo"
+
+    post:
+      tags:
+        - Seguros
+      summary: Asociar tipo de plan a un seguro (Admin)
+      description: |
+        Asocia un tipo de seguro existente a una aseguradora para que pueda ser utilizado por doctores y pacientes con dicho seguro.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: ID del Seguro Médico
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - idTipoSeguro
+              properties:
+                idTipoSeguro:
+                  type: integer
+                  example: 1
+      responses:
+        '201':
+          description: Tipo de seguro asociado exitosamente
+        '400':
+          description: Error de validación o ya existe la asociación
+
+  /seguros/{id}/tipos/{tipoId}:
+    delete:
+      tags:
+        - Seguros
+      summary: Desasociar tipo de plan de un seguro (Admin)
+      description: |
+        Desasocia un tipo de seguro de una aseguradora cambiando su estado a inactivo en la relación.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: ID del Seguro Médico
+        - name: tipoId
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: ID del Tipo de Seguro a desasociar
+      responses:
+        '200':
+          description: Tipo de seguro desasociado exitosamente
 
   /seguros/disponibles:
     get:
@@ -21756,6 +21875,24 @@ components:
           type: string
           format: date-time
           example: "2026-02-14T08:00:00.000Z"
+        tiposPermitidos:
+          type: array
+          description: "Lista de tipos de plan permitidos por esta aseguradora"
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 1
+              nombre:
+                type: string
+                example: "Plan Básico"
+              descripcion:
+                type: string
+                example: "Cobertura estándar"
+              estado:
+                type: string
+                example: "Activo"
 
     TipoSeguro:
       type: object

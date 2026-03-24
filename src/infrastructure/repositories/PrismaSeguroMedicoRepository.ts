@@ -17,11 +17,28 @@ export class PrismaSeguroMedicoRepository implements ISeguroMedicoRepository {
     // ============================================
 
     async crear(datos: CrearSeguroMedicoDto): Promise<SeguroMedico> {
+        const dataConfig: any = {
+            nombre: datos.nombre,
+            urlImage: datos.urlImage || null,
+            estado: 'Activo',
+        };
+
+        if (datos.tiposPermitidos && datos.tiposPermitidos.length > 0) {
+            dataConfig.seguros_tipos = {
+                create: datos.tiposPermitidos.map((id) => ({
+                    id_tipo_seguro: id,
+                    estado: 'Activo',
+                })),
+            };
+        }
+
         const seguro = await this.prisma.seguroMedico.create({
-            data: {
-                nombre: datos.nombre,
-                urlImage: datos.urlImage || null,
-                estado: 'Activo',
+            data: dataConfig,
+            include: {
+                seguros_tipos: {
+                    where: { estado: 'Activo' },
+                    include: { tipos_seguros: true },
+                },
             },
         });
 
@@ -52,6 +69,12 @@ export class PrismaSeguroMedicoRepository implements ISeguroMedicoRepository {
                 skip,
                 take: limite,
                 orderBy: { nombre: 'asc' },
+                include: {
+                    seguros_tipos: {
+                        where: { estado: 'Activo' },
+                        include: { tipos_seguros: true },
+                    },
+                },
             }),
             this.prisma.seguroMedico.count({ where }),
         ]);
@@ -63,12 +86,48 @@ export class PrismaSeguroMedicoRepository implements ISeguroMedicoRepository {
     }
 
     async actualizar(id: number, datos: ActualizarSeguroMedicoDto): Promise<SeguroMedico> {
+        const updateData: any = {
+            ...(datos.nombre && { nombre: datos.nombre }),
+            ...(datos.urlImage !== undefined && { urlImage: datos.urlImage }),
+            ...(datos.estado && { estado: datos.estado }),
+        };
+
+        if (datos.tiposPermitidos !== undefined) {
+            await this.prisma.$transaction(async (tx) => {
+                // Desactivar todos los existentes
+                await tx.seguros_tipos.updateMany({
+                    where: { id_seguro: id },
+                    data: { estado: 'Inactivo' },
+                });
+
+                // Upsert los nuevos
+                for (const tipoId of datos.tiposPermitidos!) {
+                    await tx.seguros_tipos.upsert({
+                        where: {
+                            id_seguro_id_tipo_seguro: {
+                                id_seguro: id,
+                                id_tipo_seguro: tipoId,
+                            },
+                        },
+                        update: { estado: 'Activo' },
+                        create: {
+                            id_seguro: id,
+                            id_tipo_seguro: tipoId,
+                            estado: 'Activo',
+                        },
+                    });
+                }
+            });
+        }
+
         const seguro = await this.prisma.seguroMedico.update({
             where: { id },
-            data: {
-                ...(datos.nombre && { nombre: datos.nombre }),
-                ...(datos.urlImage !== undefined && { urlImage: datos.urlImage }),
-                ...(datos.estado && { estado: datos.estado }),
+            data: updateData,
+            include: {
+                seguros_tipos: {
+                    where: { estado: 'Activo' },
+                    include: { tipos_seguros: true },
+                },
             },
         });
 
@@ -376,17 +435,80 @@ export class PrismaSeguroMedicoRepository implements ISeguroMedicoRepository {
         };
     }
 
+
+    // ============================================
+    // Relación SeguroMedico ↔ TipoSeguro (Admin)
+    // ============================================
+
+    async tipoPertenecEAlSeguro(seguroId: number, tipoSeguroId: number): Promise<boolean> {
+        const count = await this.prisma.seguros_tipos.count({
+            where: { id_seguro: seguroId, id_tipo_seguro: tipoSeguroId, estado: 'Activo' },
+        });
+        return count > 0;
+    }
+
+    async agregarTipoASeguro(seguroId: number, tipoSeguroId: number): Promise<any> {
+        // Verificar que no exista ya
+        const yaExiste = await this.tipoPertenecEAlSeguro(seguroId, tipoSeguroId);
+        if (yaExiste) throw new Error('Este tipo de seguro ya está asociado a esta aseguradora');
+
+        const registro = await this.prisma.seguros_tipos.create({
+            data: { id_seguro: seguroId, id_tipo_seguro: tipoSeguroId, estado: 'Activo' },
+            include: { seguros_medicos: true, tipos_seguros: true },
+        });
+
+        return {
+            seguro: { id: registro.seguros_medicos.id, nombre: registro.seguros_medicos.nombre },
+            tipoSeguro: { id: registro.tipos_seguros.id, nombre: registro.tipos_seguros.nombre },
+            estado: registro.estado,
+        };
+    }
+
+    async eliminarTipoDeSeguro(seguroId: number, tipoSeguroId: number): Promise<void> {
+        await this.prisma.seguros_tipos.update({
+            where: { id_seguro_id_tipo_seguro: { id_seguro: seguroId, id_tipo_seguro: tipoSeguroId } },
+            data: { estado: 'Inactivo' },
+        });
+    }
+
+    async obtenerTiposDeSeguro(seguroId: number): Promise<any[]> {
+        const registros = await this.prisma.seguros_tipos.findMany({
+            where: { id_seguro: seguroId, estado: 'Activo' },
+            include: { tipos_seguros: true },
+            orderBy: { tipos_seguros: { nombre: 'asc' } },
+        });
+
+        return registros.map((r) => ({
+            id: r.tipos_seguros.id,
+            nombre: r.tipos_seguros.nombre,
+            descripcion: r.tipos_seguros.descripcion,
+            estado: r.tipos_seguros.estado,
+        }));
+    }
+
     // ============================================
     // Mappers
     // ============================================
 
     private mapearSeguroMedico(seguro: any): SeguroMedico {
+        let tiposPermitidos;
+        if (seguro.seguros_tipos) {
+            tiposPermitidos = seguro.seguros_tipos.map((st: any) => ({
+                id: st.tipos_seguros.id,
+                nombre: st.tipos_seguros.nombre,
+                descripcion: st.tipos_seguros.descripcion,
+                estado: st.tipos_seguros.estado,
+            }));
+        }
+
         return new SeguroMedico(
             seguro.id,
             seguro.nombre,
             seguro.estado,
             seguro.creadoEn,
-            seguro.urlImage
+            seguro.urlImage,
+            tiposPermitidos
         );
     }
 }
+

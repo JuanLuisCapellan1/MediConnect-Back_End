@@ -41,6 +41,44 @@ routerSeguros.delete(
 );
 
 // ============================================
+// Admin - Gestión de tipos por aseguradora
+// ============================================
+
+/**
+ * GET /api/seguros/:id/tipos
+ * Lista los tipos de plan válidos de una aseguradora.
+ */
+routerSeguros.get(
+    '/:id/tipos',
+    autenticarJWT,
+    (req, res) => controller.obtenerTiposDeSeguro(req, res)
+);
+
+/**
+ * POST /api/seguros/:id/tipos
+ * Asocia un tipo de plan a una aseguradora.
+ * Body: { idTipoSeguro: number }
+ */
+routerSeguros.post(
+    '/:id/tipos',
+    autenticarJWT,
+    requireRole('Administrador'),
+    (req, res) => controller.agregarTipoASeguro(req, res)
+);
+
+/**
+ * DELETE /api/seguros/:id/tipos/:tipoId
+ * Desasocia un tipo de plan de una aseguradora.
+ */
+routerSeguros.delete(
+    '/:id/tipos/:tipoId',
+    autenticarJWT,
+    requireRole('Administrador'),
+    (req, res) => controller.eliminarTipoDeSeguro(req, res)
+);
+
+
+// ============================================
 // Público (autenticado) - Ver seguros disponibles
 // ============================================
 
