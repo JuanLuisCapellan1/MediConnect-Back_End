@@ -84,37 +84,7 @@ condicionesMedicasRouter.delete(
     (req, res) => controller.eliminarMiCondicion(req, res)
 );
 
-// ==========================================
-// RUTAS PARA GESTIÓN DE CONDICIONES DE PACIENTES (SOLO DOCTORES)
-// ==========================================
 
-condicionesMedicasRouter.post(
-    '/:condicionId/pacientes/:pacienteId',
-    autenticarJWT,
-    requireRole('Doctor'),
-    (req, res) => controller.asignarAPaciente(req, res)
-);
-
-condicionesMedicasRouter.get(
-    '/pacientes/:pacienteId',
-    autenticarJWT,
-    requireRole('Doctor'),
-    (req, res) => controller.obtenerCondicionesPaciente(req, res)
-);
-
-condicionesMedicasRouter.patch(
-    '/pacientes/:pacienteId/condiciones/:condicionId',
-    autenticarJWT,
-    requireRole('Doctor'),
-    (req, res) => controller.actualizarCondicionPaciente(req, res)
-);
-
-condicionesMedicasRouter.delete(
-    '/pacientes/:pacienteId/condiciones/:condicionId',
-    autenticarJWT,
-    requireRole('Doctor'),
-    (req, res) => controller.removerCondicionPaciente(req, res)
-);
 
 // ==========================================
 // ADMIN - Visualización del catálogo de Alergias
@@ -134,18 +104,19 @@ condicionesMedicasRouter.get(
 );
 
 // ==========================================
-// RUTAS DEL CATÁLOGO DE CONDICIONES MÉDICAS
+// RUTAS DEL CATÁLOGO DE CONDICIONES MÉDICAS (SOLO ADMINISTRADOR)
 // ==========================================
 // IMPORTANTE: Estas rutas con /:id van AL FINAL para no capturar rutas específicas
 
-// Listar condiciones: acceso público o con autenticación básica
-condicionesMedicasRouter.get('/', (req, res) => controller.listar(req, res));
+// Listar condiciones: solo Administrador
+condicionesMedicasRouter.get(
+    '/',
+    autenticarJWT,
+    requireRole('Administrador'),
+    (req, res) => controller.listar(req, res)
+);
 
-// ==========================================
-// ADMIN - Gestión del catálogo maestro de condiciones/alergias
-// ==========================================
-
-// Crear entrada en el catálogo: solo Administrador
+// Crear entrada en el catálogo: solo Administrador (únicamente Alergias)
 condicionesMedicasRouter.post(
     '/',
     autenticarJWT,
@@ -153,10 +124,15 @@ condicionesMedicasRouter.post(
     (req, res) => controller.crear(req, res)
 );
 
-// Obtener por ID: acceso público o con autenticación básica
-condicionesMedicasRouter.get('/:id', (req, res) => controller.obtener(req, res));
+// Obtener por ID: solo Administrador
+condicionesMedicasRouter.get(
+    '/:id',
+    autenticarJWT,
+    requireRole('Administrador'),
+    (req, res) => controller.obtener(req, res)
+);
 
-// Actualizar entrada del catálogo: solo Administrador
+// Actualizar entrada del catálogo: solo Administrador (únicamente Alergias)
 condicionesMedicasRouter.patch(
     '/:id',
     autenticarJWT,
@@ -164,7 +140,7 @@ condicionesMedicasRouter.patch(
     (req, res) => controller.actualizar(req, res)
 );
 
-// Eliminar (soft delete) del catálogo: solo Administrador
+// Eliminar (soft delete) del catálogo: solo Administrador (únicamente Alergias)
 condicionesMedicasRouter.delete(
     '/:id',
     autenticarJWT,

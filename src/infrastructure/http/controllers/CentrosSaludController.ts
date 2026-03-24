@@ -45,6 +45,60 @@ export class CentrosSaludController {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // GET /centros-salud/admin  (solo Administrador)
+  // ══════════════════════════════════════════════════════════════
+  async listarParaAdmin(req: Request, res: Response): Promise<void> {
+    try {
+      const filtros = {
+        nombre: req.query.nombre as string | undefined,
+        estadoVerificacion: req.query.estadoVerificacion as string | undefined,
+        estado: req.query.estado as string | undefined,
+        tipoCentroId: req.query.tipoCentroId ? Number(req.query.tipoCentroId) : undefined,
+        pagina: req.query.pagina ? Number(req.query.pagina) : 1,
+        limite: req.query.limite ? Number(req.query.limite) : 10,
+      };
+
+      const { datos, total } = await this.gestionarCentroUseCase.listarParaAdmin(filtros);
+      const totalPaginas = Math.ceil(total / (filtros.limite || 10));
+
+      res.status(200).json({
+        success: true,
+        data: datos,
+        paginacion: {
+          total,
+          pagina: filtros.pagina,
+          limite: filtros.limite,
+          totalPaginas,
+        },
+      });
+    } catch (error) { this.manejarError(error, res); }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // GET /centros-salud/admin/:id  (solo Administrador)
+  // ══════════════════════════════════════════════════════════════
+  async obtenerParaAdmin(req: Request, res: Response): Promise<void> {
+    try {
+      const id = parseInt(req.params.id as string);
+      if (isNaN(id)) {
+        res.status(400).json({ success: false, message: 'ID inválido.' });
+        return;
+      }
+
+      // Accedemos al repositorio directamente para obtener el perfil completo sin filtrar
+      const repo = (this.gestionarCentroUseCase as any)['centroRepo'];
+      const data = await repo.obtenerPerfilCompleto(id);
+
+      if (!data) {
+        res.status(404).json({ success: false, message: 'Centro de salud no encontrado.' });
+        return;
+      }
+
+      res.status(200).json({ success: true, data });
+    } catch (error) { this.manejarError(error, res); }
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // PUT /centros-salud/mi-perfil
   // ══════════════════════════════════════════════════════════════
   async actualizarPerfil(req: Request, res: Response): Promise<void> {
@@ -69,6 +123,43 @@ export class CentrosSaludController {
       if (!file) { res.status(400).json({ success: false, message: 'Se requiere una foto de perfil' }); return; }
       const data = await this.gestionarCentroUseCase.actualizarFoto(centroId, file);
       res.status(200).json({ success: true, data, message: 'Foto actualizada exitosamente' });
+    } catch (error) { this.manejarError(error, res); }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // GET /centros-salud/mis-documentos
+  // ══════════════════════════════════════════════════════════════
+  async obtenerEstadoDocumentos(req: Request, res: Response): Promise<void> {
+    try {
+      const centroId = req.user?.userId;
+      if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+      
+      const { ObtenerEstadoDocumentosCentroUseCase } = await import('../../../application/use-cases/ObtenerEstadoDocumentosCentroUseCase');
+      const { container } = await import('tsyringe');
+      const useCase = container.resolve(ObtenerEstadoDocumentosCentroUseCase);
+      
+      const data = await useCase.execute(centroId);
+      res.status(200).json({ success: true, data });
+    } catch (error) { this.manejarError(error, res); }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // PUT /centros-salud/documentos/:id
+  // ══════════════════════════════════════════════════════════════
+  async actualizarDocumento(req: Request, res: Response): Promise<void> {
+    try {
+      const centroId = req.user?.userId;
+      if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+      if (!req.file) { res.status(400).json({ success: false, message: 'Se requiere el archivo de certificación sanitaria' }); return; }
+
+      const { ActualizarDocumentoCentroUseCase } = await import('../../../application/use-cases/ActualizarDocumentoCentroUseCase');
+      const { container } = await import('tsyringe');
+      const useCase = container.resolve(ActualizarDocumentoCentroUseCase);
+
+      // Usamos un dto vacío/opcional ya que el modelo asume que siempre se actualiza el certificado de sanidad del centro
+      await useCase.execute(centroId, { descripcion: req.body.descripcion }, req.file);
+      
+      res.status(200).json({ success: true, message: 'Documento (Certificación Sanitaria) actualizado exitosamente. Será revisado nuevamente.' });
     } catch (error) { this.manejarError(error, res); }
   }
 

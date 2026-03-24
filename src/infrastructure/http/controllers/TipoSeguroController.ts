@@ -25,7 +25,7 @@ export class TipoSeguroController {
 
     async crear(req: Request, res: Response): Promise<void> {
         try {
-            const dto = Object.assign(new CrearTipoSeguroDto(req.body.nombre, req.body.descripcion), req.body);
+            const dto = plainToInstance(CrearTipoSeguroDto, req.body);
             const errors = await validate(dto);
 
             if (errors.length > 0) {
@@ -52,12 +52,7 @@ export class TipoSeguroController {
 
     async obtenerTodos(req: Request, res: Response): Promise<void> {
         try {
-            const filtros = new FiltroTiposSegurosDto(
-                req.query.estado as string,
-                req.query.busqueda as string,
-                req.query.pagina ? parseInt(req.query.pagina as string) : undefined,
-                req.query.limite ? parseInt(req.query.limite as string) : undefined
-            );
+            const filtros = plainToInstance(FiltroTiposSegurosDto, req.query);
 
             const useCase = container.resolve(ObtenerTodosTiposSegurosUseCase);
             const resultado = await useCase.execute(filtros);
@@ -95,7 +90,7 @@ export class TipoSeguroController {
     async actualizar(req: Request, res: Response): Promise<void> {
         try {
             const id = parseInt(req.params.id as string);
-            const dto = Object.assign(new ActualizarTipoSeguroDto(), req.body);
+            const dto = plainToInstance(ActualizarTipoSeguroDto, req.body);
             const errors = await validate(dto);
 
             if (errors.length > 0) {

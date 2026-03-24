@@ -2,8 +2,7 @@ import { Request, Response } from 'express';
 import { injectable, inject } from 'tsyringe';
 import { GestionarCondicionesMedicasUseCase } from '../../../application/use-cases/GestionarCondicionesMedicasUseCase';
 import {
-    FiltroCondicionesMedicasDto,
-    FiltroCondicionesPacienteDto
+    FiltroCondicionesMedicasDto
 } from '../../../application/dtos/CondicionMedicaDtos';
 
 @injectable()
@@ -15,7 +14,14 @@ export class CondicionMedicaController {
 
     async crear(req: Request, res: Response): Promise<void> {
         try {
-            const { nombre, descripcion, tipo } = req.body;
+            const { nombre, descripcion } = req.body;
+            let { tipo } = req.body;
+            
+            // Forzar 'Alergia' por defecto para el admin
+            if (!tipo) {
+                tipo = 'Alergia';
+            }
+
             const datos = await this.useCase.crear({ nombre, descripcion, tipo });
             res.status(201).json({
                 success: true,
@@ -71,7 +77,14 @@ export class CondicionMedicaController {
     async actualizar(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
-            const { nombre, descripcion, tipo, estado } = req.body;
+            const { nombre, descripcion, estado } = req.body;
+            let { tipo } = req.body;
+            
+            // Forzar 'Alergia' por defecto si se edita desde admin y no se manda tipo
+            if (!tipo) {
+                tipo = 'Alergia';
+            }
+
             const datos = await this.useCase.actualizar(Number(id), {
                 nombre,
                 descripcion,
@@ -101,90 +114,7 @@ export class CondicionMedicaController {
         }
     }
 
-    // Métodos para gestión de condiciones de pacientes
-    async asignarAPaciente(req: Request, res: Response): Promise<void> {
-        try {
-            const { condicionId, pacienteId } = req.params;
-            const { notas } = req.body;
 
-            const datos = await this.useCase.asignarAPaciente({
-                pacienteId: Number(pacienteId),
-                condicionId: Number(condicionId),
-                notas,
-            });
-
-            res.status(201).json({
-                success: true,
-                message: 'Condición asignada al paciente exitosamente.',
-                data: datos,
-            });
-        } catch (error: any) {
-            this.manejarError(error, res);
-        }
-    }
-
-    async obtenerCondicionesPaciente(req: Request, res: Response): Promise<void> {
-        try {
-            const { pacienteId } = req.params;
-            const filtros: FiltroCondicionesPacienteDto = {
-                tipo: req.query.tipo as string,
-                estado: req.query.estado as string,
-            };
-
-            const datos = await this.useCase.obtenerCondicionesPaciente(
-                Number(pacienteId),
-                filtros
-            );
-
-            res.status(200).json({
-                success: true,
-                data: datos,
-            });
-        } catch (error: any) {
-            this.manejarError(error, res);
-        }
-    }
-
-    async actualizarCondicionPaciente(req: Request, res: Response): Promise<void> {
-        try {
-            const { pacienteId, condicionId } = req.params;
-            const { notas, estado } = req.body;
-
-            const datos = await this.useCase.actualizarCondicionPaciente(
-                Number(pacienteId),
-                Number(condicionId),
-                { notas, estado }
-            );
-
-            res.status(200).json({
-                success: true,
-                message: 'Condición del paciente actualizada exitosamente.',
-                data: datos,
-            });
-        } catch (error: any) {
-            this.manejarError(error, res);
-        }
-    }
-
-    async removerCondicionPaciente(req: Request, res: Response): Promise<void> {
-        try {
-            const { pacienteId, condicionId } = req.params;
-
-            await this.useCase.removerCondicionPaciente(
-                Number(pacienteId),
-                Number(condicionId)
-            );
-
-            res.status(200).json({
-                success: true,
-                message: 'Condición removida del paciente exitosamente.',
-            });
-        } catch (error: any) {
-            this.manejarError(error, res);
-        }
-    }
-
-    // Métodos para Pacientes
     async listarAlergiasDisponibles(req: Request, res: Response): Promise<void> {
         try {
             const { datos, total } = await this.useCase.obtenerAlergias();

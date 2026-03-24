@@ -134,6 +134,76 @@ export class DoctorController {
         }
     }
 
+    /**
+     * GET /doctores/admin
+     * Admin lista todos los doctores con filtros completos (sin restricciones de estado)
+     */
+    async listarParaAdmin(req: Request, res: Response): Promise<Response> {
+        try {
+            const useCase = container.resolve(GestionarDoctoresUseCase);
+
+            const getString = (value: any): string | undefined => {
+                if (Array.isArray(value)) return value[0] as string;
+                return value as string | undefined;
+            };
+
+            const filtros: any = {
+                nombre: getString(req.query.nombre),
+                apellido: getString(req.query.apellido),
+                genero: getString(req.query.genero),
+                nacionalidad: getString(req.query.nacionalidad),
+                especialidadId: req.query.especialidadId ? parseInt(req.query.especialidadId as string) : undefined,
+                estado: getString(req.query.estado),
+                estadoVerificacion: getString(req.query.estadoVerificacion),
+                pagina: req.query.pagina ? parseInt(req.query.pagina as string) : 1,
+                limite: req.query.limite ? parseInt(req.query.limite as string) : 10,
+            };
+
+            const resultado = await useCase.listar(filtros);
+
+            return res.status(200).json({
+                success: true,
+                data: resultado.datos,
+                paginacion: {
+                    total: resultado.total,
+                    pagina: filtros.pagina,
+                    limite: filtros.limite,
+                    totalPaginas: Math.ceil(resultado.total / filtros.limite),
+                },
+            });
+        } catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+
+    /**
+     * GET /doctores/admin/:id
+     * Admin obtiene toda la información de un doctor (sin filtrar datos sensibles)
+     * Incluye: documentos, comentarioVerificacion, estadoVerificacion, ubicaciones, etc.
+     */
+    async obtenerParaAdmin(req: Request, res: Response): Promise<Response> {
+        try {
+            const id = parseInt(req.params.id as string);
+
+            if (isNaN(id)) {
+                return res.status(400).json({ success: false, message: 'ID inválido.' });
+            }
+
+            const doctor = await container.resolve(GestionarDoctoresUseCase)['doctorRepository'].obtenerPerfilCompleto(id);
+
+            if (!doctor) {
+                return res.status(404).json({ success: false, message: 'Doctor no encontrado.' });
+            }
+
+            return res.status(200).json({
+                success: true,
+                data: doctor,
+            });
+        } catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+
     async actualizar(req: Request, res: Response): Promise<Response> {
         try {
             const useCase = container.resolve(GestionarDoctoresUseCase);

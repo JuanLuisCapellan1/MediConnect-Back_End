@@ -13,7 +13,7 @@ const accionesController = new AccionesController();
 router.get(
     '/pendientes',
     autenticarJWT,
-    requireRole('Admin'),
+    requireRole('Administrador'),
     (req, res) => accionesController.listarAccionesPendientes(req, res)
 );
 
@@ -24,7 +24,7 @@ router.get(
 router.get(
     '/:id',
     autenticarJWT,
-    requireRole('Admin'),
+    requireRole('Administrador'),
     (req, res) => accionesController.obtenerDetalleAccion(req, res)
 );
 
@@ -36,7 +36,7 @@ router.get(
 router.patch(
     '/:id/revisar',
     autenticarJWT,
-    requireRole('Admin'),
+    requireRole('Administrador'),
     (req, res) => accionesController.aprobarRechazarDocumento(req, res)
 );
 

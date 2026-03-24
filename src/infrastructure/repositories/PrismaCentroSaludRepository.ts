@@ -8,7 +8,7 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
   // ─── Nuevos métodos ────────────────────────────────────────────────────────
 
   async obtenerPerfilCompleto(usuarioId: number): Promise<any | null> {
-    return await this.prisma.centroSalud.findUnique({
+    const centro = await this.prisma.centroSalud.findUnique({
       where: { usuarioId },
       include: {
         usuario: {
@@ -24,6 +24,55 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
         },
       }
     });
+
+    // Enriquecer ubicación con coords PostGIS (latitud, longitud y dirección completa)
+    if (centro && (centro as any).ubicacion?.id) {
+      const ubicId: number = (centro as any).ubicacion.id;
+      const geoRows = await this.prisma.$queryRaw<{
+        id: number;
+        latitud: number | null;
+        longitud: number | null;
+        barrio_nombre: string | null;
+        municipio_nombre: string | null;
+        provincia_nombre: string | null;
+      }[]>`
+        SELECT
+          u.id_ubicacion                        AS id,
+          ST_Y(u.punto_geografico::geometry)    AS latitud,
+          ST_X(u.punto_geografico::geometry)    AS longitud,
+          b.nombre                              AS barrio_nombre,
+          m.nombre                              AS municipio_nombre,
+          p.nombre                              AS provincia_nombre
+        FROM ubicaciones u
+        LEFT JOIN barrios              b  ON b.id_barrio             = u.id_barrio
+        LEFT JOIN secciones            s  ON s.id_seccion             = b.id_seccion
+        LEFT JOIN distritos_municipales dm ON dm.id_distrito_municipal = s.id_distrito_municipal
+        LEFT JOIN municipios           m  ON m.id_municipio           = COALESCE(dm.id_municipio, s.id_municipio)
+        LEFT JOIN provincias           p  ON p.id_provincia           = m.id_provincia
+        WHERE u.id_ubicacion = ${ubicId}
+      `;
+
+      if (geoRows.length > 0) {
+        const geo = geoRows[0];
+        const partes: string[] = [];
+        if ((centro as any).ubicacion.direccion) partes.push((centro as any).ubicacion.direccion.trim());
+        if (geo.barrio_nombre) partes.push(geo.barrio_nombre.trim());
+        if (geo.municipio_nombre) partes.push(geo.municipio_nombre.trim());
+        if (geo.provincia_nombre) partes.push(geo.provincia_nombre.trim());
+
+        (centro as any).ubicacion = {
+          ...(centro as any).ubicacion,
+          latitud: geo.latitud != null ? Number(geo.latitud) : null,
+          longitud: geo.longitud != null ? Number(geo.longitud) : null,
+          barrioNombre: geo.barrio_nombre,
+          municipioNombre: geo.municipio_nombre,
+          provinciaNombre: geo.provincia_nombre,
+          direccionCompleta: partes.join(', '),
+        };
+      }
+    }
+
+    return centro;
   }
 
   async actualizarPerfil(usuarioId: number, datos: {
@@ -191,6 +240,55 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
     return await this.prisma.centroSalud.findMany({
       include: { usuario: true, tipoCentro: true, ubicacion: true },
     });
+  }
+
+  async listarParaAdmin(filtros: {
+    nombre?: string;
+    estadoVerificacion?: string;
+    estado?: string;
+    tipoCentroId?: number;
+    pagina?: number;
+    limite?: number;
+  }): Promise<{ datos: any[]; total: number }> {
+    const pagina = filtros.pagina || 1;
+    const limite = filtros.limite || 10;
+    const skip = (pagina - 1) * limite;
+
+    const where: any = {};
+
+    if (filtros.nombre) {
+      where.nombreComercial = { contains: filtros.nombre, mode: 'insensitive' };
+    }
+    if (filtros.estadoVerificacion) {
+      where.estadoVerificacion = filtros.estadoVerificacion;
+    }
+    if (filtros.estado) {
+      where.estado = filtros.estado;
+    }
+    if (filtros.tipoCentroId) {
+      where.tipoCentroId = filtros.tipoCentroId;
+    }
+
+    const [datos, total] = await Promise.all([
+      this.prisma.centroSalud.findMany({
+        where,
+        skip,
+        take: limite,
+        orderBy: { creadoEn: 'desc' },
+        include: {
+          usuario: {
+            select: { id: true, email: true, telefono: true, fotoPerfil: true, emailVerificado: true },
+          },
+          tipoCentro: { select: { id: true, nombre: true } },
+          ubicacion: {
+            include: { barrio: { include: { seccion: true } } },
+          },
+        },
+      }),
+      this.prisma.centroSalud.count({ where }),
+    ]);
+
+    return { datos, total };
   }
 
   // ─── BÚSQUEDA GEOGRÁFICA ────────────────────────────────────────────────────

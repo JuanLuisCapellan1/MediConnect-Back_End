@@ -25,7 +25,7 @@ const doctorEspecialidadController = new DoctorEspecialidadController();
 router.get(
     '/',
     autenticarJWT,
-    requireRole('Admin', 'Paciente'),
+    requireRole('Administrador', 'Paciente'),
     translationMiddleware,
     (req, res) => doctorController.listar(req, res)
 );
@@ -342,36 +342,60 @@ router.get(
 );
 
 /**
+ * GET /doctores/admin
+ * Admin lista todos los doctores con filtros (nombre, apellido, estado, estadoVerificacion, etc.)
+ */
+router.get(
+    '/admin',
+    autenticarJWT,
+    requireRole('Administrador'),
+    translationMiddleware,
+    (req, res) => doctorController.listarParaAdmin(req, res)
+);
+
+/**
+ * GET /doctores/admin/:id
+ * Admin obtiene perfil completo del doctor (documentos, verificación, ubicaciones, etc.)
+ */
+router.get(
+    '/admin/:id',
+    autenticarJWT,
+    requireRole('Administrador'),
+    translationMiddleware,
+    (req, res) => doctorController.obtenerParaAdmin(req, res)
+);
+
+/**
  * GET /doctores/:id
  * Obtener doctor por ID (cualquier usuario autenticado)
  */
 router.get(
     '/:id',
     autenticarJWT,
-    requireRole('Admin', 'Paciente', 'Doctor'),
+    requireRole('Administrador', 'Paciente', 'Doctor'),
     translationMiddleware,
     (req, res) => doctorController.obtenerPorId(req, res)
 );
 
 /**
  * PATCH /doctores/:id
- * Actualizar doctor por ID (solo Admin)
+ * Actualizar doctor por ID (solo Administrador)
  */
 router.patch(
     '/:id',
     autenticarJWT,
-    requireRole('Admin'),
+    requireRole('Administrador'),
     (req, res) => doctorController.actualizar(req, res)
 );
 
 /**
  * DELETE /doctores/:id
- * Eliminar doctor (solo Admin)
+ * Eliminar doctor (solo Administrador)
  */
 router.delete(
     '/:id',
     autenticarJWT,
-    requireRole('Admin'),
+    requireRole('Administrador'),
     (req, res) => doctorController.eliminar(req, res)
 );
 

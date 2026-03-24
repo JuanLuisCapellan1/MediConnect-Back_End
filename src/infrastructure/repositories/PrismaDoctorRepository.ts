@@ -7,7 +7,7 @@ export class PrismaDoctorRepository implements IDoctorRepository {
     constructor(private prisma: PrismaClient) { }
 
     private mapearEntidad(data: any): Doctor {
-        return new Doctor(
+        const doc = new Doctor(
             data.usuarioId,
             data.usuarioId,
             data.nombre,
@@ -28,6 +28,17 @@ export class PrismaDoctorRepository implements IDoctorRepository {
             data.duracionCitaPromedio,
             data.tarifas ? parseFloat(data.tarifas.toString()) : null
         );
+
+        // Si vienen las especialidades incluidas desde Prisma, mapear objeto estructurado
+        if (data.especialidades && Array.isArray(data.especialidades)) {
+            (doc as any).especialidades = data.especialidades.map((e: any) => ({
+                id_especialidad: e.especialidadId,
+                nombre: e.especialidades?.nombre || null,
+                es_principal: e.es_principal
+            }));
+        }
+
+        return doc;
     }
 
     async obtenerPorId(id: number): Promise<Doctor | null> {
@@ -251,6 +262,61 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                     ...s,
                     precio: s.precio != null ? parseFloat(s.precio.toString()) : null,
                 }));
+            }
+        }
+
+        // Enriquecer ubicaciones con coords PostGIS (latitud, longitud y dirección completa)
+        if (doctor && Array.isArray((doctor as any).ubicaciones) && (doctor as any).ubicaciones.length > 0) {
+            const ubicIds: number[] = (doctor as any).ubicaciones
+                .map((u: any) => u.id)
+                .filter(Boolean);
+
+            if (ubicIds.length > 0) {
+                const geoRows = await this.prisma.$queryRaw<{
+                    id: number;
+                    latitud: number | null;
+                    longitud: number | null;
+                    barrio_nombre: string | null;
+                    municipio_nombre: string | null;
+                    provincia_nombre: string | null;
+                }[]>`
+                    SELECT
+                        u.id_ubicacion                        AS id,
+                        ST_Y(u.punto_geografico::geometry)    AS latitud,
+                        ST_X(u.punto_geografico::geometry)    AS longitud,
+                        b.nombre                              AS barrio_nombre,
+                        m.nombre                              AS municipio_nombre,
+                        p.nombre                              AS provincia_nombre
+                    FROM ubicaciones u
+                    LEFT JOIN barrios              b  ON b.id_barrio             = u.id_barrio
+                    LEFT JOIN secciones            s  ON s.id_seccion             = b.id_seccion
+                    LEFT JOIN distritos_municipales dm ON dm.id_distrito_municipal = s.id_distrito_municipal
+                    LEFT JOIN municipios           m  ON m.id_municipio           = COALESCE(dm.id_municipio, s.id_municipio)
+                    LEFT JOIN provincias           p  ON p.id_provincia           = m.id_provincia
+                    WHERE u.id_ubicacion IN (${Prisma.join(ubicIds)})
+                `;
+
+                const geoMap = new Map<number, typeof geoRows[0]>();
+                for (const row of geoRows) geoMap.set(Number(row.id), row);
+
+                (doctor as any).ubicaciones = (doctor as any).ubicaciones.map((u: any) => {
+                    const geo = geoMap.get(u.id);
+                    if (!geo) return u;
+                    const partes: string[] = [];
+                    if (u.direccion) partes.push(u.direccion.trim());
+                    if (geo.barrio_nombre) partes.push(geo.barrio_nombre.trim());
+                    if (geo.municipio_nombre) partes.push(geo.municipio_nombre.trim());
+                    if (geo.provincia_nombre) partes.push(geo.provincia_nombre.trim());
+                    return {
+                        ...u,
+                        latitud: geo.latitud != null ? Number(geo.latitud) : null,
+                        longitud: geo.longitud != null ? Number(geo.longitud) : null,
+                        barrioNombre: geo.barrio_nombre,
+                        municipioNombre: geo.municipio_nombre,
+                        provinciaNombre: geo.provincia_nombre,
+                        direccionCompleta: partes.join(', '),
+                    };
+                });
             }
         }
 

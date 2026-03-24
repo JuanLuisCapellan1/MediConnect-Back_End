@@ -7238,15 +7238,18 @@ paths:
 
   /condiciones-medicas:
     get:
-      summary: Listar condiciones médicas
+      summary: Listar condiciones médicas (Admin)
       tags:
         - CondicionesMedicas
       description: |
         Obtiene una lista de condiciones médicas (alergias, enfermedades, etc.) con soporte para paginación y filtros.
+        Requiere rol Administrador.
         
         **Traducción Automática:**
         Este endpoint soporta traducción automática de campos mediante query params.
         Ejemplo: `/api/condiciones-medicas?target=en&translate_fields=nombre,descripcion`
+      security:
+        - bearerAuth: []
       parameters:
         - name: target
           in: query
@@ -7335,10 +7338,14 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     post:
-      summary: Crear condición médica
+      summary: Crear condición médica (Catálogo - Admin)
       tags:
         - CondicionesMedicas
-      description: Crea una nueva condición médica (alergia, enfermedad, etc.)
+      description: |
+        Crea una nueva condición médica (Alergia).
+        **Restricción:** Solo el Administrador puede crear, y únicamente puede crear condiciones de tipo "Alergia" (las demás las crean los propios pacientes).
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -7347,7 +7354,6 @@ paths:
               type: object
               required:
                 - nombre
-                - tipo
               properties:
                 nombre:
                   type: string
@@ -7355,10 +7361,6 @@ paths:
                 descripcion:
                   type: string
                   example: "Alergia estacional a polen de árboles"
-                tipo:
-                  type: string
-                  enum: ["Alergia", "Enfermedad", "Discapacidad", "Antecedente", "Condición"]
-                  example: "Alergia"
       responses:
         '201':
           description: Condición médica creada exitosamente
@@ -7403,10 +7405,12 @@ paths:
 
   /condiciones-medicas/{id}:
     get:
-      summary: Obtener condición médica por ID
+      summary: Obtener condición médica por ID (Admin)
       tags:
         - CondicionesMedicas
-      description: Obtiene los detalles de una condición médica específica
+      description: Obtiene los detalles de una condición médica específica. Solo para Administrador.
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
@@ -7448,10 +7452,14 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     patch:
-      summary: Actualizar condición médica
+      summary: Actualizar condición médica (Catálogo - Admin)
       tags:
         - CondicionesMedicas
-      description: Actualiza parcialmente una condición médica. Todos los campos son opcionales.
+      description: |
+        Actualiza parcialmente una condición médica en el catálogo. Todos los campos son opcionales.
+        **Restricción:** Solo para Administrador. Idealmente se usa para editar Alergias.
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
@@ -7472,10 +7480,6 @@ paths:
                 descripcion:
                   type: string
                   example: "Alergia estacional severa a polen de árboles"
-                tipo:
-                  type: string
-                  enum: ["Alergia", "Enfermedad", "Discapacidad", "Antecedente", "Condición"]
-                  example: "Alergia"
                 estado:
                   type: string
                   enum: ["Activa", "Inactiva", "Eliminada"]
@@ -7530,12 +7534,15 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
     delete:
-      summary: Eliminar condición médica (lógico)
+      summary: Eliminar condición médica (lógico - Admin)
       tags:
         - CondicionesMedicas
       description: |
-        Realiza una eliminación lógica de la condición médica, cambiando su estado a "Eliminada".
+        Realiza una eliminación lógica de la condición médica en el catálogo, cambiando su estado a "Eliminada".
         El registro no se borra físicamente de la base de datos.
+        **Restricción:** Solo para Administrador. Se usa principalmente para Alergias.
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
@@ -7570,247 +7577,6 @@ paths:
                   message:
                     type: string
                     example: 'La condición médica con ID 1 no fue encontrada.'
-        '500':
-          description: Error interno del servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /condiciones-medicas/{condicionId}/pacientes/{pacienteId}:
-    post:
-      summary: Asignar condición médica a paciente
-      tags:
-        - CondicionesMedicas
-      description: Asigna una condición médica existente a un paciente con notas opcionales
-      parameters:
-        - name: condicionId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-        - name: pacienteId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                notas:
-                  type: string
-                  example: "Diagnosticado en enero 2024"
-      responses:
-        '201':
-          description: Condición asignada al paciente exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  message:
-                    type: string
-                    example: "Condición asignada al paciente exitosamente."
-
-                    $ref: '#/components/schemas/CaracteristicaEspecial'
-        '400':
-          description: Condición ya asignada o datos inválidos
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: false
-                  message:
-                    type: string
-                    example: "Esta condición ya está asignada al paciente."
-        '404':
-          description: Condición médica no encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /condiciones-medicas/pacientes/{pacienteId}:
-    get:
-      summary: Obtener condiciones médicas de un paciente
-      tags:
-        - CondicionesMedicas
-      description: Obtiene todas las condiciones médicas asignadas a un paciente con filtros opcionales
-      parameters:
-        - name: pacienteId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-        - name: tipo
-          in: query
-          description: Filtrar por tipo de condición
-          schema:
-            type: string
-            enum: ["Alergia", "Enfermedad", "Discapacidad", "Antecedente", "Condición"]
-        - name: estado
-          in: query
-          description: Filtrar por estado
-          schema:
-            type: string
-            enum: ["Activo", "Inactivo"]
-      responses:
-        '200':
-          description: Condiciones del paciente obtenidas exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/CaracteristicaEspecial'
-        '500':
-          description: Error interno del servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /condiciones-medicas/pacientes/{pacienteId}/condiciones/{condicionId}:
-    patch:
-      summary: Actualizar condición médica de un paciente
-      tags:
-        - CondicionesMedicas
-      description: Actualiza las notas o estado de una condición médica asignada a un paciente
-      parameters:
-        - name: pacienteId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-        - name: condicionId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                notas:
-                  type: string
-                  example: "Notas actualizadas - mejora significativa"
-                estado:
-                  type: string
-                  enum: ["Activo", "Inactivo"]
-                  example: "Activo"
-      responses:
-        '200':
-          description: Condición del paciente actualizada exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  message:
-                    type: string
-                    example: "Condición del paciente actualizada exitosamente."
-
-                    $ref: '#/components/schemas/CaracteristicaEspecial'
-        '400':
-          description: La condición no está asignada a este paciente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: false
-                  message:
-                    type: string
-                    example: "La condición no está asignada a este paciente."
-        '500':
-          description: Error interno del servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-    delete:
-      summary: Remover condición médica de un paciente
-      tags:
-        - CondicionesMedicas
-      description: |
-        Remueve una condición médica de un paciente (eliminación lógica).
-        Cambia el estado a "Inactivo" en lugar de borrar el registro.
-      parameters:
-        - name: pacienteId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-        - name: condicionId
-          in: path
-          required: true
-          schema:
-            type: integer
-          example: 1
-      responses:
-        '200':
-          description: Condición removida del paciente exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  message:
-                    type: string
-                    example: "Condición removida del paciente exitosamente."
-        '400':
-          description: La condición no está asignada a este paciente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: false
-                  message:
-                    type: string
-                    example: "La condición no está asignada a este paciente."
         '500':
           description: Error interno del servidor
           content:
@@ -10586,6 +10352,201 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /doctores/admin:
+    get:
+      summary: Listar todos los doctores (Administrador)
+      tags:
+        - Doctores
+      description: |
+        Lista todos los doctores sin restricciones de estado o verificación.
+        Filtros opcionales: nombre, apellido, genero, nacionalidad, especialidadId, estado, estadoVerificacion.
+        **Solo Administrador.**
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,apellido"
+          description: Campos a traducir separados por coma
+        - name: nombre
+          in: query
+          schema:
+            type: string
+          example: "Juan"
+        - name: apellido
+          in: query
+          schema:
+            type: string
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+        - name: estadoVerificacion
+          in: query
+          schema:
+            type: string
+            enum: ["Pendiente", "Aprobado", "Rechazado"]
+        - name: especialidadId
+          in: query
+          schema:
+            type: integer
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Lista de doctores con paginación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  paginacion:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      pagina:
+                        type: integer
+                      limite:
+                        type: integer
+                      totalPaginas:
+                        type: integer
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso denegado (requiere rol Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /doctores/admin/{id}:
+    get:
+      summary: Obtener perfil completo de un doctor (Administrador)
+      tags:
+        - Doctores
+      description: |
+        Obtiene **toda** la información de un doctor sin filtrar datos sensibles.
+        Incluye: datos personales, documentos (con estado de revisión y comentarios del admin),
+        especialidades, formaciones académicas, experiencias laborales, horarios, servicios,
+        seguros aceptados, reseñas, ubicaciones, estado de verificación y comentarios de acción.
+        
+        **Uso principal**: Para que el Administrador pueda aprobar o rechazar un doctor.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,apellido"
+          description: Campos a traducir separados por coma
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+          description: ID del usuario del doctor
+      responses:
+        '200':
+          description: Perfil completo del doctor obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    description: Objeto con toda la información del doctor incluyendo documentos, verificación y ubicaciones
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso denegado (requiere rol Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Doctor no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /doctores/{id}:
     get:
       summary: Obtener doctor por ID
@@ -11953,6 +11914,313 @@ paths:
                  $ref: '#/components/schemas/ErrorResponse'
 
   # --- CENTROS SALUD ENDPOINTS ---
+  /centros-salud/mis-documentos:
+    get:
+      summary: Obtener el estado del certificado de sanidad del centro autenticado
+      tags:
+        - CentrosSalud
+      description: |
+        Retorna las estadísticas y el estado de revisión de la certificación
+        sanitaria del Centro de Salud autenticado.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "estadoVerificacion"
+          description: Campos a traducir separados por coma
+      responses:
+        '200':
+          description: Estado del documento obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      estadoVerificacion:
+                        type: string
+                      estadisticas:
+                        type: object
+                      documentos:
+                        type: array
+                        items:
+                          type: object
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Centro)
+        '500':
+          description: Error interno del servidor
+
+  /centros-salud/documentos/{id}:
+    put:
+      summary: Actualizar la certificación sanitaria rechazada (Centro)
+      tags:
+        - CentrosSalud
+      description: |
+        Permite a un Centro de Salud actualizar (volver a subir) su certificado de
+        sanidad en caso de que este haya sido rechazado o esté en un proceso de
+        revisión inicial incompleto.
+        **Requiere Content-Type: multipart/form-data**
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del documento (ignorado internamente, se asume certificación única)
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+                  description: Documento (PDF o imagen)
+                descripcion:
+                  type: string
+                  description: Descripción opcional del documento
+      responses:
+        '200':
+          description: Documento actualizado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Documento (Certificación Sanitaria) actualizado exitosamente. Será revisado nuevamente."
+        '400':
+          description: Datos inválidos o archivo faltante
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado (requiere rol Centro)
+        '500':
+          description: Error interno del servidor
+
+  /centros-salud/admin:
+    get:
+      summary: Listar todos los centros de salud (Administrador)
+      tags:
+        - CentrosSalud
+      description: |
+        Lista todos los centros de salud sin restricciones. Filtros opcionales:
+        nombre, estadoVerificacion, estado, tipoCentroId.
+        **Solo Administrador.**
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,estado"
+          description: Campos a traducir separados por coma
+        - name: nombre
+          in: query
+          schema:
+            type: string
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: ["Activo", "Inactivo", "Eliminado"]
+        - name: estadoVerificacion
+          in: query
+          schema:
+            type: string
+            enum: ["Pendiente", "Aprobado", "Rechazado"]
+        - name: tipoCentroId
+          in: query
+          schema:
+            type: integer
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Lista de centros con paginación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  paginacion:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      pagina:
+                        type: integer
+                      limite:
+                        type: integer
+                      totalPaginas:
+                        type: integer
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso denegado (requiere rol Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /centros-salud/admin/{id}:
+    get:
+      summary: Obtener perfil completo de un centro de salud (Administrador)
+      tags:
+        - CentrosSalud
+      description: |
+        Obtiene **toda** la información de un centro de salud sin filtrar datos sensibles.
+        Incluye: datos del centro, tipo de centro, usuario (email, teléfono, foto),
+        ubicación completa (barrio, sección), estado de verificación, certificado sanitario, etc.
+        
+        **Uso principal**: Para que el Administrador pueda aprobar o rechazar un centro de salud.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,comentario"
+          description: Campos a traducir separados por coma
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+          description: ID del usuario del centro de salud
+      responses:
+        '200':
+          description: Perfil completo del centro de salud obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    description: Objeto con toda la información del centro incluyendo verificación y ubicación
+        '400':
+          description: ID inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso denegado (requiere rol Administrador)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Centro de salud no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /centros-salud/completar-perfil:
     post:
       summary: Completar perfil de centro de salud

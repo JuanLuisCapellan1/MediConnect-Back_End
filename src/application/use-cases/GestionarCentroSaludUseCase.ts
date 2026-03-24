@@ -101,4 +101,15 @@ export class GestionarCentroSaludUseCase {
         if (!centro) throw new Error('Centro de salud no encontrado');
         return await this.centroRepo.distribucionEspecialidades(centroId);
     }
+
+    async listarParaAdmin(filtros: {
+        nombre?: string;
+        estadoVerificacion?: string;
+        estado?: string;
+        tipoCentroId?: number;
+        pagina?: number;
+        limite?: number;
+    }): Promise<{ datos: any[]; total: number }> {
+        return await this.centroRepo.listarParaAdmin(filtros);
+    }
 }

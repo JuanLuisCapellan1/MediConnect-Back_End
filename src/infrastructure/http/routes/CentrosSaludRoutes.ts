@@ -43,6 +43,23 @@ centrosSaludRouter.put(
   (req, res) => controller.actualizarPerfil(req, res)
 );
 
+// ─── Documentos (Certificación Sanitaria) ──────────────────────────────────────
+centrosSaludRouter.get(
+  '/mis-documentos',
+  autenticarJWT,
+  requireRole('Centro'),
+  translationMiddleware,
+  (req, res) => controller.obtenerEstadoDocumentos(req, res)
+);
+
+centrosSaludRouter.put(
+  '/documentos/:id',
+  autenticarJWT,
+  requireRole('Centro'),
+  upload.single('archivo'),
+  (req, res) => controller.actualizarDocumento(req, res)
+);
+
 
 // ─── Ubicación ─────────────────────────────────────────────────────────────────
 centrosSaludRouter.get(
@@ -88,6 +105,23 @@ centrosSaludRouter.put(
   autenticarJWT,
   requireRole('Centro'),
   (req, res) => controller.responderSolicitud(req, res)
+);
+
+// ─── Vista completa para Administrador ────────────────────────────────────────
+centrosSaludRouter.get(
+  '/admin',
+  autenticarJWT,
+  requireRole('Administrador'),
+  translationMiddleware,
+  (req, res) => controller.listarParaAdmin(req, res)
+);
+
+centrosSaludRouter.get(
+  '/admin/:id',
+  autenticarJWT,
+  requireRole('Administrador'),
+  translationMiddleware,
+  (req, res) => controller.obtenerParaAdmin(req, res)
 );
 
 // ─── Analíticas del Centro ─────────────────────────────────────────────────────

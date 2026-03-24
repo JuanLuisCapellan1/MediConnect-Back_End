@@ -1,3 +1,6 @@
+import { IsString, IsNotEmpty, IsOptional, IsIn, IsInt } from 'class-validator';
+import { Type } from 'class-transformer';
+
 /**
  * DTOs para Tipos de Seguros
  */
@@ -6,43 +9,52 @@
  * DTO para crear un nuevo tipo de seguro
  */
 export class CrearTipoSeguroDto {
-    nombre: string;
-    descripcion?: string;
+    @IsString()
+    @IsNotEmpty({ message: 'El nombre del tipo de seguro es requerido' })
+    nombre!: string;
 
-    constructor(nombre: string, descripcion?: string) {
-        this.nombre = nombre;
-        this.descripcion = descripcion;
-    }
+    @IsString()
+    @IsOptional()
+    descripcion?: string;
 }
 
 /**
  * DTO para actualizar un tipo de seguro existente
  */
 export class ActualizarTipoSeguroDto {
+    @IsString()
+    @IsOptional()
     nombre?: string;
-    descripcion?: string;
-    estado?: 'Activo' | 'Inactivo';
 
-    constructor(nombre?: string, descripcion?: string, estado?: 'Activo' | 'Inactivo') {
-        this.nombre = nombre;
-        this.descripcion = descripcion;
-        this.estado = estado;
-    }
+    @IsString()
+    @IsOptional()
+    descripcion?: string;
+
+    @IsString()
+    @IsOptional()
+    @IsIn(['Activo', 'Inactivo'], { message: 'El estado debe ser Activo o Inactivo' })
+    estado?: string;
 }
 
 /**
  * DTO para filtrar tipos de seguros
  */
 export class FiltroTiposSegurosDto {
+    @IsString()
+    @IsOptional()
     estado?: string;
-    busqueda?: string;
-    pagina?: number;
-    limite?: number;
 
-    constructor(estado?: string, busqueda?: string, pagina?: number, limite?: number) {
-        this.estado = estado;
-        this.busqueda = busqueda;
-        this.pagina = pagina || 1;
-        this.limite = limite || 10;
-    }
+    @IsString()
+    @IsOptional()
+    busqueda?: string;
+
+    @IsInt()
+    @IsOptional()
+    @Type(() => Number)
+    pagina?: number;
+
+    @IsInt()
+    @IsOptional()
+    @Type(() => Number)
+    limite?: number;
 }

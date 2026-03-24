@@ -56,6 +56,14 @@ export interface ICentroSaludRepository {
   crear(datos: any): Promise<any>;
   actualizar(usuarioId: number, datos: any): Promise<any>;
   listar(): Promise<any[]>;
+  listarParaAdmin(filtros: {
+    nombre?: string;
+    estadoVerificacion?: string;
+    estado?: string;
+    tipoCentroId?: number;
+    pagina?: number;
+    limite?: number;
+  }): Promise<{ datos: any[]; total: number }>;
 
   // ─── BÚSQUEDA GEOGRÁFICA ────────────────────────────────────────────────────
   buscarCercanos(
