@@ -43,9 +43,17 @@ export class ObtenerEstadoDocumentosCentroUseCase {
             },
         });
 
-        const estadoRevision = ultimaAccion?.estado === 'Rechazada' ? 'Rechazado' 
-            : ultimaAccion?.estado === 'Aprobada' ? 'Aprobado' 
-            : 'Pendiente';
+        let estadoRevision = 'Pendiente';
+
+        if (centro.estadoVerificacion === 'Aprobado') {
+            // Si el centro ya está aprobado, lógicamente su único documento (certificado) está aprobado
+            estadoRevision = 'Aprobado';
+        } else if (ultimaAccion) {
+            // Si no está aprobado, nos guiamos del estado de la última acción
+            estadoRevision = ultimaAccion.estado === 'Rechazada' ? 'Rechazado' 
+                : ultimaAccion.estado === 'Aprobada' ? 'Aprobado' 
+                : 'Pendiente';
+        }
 
         return {
             estadoVerificacion: centro.estadoVerificacion,

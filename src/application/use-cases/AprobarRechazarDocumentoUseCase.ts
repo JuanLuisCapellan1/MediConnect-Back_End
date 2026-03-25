@@ -22,33 +22,40 @@ export class AprobarRechazarDocumentoUseCase {
             select: { rol: true },
         });
 
-        if (!admin || admin.rol !== 'Admin') {
+        if (!admin || admin.rol !== 'Administrador') {
             throw new Error('Solo los administradores pueden aprobar/rechazar documentos');
         }
 
         // 2. Verificar que la acción existe y está pendiente
         const accion = await prisma.accion.findUnique({
             where: { id: dto.accionId },
-            select: { id: true, estado: true, documentoId: true, emisorId: true },
+            include: { tipoAccion: true }, // Incluir tipo de acción para saber si es de Centro
         });
 
         if (!accion) throw new Error('Acción no encontrada');
         if (accion.estado !== 'Pendiente') throw new Error('Esta acción ya fue procesada');
-        if (!accion.documentoId) throw new Error('Esta acción no está vinculada a un documento');
 
-        // 3. Obtener información del documento
-        const documento = await prisma.documentoDoctor.findUnique({
-            where: { id: accion.documentoId },
-            select: { id: true, doctorId: true, tipoDocumento: true },
-        });
+        const esCentroSalud = accion.tipoAccion?.nombre === 'Registro Centro de Salud';
 
-        if (!documento) throw new Error('Documento no encontrado');
+        if (!esCentroSalud && !accion.documentoId) {
+            throw new Error('Esta acción no está vinculada a un documento de doctor');
+        }
 
-        // 4. Actualizar acción y documento en transacción
-        let cuentaAprobada = false;
+        // 3. Obtener información del documento (solo si es doctor)
+        let documentoDoctor: any = null;
+        if (!esCentroSalud) {
+            documentoDoctor = await prisma.documentoDoctor.findUnique({
+                where: { id: accion.documentoId! },
+                select: { id: true, doctorId: true, tipoDocumento: true },
+            });
+            if (!documentoDoctor) throw new Error('Documento del doctor no encontrado');
+        }
+
+        // 4. Actualizar acción y estado del perfil/documento en transacción
+        let cuentaDoctorAprobada = false;
 
         await prisma.$transaction(async (tx) => {
-            // Actualizar la acción
+            // Actualizar la acción (común a todos)
             await tx.accion.update({
                 where: { id: dto.accionId },
                 data: {
@@ -60,64 +67,93 @@ export class AprobarRechazarDocumentoUseCase {
                 },
             });
 
-            // Actualizar el estadoRevision del documento
-            const nuevoEstadoDoc = dto.decision === 'Aprobada' ? 'Aprobado' : 'Rechazado';
-            await tx.documentoDoctor.update({
-                where: { id: accion.documentoId! },
-                data: { estadoRevision: nuevoEstadoDoc, actualizadoEn: new Date() },
-            });
-
-            // 5. Si aprobado: verificar si todos los documentos del doctor están aprobados
-            if (dto.decision === 'Aprobada') {
-                const todosLosDocumentos = await tx.documentoDoctor.findMany({
-                    where: { doctorId: documento.doctorId, estado: 'Activo' },
-                    select: { id: true, estadoRevision: true },
+            if (esCentroSalud) {
+                // Lógica para Centro de Salud
+                const nuevoEstadoCentro = dto.decision === 'Aprobada' ? 'Aprobado' : 'Rechazado';
+                await tx.centroSalud.update({
+                    where: { usuarioId: accion.emisorId },
+                    data: { estadoVerificacion: nuevoEstadoCentro, actualizadoEn: new Date() },
+                });
+            } else {
+                // Lógica de Doctores
+                const nuevoEstadoDoc = dto.decision === 'Aprobada' ? 'Aprobado' : 'Rechazado';
+                await tx.documentoDoctor.update({
+                    where: { id: accion.documentoId! },
+                    data: { estadoRevision: nuevoEstadoDoc, actualizadoEn: new Date() },
                 });
 
-                const todosAprobados = todosLosDocumentos.every(
-                    (doc) => doc.estadoRevision === 'Aprobado',
-                );
-
-                if (todosAprobados) {
-                    await tx.doctor.update({
-                        where: { usuarioId: documento.doctorId },
-                        data: { estadoVerificacion: 'Aprobado', actualizadoEn: new Date() },
+                // Si fue aprobado el documento, revisar si TODOS están aprobados para aprobar la cuenta
+                if (dto.decision === 'Aprobada') {
+                    const todosLosDocumentos = await tx.documentoDoctor.findMany({
+                        where: { doctorId: documentoDoctor.doctorId, estado: 'Activo' },
+                        select: { id: true, estadoRevision: true },
                     });
-                    cuentaAprobada = true;
+
+                    const todosAprobados = todosLosDocumentos.every(
+                        (doc) => doc.estadoRevision === 'Aprobado',
+                    );
+
+                    if (todosAprobados) {
+                        await tx.doctor.update({
+                            where: { usuarioId: documentoDoctor.doctorId },
+                            data: { estadoVerificacion: 'Aprobado', actualizadoEn: new Date() },
+                        });
+                        cuentaDoctorAprobada = true;
+                    }
                 }
             }
         });
 
-        // 6. Emitir notificaciones DESPUÉS de la transacción (con WS real-time)
+        // 5. Emitir notificaciones DESPUÉS de la transacción
         try {
-            if (dto.decision === 'Aprobada' && cuentaAprobada) {
-                await this.enviarNotifUC.execute({
-                    usuarioId: documento.doctorId,
-                    titulo: '¡Cuenta Aprobada!',
-                    mensaje: 'Tu cuenta de doctor ha sido aprobada. Ya puedes comenzar a ofrecer tus servicios en MediConnect.',
-                    tipoAlerta: 'Exito',
-                    tipoEntidad: 'Perfil',
-                });
-            } else if (dto.decision === 'Aprobada') {
-                await this.enviarNotifUC.execute({
-                    usuarioId: documento.doctorId,
-                    titulo: 'Documento Aprobado',
-                    mensaje: `Tu documento "${documento.tipoDocumento}" ha sido aprobado.`,
-                    tipoAlerta: 'Exito',
-                    tipoEntidad: 'Perfil',
-                });
+            if (esCentroSalud) {
+                if (dto.decision === 'Aprobada') {
+                    await this.enviarNotifUC.execute({
+                        usuarioId: accion.emisorId,
+                        titulo: '¡Centro de Salud Aprobado!',
+                        mensaje: 'La certificación de su Centro de Salud ha sido aprobada. ¡Ya puede operar en MediConnect!',
+                        tipoAlerta: 'Exito',
+                        tipoEntidad: 'Perfil',
+                    });
+                } else {
+                    await this.enviarNotifUC.execute({
+                        usuarioId: accion.emisorId,
+                        titulo: 'Revisión de Centro de Salud',
+                        mensaje: `Su certificación sanitaria ha sido rechazada. ${dto.comentario ? `Motivo: ${dto.comentario}` : 'Por favor, actualice su documento.'}`,
+                        tipoAlerta: 'Importante',
+                        tipoEntidad: 'Perfil',
+                    });
+                }
             } else {
-                // Rechazada
-                await this.enviarNotifUC.execute({
-                    usuarioId: documento.doctorId,
-                    titulo: 'Actualización de Verificación',
-                    mensaje: `Tu documento "${documento.tipoDocumento}" ha sido rechazado. ${dto.comentario ? `Motivo: ${dto.comentario}` : 'Por favor, actualízalo para continuar con el proceso de verificación.'}`,
-                    tipoAlerta: 'Importante',
-                    tipoEntidad: 'Perfil',
-                });
+                // Doctor
+                if (dto.decision === 'Aprobada' && cuentaDoctorAprobada) {
+                    await this.enviarNotifUC.execute({
+                        usuarioId: documentoDoctor.doctorId,
+                        titulo: '¡Cuenta Aprobada!',
+                        mensaje: 'Tu cuenta de doctor ha sido aprobada. Ya puedes comenzar a ofrecer tus servicios en MediConnect.',
+                        tipoAlerta: 'Exito',
+                        tipoEntidad: 'Perfil',
+                    });
+                } else if (dto.decision === 'Aprobada') {
+                    await this.enviarNotifUC.execute({
+                        usuarioId: documentoDoctor.doctorId,
+                        titulo: 'Documento Aprobado',
+                        mensaje: `Tu documento "${documentoDoctor.tipoDocumento}" ha sido aprobado.`,
+                        tipoAlerta: 'Exito',
+                        tipoEntidad: 'Perfil',
+                    });
+                } else {
+                    await this.enviarNotifUC.execute({
+                        usuarioId: documentoDoctor.doctorId,
+                        titulo: 'Actualización de Verificación',
+                        mensaje: `Tu documento "${documentoDoctor.tipoDocumento}" ha sido rechazado. ${dto.comentario ? `Motivo: ${dto.comentario}` : 'Por favor, actualízalo para continuar con el proceso de verificación.'}`,
+                        tipoAlerta: 'Importante',
+                        tipoEntidad: 'Perfil',
+                    });
+                }
             }
         } catch (notifErr) {
-            console.error('AprobarRechazarDocumentoUseCase: error al notificar al doctor:', notifErr);
+            console.error('AprobarRechazarDocumentoUseCase: error al notificar al usuario:', notifErr);
         }
     }
 }

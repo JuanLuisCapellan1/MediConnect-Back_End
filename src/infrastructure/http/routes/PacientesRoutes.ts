@@ -19,6 +19,31 @@ router.get(
     (req, res) => pacienteController.listar(req, res)
 );
 
+// ─── Vista para Administrador ──────────────────────────────────────────────────
+/**
+ * GET /pacientes/admin
+ * Listar todos los pacientes (Administrador) — sin datos médicos sensibles
+ */
+router.get(
+    '/admin',
+    autenticarJWT,
+    requireRole('Administrador'),
+    translationMiddleware,
+    (req, res) => pacienteController.listarParaAdmin(req, res)
+);
+
+/**
+ * GET /pacientes/admin/:id
+ * Obtener datos de un paciente por ID (Administrador) — sin datos médicos sensibles
+ */
+router.get(
+    '/admin/:id',
+    autenticarJWT,
+    requireRole('Administrador'),
+    translationMiddleware,
+    (req, res) => pacienteController.obtenerParaAdmin(req, res)
+);
+
 /**
  * GET /pacientes/me
  * Obtener perfil del paciente autenticado

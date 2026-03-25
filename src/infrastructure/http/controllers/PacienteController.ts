@@ -57,6 +57,80 @@ export class PacienteController {
         }
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // GET /pacientes/admin  — Listado para Administrador
+    // ══════════════════════════════════════════════════════════════
+    async listarParaAdmin(req: Request, res: Response): Promise<Response> {
+        try {
+            const useCase = container.resolve(GestionarPacientesUseCase);
+
+            const getNombre = (value: any): string | undefined => {
+                if (Array.isArray(value)) return value[0] as string;
+                return value as string | undefined;
+            };
+
+            const filtros = {
+                nombre: getNombre(req.query.nombre),
+                apellido: getNombre(req.query.apellido),
+                estado: getNombre(req.query.estado),
+                genero: getNombre(req.query.genero),
+                tipoSangre: getNombre(req.query.tipoSangre),
+                pagina: req.query.pagina ? parseInt(req.query.pagina as string) : undefined,
+                limite: req.query.limite ? parseInt(req.query.limite as string) : undefined,
+            };
+
+            const resultado = await useCase.listar(filtros);
+
+            // Filtrar datos sensibles: solo tabla pacientes + usuario
+            const datos = resultado.datos.map((p: any) => this.filtrarDatosAdmin(p));
+
+            return res.status(200).json({
+                success: true,
+                data: datos,
+                paginacion: {
+                    total: resultado.total,
+                    pagina: filtros.pagina || 1,
+                    limite: filtros.limite || 10,
+                    totalPaginas: Math.ceil(resultado.total / (filtros.limite || 10)),
+                },
+            });
+        } catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // GET /pacientes/admin/:id  — Detalle para Administrador
+    // ══════════════════════════════════════════════════════════════
+    async obtenerParaAdmin(req: Request, res: Response): Promise<Response> {
+        try {
+            const useCase = container.resolve(GestionarPacientesUseCase);
+            const id = parseInt(req.params.id as string);
+
+            if (isNaN(id)) {
+                return res.status(400).json({ success: false, message: 'ID inválido' });
+            }
+
+            const paciente = await useCase.obtenerPorId(id);
+
+            return res.status(200).json({
+                success: true,
+                data: this.filtrarDatosAdmin(paciente),
+            });
+        } catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+
+    /**
+     * Helper: filtra los datos que el Administrador puede ver.
+     * Excluye: condicionesMedicas, seguros y datos médicos sensibles.
+     */
+    private filtrarDatosAdmin(paciente: any) {
+        const { condicionesMedicas, seguros, ...resto } = paciente;
+        return resto;
+    }
+
     async obtenerPerfil(req: Request, res: Response): Promise<Response> {
         try {
             const useCase = container.resolve(GestionarPacientesUseCase);
