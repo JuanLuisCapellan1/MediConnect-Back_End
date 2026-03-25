@@ -36,14 +36,15 @@ export class AprobarRechazarDocumentoUseCase {
         if (accion.estado !== 'Pendiente') throw new Error('Esta acción ya fue procesada');
 
         const esCentroSalud = accion.tipoAccion?.nombre === 'Registro Centro de Salud';
+        const esRegistroDoctor = !accion.documentoId && !esCentroSalud;
 
-        if (!esCentroSalud && !accion.documentoId) {
-            throw new Error('Esta acción no está vinculada a un documento de doctor');
+        if (!esCentroSalud && !esRegistroDoctor && !accion.documentoId) {
+            throw new Error('Esta acción no está vinculada a un documento o registro válido');
         }
 
-        // 3. Obtener información del documento (solo si es doctor)
+        // 3. Obtener información del documento (solo si es revisión de un documento)
         let documentoDoctor: any = null;
-        if (!esCentroSalud) {
+        if (!esCentroSalud && !esRegistroDoctor) {
             documentoDoctor = await prisma.documentoDoctor.findUnique({
                 where: { id: accion.documentoId! },
                 select: { id: true, doctorId: true, tipoDocumento: true },
@@ -74,8 +75,16 @@ export class AprobarRechazarDocumentoUseCase {
                     where: { usuarioId: accion.emisorId },
                     data: { estadoVerificacion: nuevoEstadoCentro, actualizadoEn: new Date() },
                 });
+            } else if (esRegistroDoctor) {
+                // Lógica para aprobación/rechazo del PERFIL/REGISTRO del doctor
+                const nuevoEstadoDoctor = dto.decision === 'Aprobada' ? 'Aprobado' : 'Rechazado';
+                await tx.doctor.update({
+                    where: { usuarioId: accion.emisorId },
+                    data: { estadoVerificacion: nuevoEstadoDoctor, actualizadoEn: new Date() },
+                });
+                cuentaDoctorAprobada = dto.decision === 'Aprobada';
             } else {
-                // Lógica de Doctores
+                // Lógica de un Documento de Doctor específico
                 const nuevoEstadoDoc = dto.decision === 'Aprobada' ? 'Aprobado' : 'Rechazado';
                 await tx.documentoDoctor.update({
                     where: { id: accion.documentoId! },
@@ -124,13 +133,32 @@ export class AprobarRechazarDocumentoUseCase {
                         tipoEntidad: 'Perfil',
                     });
                 }
+            } else if (esRegistroDoctor) {
+                // Notificación para aprobación/rechazo del registro del doctor
+                if (dto.decision === 'Aprobada') {
+                    await this.enviarNotifUC.execute({
+                        usuarioId: accion.emisorId,
+                        titulo: '¡Cuenta Aprobada!',
+                        mensaje: 'Tu cuenta de doctor ha sido aprobada. Ya puedes comenzar a ofrecer tus servicios en MediConnect.',
+                        tipoAlerta: 'Exito',
+                        tipoEntidad: 'Perfil',
+                    });
+                } else {
+                    await this.enviarNotifUC.execute({
+                        usuarioId: accion.emisorId,
+                        titulo: 'Revisión de Registro',
+                        mensaje: `Tu información de registro ha sido rechazada por el administrador. ${dto.comentario ? `Motivo: ${dto.comentario}` : 'Por favor, actualiza tu información para continuar con el proceso.'}`,
+                        tipoAlerta: 'Importante',
+                        tipoEntidad: 'Perfil',
+                    });
+                }
             } else {
-                // Doctor
+                // Doctor — notificación de un documento específico
                 if (dto.decision === 'Aprobada' && cuentaDoctorAprobada) {
                     await this.enviarNotifUC.execute({
                         usuarioId: documentoDoctor.doctorId,
-                        titulo: '¡Cuenta Aprobada!',
-                        mensaje: 'Tu cuenta de doctor ha sido aprobada. Ya puedes comenzar a ofrecer tus servicios en MediConnect.',
+                        titulo: '¡Todos los documentos aprobados!',
+                        mensaje: 'Todos tus documentos han sido aprobados. Tu cuenta está completamente verificada en MediConnect.',
                         tipoAlerta: 'Exito',
                         tipoEntidad: 'Perfil',
                     });

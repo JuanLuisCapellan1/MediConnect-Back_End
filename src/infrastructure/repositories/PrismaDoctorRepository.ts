@@ -146,17 +146,16 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                     },
                     include: {
                         acciones: {
-                            where: {
-                                comentarioAdmin: { not: null }
-                            },
                             orderBy: {
-                                fechaResolucion: 'desc'
+                                fechaEmision: 'desc'
                             },
-                            take: 1,
+                            take: 3,
                             select: {
+                                id: true,
                                 comentarioAdmin: true,
                                 estado: true,
-                                fechaResolucion: true
+                                fechaResolucion: true,
+                                fechaEmision: true,
                             }
                         }
                     },
@@ -230,12 +229,12 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                 where: {
                     emisorId: usuarioId,
                     documentoId: null,
-                    comentarioAdmin: { not: null }
                 },
                 orderBy: {
-                    fechaResolucion: 'desc'
+                    fechaEmision: 'desc'
                 },
                 select: {
+                    id: true,
                     comentarioAdmin: true,
                     estado: true,
                     fechaResolucion: true
@@ -243,6 +242,7 @@ export class PrismaDoctorRepository implements IDoctorRepository {
             });
 
             // Always add verification comment fields (null if not found)
+            (doctor as any).idAccionRegistro = accionVerificacion?.id || null;
             (doctor as any).comentarioVerificacion = accionVerificacion?.comentarioAdmin || null;
             (doctor as any).estadoAccionVerificacion = accionVerificacion?.estado || null;
             (doctor as any).fechaResolucionVerificacion = accionVerificacion?.fechaResolucion || null;
@@ -251,9 +251,15 @@ export class PrismaDoctorRepository implements IDoctorRepository {
             if (doctor.documentos && Array.isArray(doctor.documentos)) {
                 (doctor as any).documentos = await Promise.all(
                     doctor.documentos.map(async (doc: any) => {
-                        const comentarioAdmin = doc.acciones?.[0]?.comentarioAdmin || null;
-                        const estadoAccion = doc.acciones?.[0]?.estado || null;
-                        const fechaResolucion = doc.acciones?.[0]?.fechaResolucion || null;
+                        const accionPendiente = doc.acciones?.find((a: any) => a.estado === 'Pendiente') || null;
+                        const accionResuelta = doc.acciones?.find((a: any) => a.comentarioAdmin) || null;
+
+                        // idAccion → la acción Pendiente (la que el admin puede aprobar/rechazar ahora)
+                        const idAccion = accionPendiente?.id || null;
+                        // comentario del admin → el del rechazo previo, para que el doctor vea el motivo
+                        const comentarioAdmin = accionResuelta?.comentarioAdmin || null;
+                        const estadoAccion = accionPendiente?.estado || accionResuelta?.estado || null;
+                        const fechaResolucion = accionResuelta?.fechaResolucion || null;
 
                         const { acciones, ...docSinAcciones } = doc;
 
@@ -265,6 +271,7 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                         return {
                             ...docSinAcciones,
                             urlArchivo,
+                            idAccion,
                             comentarioAdmin,
                             estadoAccion,
                             fechaResolucionAccion: fechaResolucion

@@ -10759,6 +10759,38 @@ paths:
                   data:
                     type: object
                     description: Objeto con toda la información del doctor incluyendo documentos, verificación y ubicaciones
+                    properties:
+                      idAccionRegistro:
+                        type: integer
+                        nullable: true
+                        description: >
+                          ID de la acción de registro del doctor.
+                          Úsalo para llamar a PATCH /acciones/{id}/revisar
+                          y aprobar/rechazar la información personal del doctor.
+                      documentos:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            idAccion:
+                              type: integer
+                              nullable: true
+                              description: >
+                                ID de la acción asociada a este documento.
+                                Úsalo para llamar a PATCH /acciones/{id}/revisar
+                                y aprobar/rechazar este documento específico.
+                            tipoDocumento:
+                              type: string
+                            urlArchivo:
+                              type: string
+                            estadoRevision:
+                              type: string
+                              enum:
+                                - Pendiente
+                                - Aprobado
+                                - Rechazado
         '400':
           description: ID inválido
           content:
@@ -11696,7 +11728,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-
+                  data:
                     type: array
                     items:
                       type: object
@@ -11706,23 +11738,55 @@ paths:
                           example: 789
                         detalle:
                           type: string
-                          example: "Revisión de Título Académico: Dr. Juan Pérez - Exequatur: 12345"
+                          example: "Revisión de Título Académico"
                         fechaEmision:
                           type: string
                           format: date-time
+                        tipoRevision:
+                          type: string
+                          enum: [documento, registro]
+                          description: |
+                            `documento` → el admin revisa un PDF/archivo.
+                            `registro` → el admin revisa la información personal del doctor o centro.
+                          example: documento
                         emisor:
                           type: object
                           properties:
                             id:
                               type: integer
+                            email:
+                              type: string
+                            rol:
+                              type: string
+                              example: Doctor
+                            fotoPerfil:
+                              type: string
+                              nullable: true
+                        perfilEmisor:
+                          type: object
+                          nullable: true
+                          description: Datos del Doctor o Centro que emitió la acción
+                          properties:
+                            usuarioId:
+                              type: integer
                             nombre:
                               type: string
+                              nullable: true
                             apellido:
                               type: string
-                            email:
+                              nullable: true
+                            exequatur:
+                              type: string
+                              nullable: true
+                            nombreComercial:
+                              type: string
+                              nullable: true
+                            estadoVerificacion:
                               type: string
                         documento:
                           type: object
+                          nullable: true
+                          description: Presente solo cuando tipoRevision es 'documento'
                           properties:
                             id:
                               type: integer
@@ -11730,12 +11794,15 @@ paths:
                               type: string
                             urlArchivo:
                               type: string
+                            nombreOriginal:
+                              type: string
+                              nullable: true
                             descripcion:
                               type: string
                               nullable: true
-                  count:
-                    type: integer
-                    example: 15
+                            creadoEn:
+                              type: string
+                              format: date-time
         '401':
           description: No autenticado
         '403':
