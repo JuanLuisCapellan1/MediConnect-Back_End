@@ -2,8 +2,11 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
 import { Doctor } from '../../domain/entities/Doctor';
 import { ActualizarDoctorDto, FiltroDoctoresDto, FiltroDoctoresCercania } from '../../application/dtos/DoctorDtos';
+import { SupabaseStorageService } from '../external-services/SupabaseStorageService';
 
 export class PrismaDoctorRepository implements IDoctorRepository {
+    private storage = new SupabaseStorageService();
+
     constructor(private prisma: PrismaClient) { }
 
     private mapearEntidad(data: any): Doctor {
@@ -98,7 +101,21 @@ export class PrismaDoctorRepository implements IDoctorRepository {
             },
         });
 
-        return doctor ? this.mapearEntidad(doctor) : null;
+        if (!doctor) return null;
+
+        // Regenerar URLs firmadas frescas para cada documento
+        if (doctor.documentos && Array.isArray(doctor.documentos)) {
+            (doctor as any).documentos = await Promise.all(
+                doctor.documentos.map(async (doc: any) => ({
+                    ...doc,
+                    urlArchivo: doc.urlArchivo
+                        ? await this.storage.refreshOrGetSignedUrl(doc.urlArchivo).catch(() => doc.urlArchivo)
+                        : null,
+                }))
+            );
+        }
+
+        return this.mapearEntidad(doctor);
     }
 
     /**
@@ -230,22 +247,30 @@ export class PrismaDoctorRepository implements IDoctorRepository {
             (doctor as any).estadoAccionVerificacion = accionVerificacion?.estado || null;
             (doctor as any).fechaResolucionVerificacion = accionVerificacion?.fechaResolucion || null;
 
-            // Process documents to always include comentarioAdmin field
+            // Process documents: aplanar comentarioAdmin y regenerar URL firmada fresca
             if (doctor.documentos && Array.isArray(doctor.documentos)) {
-                (doctor as any).documentos = doctor.documentos.map((doc: any) => {
-                    const comentarioAdmin = doc.acciones?.[0]?.comentarioAdmin || null;
-                    const estadoAccion = doc.acciones?.[0]?.estado || null;
-                    const fechaResolucion = doc.acciones?.[0]?.fechaResolucion || null;
+                (doctor as any).documentos = await Promise.all(
+                    doctor.documentos.map(async (doc: any) => {
+                        const comentarioAdmin = doc.acciones?.[0]?.comentarioAdmin || null;
+                        const estadoAccion = doc.acciones?.[0]?.estado || null;
+                        const fechaResolucion = doc.acciones?.[0]?.fechaResolucion || null;
 
-                    // Remove acciones array and add flat fields
-                    const { acciones, ...docSinAcciones } = doc;
-                    return {
-                        ...docSinAcciones,
-                        comentarioAdmin,
-                        estadoAccion,
-                        fechaResolucionAccion: fechaResolucion
-                    };
-                });
+                        const { acciones, ...docSinAcciones } = doc;
+
+                        // Regenerar URL firmada fresca (1 hora de validez)
+                        const urlArchivo = docSinAcciones.urlArchivo
+                            ? await this.storage.refreshOrGetSignedUrl(docSinAcciones.urlArchivo).catch(() => docSinAcciones.urlArchivo)
+                            : null;
+
+                        return {
+                            ...docSinAcciones,
+                            urlArchivo,
+                            comentarioAdmin,
+                            estadoAccion,
+                            fechaResolucionAccion: fechaResolucion
+                        };
+                    })
+                );
             }
         }
 

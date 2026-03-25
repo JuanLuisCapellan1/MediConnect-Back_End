@@ -25,7 +25,7 @@ const doctorEspecialidadController = new DoctorEspecialidadController();
 router.get(
     '/',
     autenticarJWT,
-    requireRole('Administrador', 'Paciente'),
+    requireRole('Administrador', 'Paciente', 'Centro'),
     translationMiddleware,
     (req, res) => doctorController.listar(req, res)
 );
@@ -372,7 +372,7 @@ router.get(
 router.get(
     '/:id',
     autenticarJWT,
-    requireRole('Administrador', 'Paciente', 'Doctor'),
+    requireRole('Administrador', 'Paciente', 'Doctor', 'Centro'),
     translationMiddleware,
     (req, res) => doctorController.obtenerPorId(req, res)
 );

@@ -290,6 +290,32 @@ export class CitaController {
         } catch (error) { this.manejarError(error, res); }
     }
 
+    // GET /citas/historial/doctor/:doctorId — Paciente consulta sus citas completadas con un doctor
+    async historialPorDoctor(req: Request, res: Response): Promise<void> {
+        try {
+            const pacienteId = req.user?.userId;
+            if (!pacienteId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+
+            const doctorId = Number(req.params.doctorId);
+            if (isNaN(doctorId) || doctorId <= 0) {
+                res.status(400).json({ success: false, message: 'ID de doctor inválido.' });
+                return;
+            }
+
+            const pagina = req.query.pagina ? Number(req.query.pagina) : undefined;
+            const limite = req.query.limite ? Number(req.query.limite) : undefined;
+
+            const { datos, total } = await this.citasUseCase.obtenerHistorialPorDoctor(pacienteId, doctorId, { pagina, limite });
+            const lim = limite ?? 10;
+            const pag = pagina ?? 1;
+            res.status(200).json({
+                success: true,
+                data: datos,
+                paginacion: { total, pagina: pag, limite: lim, totalPaginas: Math.ceil(total / lim) },
+            });
+        } catch (error) { this.manejarError(error, res); }
+    }
+
     // GET /citas/servicios — Servicios en los que el paciente ha tenido citas
     async serviciosPaciente(req: Request, res: Response): Promise<void> {
         try {

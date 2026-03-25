@@ -37,6 +37,9 @@ router.get('/historial', autenticarJWT, requireRole('Paciente'), translationMidd
 // GET /citas/historial/:pacienteId — Doctor consulta historial de un paciente suyo
 router.get('/historial/:pacienteId', autenticarJWT, requireRole('Doctor'), translationMiddleware, (req, res) => ctrl().historialPacienteDoctor(req, res));
 
+// GET /citas/historial/doctor/:doctorId — Paciente consulta citas completadas con un doctor
+router.get('/historial/doctor/:doctorId', autenticarJWT, requireRole('Paciente'), translationMiddleware, (req, res) => ctrl().historialPorDoctor(req, res));
+
 // GET /citas/doctor — Doctor lista sus citas
 router.get('/doctor', autenticarJWT, requireRole('Doctor'), translationMiddleware, (req, res) => ctrl().listarCitasDoctor(req, res));
 

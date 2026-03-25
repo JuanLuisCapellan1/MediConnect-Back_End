@@ -6,6 +6,7 @@ import { AprobarRechazarDocumentoUseCase } from '../../../application/use-cases/
 import { AprobarRechazarDocumentoDto } from '../../../application/dtos/AprobarRechazarDocumentoDto';
 import { prisma } from '../../database/prisma/client';
 import { ValidationError } from 'class-validator';
+import { SupabaseStorageService } from '../../external-services/SupabaseStorageService';
 
 // Helper function para aplanar errores de validación
 function flattenValidationErrors(errors: ValidationError[]): string[] {
@@ -21,10 +22,21 @@ function flattenValidationErrors(errors: ValidationError[]): string[] {
     return messages;
 }
 
+// Helper: regenera la URL firmada de cualquier documento que tenga urlArchivo
+async function regenerarUrlArchivo(doc: any, storage: SupabaseStorageService): Promise<any> {
+    if (!doc || !doc.urlArchivo) return doc;
+    return {
+        ...doc,
+        urlArchivo: await storage.refreshOrGetSignedUrl(doc.urlArchivo),
+    };
+}
+
 /**
  * Controlador para gestión de acciones (revisión de documentos)
  */
 export class AccionesController {
+    private storage = new SupabaseStorageService();
+
     /**
      * GET /api/acciones/pendientes
      * Lista todas las acciones pendientes de revisión de documentos
@@ -74,9 +86,19 @@ export class AccionesController {
                 },
             });
 
+            // Regenerar URL firmada fresca para cada documento
+            const accionesConUrls = await Promise.all(
+                acciones.map(async (accion) => ({
+                    ...accion,
+                    documento: accion.documento
+                        ? await regenerarUrlArchivo(accion.documento, this.storage)
+                        : null,
+                }))
+            );
+
             res.status(200).json({
                 success: true,
-                data: acciones,
+                data: accionesConUrls,
             });
         } catch (error: any) {
             res.status(500).json({
@@ -156,9 +178,17 @@ export class AccionesController {
                 return;
             }
 
+            // Regenerar URL firmada fresca
+            const accionConUrl = {
+                ...accion,
+                documento: accion.documento
+                    ? await regenerarUrlArchivo(accion.documento, this.storage)
+                    : null,
+            };
+
             res.status(200).json({
                 success: true,
-                data: accion,
+                data: accionConUrl,
             });
         } catch (error: any) {
             res.status(500).json({
@@ -184,7 +214,6 @@ export class AccionesController {
                 return;
             }
 
-            // Validar DTO
             const dto = plainToInstance(AprobarRechazarDocumentoDto, {
                 ...req.body,
                 accionId,
@@ -200,7 +229,6 @@ export class AccionesController {
                 return;
             }
 
-            // Ejecutar caso de uso
             const adminId = req.user!.userId;
             const useCase = container.resolve(AprobarRechazarDocumentoUseCase);
             await useCase.execute(adminId, dto);

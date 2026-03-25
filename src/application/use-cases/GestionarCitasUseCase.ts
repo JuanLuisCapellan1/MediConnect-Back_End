@@ -807,6 +807,17 @@ export class GestionarCitasUseCase {
     }
 
     // ===================================================================
+    // PACIENTE: Historial de citas completadas con un doctor específico
+    // ===================================================================
+    async obtenerHistorialPorDoctor(
+        pacienteId: number,
+        doctorId: number,
+        filtros: { pagina?: number; limite?: number },
+    ): Promise<{ datos: any[]; total: number }> {
+        return await this.citaRepo.listarHistorialPorDoctor(pacienteId, doctorId, filtros);
+    }
+
+    // ===================================================================
     // PACIENTE / DOCTOR: Servicios en los que el paciente ha tenido citas
     // ===================================================================
     async obtenerServiciosPaciente(

@@ -7,7 +7,6 @@ export class SupabaseStorageService implements IStorageService {
   private supabase: SupabaseClient;
 
   constructor() {
-    // Asegúrate de que estas variables estén en tu .env
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_KEY;
 
@@ -35,7 +34,7 @@ export class SupabaseStorageService implements IStorageService {
       .from(bucket)
       .upload(fileName, fileBuffer, {
         contentType: mimeType,
-        upsert: true // Sobrescribir si existe
+        upsert: true
       });
 
     if (error || !data) {
@@ -48,28 +47,17 @@ export class SupabaseStorageService implements IStorageService {
       throw new Error('No se pudo subir el archivo al almacenamiento.');
     }
 
-    console.log(`✅ Archivo subido exitosamente:`, {
-      bucket,
-      path: data.path
-    });
+    console.log(`✅ Archivo subido exitosamente:`, { bucket, path: data.path });
 
-    // Para assets públicos devolvemos la URL completa
+    // Para assets públicos devolvemos la URL pública completa
     if (bucket === 'public-assets') {
       const { data: publicData } = this.supabase.storage.from(bucket).getPublicUrl(data.path);
       return publicData.publicUrl;
     }
 
-    // Para documentos seguros generamos una URL firmada de larga duración (7 días)
-    const { data: signedData } = await this.supabase.storage
-      .from(bucket)
-      .createSignedUrl(data.path, 7 * 24 * 60 * 60); // 7 días en segundos
-
-    if (signedData) {
-      return signedData.signedUrl;
-    }
-
-    // Fallback: generar URL firmada corta si falla la larga
-    return await this.getSignedUrl(data.path, bucket);
+    // Para documentos seguros devolvemos SOLO EL PATH (no la URL firmada),
+    // para que al momento de servir el documento se genere una URL fresca.
+    return data.path;
   }
 
   getPublicUrl(path: string, bucket: 'public-assets'): string {
@@ -77,31 +65,77 @@ export class SupabaseStorageService implements IStorageService {
     return data.publicUrl;
   }
 
-  async getSignedUrl(path: string, bucket: 'secure-documents'): Promise<string> {
-    // Genera un link válido por 120 segundos (ajustable)
+  async getSignedUrl(
+    path: string,
+    bucket: 'secure-documents',
+    expiresIn = 3600   // 1 hora por defecto
+  ): Promise<string> {
     const { data, error } = await this.supabase.storage
       .from(bucket)
-      .createSignedUrl(path, 120);
+      .createSignedUrl(path, expiresIn);
 
-    if (error) {
+    if (error || !data) {
       throw new Error('No se pudo generar el acceso seguro al documento.');
     }
 
     return data.signedUrl;
   }
 
+  /**
+   * Detecta si el valor es un path puro (no una URL completa) y genera
+   * una URL firmada fresca. Si falla (e.g. path inválido extraído de URL vieja),
+   * devuelve el valor original para no romper la respuesta.
+   */
+  async refreshOrGetSignedUrl(pathOrUrl: string): Promise<string> {
+    if (!pathOrUrl) return pathOrUrl;
+
+    let path = pathOrUrl;
+
+    // Si ya es una URL completa (registro antiguo en DB), extraer el path
+    if (pathOrUrl.startsWith('http')) {
+      try {
+        const url = new URL(pathOrUrl);
+        // Supabase storage URLs tienen el formato:
+        // /storage/v1/object/sign/<bucket>/<path...>
+        // /storage/v1/object/authenticated/<bucket>/<path...>
+        const parts = url.pathname.split('/');
+        const bucketIdx = parts.findIndex(p => p === 'secure-documents');
+
+        if (bucketIdx === -1) {
+          console.warn('⚠️ refreshOrGetSignedUrl: no se encontró "secure-documents" en la URL:', url.pathname);
+          return pathOrUrl; // No es un documento seguro conocido, devolver original
+        }
+
+        // Decodificar caracteres URL-encoded (e.g., %40 → @, %20 → ' ')
+        path = parts.slice(bucketIdx + 1).map(decodeURIComponent).join('/');
+        console.log(`🔄 Regenerando URL firmada para path: ${path}`);
+      } catch (e) {
+        console.warn('⚠️ refreshOrGetSignedUrl: no se pudo parsear la URL:', pathOrUrl, e);
+        return pathOrUrl;
+      }
+    }
+
+    try {
+      const freshUrl = await this.getSignedUrl(path, 'secure-documents');
+      console.log(`✅ URL firmada regenerada exitosamente para: ${path}`);
+      return freshUrl;
+    } catch (e) {
+      console.error('❌ refreshOrGetSignedUrl: falló al regenerar URL para path:', path, e);
+      // Devolver el original para no romper la respuesta
+      return pathOrUrl;
+    }
+  }
+
   async refreshSignedUrl(signedUrl: string, bucket: 'secure-documents'): Promise<string> {
-    // Extrae el path de una URL firmada existente para generar una nueva
     try {
       const url = new URL(signedUrl);
-      const path = url.pathname.split('/').pop(); // Obtiene el nombre del archivo
+      const parts = url.pathname.split('/');
+      const bucketIdx = parts.findIndex(p => p === bucket);
+      const path = bucketIdx !== -1 ? parts.slice(bucketIdx + 1).join('/') : parts.pop()!;
 
-      if (!path) {
-        throw new Error('URL firmada inválida');
-      }
-
+      if (!path) throw new Error('URL firmada inválida');
       return await this.getSignedUrl(path, bucket);
-    } catch (error) {
+    } catch {
       throw new Error('No se pudo refrescar la URL firmada');
     }
   }

@@ -70,6 +70,11 @@ export interface ICitaRepository {
         limite?: number;
     }): Promise<{ datos: any[]; total: number }>;
 
+    listarHistorialPorDoctor(pacienteId: number, doctorId: number, filtros: {
+        pagina?: number;
+        limite?: number;
+    }): Promise<{ datos: any[]; total: number }>;
+
     listarServiciosPaciente(pacienteId: number): Promise<{ id: number; nombre: string; estado: string }[]>;
 
     estadisticasPacientes(doctorId: number, filtros: {

@@ -1,11 +1,15 @@
 import { injectable } from 'tsyringe';
 import { prisma } from '../../infrastructure/database/prisma/client';
+import { SupabaseStorageService } from '../../infrastructure/external-services/SupabaseStorageService';
 
 /**
- * Caso de uso para obtener el estado del documento (certificación sanitaria) de un centro de salud
+ * Caso de uso para obtener el estado del documento (certificación sanitaria) de un centro de salud.
+ * Las URLs de documentos se regeneran en tiempo de lectura para evitar tokens de Supabase expirados.
  */
 @injectable()
 export class ObtenerEstadoDocumentosCentroUseCase {
+    private storage = new SupabaseStorageService();
+
     async execute(centroId: number): Promise<any> {
         // Verificar que el centro existe
         const centro = await prisma.centroSalud.findUnique({
@@ -23,8 +27,7 @@ export class ObtenerEstadoDocumentosCentroUseCase {
             throw new Error('Centro de Salud no encontrado');
         }
 
-        // Para centros de salud el único documento es la certificación sanitaria
-        // Vamos a buscar la última acción de revisión asociada a este centro
+        // Buscar la última acción de revisión asociada a este centro
         const ultimaAccion = await prisma.accion.findFirst({
             where: {
                 emisorId: centroId,
@@ -46,13 +49,21 @@ export class ObtenerEstadoDocumentosCentroUseCase {
         let estadoRevision = 'Pendiente';
 
         if (centro.estadoVerificacion === 'Aprobado') {
-            // Si el centro ya está aprobado, lógicamente su único documento (certificado) está aprobado
             estadoRevision = 'Aprobado';
         } else if (ultimaAccion) {
-            // Si no está aprobado, nos guiamos del estado de la última acción
-            estadoRevision = ultimaAccion.estado === 'Rechazada' ? 'Rechazado' 
-                : ultimaAccion.estado === 'Aprobada' ? 'Aprobado' 
+            estadoRevision = ultimaAccion.estado === 'Rechazada' ? 'Rechazado'
+                : ultimaAccion.estado === 'Aprobada' ? 'Aprobado'
                 : 'Pendiente';
+        }
+
+        // Regenerar URL firmada fresca para el certificado sanitario
+        let urlArchivo: string | null = centro.certificacion_sanitaria;
+        if (urlArchivo) {
+            try {
+                urlArchivo = await this.storage.refreshOrGetSignedUrl(urlArchivo);
+            } catch {
+                // Si falla, devolver el valor original para no romper la respuesta
+            }
         }
 
         return {
@@ -66,9 +77,9 @@ export class ObtenerEstadoDocumentosCentroUseCase {
             },
             documentos: [
                 {
-                    id: 1, // ID virtual o fijo ya que siempre es el mismo campo
+                    id: 1,
                     tipoDocumento: 'Certificación Sanitaria',
-                    urlArchivo: centro.certificacion_sanitaria,
+                    urlArchivo,
                     estadoRevision,
                     creadoEn: centro.creadoEn,
                     actualizadoEn: centro.actualizadoEn,

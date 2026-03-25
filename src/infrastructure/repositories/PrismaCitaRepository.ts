@@ -881,7 +881,65 @@ export class PrismaCitaRepository implements ICitaRepository {
         return { datos: datos.map((d) => this._mapHistorial(d)), total };
     }
 
+    async listarHistorialPorDoctor(
+        pacienteId: number,
+        doctorId: number,
+        filtros: { pagina?: number; limite?: number }
+    ): Promise<{ datos: any[]; total: number }> {
+        const pagina = filtros.pagina ?? 1;
+        const limite = filtros.limite ?? 10;
+        const skip = (pagina - 1) * limite;
+
+        // Filtra historial del paciente, únicamente citas con el doctor solicitado
+        const where: any = {
+            pacienteId,
+            cita: { doctorUsuarioId: doctorId },
+        };
+
+        const [datos, total] = await Promise.all([
+            this.prisma.historialConsulta.findMany({
+                where,
+                include: {
+                    cita: {
+                        include: {
+                            paciente: {
+                                include: {
+                                    usuario: { select: { email: true, fotoPerfil: true, banner: true } },
+                                    ubicacion: { select: { id: true, nombre: true, direccion: true } },
+                                    caracteristicas: {
+                                        where: { estado: 'Activo' },
+                                        include: { condicion: { select: { id: true, nombre: true, tipo: true } } },
+                                    },
+                                },
+                            },
+                            doctor: {
+                                include: {
+                                    usuario: { select: { email: true, fotoPerfil: true, banner: true } },
+                                    especialidades: {
+                                        where: { es_principal: true },
+                                        include: { especialidades: { select: { nombre: true } } },
+                                    },
+                                },
+                            },
+                            servicio: { include: { especialidad: true, ubicaciones: true } },
+                            seguro: { select: { nombre: true, urlImage: true } },
+                            tipoSeguro: { select: { nombre: true } },
+                        },
+                    },
+                    adjuntos: { include: { media: true } },
+                },
+                orderBy: { creadoEn: 'desc' },
+                skip,
+                take: limite,
+            }),
+            this.prisma.historialConsulta.count({ where }),
+        ]);
+
+        return { datos: datos.map((d) => this._mapHistorial(d)), total };
+    }
+
     async listarServiciosPaciente(
+
         pacienteId: number
     ): Promise<{ id: number; nombre: string; estado: string }[]> {
         const citas = await (this.prisma.cita as any).findMany({

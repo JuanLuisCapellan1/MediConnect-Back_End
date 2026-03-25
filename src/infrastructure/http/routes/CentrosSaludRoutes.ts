@@ -40,6 +40,7 @@ centrosSaludRouter.put(
   '/mi-perfil',
   autenticarJWT,
   requireRole('Centro'),
+  translationMiddleware,
   (req, res) => controller.actualizarPerfil(req, res)
 );
 
