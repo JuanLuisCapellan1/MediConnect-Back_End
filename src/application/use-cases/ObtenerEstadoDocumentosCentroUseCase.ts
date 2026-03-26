@@ -66,6 +66,9 @@ export class ObtenerEstadoDocumentosCentroUseCase {
             return {
                 id: doc.id_documento_centro,
                 tipoDocumento: doc.tipo_documento,
+                nombreOriginal: doc.nombre_original,
+                tipoMime: doc.tipo_mime,
+                tamanioBytes: doc.tamanio_bytes ? Number(doc.tamanio_bytes) : null,
                 urlArchivo,
                 estadoRevision,
                 creadoEn: doc.creado_en,
