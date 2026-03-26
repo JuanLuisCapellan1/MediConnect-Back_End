@@ -50,7 +50,7 @@ export class ActualizarDocumentoCentroUseCase {
             where: {
                 emisorId: centroId,
                 tipoAccion: {
-                    nombre: 'Registro Centro de Salud'
+                    nombre: { in: ['Registro Centro de Salud', 'Revisión Centro de Salud'] }
                 }
             },
             orderBy: { fechaEmision: 'desc' }

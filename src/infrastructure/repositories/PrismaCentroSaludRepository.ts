@@ -35,7 +35,7 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
         where: {
           emisorId: usuarioId,
           tipoAccion: {
-            nombre: 'Registro Centro de Salud'
+            nombre: { in: ['Registro Centro de Salud', 'Revisión Centro de Salud'] }
           }
         },
         orderBy: {
@@ -104,11 +104,24 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
     // Regenerar URL firmada fresca para la certificación sanitaria (evita JWT expirado de Supabase)
     if (centro && (centro as any).documentos_centros && (centro as any).documentos_centros.length > 0) {
       const docs = (centro as any).documentos_centros;
-      const cert = docs.find((d: any) => d.tipo_documento === 'Certificado Sanitario' || d.tipo_documento === 'Certificacion Sanitaria' || d.tipo_documento === 'Certificación Sanitaria');
-      if (cert) {
-        (centro as any).certificacion_sanitaria = await this.storage
-          .refreshOrGetSignedUrl(cert.url_archivo)
-          .catch(() => cert.url_archivo);
+      
+      // Enriquecer CADA documento con su respectiva acción de revisión pendiente o resuelta
+      for (const d of docs) {
+        const accionDoc = await this.prisma.accion.findFirst({
+          where: { id_documento_centro: d.id_documento_centro },
+          orderBy: { fechaEmision: 'desc' },
+          select: { id: true, comentarioAdmin: true, estado: true, fechaResolucion: true }
+        });
+        
+        d.idAccion = accionDoc?.id || null;
+        d.comentarioVerificacion = accionDoc?.comentarioAdmin || null;
+        
+        // Mantener comportamiento legacy del Certificado Sanitario adjuntando la URL a la raíz
+        if (d.tipo_documento === 'Certificado Sanitario' || d.tipo_documento === 'Certificacion Sanitaria' || d.tipo_documento === 'Certificación Sanitaria') {
+          (centro as any).certificacion_sanitaria = await this.storage
+            .refreshOrGetSignedUrl(d.url_archivo)
+            .catch(() => d.url_archivo);
+        }
       }
     }
 

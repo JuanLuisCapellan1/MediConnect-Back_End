@@ -39,13 +39,27 @@ export class GestionarCentroSaludUseCase {
             // Caso 1: Estaba rechazado, cualquier actualización es un intento de arreglo
             requiereRevisionAdmin = true;
             razonRevision = 'El centro ha corregido sus datos tras ser rechazado previamente.';
-        } else if (centro.estadoVerificacion === 'Aprobado') {
-            // Caso 2: Estaba aprobado. Solo revisar si cambian datos legales críticos (RNC / Nombre Comercial)
-            const nombreCambiado = dto.nombreComercial && dto.nombreComercial.trim() !== centro.nombreComercial;
-            const rncCambiado = dto.rnc && dto.rnc.trim() !== centro.rnc;
+        } else if (centro.estadoVerificacion === 'Aprobado' || centro.estadoVerificacion === 'En revisión') {
+            // Caso 2: Estaba aprobado (o en revisión por documentos pendientes). 
+            // Revisar si cambian datos legales críticos (RNC / Nombre Comercial)
+            const nombreCambiado = dto.nombreComercial !== undefined && dto.nombreComercial.trim() !== centro.nombreComercial;
+            const rncCambiado = dto.rnc !== undefined && dto.rnc.trim() !== centro.rnc;
+            
             if (nombreCambiado || rncCambiado) {
-                requiereRevisionAdmin = true;
-                razonRevision = 'El centro, que ya estaba aprobado, ha modificado su información legal sensible (RNC o Nombre Comercial).';
+                // Verificar si YA tiene una acción pendiente de Registro/Revisión de Perfil
+                const accionPerfilPendiente = await this.prisma.accion.findFirst({
+                    where: {
+                        emisorId: centroId,
+                        estado: 'Pendiente',
+                        tipoAccion: { nombre: { in: ['Registro Centro de Salud', 'Revisión Centro de Salud'] } }
+                    }
+                });
+
+                // Si no hay acción pendiente para el perfil, o si estaba ya aprobado, exigimos revisión
+                if (!accionPerfilPendiente) {
+                    requiereRevisionAdmin = true;
+                    razonRevision = 'El centro ha modificado su información legal sensible (RNC o Nombre Comercial).';
+                }
             }
         }
 
