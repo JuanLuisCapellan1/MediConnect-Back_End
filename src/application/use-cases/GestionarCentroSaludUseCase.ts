@@ -1,4 +1,5 @@
 import { injectable, inject } from 'tsyringe';
+import { PrismaClient } from '@prisma/client';
 import { ICentroSaludRepository } from '../../domain/repositories/ICentroSaludRepository';
 import { SupabaseStorageService } from '../../infrastructure/external-services/SupabaseStorageService';
 import { ActualizarCentroSaludDto, ActualizarUbicacionCentroDto } from '../dtos/ActualizarCentroSaludDto';
@@ -7,7 +8,8 @@ import { ActualizarCentroSaludDto, ActualizarUbicacionCentroDto } from '../dtos/
 export class GestionarCentroSaludUseCase {
     constructor(
         @inject('CentroSaludRepository') private centroRepo: ICentroSaludRepository,
-        @inject(SupabaseStorageService) private supabase: SupabaseStorageService
+        @inject(SupabaseStorageService) private supabase: SupabaseStorageService,
+        @inject('PrismaClient') private prisma: PrismaClient
     ) { }
 
     // ─── Perfil ────────────────────────────────────────────────────────────────
@@ -29,14 +31,71 @@ export class GestionarCentroSaludUseCase {
                 throw new Error('El nombre comercial no puede exceder 120 caracteres');
         }
 
-        return await this.centroRepo.actualizarPerfil(centroId, {
-            nombreComercial: dto.nombreComercial?.trim(),
-            rnc: dto.rnc?.trim(),
-            tipoCentroId: dto.tipoCentroId,
-            sitio_web: dto.sitio_web,
-            descripcion: dto.descripcion,
-            telefono: dto.telefono?.trim(),
-            direccion: dto.direccion?.trim(),
+        let requiereRevisionAdmin = false;
+        let razonRevision = '';
+
+        // Análisis de reglas de negocio para re-evalución
+        if (centro.estadoVerificacion === 'Rechazado') {
+            // Caso 1: Estaba rechazado, cualquier actualización es un intento de arreglo
+            requiereRevisionAdmin = true;
+            razonRevision = 'El centro ha corregido sus datos tras ser rechazado previamente.';
+        } else if (centro.estadoVerificacion === 'Aprobado') {
+            // Caso 2: Estaba aprobado. Solo revisar si cambian datos legales críticos (RNC / Nombre Comercial)
+            const nombreCambiado = dto.nombreComercial && dto.nombreComercial.trim() !== centro.nombreComercial;
+            const rncCambiado = dto.rnc && dto.rnc.trim() !== centro.rnc;
+            if (nombreCambiado || rncCambiado) {
+                requiereRevisionAdmin = true;
+                razonRevision = 'El centro, que ya estaba aprobado, ha modificado su información legal sensible (RNC o Nombre Comercial).';
+            }
+        }
+
+        // Realizamos la transición transaccional para evitar inconsistencias
+        return await this.prisma.$transaction(async (tx) => {
+            // Actualizar datos de Centro en Prisma directamente o usar logica de actualizacion
+            const updatePayload: any = { actualizadoEn: new Date() };
+
+            if (dto.nombreComercial !== undefined) updatePayload.nombreComercial = dto.nombreComercial?.trim();
+            if (dto.rnc !== undefined) updatePayload.rnc = dto.rnc?.trim();
+            if (dto.tipoCentroId !== undefined) updatePayload.tipoCentro = { connect: { id: dto.tipoCentroId } };
+            if (dto.sitio_web !== undefined) updatePayload.sitio_web = dto.sitio_web;
+            if (dto.descripcion !== undefined) updatePayload.descripcion = dto.descripcion;
+            if (dto.telefono !== undefined) updatePayload.usuario = { update: { telefono: dto.telefono?.trim() } };
+
+            if (requiereRevisionAdmin) {
+                updatePayload.estadoVerificacion = 'En revisión';
+            }
+
+            const centroActualizado = await tx.centroSalud.update({
+                where: { usuarioId: centroId },
+                data: updatePayload,
+                include: { usuario: true, tipoCentro: true, ubicacion: true }
+            });
+
+            // Si se requiere revisión, generar nueva acción "Registro Centro de Salud"
+            if (requiereRevisionAdmin) {
+                let tipoAccion = await tx.tipoAccion.findFirst({
+                    where: { nombre: 'Registro Centro de Salud' },
+                });
+
+                if (!tipoAccion) {
+                    tipoAccion = await tx.tipoAccion.create({
+                        data: { nombre: 'Registro Centro de Salud', estado: 'Activo' }
+                    });
+                }
+
+                await tx.accion.create({
+                    data: {
+                        tipoAccionId: tipoAccion.id,
+                        emisorId: centroId,
+                        detalle: 'Revisión de datos del perfil del Centro',
+                        comentarioEmisor: razonRevision,
+                        estado: 'Pendiente',
+                        fechaEmision: new Date(),
+                    },
+                });
+            }
+
+            return centroActualizado;
         });
     }
 

@@ -131,7 +131,6 @@ export class CompletarPerfilCentroSaludUseCase {
             ubicacionId: ubicacionId,
             sitio_web: dto.sitioWeb ? dto.sitioWeb.trim() : null,
             descripcion: dto.descripcion ? dto.descripcion.trim() : null,
-            certificacion_sanitaria: certificadoUrl,
             estado: 'Activo',
             estadoVerificacion: 'En revisión', // Pendiente de aprobación del admin
             actualizadoEn: new Date(),
@@ -152,6 +151,45 @@ export class CompletarPerfilCentroSaludUseCase {
             telefono: dto.telefono.trim(),
             fotoPerfil: fotoCentroUrl ?? undefined,
             actualizadoEn: new Date(),
+          },
+        });
+
+        // 3c. Crear registro del documento sanitario
+        const documentoCreado = await tx.documentos_centros.create({
+          data: {
+            id_centro_salud: usuarioId,
+            tipo_documento: 'Certificado Sanitario',
+            url_archivo: certificadoUrl,
+            nombre_original: files.certificadoSanitario[0].originalname,
+            tipo_mime: files.certificadoSanitario[0].mimetype,
+            tamanio_bytes: files.certificadoSanitario[0].size,
+            estado_revision: 'Pendiente',
+            estado: 'Activo',
+            creado_en: new Date(),
+          }
+        });
+
+        // 3d. Crear acción de auditoría/revisión para el DOCUMENTO
+        let tipoAccionDoc = await tx.tipoAccion.findFirst({
+          where: { nombre: 'Revisión Certificado Sanitario' },
+        });
+
+        if (!tipoAccionDoc) {
+          tipoAccionDoc = await tx.tipoAccion.create({
+            data: { nombre: 'Revisión Certificado Sanitario', estado: 'Activo' },
+          });
+        }
+
+        await tx.accion.create({
+          data: {
+            tipoAccionId: tipoAccionDoc.id,
+            emisorId: usuarioId,
+            id_documento_centro: documentoCreado.id_documento_centro,
+            detalle: `Revisión de documento: Certificado Sanitario - Centro: ${dto.nombreComercial}`,
+            comentarioEmisor: 'Certificado Sanitario obligatorio para validación del centro',
+            fechaEmision: new Date(),
+            fechaVencimiento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+            estado: 'Pendiente',
           },
         });
 

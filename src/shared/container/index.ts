@@ -467,7 +467,7 @@ container.register<ICentroSaludRepository>(
       const redisCache = container.resolve(RedisCacheService);
       return new PrismaCentroSaludRepository(prismaClient, redisCache);
     }
-  }
+  } as any
 );
 
 container.register<ISolicitudAlianzaRepository>(
@@ -477,14 +477,15 @@ container.register<ISolicitudAlianzaRepository>(
       const prismaClient = container.resolve<PrismaClient>('PrismaClient');
       return new PrismaSolicitudAlianzaRepository(prismaClient);
     }
-  }
+  } as any
 );
 
 container.register(GestionarCentroSaludUseCase, {
   useFactory: () => {
     const centroRepo = container.resolve<ICentroSaludRepository>('CentroSaludRepository');
     const supabase = container.resolve(SupabaseStorageService);
-    return new GestionarCentroSaludUseCase(centroRepo, supabase);
+    const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+    return new GestionarCentroSaludUseCase(centroRepo, supabase, prismaClient);
   }
 });
 
@@ -805,7 +806,8 @@ container.register(GestionarDoctoresUseCase, {
     const citaRepo = container.resolve<ICitaRepository>('CitaRepository');
     const validator = container.resolve(DoctorValidator);
     const estadoValidator = container.resolve(EstadoValidator);
-    return new GestionarDoctoresUseCase(repo, citaRepo, validator, estadoValidator);
+    const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+    return new GestionarDoctoresUseCase(repo, citaRepo, validator, estadoValidator, prismaClient);
   }
 });
 

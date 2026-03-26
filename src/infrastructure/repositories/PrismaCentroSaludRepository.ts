@@ -1,8 +1,10 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { ICentroSaludRepository } from '../../domain/repositories/ICentroSaludRepository';
 import { RedisCacheService } from '../external-services/RedisCacheService';
+import { SupabaseStorageService } from '../external-services/SupabaseStorageService';
 
 export class PrismaCentroSaludRepository implements ICentroSaludRepository {
+  private storage = new SupabaseStorageService();
   constructor(private prisma: PrismaClient, private redis: RedisCacheService) { }
 
   // ─── Nuevos métodos ────────────────────────────────────────────────────────
@@ -22,53 +24,91 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
             },
           }
         },
+        documentos_centros: { where: { estado: 'Activo' } }
       }
     });
 
     // Enriquecer ubicación con coords PostGIS (latitud, longitud y dirección completa)
-    if (centro && (centro as any).ubicacion?.id) {
-      const ubicId: number = (centro as any).ubicacion.id;
-      const geoRows = await this.prisma.$queryRaw<{
-        id: number;
-        latitud: number | null;
-        longitud: number | null;
-        barrio_nombre: string | null;
-        municipio_nombre: string | null;
-        provincia_nombre: string | null;
-      }[]>`
-        SELECT
-          u.id_ubicacion                        AS id,
-          ST_Y(u.punto_geografico::geometry)    AS latitud,
-          ST_X(u.punto_geografico::geometry)    AS longitud,
-          b.nombre                              AS barrio_nombre,
-          m.nombre                              AS municipio_nombre,
-          p.nombre                              AS provincia_nombre
-        FROM ubicaciones u
-        LEFT JOIN barrios              b  ON b.id_barrio             = u.id_barrio
-        LEFT JOIN secciones            s  ON s.id_seccion             = b.id_seccion
-        LEFT JOIN distritos_municipales dm ON dm.id_distrito_municipal = s.id_distrito_municipal
-        LEFT JOIN municipios           m  ON m.id_municipio           = COALESCE(dm.id_municipio, s.id_municipio)
-        LEFT JOIN provincias           p  ON p.id_provincia           = m.id_provincia
-        WHERE u.id_ubicacion = ${ubicId}
-      `;
+    if (centro) {
+      // Fetch action for verification (comment tracking)
+      const accionVerificacion = await this.prisma.accion.findFirst({
+        where: {
+          emisorId: usuarioId,
+          tipoAccion: {
+            nombre: 'Registro Centro de Salud'
+          }
+        },
+        orderBy: {
+          fechaEmision: 'desc'
+        },
+        select: {
+          id: true,
+          comentarioAdmin: true,
+          estado: true,
+          fechaResolucion: true
+        }
+      });
 
-      if (geoRows.length > 0) {
-        const geo = geoRows[0];
-        const partes: string[] = [];
-        if ((centro as any).ubicacion.direccion) partes.push((centro as any).ubicacion.direccion.trim());
-        if (geo.barrio_nombre) partes.push(geo.barrio_nombre.trim());
-        if (geo.municipio_nombre) partes.push(geo.municipio_nombre.trim());
-        if (geo.provincia_nombre) partes.push(geo.provincia_nombre.trim());
+      (centro as any).idAccionRegistro = accionVerificacion?.id || null;
+      (centro as any).comentarioVerificacion = accionVerificacion?.comentarioAdmin || null;
+      (centro as any).estadoAccionVerificacion = accionVerificacion?.estado || null;
+      (centro as any).fechaResolucionVerificacion = accionVerificacion?.fechaResolucion || null;
 
-        (centro as any).ubicacion = {
-          ...(centro as any).ubicacion,
-          latitud: geo.latitud != null ? Number(geo.latitud) : null,
-          longitud: geo.longitud != null ? Number(geo.longitud) : null,
-          barrioNombre: geo.barrio_nombre,
-          municipioNombre: geo.municipio_nombre,
-          provinciaNombre: geo.provincia_nombre,
-          direccionCompleta: partes.join(', '),
-        };
+      if ((centro as any).ubicacion?.id) {
+        const ubicId: number = (centro as any).ubicacion.id;
+        const geoRows = await this.prisma.$queryRaw<{
+          id: number;
+          latitud: number | null;
+          longitud: number | null;
+          barrio_nombre: string | null;
+          municipio_nombre: string | null;
+          provincia_nombre: string | null;
+        }[]>`
+          SELECT
+            u.id_ubicacion                        AS id,
+            ST_Y(u.punto_geografico::geometry)    AS latitud,
+            ST_X(u.punto_geografico::geometry)    AS longitud,
+            b.nombre                              AS barrio_nombre,
+            m.nombre                              AS municipio_nombre,
+            p.nombre                              AS provincia_nombre
+          FROM ubicaciones u
+          LEFT JOIN barrios              b  ON b.id_barrio             = u.id_barrio
+          LEFT JOIN secciones            s  ON s.id_seccion             = b.id_seccion
+          LEFT JOIN distritos_municipales dm ON dm.id_distrito_municipal = s.id_distrito_municipal
+          LEFT JOIN municipios           m  ON m.id_municipio           = COALESCE(dm.id_municipio, s.id_municipio)
+          LEFT JOIN provincias           p  ON p.id_provincia           = m.id_provincia
+          WHERE u.id_ubicacion = ${ubicId}
+        `;
+
+        if (geoRows.length > 0) {
+          const geo = geoRows[0];
+          const partes: string[] = [];
+          if ((centro as any).ubicacion.direccion) partes.push((centro as any).ubicacion.direccion.trim());
+          if (geo.barrio_nombre) partes.push(geo.barrio_nombre.trim());
+          if (geo.municipio_nombre) partes.push(geo.municipio_nombre.trim());
+          if (geo.provincia_nombre) partes.push(geo.provincia_nombre.trim());
+
+          (centro as any).ubicacion = {
+            ...(centro as any).ubicacion,
+            latitud: geo.latitud != null ? Number(geo.latitud) : null,
+            longitud: geo.longitud != null ? Number(geo.longitud) : null,
+            barrioNombre: geo.barrio_nombre,
+            municipioNombre: geo.municipio_nombre,
+            provinciaNombre: geo.provincia_nombre,
+            direccionCompleta: partes.join(', '),
+          };
+        }
+      }
+    }
+
+    // Regenerar URL firmada fresca para la certificación sanitaria (evita JWT expirado de Supabase)
+    if (centro && (centro as any).documentos_centros && (centro as any).documentos_centros.length > 0) {
+      const docs = (centro as any).documentos_centros;
+      const cert = docs.find((d: any) => d.tipo_documento === 'Certificado Sanitario' || d.tipo_documento === 'Certificacion Sanitaria' || d.tipo_documento === 'Certificación Sanitaria');
+      if (cert) {
+        (centro as any).certificacion_sanitaria = await this.storage
+          .refreshOrGetSignedUrl(cert.url_archivo)
+          .catch(() => cert.url_archivo);
       }
     }
 
@@ -211,10 +251,19 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
   // ─── Métodos legacy ────────────────────────────────────────────────────────
 
   async obtenerPorId(usuarioId: number): Promise<any | null> {
-    return await this.prisma.centroSalud.findUnique({
+    const centro = await this.prisma.centroSalud.findUnique({
       where: { usuarioId },
-      include: { usuario: true, tipoCentro: true, ubicacion: true },
+      include: { usuario: true, tipoCentro: true, ubicacion: true, documentos_centros: { where: { estado: 'Activo' } } },
     });
+
+    if (centro && (centro as any).documentos_centros) {
+        const cert = (centro as any).documentos_centros.find((d: any) => d.tipo_documento === 'Certificado Sanitario' || d.tipo_documento === 'Certificacion Sanitaria' || d.tipo_documento === 'Certificación Sanitaria');
+        if (cert) {
+            (centro as any).certificacion_sanitaria = await this.storage
+              .refreshOrGetSignedUrl(cert.url_archivo).catch(() => cert.url_archivo);
+        }
+    }
+    return centro;
   }
 
   async obtenerPorUsuarioId(usuarioId: number): Promise<any | null> {
@@ -222,24 +271,45 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
   }
 
   async crear(datos: any): Promise<any> {
-    return await this.prisma.centroSalud.create({
+    const centro = await this.prisma.centroSalud.create({
       data: datos,
-      include: { usuario: true, tipoCentro: true, ubicacion: true },
+      include: { usuario: true, tipoCentro: true, ubicacion: true, documentos_centros: { where: { estado: 'Activo' } } },
     });
+    return centro;
   }
 
   async actualizar(usuarioId: number, datos: any): Promise<any> {
-    return await this.prisma.centroSalud.update({
+    const centro = await this.prisma.centroSalud.update({
       where: { usuarioId },
       data: datos,
-      include: { usuario: true, tipoCentro: true, ubicacion: true },
+      include: { usuario: true, tipoCentro: true, ubicacion: true, documentos_centros: { where: { estado: 'Activo' } } },
     });
+    
+    if (centro && (centro as any).documentos_centros) {
+        const cert = (centro as any).documentos_centros.find((d: any) => d.tipo_documento === 'Certificado Sanitario' || d.tipo_documento === 'Certificacion Sanitaria' || d.tipo_documento === 'Certificación Sanitaria');
+        if (cert) {
+            (centro as any).certificacion_sanitaria = await this.storage
+              .refreshOrGetSignedUrl(cert.url_archivo).catch(() => cert.url_archivo);
+        }
+    }
+    return centro;
   }
 
   async listar(): Promise<any[]> {
-    return await this.prisma.centroSalud.findMany({
-      include: { usuario: true, tipoCentro: true, ubicacion: true },
+    const centros = await this.prisma.centroSalud.findMany({
+      include: { usuario: true, tipoCentro: true, ubicacion: true, documentos_centros: { where: { estado: 'Activo' } } },
     });
+
+    for (const centro of centros) {
+        if ((centro as any).documentos_centros) {
+            const cert = (centro as any).documentos_centros.find((d: any) => d.tipo_documento === 'Certificado Sanitario' || d.tipo_documento === 'Certificacion Sanitaria' || d.tipo_documento === 'Certificación Sanitaria');
+            if (cert) {
+                (centro as any).certificacion_sanitaria = await this.storage
+                  .refreshOrGetSignedUrl(cert.url_archivo).catch(() => cert.url_archivo);
+            }
+        }
+    }
+    return centros;
   }
 
   async listarParaAdmin(filtros: {
@@ -283,12 +353,48 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
           ubicacion: {
             include: { barrio: { include: { seccion: true } } },
           },
+          documentos_centros: true,
         },
       }),
       this.prisma.centroSalud.count({ where }),
     ]);
 
-    return { datos, total };
+    // Para cada centro, regenerar URL del certificado y adjuntar última acción de revisión
+    const datosEnriquecidos = await Promise.all(
+      datos.map(async (centro: any) => {
+        // 1. Regenerar URL firmada fresca del certificado sanitario iterando los documentos
+        if (centro.documentos_centros && centro.documentos_centros.length > 0) {
+          const cert = centro.documentos_centros.find((d: any) => d.tipo_documento === 'Certificado Sanitario' || d.tipo_documento === 'Certificacion Sanitaria' || d.tipo_documento === 'Certificación Sanitaria');
+          if (cert && cert.estado !== 'Eliminado') {
+            centro.certificacion_sanitaria = await this.storage
+              .refreshOrGetSignedUrl(cert.url_archivo)
+              .catch(() => cert.url_archivo);
+            
+            centro.id_documento_certificado = cert.id_documento_centro;
+            centro.estado_documento_certificado = cert.estado_revision;
+          }
+        }
+
+        // 2. Adjuntar última acción de verificación (comentarioAdmin, estado)
+        const ultimaAccion = await this.prisma.accion.findFirst({
+          where: {
+            emisorId: centro.usuarioId,
+            tipoAccion: { nombre: { in: ['Registro Centro de Salud', 'Revisión Centro de Salud'] } }
+          },
+          orderBy: { fechaEmision: 'desc' },
+          select: { id: true, comentarioAdmin: true, estado: true, fechaResolucion: true }
+        });
+
+        centro.idAccionRegistro = ultimaAccion?.id || null;
+        centro.comentarioVerificacion = ultimaAccion?.comentarioAdmin || null;
+        centro.estadoAccionVerificacion = ultimaAccion?.estado || null;
+        centro.fechaResolucionVerificacion = ultimaAccion?.fechaResolucion || null;
+
+        return centro;
+      })
+    );
+
+    return { datos: datosEnriquecidos, total };
   }
 
   // ─── BÚSQUEDA GEOGRÁFICA ────────────────────────────────────────────────────

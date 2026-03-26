@@ -35,21 +35,30 @@ export class AprobarRechazarDocumentoUseCase {
         if (!accion) throw new Error('Acción no encontrada');
         if (accion.estado !== 'Pendiente') throw new Error('Esta acción ya fue procesada');
 
-        const esCentroSalud = accion.tipoAccion?.nombre === 'Registro Centro de Salud';
-        const esRegistroDoctor = !accion.documentoId && !esCentroSalud;
+        const esRegistroCentro = ['Registro Centro de Salud', 'Revisión Centro de Salud'].includes(accion.tipoAccion?.nombre ?? '');
+        const esDocumentoCentro = accion.id_documento_centro != null;
+        const esRegistroDoctor = !accion.documentoId && !esRegistroCentro && !esDocumentoCentro;
 
-        if (!esCentroSalud && !esRegistroDoctor && !accion.documentoId) {
+        if (!esRegistroCentro && !esRegistroDoctor && !accion.documentoId && !esDocumentoCentro) {
             throw new Error('Esta acción no está vinculada a un documento o registro válido');
         }
 
         // 3. Obtener información del documento (solo si es revisión de un documento)
         let documentoDoctor: any = null;
-        if (!esCentroSalud && !esRegistroDoctor) {
+        let documentoCentro: any = null;
+        
+        if (accion.documentoId) {
             documentoDoctor = await prisma.documentoDoctor.findUnique({
-                where: { id: accion.documentoId! },
+                where: { id: accion.documentoId },
                 select: { id: true, doctorId: true, tipoDocumento: true },
             });
             if (!documentoDoctor) throw new Error('Documento del doctor no encontrado');
+        } else if (accion.id_documento_centro) {
+            documentoCentro = await prisma.documentos_centros.findUnique({
+                where: { id_documento_centro: accion.id_documento_centro },
+                select: { id_documento_centro: true, id_centro_salud: true, tipo_documento: true },
+            });
+            if (!documentoCentro) throw new Error('Documento del centro no encontrado');
         }
 
         // 4. Actualizar acción y estado del perfil/documento en transacción
@@ -68,12 +77,19 @@ export class AprobarRechazarDocumentoUseCase {
                 },
             });
 
-            if (esCentroSalud) {
-                // Lógica para Centro de Salud
+            if (esRegistroCentro) {
+                // Lógica para Centro de Salud (Aprobado el perfil)
                 const nuevoEstadoCentro = dto.decision === 'Aprobada' ? 'Aprobado' : 'Rechazado';
                 await tx.centroSalud.update({
                     where: { usuarioId: accion.emisorId },
                     data: { estadoVerificacion: nuevoEstadoCentro, actualizadoEn: new Date() },
+                });
+            } else if (esDocumentoCentro) {
+                // Lógica de Documento de Centro
+                const nuevoEstadoDoc = dto.decision === 'Aprobada' ? 'Aprobado' : 'Rechazado';
+                await tx.documentos_centros.update({
+                    where: { id_documento_centro: accion.id_documento_centro! },
+                    data: { estado_revision: nuevoEstadoDoc, actualizado_en: new Date() },
                 });
             } else if (esRegistroDoctor) {
                 // Lógica para aprobación/rechazo del PERFIL/REGISTRO del doctor
@@ -115,22 +131,42 @@ export class AprobarRechazarDocumentoUseCase {
 
         // 5. Emitir notificaciones DESPUÉS de la transacción
         try {
-            if (esCentroSalud) {
+            if (esRegistroCentro) {
                 if (dto.decision === 'Aprobada') {
                     await this.enviarNotifUC.execute({
                         usuarioId: accion.emisorId,
-                        titulo: '¡Centro de Salud Aprobado!',
-                        mensaje: 'La certificación de su Centro de Salud ha sido aprobada. ¡Ya puede operar en MediConnect!',
+                        titulo: '¡Perfil del Centro Aprobado!',
+                        mensaje: 'Su registro general ha sido aprobado. Espere la validación de sus documentos si aún hay pendientes.',
                         tipoAlerta: 'Exito',
                         tipoEntidad: 'Perfil',
                     });
                 } else {
                     await this.enviarNotifUC.execute({
                         usuarioId: accion.emisorId,
-                        titulo: 'Revisión de Centro de Salud',
-                        mensaje: `Su certificación sanitaria ha sido rechazada. ${dto.comentario ? `Motivo: ${dto.comentario}` : 'Por favor, actualice su documento.'}`,
+                        titulo: 'Revisión del Centro de Salud',
+                        mensaje: `Su solicitud de registro ha sido rechazada. ${dto.comentario ? `Motivo: ${dto.comentario}` : 'Por favor póngase en contacto con soporte.'}`,
                         tipoAlerta: 'Importante',
                         tipoEntidad: 'Perfil',
+                    });
+                }
+            } else if (esDocumentoCentro) {
+                if (dto.decision === 'Aprobada') {
+                    await this.enviarNotifUC.execute({
+                        usuarioId: accion.emisorId,
+                        titulo: `Documento Aprobado: ${documentoCentro.tipo_documento}`,
+                        mensaje: `Su documento ha sido aprobado con éxito.`,
+                        tipoAlerta: 'Info',
+                        tipoEntidad: 'DocumentoCentro',
+                        entidadId: documentoCentro.id_documento_centro,
+                    });
+                } else {
+                    await this.enviarNotifUC.execute({
+                        usuarioId: accion.emisorId,
+                        titulo: `Revisión de Documento: ${documentoCentro.tipo_documento}`,
+                        mensaje: `Su documento fue rechazado. ${dto.comentario ? `Motivo: ${dto.comentario}` : 'Por favor, actualícelo.'}`,
+                        tipoAlerta: 'Importante',
+                        tipoEntidad: 'DocumentoCentro',
+                        entidadId: documentoCentro.id_documento_centro,
                     });
                 }
             } else if (esRegistroDoctor) {

@@ -134,7 +134,6 @@ export class RegistrarCentroUseCase {
             ubicacionId: ubicacionId,
             sitio_web: dto.sitioWeb ?? null,
             descripcion: dto.descripcion ?? null,
-            certificacion_sanitaria: certificadoUrl,
             estado: 'Activo',
             estadoVerificacion: 'En revisión',
             actualizadoEn: new Date(),
@@ -151,7 +150,6 @@ export class RegistrarCentroUseCase {
             ubicacionId: ubicacionId,
             sitio_web: dto.sitioWeb ?? null,
             descripcion: dto.descripcion ?? null,
-            certificacion_sanitaria: certificadoUrl,
             estado: 'Activo',
             estadoVerificacion: 'En revisión',
             creadoEn: new Date(),
@@ -159,9 +157,9 @@ export class RegistrarCentroUseCase {
         });
       }
 
-      let tipoAccion = await tx.tipoAccion.findFirst({ where: { nombre: 'Revisión Centro de Salud' } });
+      let tipoAccion = await tx.tipoAccion.findFirst({ where: { nombre: 'Registro Centro de Salud' } });
       if (!tipoAccion) {
-        tipoAccion = await tx.tipoAccion.create({ data: { nombre: 'Revisión Centro de Salud', estado: 'Activo' } });
+        tipoAccion = await tx.tipoAccion.create({ data: { nombre: 'Registro Centro de Salud', estado: 'Activo' } });
       }
 
       await tx.accion.create({
@@ -172,6 +170,45 @@ export class RegistrarCentroUseCase {
           comentarioEmisor: `Ubicación ID: ${dto.ubicacionId}. RNC: ${dto.rnc ?? 'N/A'}`,
           fechaEmision: new Date(),
           fechaVencimiento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          estado: 'Pendiente',
+        },
+      });
+
+      // Crear registro del documento sanitario
+      const documentoCreado = await tx.documentos_centros.create({
+        data: {
+          id_centro_salud: usuario.id,
+          tipo_documento: 'Certificado Sanitario',
+          url_archivo: certificadoUrl,
+          nombre_original: files.certificadoSanitario[0].originalname,
+          tipo_mime: files.certificadoSanitario[0].mimetype,
+          tamanio_bytes: files.certificadoSanitario[0].size,
+          estado_revision: 'Pendiente',
+          estado: 'Activo',
+          creado_en: new Date(),
+        }
+      });
+
+      // Crear acción de auditoría/revisión para el DOCUMENTO
+      let tipoAccionDoc = await tx.tipoAccion.findFirst({
+        where: { nombre: 'Revisión Certificado Sanitario' },
+      });
+
+      if (!tipoAccionDoc) {
+        tipoAccionDoc = await tx.tipoAccion.create({
+          data: { nombre: 'Revisión Certificado Sanitario', estado: 'Activo' },
+        });
+      }
+
+      await tx.accion.create({
+        data: {
+          tipoAccionId: tipoAccionDoc.id,
+          emisorId: usuario.id,
+          id_documento_centro: documentoCreado.id_documento_centro,
+          detalle: `Revisión de documento: Certificado Sanitario - Centro: ${dto.nombreComercial}`,
+          comentarioEmisor: 'Certificado Sanitario obligatorio para validación del centro',
+          fechaEmision: new Date(),
+          fechaVencimiento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
           estado: 'Pendiente',
         },
       });

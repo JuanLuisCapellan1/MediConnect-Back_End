@@ -17,9 +17,12 @@ export class ObtenerEstadoDocumentosCentroUseCase {
             select: {
                 usuarioId: true,
                 estadoVerificacion: true,
-                certificacion_sanitaria: true,
                 creadoEn: true,
                 actualizadoEn: true,
+                documentos_centros: {
+                    where: { estado: 'Activo' },
+                    orderBy: { creado_en: 'desc' }
+                }
             },
         });
 
@@ -27,65 +30,66 @@ export class ObtenerEstadoDocumentosCentroUseCase {
             throw new Error('Centro de Salud no encontrado');
         }
 
-        // Buscar la última acción de revisión asociada a este centro
-        const ultimaAccion = await prisma.accion.findFirst({
+        // Obtener historial de acciones del centro por si el documento no tiene acción directa aún
+        const ultimaAccionPerfil = await prisma.accion.findFirst({
             where: {
                 emisorId: centroId,
-                tipoAccion: {
-                    nombre: 'Registro Centro de Salud'
-                }
+                tipoAccion: { nombre: 'Registro Centro de Salud' }
             },
-            orderBy: {
-                fechaEmision: 'desc',
-            },
-            select: {
-                id: true,
-                estado: true,
-                comentarioAdmin: true,
-                fechaResolucion: true,
-            },
+            orderBy: { fechaEmision: 'desc' },
+            select: { id: true, estado: true, comentarioAdmin: true, fechaResolucion: true },
         });
 
-        let estadoRevision = 'Pendiente';
-
-        if (centro.estadoVerificacion === 'Aprobado') {
-            estadoRevision = 'Aprobado';
-        } else if (ultimaAccion) {
-            estadoRevision = ultimaAccion.estado === 'Rechazada' ? 'Rechazado'
-                : ultimaAccion.estado === 'Aprobada' ? 'Aprobado'
-                : 'Pendiente';
-        }
-
-        // Regenerar URL firmada fresca para el certificado sanitario
-        let urlArchivo: string | null = centro.certificacion_sanitaria;
-        if (urlArchivo) {
-            try {
-                urlArchivo = await this.storage.refreshOrGetSignedUrl(urlArchivo);
-            } catch {
-                // Si falla, devolver el valor original para no romper la respuesta
+        // Regenerar URL firmada para cada documento y obtener su acción individual (si existe)
+        const documentosMapeados = await Promise.all(centro.documentos_centros.map(async (doc) => {
+            let urlArchivo = doc.url_archivo;
+            if (urlArchivo) {
+                try {
+                    urlArchivo = await this.storage.refreshOrGetSignedUrl(urlArchivo);
+                } catch {
+                    // Ignorar si el token falla
+                }
             }
-        }
+
+            // Buscar la última acción específica para este documento
+            const accionDoc = await prisma.accion.findFirst({
+                where: {
+                    id_documento_centro: doc.id_documento_centro,
+                    tipoAccion: { nombre: 'Revisión Certificado Sanitario' }
+                },
+                orderBy: { fechaEmision: 'desc' },
+                select: { id: true, estado: true, comentarioAdmin: true, fechaResolucion: true },
+            });
+
+            const estadoRevision = doc.estado_revision || (accionDoc ? accionDoc.estado : 'Pendiente');
+
+            return {
+                id: doc.id_documento_centro,
+                tipoDocumento: doc.tipo_documento,
+                urlArchivo,
+                estadoRevision,
+                creadoEn: doc.creado_en,
+                actualizadoEn: doc.actualizado_en,
+                ultimaAccion: accionDoc || ultimaAccionPerfil || null, // Fallback al perfil
+            };
+        }));
+
+        const totalDocs = documentosMapeados.length;
+        const aprobados = documentosMapeados.filter(d => d.estadoRevision === 'Aprobado').length;
+        const rechazados = documentosMapeados.filter(d => d.estadoRevision === 'Rechazado').length;
+        const pendientes = totalDocs - aprobados - rechazados;
+        const progreso = totalDocs === 0 ? 0 : Math.round((aprobados / totalDocs) * 100);
 
         return {
             estadoVerificacion: centro.estadoVerificacion,
             estadisticas: {
-                total: 1,
-                aprobados: centro.estadoVerificacion === 'Aprobado' ? 1 : 0,
-                rechazados: estadoRevision === 'Rechazado' ? 1 : 0,
-                pendientes: estadoRevision === 'Pendiente' ? 1 : 0,
-                progreso: centro.estadoVerificacion === 'Aprobado' ? 100 : 0,
+                total: totalDocs,
+                aprobados,
+                rechazados,
+                pendientes,
+                progreso,
             },
-            documentos: [
-                {
-                    id: 1,
-                    tipoDocumento: 'Certificación Sanitaria',
-                    urlArchivo,
-                    estadoRevision,
-                    creadoEn: centro.creadoEn,
-                    actualizadoEn: centro.actualizadoEn,
-                    ultimaAccion: ultimaAccion || null,
-                }
-            ],
+            documentos: documentosMapeados,
         };
     }
 }

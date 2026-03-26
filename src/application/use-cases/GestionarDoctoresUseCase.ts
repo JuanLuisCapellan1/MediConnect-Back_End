@@ -1,4 +1,5 @@
 import { inject, injectable } from 'tsyringe';
+import { PrismaClient } from '@prisma/client';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
 import { ICitaRepository } from '../../domain/repositories/ICitaRepository';
 import { DoctorValidator } from '../../domain/validators/Doctores/DoctorValidator';
@@ -17,7 +18,9 @@ export class GestionarDoctoresUseCase {
         @inject(DoctorValidator)
         private validator: DoctorValidator,
         @inject(EstadoValidator)
-        private estadoValidator: EstadoValidator
+        private estadoValidator: EstadoValidator,
+        @inject('PrismaClient')
+        private prisma: PrismaClient
     ) { }
 
     async obtenerPorId(id: number): Promise<Doctor> {
@@ -52,7 +55,7 @@ export class GestionarDoctoresUseCase {
 
     async actualizar(usuarioId: number, dto: ActualizarDoctorDto): Promise<Doctor> {
         // Verificar que el doctor existe
-        await this.obtenerPorUsuarioId(usuarioId);
+        const doctor = await this.obtenerPorUsuarioId(usuarioId);
 
         // Normalizar estado si existe
         if (dto.estado) {
@@ -60,10 +63,82 @@ export class GestionarDoctoresUseCase {
         }
 
         // Validar campos únicos si se están actualizando
-        // Nota: exequatur y numero_documento_identificacion NO deberían ser editables, pero validamos por seguridad
         await this.validator.validarActualizacion(usuarioId);
 
-        return await this.doctorRepository.actualizar(usuarioId, dto);
+        let requiereRevisionAdmin = false;
+        let razonRevision = '';
+
+        console.log(`[UPDATE DOCTOR] Evaluando doctor ${usuarioId} con estado actual: ${doctor.estadoVerificacion}`);
+        if (doctor.estadoVerificacion === 'Rechazado') {
+            console.log(`[UPDATE DOCTOR] Entró por RECHAZADO.`);
+            requiereRevisionAdmin = true;
+            razonRevision = 'El doctor ha corregido sus datos tras ser rechazado previamente.';
+        } else if (doctor.estadoVerificacion === 'Aprobado') {
+            const nombreCambiado = dto.nombre && dto.nombre.trim() !== doctor.nombre;
+            const apellidoCambiado = dto.apellido && dto.apellido.trim() !== doctor.apellido;
+            console.log(`[UPDATE DOCTOR] Entró por APROBADO. Cambios -> Nombre: ${nombreCambiado}, Apellido: ${apellidoCambiado}`);
+            if (nombreCambiado || apellidoCambiado) {
+                requiereRevisionAdmin = true;
+                razonRevision = 'El doctor, que ya estaba aprobado, ha modificado su Nombre o Apellido, requiriendo validación contra sus documentos.';
+            }
+        }
+        console.log(`[UPDATE DOCTOR] requiereRevisionAdmin final = ${requiereRevisionAdmin}`);
+
+        return await this.prisma.$transaction(async (tx) => {
+            let estadoActualizado = dto.estado || doctor.estado;
+            let estadoVerifActualizado = doctor.estadoVerificacion;
+
+            if (requiereRevisionAdmin) {
+                estadoVerifActualizado = 'En revisión';
+            }
+
+            // Realizamos la actualización en la tabla doctores usando Prisma directamente
+            // o delegamos las partes posibles a la repo, pero necesitamos transaccionalidad con "Accion"
+            const updatePayload: any = { actualizadoEn: new Date(), estadoVerificacion: estadoVerifActualizado };
+            if (dto.nombre !== undefined) updatePayload.nombre = dto.nombre.trim();
+            if (dto.apellido !== undefined) updatePayload.apellido = dto.apellido.trim();
+            if (dto.fechaNacimiento !== undefined) updatePayload.fechaNacimiento = new Date(dto.fechaNacimiento);
+            if (dto.nacionalidad !== undefined) updatePayload.nacionalidad = dto.nacionalidad?.trim();
+            if (dto.biografia !== undefined) updatePayload.biografia = dto.biografia;
+            if (dto.anosExperiencia !== undefined) updatePayload.anosExperiencia = dto.anosExperiencia;
+            if (dto.duracionCitaPromedio !== undefined) updatePayload.duracionCitaPromedio = dto.duracionCitaPromedio;
+            if (dto.tarifas !== undefined) updatePayload.tarifas = dto.tarifas;
+            if (dto.estado !== undefined) updatePayload.estado = dto.estado;
+            
+            // También actualizar teléfono en Usuario si viene en el dto (dependiendo de tu lógica normal)
+            if (dto.telefono !== undefined) updatePayload.usuario = { update: { telefono: dto.telefono.trim() } };
+
+            const docActualizado = await tx.doctor.update({
+                where: { usuarioId },
+                data: updatePayload,
+                include: { usuario: true, especialidades: { include: { especialidades: true } } }
+            });
+
+            if (requiereRevisionAdmin) {
+                let tipoAccion = await tx.tipoAccion.findFirst({
+                    where: { nombre: 'Registro Doctor' },
+                });
+
+                if (!tipoAccion) {
+                    tipoAccion = await tx.tipoAccion.create({
+                        data: { nombre: 'Registro Doctor', estado: 'Activo' }
+                    });
+                }
+
+                await tx.accion.create({
+                    data: {
+                        tipoAccionId: tipoAccion.id,
+                        emisorId: usuarioId,
+                        detalle: 'Revisión de datos del perfil del Doctor',
+                        comentarioEmisor: razonRevision,
+                        estado: 'Pendiente',
+                        fechaEmision: new Date(),
+                    },
+                });
+            }
+
+            return docActualizado as any;
+        });
     }
 
     async eliminar(usuarioId: number): Promise<void> {

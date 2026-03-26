@@ -71,6 +71,16 @@ export class AccionesController {
                             },
                         },
                     },
+                    documentos_centros: {
+                        select: {
+                            id_documento_centro: true,
+                            tipo_documento: true,
+                            descripcion: true,
+                            url_archivo: true,
+                            nombre_original: true,
+                            creado_en: true,
+                        }
+                    }
                 },
                 orderBy: { fechaEmision: 'asc' },
             });
@@ -81,58 +91,75 @@ export class AccionesController {
                 .map((a) => a.emisorId);
 
             const emisoresCentro = acciones
-                .filter((a) => a.emisor.rol === 'CentroSalud')
+                .filter((a) => a.emisor.rol === 'Centro' || a.emisor.rol === 'CentroSalud')
                 .map((a) => a.emisorId);
 
             // Query en lote para enriquecer datos
             const [doctoresMap, centrosMap] = await Promise.all([
                 emisoresDoctor.length > 0
                     ? prisma.doctor.findMany({
-                          where: { usuarioId: { in: emisoresDoctor } },
-                          select: {
-                              usuarioId: true,
-                              nombre: true,
-                              apellido: true,
-                              exequatur: true,
-                              estadoVerificacion: true,
-                          },
-                      }).then((docs) => new Map(docs.map((d) => [d.usuarioId, d])))
+                        where: { usuarioId: { in: emisoresDoctor } },
+                        select: {
+                            usuarioId: true,
+                            nombre: true,
+                            apellido: true,
+                            exequatur: true,
+                            estadoVerificacion: true,
+                        },
+                    }).then((docs) => new Map(docs.map((d) => [d.usuarioId, d])))
                     : Promise.resolve(new Map<number, any>()),
 
                 emisoresCentro.length > 0
                     ? prisma.centroSalud.findMany({
-                          where: { usuarioId: { in: emisoresCentro } },
-                          select: {
-                              usuarioId: true,
-                              nombreComercial: true,
-                              estadoVerificacion: true,
-                          },
-                      }).then((centros) => new Map(centros.map((c) => [c.usuarioId, c])))
+                        where: { usuarioId: { in: emisoresCentro } },
+                        select: {
+                            usuarioId: true,
+                            nombreComercial: true,
+                            estadoVerificacion: true,
+                        },
+                    }).then((centros) => new Map(centros.map((c) => [c.usuarioId, c])))
                     : Promise.resolve(new Map<number, any>()),
             ]);
 
             // Regenerar URL firmada fresca + adjuntar datos del emisor enriquecidos
             const accionesEnriquecidas = await Promise.all(
                 acciones.map(async (accion) => {
-                    const documentoConUrl = accion.documento
-                        ? await regenerarUrlArchivo(accion.documento, this.storage)
-                        : null;
+                    let documentoMapeado = null;
+
+                    if (accion.documento) {
+                        documentoMapeado = await regenerarUrlArchivo(accion.documento, this.storage);
+                    } else if (accion.documentos_centros) {
+                        // Mapear documentos_centros al formato que espera el frontend (camelCase)
+                        const docCentro = {
+                            id: accion.documentos_centros.id_documento_centro,
+                            tipoDocumento: accion.documentos_centros.tipo_documento,
+                            descripcion: accion.documentos_centros.descripcion,
+                            urlArchivo: accion.documentos_centros.url_archivo,
+                            nombreOriginal: accion.documentos_centros.nombre_original,
+                            creadoEn: accion.documentos_centros.creado_en,
+                        };
+                        documentoMapeado = await regenerarUrlArchivo(docCentro, this.storage);
+                    }
 
                     // tipoRevision orienta al frontend sobre qué renderizar
-                    const tipoRevision = accion.documento ? 'documento' : 'registro';
+                    const tipoRevision = documentoMapeado ? 'documento' : 'registro';
 
                     // Datos adicionales del emisor según su rol
                     let perfilEmisor: any = null;
                     if (accion.emisor.rol === 'Doctor') {
                         perfilEmisor = doctoresMap.get(accion.emisorId) || null;
-                    } else if (accion.emisor.rol === 'CentroSalud') {
+                    } else if (accion.emisor.rol === 'Centro' || accion.emisor.rol === 'CentroSalud') {
                         perfilEmisor = centrosMap.get(accion.emisorId) || null;
                     }
 
+                    // Removemos documentos_centros puro de la respuesta por limpieza, 
+                    // devolviéndolo dentro de "documento" como espera el frontend
+                    const { documentos_centros, ...accionSinDocCentro } = accion as any;
+
                     return {
-                        ...accion,
+                        ...accionSinDocCentro,
                         tipoRevision,
-                        documento: documentoConUrl,
+                        documento: documentoMapeado,
                         perfilEmisor,
                     };
                 })
@@ -206,6 +233,18 @@ export class AccionesController {
                             },
                         },
                     },
+                    documentos_centros: {
+                        select: {
+                            id_documento_centro: true,
+                            tipo_documento: true,
+                            descripcion: true,
+                            url_archivo: true,
+                            nombre_original: true,
+                            estado_revision: true,
+                            creado_en: true,
+                            actualizado_en: true,
+                        }
+                    }
                 },
             });
 
@@ -217,12 +256,29 @@ export class AccionesController {
                 return;
             }
 
+            let documentoMapeado = null;
+            if (accion.documento) {
+                documentoMapeado = await regenerarUrlArchivo(accion.documento, this.storage);
+            } else if (accion.documentos_centros) {
+                const docCentro = {
+                    id: accion.documentos_centros.id_documento_centro,
+                    tipoDocumento: accion.documentos_centros.tipo_documento,
+                    descripcion: accion.documentos_centros.descripcion,
+                    urlArchivo: accion.documentos_centros.url_archivo,
+                    nombreOriginal: accion.documentos_centros.nombre_original,
+                    estadoRevision: accion.documentos_centros.estado_revision,
+                    creadoEn: accion.documentos_centros.creado_en,
+                    actualizadoEn: accion.documentos_centros.actualizado_en,
+                };
+                documentoMapeado = await regenerarUrlArchivo(docCentro, this.storage);
+            }
+
+            const { documentos_centros, ...accionSinDocCentro } = accion as any;
+
             // Regenerar URL firmada fresca
             const accionConUrl = {
-                ...accion,
-                documento: accion.documento
-                    ? await regenerarUrlArchivo(accion.documento, this.storage)
-                    : null,
+                ...accionSinDocCentro,
+                documento: documentoMapeado,
             };
 
             res.status(200).json({
