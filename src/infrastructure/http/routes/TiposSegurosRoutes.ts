@@ -23,12 +23,11 @@ routerTiposSeguros.post(
 
 /**
  * GET /api/tipos-seguros
- * Obtener todos los tipos de seguros con filtros (Solo Admin)
+ * Obtener todos los tipos de seguros con filtros
  */
 routerTiposSeguros.get(
     '/',
     autenticarJWT,
-    requireRole('Administrador'),
     (req, res) => controller.obtenerTodos(req, res)
 );
 

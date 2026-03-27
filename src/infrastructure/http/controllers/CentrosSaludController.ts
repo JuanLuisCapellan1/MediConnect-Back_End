@@ -182,12 +182,14 @@ export class CentrosSaludController {
     try {
       const centroId = req.user?.userId;
       if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
-      const { barrioId, subBarrioId, direccion, codigoPostal } = req.body;
+      const { barrioId, subBarrioId, direccion, codigoPostal, latitud, longitud } = req.body;
       const dto = {
         barrioId: barrioId !== undefined ? Number(barrioId) : undefined,
         subBarrioId: subBarrioId !== undefined ? (subBarrioId === null ? null : Number(subBarrioId)) : undefined,
         direccion,
         codigoPostal: codigoPostal ?? undefined,
+        latitud: latitud !== undefined ? Number(latitud) : undefined,
+        longitud: longitud !== undefined ? Number(longitud) : undefined,
       };
       const data = await this.gestionarCentroUseCase.actualizarUbicacion(centroId, dto);
       res.status(200).json({ success: true, data, message: 'Ubicación actualizada exitosamente' });

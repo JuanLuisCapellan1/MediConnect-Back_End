@@ -19,4 +19,6 @@ export interface ActualizarUbicacionCentroDto {
     subBarrioId?: number | null;
     direccion?: string;
     codigoPostal?: string | null;
+    latitud?: number;
+    longitud?: number;
 }

@@ -205,13 +205,33 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
         }
       }
     });
-    return (centro as any)?.ubicacion ?? null;
+    
+    const ubicacion = (centro as any)?.ubicacion ?? null;
+    
+    if (ubicacion) {
+      const geoRows = await this.prisma.$queryRaw<any[]>`
+        SELECT 
+          ST_Y(punto_geografico::geometry) AS latitud,
+          ST_X(punto_geografico::geometry) AS longitud
+        FROM "ubicaciones"
+        WHERE "id_ubicacion" = ${ubicacion.id}
+      `;
+      
+      if (geoRows.length > 0) {
+        ubicacion.latitud = geoRows[0].latitud != null ? Number(geoRows[0].latitud) : null;
+        ubicacion.longitud = geoRows[0].longitud != null ? Number(geoRows[0].longitud) : null;
+      }
+    }
+    
+    return ubicacion;
   }
 
   async actualizarUbicacion(usuarioId: number, datos: {
     barrioId?: number;
     direccion?: string;
     codigoPostal?: string | null;
+    latitud?: number;
+    longitud?: number;
   }): Promise<any> {
     const centro = await this.prisma.centroSalud.findUnique({
       where: { usuarioId },
@@ -224,13 +244,30 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
     if (datos.direccion !== undefined) dataUpdate.direccion = datos.direccion;
     if (datos.codigoPostal !== undefined) dataUpdate.codigoPostal = datos.codigoPostal;
 
-    return await this.prisma.ubicacion.update({
+    // Ejecutar actualización de Prisma regular
+    const result = await this.prisma.ubicacion.update({
       where: { id: centro.ubicacionId },
       data: dataUpdate,
       include: {
         barrio: { include: { seccion: true } },
       }
     });
+
+    // Ejecutar actualización PostGIS usando consulta cruda para latitud/longitud
+    if (datos.latitud !== undefined && datos.longitud !== undefined) {
+      const geoJSON = JSON.stringify({
+        type: 'Point',
+        coordinates: [datos.longitud, datos.latitud] // GeoJSON requiere [lon, lat]
+      });
+
+      await this.prisma.$executeRaw`
+        UPDATE "ubicaciones"
+        SET "punto_geografico" = ST_SetSRID(ST_GeomFromGeoJSON(${geoJSON}::jsonb), 4326)
+        WHERE "id_ubicacion" = ${centro.ubicacionId}
+      `;
+    }
+
+    return result;
   }
 
   async listarDoctoresAsociados(centroSaludId: number): Promise<any[]> {

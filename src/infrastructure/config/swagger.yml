@@ -12279,6 +12279,37 @@ paths:
                         type: array
                         items:
                           type: object
+                          properties:
+                            id:
+                              type: integer
+                              example: 1
+                            tipoDocumento:
+                              type: string
+                              example: "Certificado Sanitario"
+                            urlArchivo:
+                              type: string
+                              example: "https://ejemplo.com/archivo.pdf"
+                            estadoRevision:
+                              type: string
+                              example: "Pendiente"
+                            comentarioVerificacion:
+                              type: string
+                              nullable: true
+                            idAccion:
+                              type: integer
+                              nullable: true
+                            fechaEmision:
+                              type: string
+                              format: date-time
+                            nombreOriginal:
+                              type: string
+                              example: "certificado.pdf"
+                            tipoMime:
+                              type: string
+                              example: "application/pdf"
+                            tamanioBytes:
+                              type: integer
+                              example: 1048576
         '401':
           description: No autenticado
         '403':
@@ -13097,6 +13128,14 @@ paths:
                   maxLength: 10
                   nullable: true
                   example: "10109"
+                latitud:
+                  type: number
+                  format: float
+                  example: 18.4860575
+                longitud:
+                  type: number
+                  format: float
+                  example: -69.9312117
       responses:
         '200':
           description: Ubicación actualizada exitosamente
@@ -17082,7 +17121,7 @@ paths:
     get:
       tags:
         - TiposSeguros
-      summary: Listar tipos de seguros (Admin)
+      summary: Listar tipos de seguros
       description: |
         Obtiene todos los tipos de seguros con filtros y paginación.
         
@@ -21613,6 +21652,14 @@ components:
           type: string
           nullable: true
           example: "10109"
+        latitud:
+          type: number
+          nullable: true
+          example: 18.4860575
+        longitud:
+          type: number
+          nullable: true
+          example: -69.9312117
         estado:
           type: string
           example: "Activo"
