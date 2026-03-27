@@ -21,7 +21,6 @@ routerSeguros.post(
 routerSeguros.get(
     '/',
     autenticarJWT,
-    requireRole('Administrador'),
     translationMiddleware,
     (req, res) => controller.obtenerTodos(req, res)
 );

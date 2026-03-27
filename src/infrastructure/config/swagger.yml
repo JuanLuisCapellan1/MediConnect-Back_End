@@ -16319,7 +16319,7 @@ paths:
     get:
       tags:
         - Seguros
-      summary: Listar seguros (Admin)
+      summary: Listar seguros
       description: |-
         Obtiene todos los seguros médicos con paginación
         
@@ -16385,7 +16385,7 @@ paths:
     patch:
       tags:
         - Seguros
-      summary: Actualizar seguro (Admin)
+      summary: Actualizar seguro
       description: Actualiza un seguro médico existente
       security:
         - bearerAuth: []
