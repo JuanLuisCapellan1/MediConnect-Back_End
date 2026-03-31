@@ -290,6 +290,16 @@ export class CentrosSaludController {
     } catch (error) { this.manejarError(error, res); }
   }
 
+  // GET /doctores/mis-centros
+  async doctorListarMisCentros(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = req.user?.userId;
+      if (!doctorId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+      const data = await this.solicitudesUseCase.listarCentrosPorDoctor(doctorId);
+      res.status(200).json({ success: true, data });
+    } catch (error) { this.manejarError(error, res); }
+  }
+
   // PUT /doctores/solicitudes-alianza/:id
   async doctorResponderSolicitud(req: Request, res: Response): Promise<void> {
     try {

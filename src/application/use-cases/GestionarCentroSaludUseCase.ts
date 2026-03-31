@@ -142,6 +142,45 @@ export class GestionarCentroSaludUseCase {
     async actualizarUbicacion(centroId: number, dto: ActualizarUbicacionCentroDto): Promise<any> {
         const centro = await this.centroRepo.obtenerPorId(centroId);
         if (!centro) throw new Error('Centro de salud no encontrado');
+
+        // Si estaba Rechazado, una actualización de ubicación es un intento de corrección → En revisión
+        if (centro.estadoVerificacion === 'Rechazado') {
+            return await this.prisma.$transaction(async (tx) => {
+                // Actualizar ubicación
+                const result = await this.centroRepo.actualizarUbicacion(centroId, dto);
+
+                // Cambiar estado a En revisión
+                await tx.centroSalud.update({
+                    where: { usuarioId: centroId },
+                    data: { estadoVerificacion: 'En revisión', actualizadoEn: new Date() },
+                });
+
+                // Crear / reutilizar TipoAccion
+                let tipoAccion = await tx.tipoAccion.findFirst({
+                    where: { nombre: 'Registro Centro de Salud' },
+                });
+                if (!tipoAccion) {
+                    tipoAccion = await tx.tipoAccion.create({
+                        data: { nombre: 'Registro Centro de Salud', estado: 'Activo' },
+                    });
+                }
+
+                // Crear acción de revisión
+                await tx.accion.create({
+                    data: {
+                        tipoAccionId: tipoAccion.id,
+                        emisorId: centroId,
+                        detalle: 'Revisión de ubicación del Centro',
+                        comentarioEmisor: 'El centro ha corregido su ubicación tras ser rechazado previamente.',
+                        estado: 'Pendiente',
+                        fechaEmision: new Date(),
+                    },
+                });
+
+                return result;
+            });
+        }
+
         return await this.centroRepo.actualizarUbicacion(centroId, dto);
     }
 

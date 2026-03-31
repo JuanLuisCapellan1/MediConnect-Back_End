@@ -280,22 +280,144 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
               select: { email: true, telefono: true, fotoPerfil: true }
             },
             especialidades: {
-              select: { id_especialidad: true, es_principal: true }
+              where: { estado: 'Activo' },
+              include: { especialidades: { select: { id: true, nombre: true } } },
             },
             servicios: {
               where: { estado: 'Activo' },
-              select: { id: true, nombre: true, precio: true }
-            }
+              select: { id: true, nombre: true, precio: true, modalidad: true, duracionMinutos: true }
+            },
+            ubicaciones: {
+              where: { estado: { not: 'Eliminado' } },
+              select: { id: true, direccion: true, nombre: true, codigoPostal: true }
+            },
           }
         }
       },
       orderBy: { actualizadoEn: 'desc' }
     });
-    return solicitudes.map((s: any) => ({
-      solicitudId: s.id,
-      aliadoDesde: s.actualizadoEn ?? s.creadoEn,
-      doctor: s.doctor
-    }));
+
+    // Enriquecer ubicaciones de doctores con coords PostGIS
+    const ubicIds: number[] = [];
+    for (const s of solicitudes) {
+      for (const u of (s.doctor as any).ubicaciones ?? []) {
+        if (u.id) ubicIds.push(u.id);
+      }
+    }
+
+    const geoMap = new Map<number, { latitud: number | null; longitud: number | null }>();
+    if (ubicIds.length > 0) {
+      const geoRows = await this.prisma.$queryRaw<{ id: number; latitud: number | null; longitud: number | null }[]>`
+        SELECT u.id_ubicacion AS id,
+               ST_Y(u.punto_geografico::geometry) AS latitud,
+               ST_X(u.punto_geografico::geometry) AS longitud
+        FROM ubicaciones u
+        WHERE u.id_ubicacion IN (${Prisma.join(ubicIds)})
+      `;
+      for (const row of geoRows) geoMap.set(Number(row.id), row);
+    }
+
+    return solicitudes.map((s: any) => {
+      const doctor = s.doctor;
+      const ubicaciones = (doctor.ubicaciones ?? []).map((u: any) => {
+        const geo = geoMap.get(u.id);
+        return {
+          ...u,
+          latitud: geo?.latitud != null ? Number(geo.latitud) : null,
+          longitud: geo?.longitud != null ? Number(geo.longitud) : null,
+        };
+      });
+      return {
+        solicitudId: s.id,
+        aliadoDesde: s.actualizadoEn ?? s.creadoEn,
+        doctor: {
+          ...doctor,
+          especialidades: (doctor.especialidades ?? []).map((e: any) => ({
+            id: e.id_especialidad,
+            nombre: e.especialidades?.nombre,
+            esPrincipal: e.es_principal,
+          })),
+          servicios: (doctor.servicios ?? []).map((sv: any) => ({
+            ...sv,
+            precio: sv.precio != null ? parseFloat(sv.precio.toString()) : null,
+          })),
+          ubicaciones,
+          calificacionPromedio: doctor.calificacionPromedio != null
+            ? parseFloat(doctor.calificacionPromedio.toString())
+            : null,
+        },
+      };
+    });
+  }
+
+  async listarCentrosPorDoctor(doctorId: number): Promise<any[]> {
+    const solicitudes = await this.prisma.solicitudAlianza.findMany({
+      where: { doctorId, estado: 'Aceptada' },
+      include: {
+        centroSalud: {
+          include: {
+            usuario: { select: { email: true, telefono: true, fotoPerfil: true } },
+            tipoCentro: { select: { id: true, nombre: true } },
+            ubicacion: {
+              include: { barrio: { include: { seccion: true } } }
+            },
+          }
+        }
+      },
+      orderBy: { actualizadoEn: 'desc' },
+    });
+
+    // Enriquecer ubicaciones con coords PostGIS
+    const ubicIds = solicitudes
+      .map((s: any) => s.centroSalud?.ubicacion?.id)
+      .filter(Boolean) as number[];
+
+    const geoMap = new Map<number, { latitud: number | null; longitud: number | null; barrio_nombre: string | null; municipio_nombre: string | null; provincia_nombre: string | null }>();
+    if (ubicIds.length > 0) {
+      const geoRows = await this.prisma.$queryRaw<{
+        id: number; latitud: number | null; longitud: number | null;
+        barrio_nombre: string | null; municipio_nombre: string | null; provincia_nombre: string | null;
+      }[]>`
+        SELECT
+          u.id_ubicacion                     AS id,
+          ST_Y(u.punto_geografico::geometry) AS latitud,
+          ST_X(u.punto_geografico::geometry) AS longitud,
+          b.nombre                           AS barrio_nombre,
+          m.nombre                           AS municipio_nombre,
+          p.nombre                           AS provincia_nombre
+        FROM ubicaciones u
+        LEFT JOIN barrios              b  ON b.id_barrio             = u.id_barrio
+        LEFT JOIN secciones            s  ON s.id_seccion             = b.id_seccion
+        LEFT JOIN distritos_municipales dm ON dm.id_distrito_municipal = s.id_distrito_municipal
+        LEFT JOIN municipios           m  ON m.id_municipio           = COALESCE(dm.id_municipio, s.id_municipio)
+        LEFT JOIN provincias           p  ON p.id_provincia           = m.id_provincia
+        WHERE u.id_ubicacion IN (${Prisma.join(ubicIds)})
+      `;
+      for (const row of geoRows) geoMap.set(Number(row.id), row);
+    }
+
+    return solicitudes.map((s: any) => {
+      const centro = s.centroSalud;
+      const ubicacion = centro?.ubicacion ?? null;
+      if (ubicacion?.id) {
+        const geo = geoMap.get(ubicacion.id);
+        if (geo) {
+          ubicacion.latitud = geo.latitud != null ? Number(geo.latitud) : null;
+          ubicacion.longitud = geo.longitud != null ? Number(geo.longitud) : null;
+          const partes: string[] = [];
+          if (ubicacion.direccion) partes.push(ubicacion.direccion.trim());
+          if (geo.barrio_nombre) partes.push(geo.barrio_nombre.trim());
+          if (geo.municipio_nombre) partes.push(geo.municipio_nombre.trim());
+          if (geo.provincia_nombre) partes.push(geo.provincia_nombre.trim());
+          ubicacion.direccionCompleta = partes.join(', ');
+        }
+      }
+      return {
+        solicitudId: s.id,
+        aliadoDesde: s.actualizadoEn ?? s.creadoEn,
+        centroSalud: { ...centro, ubicacion },
+      };
+    });
   }
 
   // ─── Métodos legacy ────────────────────────────────────────────────────────
@@ -453,6 +575,7 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
     lng?: number,
     radioKm?: number,
     filtros?: { tipoCentroId?: number; estadoVerificacion?: string; nombre?: string },
+    doctorId?: number,
   ): Promise<any[]> {
     const useGeo = lat != null && lng != null && radioKm != null;
     const radioMetros = useGeo ? radioKm! * 1000 : 0;
@@ -570,7 +693,21 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
       }
     }
 
-    // ── 4. Ordenar y adjuntar distancia ────────────────────────────────────
+    // ── 4. Alianzas aceptadas con el doctor (estaConectado) ─────────────────
+    const conectadosSet = new Set<number>();
+    if (doctorId !== undefined) {
+      const alianzas = await this.prisma.solicitudAlianza.findMany({
+        where: {
+          doctorId,
+          centroSaludId: { in: idsOrdenados },
+          estado: 'Aceptada',
+        },
+        select: { centroSaludId: true },
+      });
+      for (const a of alianzas) conectadosSet.add(a.centroSaludId);
+    }
+
+    // ── 5. Ordenar y adjuntar distancia y estaConectado ─────────────────────
     const centrosMap = new Map<number, any>();
     for (const c of centros) centrosMap.set(c.usuarioId, c);
 
@@ -581,6 +718,7 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
         return {
           ...c,
           distanciaMetros: distanciaMap.get(id) != null ? Math.round(distanciaMap.get(id)!) : null,
+          estaConectado: doctorId !== undefined ? conectadosSet.has(id) : false,
         };
       })
       .filter(Boolean);

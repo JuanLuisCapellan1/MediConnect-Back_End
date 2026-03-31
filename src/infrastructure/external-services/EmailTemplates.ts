@@ -164,8 +164,9 @@ export function templateCodigoRegistro(codigo: string): string {
             width: 64px; height: 64px; margin: 0 auto 20px;
             background-color: #EFF2D7;
             border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 28px; line-height: 64px; text-align: center;
+            font-size: 28px;
+            line-height: 64px;
+            text-align: center;
           ">✉️</div>
           <h1 style="
             margin: 0;

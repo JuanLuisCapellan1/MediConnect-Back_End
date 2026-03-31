@@ -98,6 +98,7 @@ centrosSaludRouter.get(
   '/solicitudes-alianza',
   autenticarJWT,
   requireRole('Centro'),
+  translationMiddleware,
   (req, res) => controller.listarSolicitudes(req, res)
 );
 

@@ -13169,17 +13169,40 @@ paths:
 
   /centros-salud/mis-doctores:
     get:
-      summary: Listar doctores asociados al centro de salud
+      summary: Listar doctores afiliados al centro de salud (info completa)
       tags:
         - CentrosSalud
       security:
         - bearerAuth: []
       description: |
         Retorna todos los doctores que tienen una solicitud de alianza **Aceptada** con el centro autenticado.
-        Incluye sus especialidades y servicios activos.
+        Incluye especialidades con nombre, servicios activos, ubicaciones con coordenadas PostGIS (lat/lng) y calificación promedio.
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre,especialidades.nombre"
+          description: Campos a traducir separados por coma
       responses:
         '200':
-          description: Lista de doctores asociados
+          description: Lista de doctores afiliados
           content:
             application/json:
               schema:
@@ -13188,7 +13211,7 @@ paths:
                   success:
                     type: boolean
                     example: true
-
+                  data:
                     type: array
                     items:
                       type: object
@@ -13232,12 +13255,49 @@ paths:
                                   type: string
                             especialidades:
                               type: array
+                              description: "Especialidades con nombre resuelto"
                               items:
                                 type: object
+                                properties:
+                                  id:
+                                    type: integer
+                                  nombre:
+                                    type: string
+                                    example: "Cardiología"
+                                  esPrincipal:
+                                    type: boolean
                             servicios:
                               type: array
+                              description: "Servicios activos del doctor"
                               items:
                                 type: object
+                                properties:
+                                  id:
+                                    type: integer
+                                  nombre:
+                                    type: string
+                                  precio:
+                                    type: number
+                                  modalidad:
+                                    type: string
+                                  duracionMinutos:
+                                    type: integer
+                            ubicaciones:
+                              type: array
+                              description: "Ubicaciones con coordenadas PostGIS"
+                              items:
+                                type: object
+                                properties:
+                                  id:
+                                    type: integer
+                                  direccion:
+                                    type: string
+                                  latitud:
+                                    type: number
+                                    nullable: true
+                                  longitud:
+                                    type: number
+                                    nullable: true
         '401':
           description: No autenticado
           content:
@@ -13322,6 +13382,31 @@ paths:
       description: |
         Retorna todas las solicitudes de alianza del centro autenticado, tanto las que el centro inició como las que recibió de doctores.
         Ordenadas de más reciente a más antigua.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=doctor.especialidades.nombre` para traducir especialidades u otros campos.
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "doctor.especialidades.nombre"
+          description: Campos a traducir separados por coma
       responses:
         '200':
           description: Lista de solicitudes de alianza
@@ -13426,6 +13511,120 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
 
   # ─── SOLICITUDES DE ALIANZA (LADO DOCTOR) ─────────────────────────────────────
+
+  /doctores/mis-centros:
+    get:
+      summary: Centros de salud en los que trabaja el doctor autenticado
+      tags:
+        - Doctores
+        - SolicitudesAlianza
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna todos los centros de salud con los que el doctor autenticado tiene una solicitud de alianza **Aceptada**.
+        Incluye información completa del centro: nombre, tipo, ubicación con coordenadas PostGIS (lat/lng), teléfono y foto.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=nombreComercial,descripcion` para traducir campos de texto.
+      parameters:
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen para traducción automática
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombreComercial,descripcion"
+          description: Campos a traducir separados por coma
+      responses:
+        '200':
+          description: Lista de centros donde trabaja el doctor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        solicitudId:
+                          type: integer
+                          example: 3
+                        aliadoDesde:
+                          type: string
+                          format: date-time
+                          example: "2025-12-01T10:00:00Z"
+                        centroSalud:
+                          type: object
+                          properties:
+                            usuarioId:
+                              type: integer
+                              example: 8
+                            nombreComercial:
+                              type: string
+                              example: "Clínica del Norte"
+                            tipoCentro:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                nombre:
+                                  type: string
+                                  example: "Clínica"
+                            usuario:
+                              type: object
+                              properties:
+                                email:
+                                  type: string
+                                telefono:
+                                  type: string
+                                fotoPerfil:
+                                  type: string
+                            ubicacion:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                direccion:
+                                  type: string
+                                latitud:
+                                  type: number
+                                  nullable: true
+                                longitud:
+                                  type: number
+                                  nullable: true
+                                direccionCompleta:
+                                  type: string
+                                  example: "Av. Lincoln, Naco, Distrito Nacional"
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Solo accesible por Doctores
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   # ─── ESTADÍSTICAS DEL DOCTOR ───────────────────────────────────────────────
 
@@ -18176,7 +18375,7 @@ paths:
       description: |-
         Retorna la lista de servicios activos (no eliminados) de un doctor.
         Soporta filtros opcionales por especialidad, estado y rango de precio.
-        **Acceso:** Doctor, Administrador, Paciente
+        **Acceso:** Doctor, Administrador, Paciente, **Centro**
 
         **Traducción Automática:** Agrega `?target=en&translate_fields=nombre,descripcion` para traducir campos de texto.
       security:

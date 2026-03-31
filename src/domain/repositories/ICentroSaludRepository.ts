@@ -71,5 +71,6 @@ export interface ICentroSaludRepository {
     lng?: number,
     radioKm?: number,
     filtros?: { tipoCentroId?: number; estadoVerificacion?: string; nombre?: string },
+    doctorId?: number,
   ): Promise<any[]>;
 }

@@ -69,7 +69,6 @@ model Paciente {
   caracteristicas                 CaracteristicaEspecial[]
   citas                           Cita[]
   doctoresFavoritos               DoctorFavorito[]
-  grupos_citas                    grupos_citas[]
   historiales                     HistorialConsulta[]
   ubicacion                       Ubicacion?               @relation(fields: [ubicacionId], references: [id])
   usuario                         Usuario                  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
@@ -445,7 +444,6 @@ model Horario {
   actualizadoEn DateTime?         @map("actualizado_en") @db.Timestamptz(6)
   centroSaludId Int?              @map("id_centro_salud")
   citas         Cita[]
-  grupos_citas  grupos_citas[]
   centroSalud   CentroSalud?      @relation(fields: [centroSaludId], references: [usuarioId], onUpdate: NoAction)
   ubicacion     Ubicacion?        @relation(fields: [ubicacionId], references: [id], onDelete: Restrict)
   doctor        Doctor            @relation(fields: [doctorId], references: [usuarioId])
@@ -472,7 +470,6 @@ model Servicio {
   modalidad               String                    @default("Presencial") @db.VarChar(20)
   sesiones                Int                       @default(1)
   citas                   Cita[]
-  grupos_citas            grupos_citas[]
   resenas                 Resena[]
   imagenes                ServicioImagen[]
   doctor                  Doctor                    @relation(fields: [doctorId], references: [usuarioId])
@@ -531,9 +528,7 @@ model Cita {
   modalidad         String             @default("Presencial") @db.VarChar(30)
   horarioId         Int?               @map("id_horario")
   motivoCancelacion String?            @map("motivo_cancelacion") @db.VarChar(255)
-  id_grupo          Int?
   doctor            Doctor?            @relation("DoctorCita", fields: [doctorUsuarioId], references: [usuarioId])
-  grupos_citas      grupos_citas?      @relation(fields: [id_grupo], references: [id_grupo], onUpdate: NoAction)
   servicio          Servicio           @relation(fields: [servicioId], references: [id])
   ubicacion         Ubicacion?         @relation(fields: [ubicacionId], references: [id])
   paciente          Paciente           @relation(fields: [pacienteId], references: [usuarioId])
@@ -544,7 +539,6 @@ model Cita {
   logTeleconsulta   LogTeleconsulta[]
   resenas           Resena?            @relation("ResenasCita")
 
-  @@index([id_grupo], map: "idx_citas_grupo")
   @@map("citas")
 }
 
@@ -591,7 +585,6 @@ model Media {
   tamanioBytes      BigInt?            @map("tamanio_bytes")
   estado            String             @default("Activo") @db.VarChar(20)
   fechaSubida       DateTime           @default(now()) @map("fecha_subida") @db.Timestamptz(6)
-  adjuntosAcciones  AdjuntoAccion[]
   adjuntosHistorial AdjuntoHistorial[]
   mensajes          Mensaje[]
 
@@ -712,20 +705,8 @@ model Accion {
   tipoAccion          TipoAccion          @relation(fields: [tipoAccionId], references: [id])
   documento           DocumentoDoctor?    @relation(fields: [documentoId], references: [id], onUpdate: NoAction, map: "fk_acciones_documento")
   documentos_centros  documentos_centros? @relation(fields: [id_documento_centro], references: [id_documento_centro], onUpdate: NoAction, map: "fk_acciones_documento_centro")
-  adjuntos            AdjuntoAccion[]
 
   @@map("acciones")
-}
-
-model AdjuntoAccion {
-  accionId Int      @map("id_accion")
-  mediaId  Int      @map("id_media")
-  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
-  accion   Accion   @relation(fields: [accionId], references: [id], onDelete: Cascade)
-  media    Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
-
-  @@id([accionId, mediaId])
-  @@map("archivos_adjuntos_acciones")
 }
 
 model AdjuntoHistorial {
@@ -819,22 +800,6 @@ model servicios_centros_salud {
 
   @@id([id_servicio, id_centro_salud])
   @@index([id_servicio], map: "idx_servicios_centros_servicio")
-}
-
-model grupos_citas {
-  id_grupo     Int       @id @default(autoincrement())
-  id_paciente  Int
-  id_servicio  Int
-  id_horario   Int
-  descripcion  String?   @db.VarChar(200)
-  fecha_inicio DateTime  @db.Date
-  fecha_fin    DateTime? @db.Date
-  estado       String    @default("Activo") @db.VarChar(20)
-  creado_en    DateTime  @default(now()) @db.Timestamptz(6)
-  citas        Cita[]
-  horarios     Horario   @relation(fields: [id_horario], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  pacientes    Paciente  @relation(fields: [id_paciente], references: [usuarioId], onDelete: Cascade, onUpdate: NoAction)
-  servicios    Servicio  @relation(fields: [id_servicio], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

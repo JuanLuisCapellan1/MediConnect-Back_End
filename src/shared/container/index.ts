@@ -39,7 +39,7 @@ import { IServicioRepository } from '../../domain/repositories/IServicioReposito
 import { IFavoritoRepository } from '../../domain/repositories/IFavoritoRepository';
 import { ISolicitudAlianzaRepository } from '../../domain/repositories/ISolicitudAlianzaRepository';
 import { ICitaRepository } from '../../domain/repositories/ICitaRepository';
-import { IGrupoCitaRepository } from '../../domain/repositories/IGrupoCitaRepository';
+
 import { IInactividadRepository } from '../../domain/repositories/IInactividadRepository';
 import { IResenaRepository } from '../../domain/repositories/IResenaRepository';
 
@@ -75,7 +75,7 @@ import { PrismaTipoSeguroRepository } from '../../infrastructure/repositories/Pr
 import { PrismaServicioRepository } from '../../infrastructure/repositories/PrismaServicioRepository';
 import { PrismaFavoritoRepository } from '../../infrastructure/repositories/PrismaFavoritoRepository';
 import { PrismaCitaRepository } from '../../infrastructure/repositories/PrismaCitaRepository';
-import { PrismaGrupoCitaRepository } from '../../infrastructure/repositories/PrismaGrupoCitaRepository';
+
 import { PrismaInactividadRepository } from '../../infrastructure/repositories/PrismaInactividadRepository';
 import { CitaController } from '../../infrastructure/http/controllers/CitaController';
 import { TeleconsultaController } from '../../infrastructure/http/controllers/TeleconsultaController';
@@ -1080,12 +1080,7 @@ container.register<ICitaRepository>('CitaRepository', {
   }
 });
 
-container.register<IGrupoCitaRepository>('GrupoCitaRepository', {
-  useFactory: () => {
-    const prismaClient = container.resolve<PrismaClient>('PrismaClient');
-    return new PrismaGrupoCitaRepository(prismaClient);
-  }
-});
+
 
 container.register<IInactividadRepository>('InactividadRepository', {
   useFactory: () => {

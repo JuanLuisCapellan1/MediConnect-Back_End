@@ -229,6 +229,18 @@ router.put(
     (req, res) => container.resolve(CentrosSaludController).doctorResponderSolicitud(req, res)
 );
 
+/**
+ * GET /doctores/mis-centros
+ * Doctor obtiene todos los centros de salud con los que tiene alianza aceptada.
+ */
+router.get(
+    '/mis-centros',
+    autenticarJWT,
+    requireRole('Doctor'),
+    translationMiddleware,
+    (req, res) => container.resolve(CentrosSaludController).doctorListarMisCentros(req, res)
+);
+
 // ─── Periodos de Inactividad del Doctor (antes de /:id) ─────────────
 /**
  * POST /doctores/inactividad

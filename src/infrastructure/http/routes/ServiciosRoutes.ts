@@ -75,12 +75,12 @@ router.get(
 
 /**
  * @route GET /servicios/doctor/:doctorId
- * @description Lista los servicios de un doctor (para pacientes/admin)
- * @access Doctor, Administrador, Paciente
+ * @description Lista los servicios de un doctor (para pacientes/admin/centro)
+ * @access Doctor, Administrador, Paciente, Centro
  */
 router.get(
     '/doctor/:doctorId',
-    requireRole('Doctor', 'Administrador', 'Paciente'),
+    requireRole('Doctor', 'Administrador', 'Paciente', 'Centro'),
     (req, res) => serviciosController.listarPorDoctor(req, res)
 );
 

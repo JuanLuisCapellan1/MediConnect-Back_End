@@ -62,6 +62,10 @@ export class BusquedaController {
             const esPaciente = (req as any).user?.rol === 'Paciente';
             const pacienteId = esPaciente ? ((req as any).user?.userId as number) : undefined;
 
+            // ── doctorId para estaConectado (en centros) ─────────────────────
+            const esDoctor = (req as any).user?.rol === 'Doctor';
+            const doctorId = esDoctor ? ((req as any).user?.userId as number) : undefined;
+
             // ── Repos desde el contenedor ────────────────────────────────────
             const doctorRepo = container.resolve(GestionarDoctoresUseCase)['doctorRepository'];
             const centroRepo = container.resolve(GestionarCentroSaludUseCase)['centroRepo'];
@@ -75,7 +79,7 @@ export class BusquedaController {
                     ? doctorRepo.buscarCercanos(latFinal, lngFinal, radioFinal, filtrosDoctor, pacienteId)
                     : Promise.resolve([]),
                 quiereCentros
-                    ? centroRepo.buscarCercanos(latFinal, lngFinal, radioFinal, filtrosCentro)
+                    ? centroRepo.buscarCercanos(latFinal, lngFinal, radioFinal, filtrosCentro, doctorId)
                     : Promise.resolve([]),
             ]);
 

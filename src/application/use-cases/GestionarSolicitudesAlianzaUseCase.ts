@@ -134,4 +134,11 @@ export class GestionarSolicitudesAlianzaUseCase {
 
         return solicitudActualizada;
     }
+
+    /**
+     * Listar los centros de salud en los que trabaja el doctor (alianzas Aceptadas).
+     */
+    async listarCentrosPorDoctor(doctorId: number): Promise<any[]> {
+        return await (this.centroRepo as any).listarCentrosPorDoctor(doctorId);
+    }
 }
