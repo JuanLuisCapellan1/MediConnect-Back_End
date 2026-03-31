@@ -18,4 +18,6 @@ export interface ISolicitudAlianzaRepository {
         estado?: string;
         motivoRechazo?: string | null;
     }): Promise<any>;
+
+    eliminar(id: number): Promise<void>;
 }

@@ -224,4 +224,12 @@ export class GestionarCentroSaludUseCase {
     }): Promise<{ datos: any[]; total: number }> {
         return await this.centroRepo.listarParaAdmin(filtros);
     }
+
+    // ─── Seguros de doctores afiliados ─────────────────────────────────────────
+
+    async listarSegurosCentro(centroId: number): Promise<any[]> {
+        const centro = await this.centroRepo.obtenerPorId(centroId);
+        if (!centro) throw new Error('Centro de salud no encontrado');
+        return await (this.centroRepo as any).obtenerSegurosCentro(centroId);
+    }
 }

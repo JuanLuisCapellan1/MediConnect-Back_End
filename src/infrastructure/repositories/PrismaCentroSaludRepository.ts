@@ -125,6 +125,12 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
       }
     }
 
+    if (centro) {
+      const calData = await this.obtenerCalificacionCentro(usuarioId);
+      (centro as any).calificacionPromedio = calData.calificacionPromedio;
+      (centro as any).totalResenas = calData.totalResenas;
+    }
+
     return centro;
   }
 
@@ -291,6 +297,17 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
               where: { estado: { not: 'Eliminado' } },
               select: { id: true, direccion: true, nombre: true, codigoPostal: true }
             },
+            idiomas: {
+              where: { estado: 'Activo' },
+              select: { id: true, nombre: true, nivel: true }
+            },
+            segurosAceptados: {
+              where: { estado: 'Activo' },
+              include: {
+                seguro: { select: { id: true, nombre: true, urlImage: true } },
+                tipoSeguro: { select: { id: true, nombre: true } },
+              },
+            },
           }
         }
       },
@@ -341,7 +358,19 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
             ...sv,
             precio: sv.precio != null ? parseFloat(sv.precio.toString()) : null,
           })),
+          idiomas: (doctor.idiomas ?? []).map((i: any) => ({
+            id: i.id,
+            nombre: i.nombre,
+            nivel: i.nivel,
+          })),
+          seguros: (doctor.segurosAceptados ?? []).map((ds: any) => ({
+            id: ds.seguro?.id,
+            nombre: ds.seguro?.nombre,
+            urlImage: ds.seguro?.urlImage ?? null,
+            tipoSeguro: ds.tipoSeguro ? { id: ds.tipoSeguro.id, nombre: ds.tipoSeguro.nombre } : null,
+          })),
           ubicaciones,
+          anosExperiencia: doctor.anosExperiencia ?? null,
           calificacionPromedio: doctor.calificacionPromedio != null
             ? parseFloat(doctor.calificacionPromedio.toString())
             : null,
@@ -418,6 +447,75 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
         centroSalud: { ...centro, ubicacion },
       };
     });
+  }
+
+  // ─── Seguros únicos de doctores afiliados ──────────────────────────────────
+
+  async obtenerSegurosCentro(centroSaludId: number): Promise<any[]> {
+    // Obtener doctorIds con alianza Aceptada
+    const solicitudes = await this.prisma.solicitudAlianza.findMany({
+      where: { centroSaludId, estado: 'Aceptada' },
+      select: { doctorId: true },
+    });
+    const doctorIds = solicitudes.map((s: any) => s.doctorId);
+    if (doctorIds.length === 0) return [];
+
+    // Obtener seguros únicos de esos doctores
+    const doctoresSeguros = await this.prisma.doctorSeguro.findMany({
+      where: {
+        doctorId: { in: doctorIds },
+        estado: 'Activo',
+      },
+      include: {
+        seguro: { select: { id: true, nombre: true, urlImage: true } },
+        tipoSeguro: { select: { id: true, nombre: true } },
+      },
+      distinct: ['seguroId'],
+    });
+
+    // Deduplicar por seguroId y devolver datos limpios
+    const seen = new Set<number>();
+    const result: any[] = [];
+    for (const ds of doctoresSeguros) {
+      if (!seen.has(ds.seguroId)) {
+        seen.add(ds.seguroId);
+        result.push({
+          id: ds.seguro.id,
+          nombre: ds.seguro.nombre,
+          urlImage: ds.seguro.urlImage ?? null,
+        });
+      }
+    }
+    return result;
+  }
+
+  // ─── Calificación promedio y reseñas del centro (basado en doctores afiliados) ─
+
+  async obtenerCalificacionCentro(centroSaludId: number): Promise<{
+    calificacionPromedio: number | null;
+    totalResenas: number;
+  }> {
+    const solicitudes = await this.prisma.solicitudAlianza.findMany({
+      where: { centroSaludId, estado: 'Aceptada' },
+      select: { doctorId: true },
+    });
+    const doctorIds = solicitudes.map((s: any) => s.doctorId);
+    if (doctorIds.length === 0) return { calificacionPromedio: null, totalResenas: 0 };
+
+    const resenas = await this.prisma.resena.findMany({
+      where: {
+        doctorId: { in: doctorIds },
+        estado: 'Publicada',
+      },
+      select: { calificacion: true },
+    });
+
+    const totalResenas = resenas.length;
+    if (totalResenas === 0) return { calificacionPromedio: null, totalResenas: 0 };
+
+    const suma = resenas.reduce((acc: number, r: any) => acc + r.calificacion, 0);
+    const calificacionPromedio = Math.round((suma / totalResenas) * 100) / 100;
+    return { calificacionPromedio, totalResenas };
   }
 
   // ─── Métodos legacy ────────────────────────────────────────────────────────

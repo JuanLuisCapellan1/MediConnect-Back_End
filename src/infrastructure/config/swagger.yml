@@ -13509,6 +13509,106 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Quitar conexión centro-doctor (eliminar alianza)
+      tags:
+        - CentrosSalud
+        - SolicitudesAlianza
+      security:
+        - bearerAuth: []
+      description: |
+        El centro de salud elimina permanentemente una alianza con un doctor (la solicitud con ese ID).
+        Solo el centro puede usar este endpoint; el estado puede ser Pendiente o Aceptada.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la solicitud de alianza a eliminar
+      responses:
+        '200':
+          description: Conexión eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Conexión eliminada exitosamente"
+        '403':
+          description: No tienes permisos para eliminar esta alianza
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Solicitud no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── CENTROS DE SALUD: SEGUROS ─────────────────────────────────────────────
+
+  /centros-salud/seguros:
+    get:
+      summary: Seguros únicos aceptados por los doctores afiliados al centro
+      tags:
+        - CentrosSalud
+      security:
+        - bearerAuth: []
+      description: |
+        Retorna la lista de seguros médicos (sin duplicados) que acepta al menos uno de los doctores
+        con alianza **Aceptada** en el centro autenticado. Útil para mostrar en el perfil público del centro.
+        
+        Permite **traducción dinámica** de los campos de texto si se envían los parámetros `source`, `target` y `translate_fields`.
+      parameters:
+        - $ref: '#/components/parameters/SourceLangParam'
+        - $ref: '#/components/parameters/TargetLangParam'
+        - $ref: '#/components/parameters/TranslateFieldsParam'
+      responses:
+        '200':
+          description: Lista de seguros únicos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        nombre:
+                          type: string
+                          example: "ARS Salud Segura"
+                        urlImage:
+                          type: string
+                          nullable: true
+                          example: "https://cdn.example.com/ars.png"
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   # ─── SOLICITUDES DE ALIANZA (LADO DOCTOR) ─────────────────────────────────────
 
@@ -14577,6 +14677,55 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: No tienes permisos para responder esta solicitud
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Solicitud no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Doctor quita su conexión con un centro de salud (eliminar alianza)
+      tags:
+        - Doctores
+        - SolicitudesAlianza
+      security:
+        - bearerAuth: []
+      description: |
+        El doctor elimina permanentemente una alianza con un centro de salud (la solicitud con ese ID).
+        Solo puede eliminar alianzas en las que él esté involucrado como doctor.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de la solicitud de alianza a eliminar
+      responses:
+        '200':
+          description: Conexión eliminada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Conexión eliminada exitosamente"
+        '403':
+          description: No tienes permisos para eliminar esta alianza
           content:
             application/json:
               schema:

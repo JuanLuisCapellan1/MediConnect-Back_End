@@ -86,6 +86,15 @@ centrosSaludRouter.get(
   (req, res) => controller.listarDoctores(req, res)
 );
 
+// ─── Seguros de doctores afiliados ──────────────────────────────────────────
+centrosSaludRouter.get(
+  '/seguros',
+  autenticarJWT,
+  requireRole('Centro'),
+  translationMiddleware,
+  (req, res) => controller.listarSeguros(req, res)
+);
+
 // ─── Solicitudes de alianza (lado Centro) ─────────────────────────────────────
 centrosSaludRouter.post(
   '/solicitudes-alianza',
@@ -107,6 +116,17 @@ centrosSaludRouter.put(
   autenticarJWT,
   requireRole('Centro'),
   (req, res) => controller.responderSolicitud(req, res)
+);
+
+/**
+ * DELETE /centros-salud/solicitudes-alianza/:id
+ * Centro quita la conexión con un doctor (elimina la alianza).
+ */
+centrosSaludRouter.delete(
+  '/solicitudes-alianza/:id',
+  autenticarJWT,
+  requireRole('Centro'),
+  (req, res) => controller.desconectarCentro(req, res)
 );
 
 // ─── Vista completa para Administrador ────────────────────────────────────────

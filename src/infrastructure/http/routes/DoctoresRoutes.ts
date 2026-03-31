@@ -230,6 +230,17 @@ router.put(
 );
 
 /**
+ * DELETE /doctores/solicitudes-alianza/:id
+ * Doctor quita la conexión con un centro de salud (elimina la alianza).
+ */
+router.delete(
+    '/solicitudes-alianza/:id',
+    autenticarJWT,
+    requireRole('Doctor'),
+    (req, res) => container.resolve(CentrosSaludController).desconectarDoctor(req, res)
+);
+
+/**
  * GET /doctores/mis-centros
  * Doctor obtiene todos los centros de salud con los que tiene alianza aceptada.
  */

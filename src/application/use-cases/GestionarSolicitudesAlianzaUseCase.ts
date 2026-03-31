@@ -136,6 +136,29 @@ export class GestionarSolicitudesAlianzaUseCase {
     }
 
     /**
+     * Desconectar (eliminar) una alianza entre doctor y centro.
+     * El centro puede eliminar cualquier alianza que le pertenezca.
+     * El doctor puede eliminar cualquier alianza en la que participe.
+     */
+    async desconectarAlianza(
+        solicitudId: number,
+        usuarioId: number,
+        rol: 'Doctor' | 'CentroSalud'
+    ): Promise<void> {
+        const solicitud = await this.solicitudRepo.buscarPorId(solicitudId);
+        if (!solicitud) throw new Error('Solicitud de alianza no encontrada');
+
+        if (rol === 'CentroSalud' && solicitud.centroSaludId !== usuarioId) {
+            throw new Error('No tienes permisos para eliminar esta alianza');
+        }
+        if (rol === 'Doctor' && solicitud.doctorId !== usuarioId) {
+            throw new Error('No tienes permisos para eliminar esta alianza');
+        }
+
+        await this.solicitudRepo.eliminar(solicitudId);
+    }
+
+    /**
      * Listar los centros de salud en los que trabaja el doctor (alianzas Aceptadas).
      */
     async listarCentrosPorDoctor(doctorId: number): Promise<any[]> {

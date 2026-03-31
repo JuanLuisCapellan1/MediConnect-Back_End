@@ -209,6 +209,46 @@ export class CentrosSaludController {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // GET /centros-salud/seguros
+  // ══════════════════════════════════════════════════════════════
+  async listarSeguros(req: Request, res: Response): Promise<void> {
+    try {
+      const centroId = req.user?.userId;
+      if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+      const data = await this.gestionarCentroUseCase.listarSegurosCentro(centroId);
+      res.status(200).json({ success: true, data });
+    } catch (error) { this.manejarError(error, res); }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // DELETE /centros-salud/solicitudes-alianza/:id  (Centro desconecta a doctor)
+  // ══════════════════════════════════════════════════════════════
+  async desconectarCentro(req: Request, res: Response): Promise<void> {
+    try {
+      const centroId = req.user?.userId;
+      if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+      const solicitudId = Number(req.params.id);
+      if (isNaN(solicitudId)) { res.status(400).json({ success: false, message: 'ID de solicitud inválido' }); return; }
+      await this.solicitudesUseCase.desconectarAlianza(solicitudId, centroId, 'CentroSalud');
+      res.status(200).json({ success: true, message: 'Conexión eliminada exitosamente' });
+    } catch (error) { this.manejarError(error, res); }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // DELETE /doctores/solicitudes-alianza/:id  (Doctor desconecta de un centro)
+  // ══════════════════════════════════════════════════════════════
+  async desconectarDoctor(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = req.user?.userId;
+      if (!doctorId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+      const solicitudId = Number(req.params.id);
+      if (isNaN(solicitudId)) { res.status(400).json({ success: false, message: 'ID de solicitud inválido' }); return; }
+      await this.solicitudesUseCase.desconectarAlianza(solicitudId, doctorId, 'Doctor');
+      res.status(200).json({ success: true, message: 'Conexión eliminada exitosamente' });
+    } catch (error) { this.manejarError(error, res); }
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // POST /centros-salud/solicitudes-alianza
   // ══════════════════════════════════════════════════════════════
   async enviarSolicitud(req: Request, res: Response): Promise<void> {
