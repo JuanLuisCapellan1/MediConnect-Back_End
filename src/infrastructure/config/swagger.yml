@@ -12920,6 +12920,10 @@ paths:
         
         Accesible por roles: **Paciente**, **Doctor**, **Centro**.
 
+        Si el usuario autenticado es **Doctor** o **Centro**, la respuesta incluye además:
+        - `estadoAlianza`: estado de la solicitud de alianza más reciente con este centro (`Pendiente`, `Aceptada`, `Rechazada`, o `null`)
+        - `solicitudAlianzaId`: ID de dicha solicitud (útil para hacer la desconexión), o `null`
+
         **Traducción Automática:** Agrega `?target=en&translate_fields=descripcion,nombreComercial` para traducir campos de texto.
       parameters:
         - name: id
@@ -12962,7 +12966,21 @@ paths:
                     type: boolean
                     example: true
                   data:
-                    $ref: '#/components/schemas/CentroSaludPerfil'
+                    allOf:
+                      - $ref: '#/components/schemas/CentroSaludPerfil'
+                      - type: object
+                        properties:
+                          estadoAlianza:
+                            type: string
+                            nullable: true
+                            enum: [Pendiente, Aceptada, Rechazada, null]
+                            description: Estado de la solicitud de alianza más reciente entre el usuario autenticado y este centro (solo presente para roles Doctor o Centro)
+                            example: "Aceptada"
+                          solicitudAlianzaId:
+                            type: integer
+                            nullable: true
+                            description: ID de la solicitud de alianza (solo presente para roles Doctor o Centro)
+                            example: 5
         '404':
           description: Centro de salud no encontrado
           content:
@@ -13455,11 +13473,21 @@ paths:
       security:
         - bearerAuth: []
       description: |
-        Retorna todas las solicitudes de alianza del centro autenticado, tanto las que el centro inició como las que recibió de doctores.
+        Retorna todas las solicitudes de alianza del centro dado, tanto las que el centro inició como las que recibió de doctores.
         Ordenadas de más reciente a más antigua.
+
+        Si se pasa **centroSaludId** como query param, se retornan las solicitudes de ese centro.
+        Si no se pasa, se usa el centro del usuario autenticado (requiere rol Centro).
 
         **Traducción Automática:** Agrega `?target=en&translate_fields=doctor.especialidades.nombre` para traducir especialidades u otros campos.
       parameters:
+        - name: centroSaludId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 36
+          description: ID del centro de salud a consultar (opcional; si no se envía, usa el centro autenticado)
         - name: target
           in: query
           required: false
@@ -13645,10 +13673,20 @@ paths:
         - bearerAuth: []
       description: |
         Retorna la lista de seguros médicos (sin duplicados) que acepta al menos uno de los doctores
-        con alianza **Aceptada** en el centro autenticado. Útil para mostrar en el perfil público del centro.
+        con alianza **Aceptada** en el centro consultado.
+
+        Si se pasa **centroSaludId** como query param, se consultan los seguros de ese centro.
+        Si no se pasa, se usa el centro del usuario autenticado (requiere rol Centro).
         
         Permite **traducción dinámica** de los campos de texto si se envían los parámetros `source`, `target` y `translate_fields`.
       parameters:
+        - name: centroSaludId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 36
+          description: ID del centro de salud a consultar (opcional; si no se envía, usa el centro autenticado)
         - name: source
           in: query
           required: false
@@ -18355,7 +18393,7 @@ paths:
       description: |-
         Retorna el detalle completo de un servicio incluyendo doctor, especialidad,
         horarios disponibles y todas las imágenes.
-        **Acceso:** Doctor, Administrador, Paciente
+        **Acceso:** Doctor, Administrador, Paciente, Centro
 
         **Traducción Automática:** Agrega `?target=en&translate_fields=nombre,descripcion` para traducir campos de texto.
       security:

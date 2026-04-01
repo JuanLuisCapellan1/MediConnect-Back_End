@@ -90,7 +90,7 @@ centrosSaludRouter.get(
 centrosSaludRouter.get(
   '/seguros',
   autenticarJWT,
-  requireRole('Centro'),
+  requireRole('Centro', 'Paciente', 'Doctor', 'Administrador'),
   translationMiddleware,
   (req, res) => controller.listarSeguros(req, res)
 );
@@ -106,7 +106,7 @@ centrosSaludRouter.post(
 centrosSaludRouter.get(
   '/solicitudes-alianza',
   autenticarJWT,
-  requireRole('Centro'),
+  requireRole('Centro', 'Paciente', 'Doctor', 'Administrador'),
   translationMiddleware,
   (req, res) => controller.listarSolicitudes(req, res)
 );

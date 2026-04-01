@@ -45,15 +45,37 @@ export class CentrosSaludController {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // GET /centros-salud/:id  — Perfil público (Paciente / Doctor)
+  // GET /centros-salud/:id  — Perfil público (Paciente / Doctor / Centro)
   // ══════════════════════════════════════════════════════════════
   async obtenerPerfilPublico(req: Request, res: Response): Promise<void> {
     try {
       const centroId = parseInt(req.params.id as string);
       if (isNaN(centroId)) { res.status(400).json({ success: false, message: 'ID inválido' }); return; }
+
       const data = await this.gestionarCentroUseCase.obtenerPerfil(centroId);
       if (!data) { res.status(404).json({ success: false, message: 'Centro de salud no encontrado' }); return; }
-      res.status(200).json({ success: true, data });
+
+      // Agregar estado de alianza entre el usuario logueado y este centro
+      const userId = req.user?.userId;
+      const rol = req.user?.rol;
+      let estadoAlianza: string | null = null;
+      let solicitudAlianzaId: number | null = null;
+
+      if (userId && (rol === 'Doctor' || rol === 'Centro')) {
+        const alianzaRepo = (this.solicitudesUseCase as any)['solicitudRepo'];
+        const where = rol === 'Doctor'
+          ? { doctorId: userId, centroSaludId: centroId }
+          : { doctorId: centroId, centroSaludId: userId };
+        const alianza = await alianzaRepo['prisma'].solicitudAlianza.findFirst({
+          where,
+          orderBy: { creadoEn: 'desc' },
+          select: { id: true, estado: true },
+        });
+        estadoAlianza = alianza?.estado ?? null;
+        solicitudAlianzaId = alianza?.id ?? null;
+      }
+
+      res.status(200).json({ success: true, data: { ...data, estadoAlianza, solicitudAlianzaId } });
     } catch (error) { this.manejarError(error, res); }
   }
 
@@ -226,7 +248,9 @@ export class CentrosSaludController {
   // ══════════════════════════════════════════════════════════════
   async listarSeguros(req: Request, res: Response): Promise<void> {
     try {
-      const centroId = req.user?.userId;
+      // Si se provee centroSaludId como query param, usarlo; si no, usar el centro autenticado
+      const paramId = req.query.centroSaludId ? Number(req.query.centroSaludId) : undefined;
+      const centroId = paramId ?? req.user?.userId;
       if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
       const data = await this.gestionarCentroUseCase.listarSegurosCentro(centroId);
       res.status(200).json({ success: true, data });
@@ -285,7 +309,9 @@ export class CentrosSaludController {
   // ══════════════════════════════════════════════════════════════
   async listarSolicitudes(req: Request, res: Response): Promise<void> {
     try {
-      const centroId = req.user?.userId;
+      // Si se provee centroSaludId como query param, usarlo; si no, usar el centro autenticado
+      const paramId = req.query.centroSaludId ? Number(req.query.centroSaludId) : undefined;
+      const centroId = paramId ?? req.user?.userId;
       if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
       const data = await this.solicitudesUseCase.listarSolicitudes(centroId, 'CentroSalud');
       res.status(200).json({ success: true, data });

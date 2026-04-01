@@ -137,11 +137,11 @@ router.get(
 /**
  * @route GET /servicios/:id
  * @description Obtiene el detalle completo de un servicio
- * @access Doctor, Administrador, Paciente
+ * @access Doctor, Administrador, Paciente, Centro
  */
 router.get(
     '/:id',
-    requireRole('Doctor', 'Administrador', 'Paciente'),
+    requireRole('Doctor', 'Administrador', 'Paciente', 'Centro'),
     (req, res) => serviciosController.obtenerDetalle(req, res)
 );
 
