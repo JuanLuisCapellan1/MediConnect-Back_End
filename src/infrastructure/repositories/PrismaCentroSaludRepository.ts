@@ -791,21 +791,84 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
       }
     }
 
-    // ── 4. Alianzas aceptadas con el doctor (estaConectado) ─────────────────
-    const conectadosSet = new Set<number>();
+    // ── 4. Alianzas del doctor con cada centro (estado de alianza) ──────────
+    const alianzaMap = new Map<number, { id: number; estado: string }>();
     if (doctorId !== undefined) {
       const alianzas = await this.prisma.solicitudAlianza.findMany({
-        where: {
-          doctorId,
-          centroSaludId: { in: idsOrdenados },
-          estado: 'Aceptada',
-        },
-        select: { centroSaludId: true },
+        where: { doctorId, centroSaludId: { in: idsOrdenados } },
+        select: { id: true, centroSaludId: true, estado: true },
+        orderBy: { creadoEn: 'desc' },
       });
-      for (const a of alianzas) conectadosSet.add(a.centroSaludId);
+      for (const a of alianzas) {
+        if (!alianzaMap.has(a.centroSaludId)) {
+          alianzaMap.set(a.centroSaludId, { id: a.id, estado: a.estado });
+        }
+      }
     }
 
-    // ── 5. Ordenar y adjuntar distancia y estaConectado ─────────────────────
+    // ── 5. Idiomas y seguros únicos de los doctores afiliados (Aceptados) ───
+    // Obtener todas las alianzas Aceptadas para los centros de resultado
+    const alianzasAceptadas = await this.prisma.solicitudAlianza.findMany({
+      where: { centroSaludId: { in: idsOrdenados }, estado: 'Aceptada' },
+      select: { centroSaludId: true, doctorId: true },
+    });
+    // Agrupar doctorIds por centroSaludId
+    const doctoresPorCentro = new Map<number, number[]>();
+    for (const a of alianzasAceptadas) {
+      if (!doctoresPorCentro.has(a.centroSaludId)) doctoresPorCentro.set(a.centroSaludId, []);
+      doctoresPorCentro.get(a.centroSaludId)!.push(a.doctorId);
+    }
+    const allDoctorIds = [...new Set(alianzasAceptadas.map(a => a.doctorId))];
+
+    // Idiomas de todos los doctores afiliados
+    const idiomasCentroMap = new Map<number, any[]>(); // centroId → idiomas únicos
+    const segurosCentroMap = new Map<number, any[]>();  // centroId → seguros únicos
+    if (allDoctorIds.length > 0) {
+      const [idiomaRows, seguroRows] = await Promise.all([
+        this.prisma.doctorIdioma.findMany({
+          where: { doctorId: { in: allDoctorIds }, estado: 'Activo' },
+          select: { doctorId: true, id: true, nombre: true, nivel: true },
+        }),
+        this.prisma.doctorSeguro.findMany({
+          where: { doctorId: { in: allDoctorIds }, estado: 'Activo' },
+          include: {
+            seguro: { select: { id: true, nombre: true, urlImage: true } },
+            tipoSeguro: { select: { id: true, nombre: true } },
+          },
+        }),
+      ]);
+
+      for (const [centroId, dIds] of doctoresPorCentro.entries()) {
+        const dSet = new Set(dIds);
+        // Idiomas únicos (por nombre)
+        const seenIdiomas = new Set<string>();
+        const idiomas: any[] = [];
+        for (const row of idiomaRows as any[]) {
+          if (dSet.has(row.doctorId) && !seenIdiomas.has(row.nombre)) {
+            seenIdiomas.add(row.nombre);
+            idiomas.push({ id: row.id, nombre: row.nombre, nivel: row.nivel });
+          }
+        }
+        // Seguros únicos (por seguroId)
+        const seenSeguros = new Set<number>();
+        const seguros: any[] = [];
+        for (const row of seguroRows as any[]) {
+          if (dSet.has(row.doctorId) && !seenSeguros.has(row.seguroId)) {
+            seenSeguros.add(row.seguroId);
+            seguros.push({
+              id: row.seguro?.id,
+              nombre: row.seguro?.nombre,
+              urlImage: row.seguro?.urlImage ?? null,
+              tipoSeguro: row.tipoSeguro ? { id: row.tipoSeguro.id, nombre: row.tipoSeguro.nombre } : null,
+            });
+          }
+        }
+        idiomasCentroMap.set(centroId, idiomas);
+        segurosCentroMap.set(centroId, seguros);
+      }
+    }
+
+    // ── 6. Ordenar y adjuntar todos los campos enriquecidos ─────────────────
     const centrosMap = new Map<number, any>();
     for (const c of centros) centrosMap.set(c.usuarioId, c);
 
@@ -813,10 +876,15 @@ export class PrismaCentroSaludRepository implements ICentroSaludRepository {
       .map(id => {
         const c = centrosMap.get(id);
         if (!c) return null;
+        const alianza = alianzaMap.get(id);
         return {
           ...c,
+          idiomas: idiomasCentroMap.get(id) ?? [],
+          seguros: segurosCentroMap.get(id) ?? [],
           distanciaMetros: distanciaMap.get(id) != null ? Math.round(distanciaMap.get(id)!) : null,
-          estaConectado: doctorId !== undefined ? conectadosSet.has(id) : false,
+          estaConectado: doctorId !== undefined ? (alianza?.estado === 'Aceptada') : false,
+          estadoAlianza: doctorId !== undefined ? (alianza?.estado ?? null) : null,
+          solicitudAlianzaId: doctorId !== undefined ? (alianza?.id ?? null) : null,
         };
       })
       .filter(Boolean);

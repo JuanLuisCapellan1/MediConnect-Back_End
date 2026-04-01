@@ -131,6 +131,7 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                         email: true,
                         telefono: true,
                         fotoPerfil: true,
+                        banner: true,
                         emailVerificado: true,
                     },
                 },

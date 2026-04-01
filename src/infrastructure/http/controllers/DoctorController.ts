@@ -80,24 +80,20 @@ export class DoctorController {
                 return res.status(400).json({ success: false, message: 'ID inválido.' });
             }
 
-            // Para pacientes usamos obtenerPerfilCompleto (datos públicos)
-            // Para admins también está bien, ya que tiene más info
-            const doctor = esPaciente
-                ? await useCase['doctorRepository'].obtenerPerfilCompleto(id)
-                : await useCase.obtenerPorId(id);
+            // Siempre usamos obtenerPerfilCompleto para devolver foto, banner y datos completos
+            const doctor = await useCase['doctorRepository'].obtenerPerfilCompleto(id);
 
             if (!doctor) {
                 return res.status(404).json({ success: false, message: 'Doctor no encontrado.' });
             }
 
-            // Si es paciente, ocultamos datos sensibles y calculamos isFavorite
+            // Para pacientes, ocultamos datos sensibles y calculamos isFavorite
             if (esPaciente) {
                 delete doctor.documentos;
                 delete doctor.comentarioVerificacion;
                 delete doctor.estadoAccionVerificacion;
                 delete doctor.fechaResolucionVerificacion;
 
-                // Verificar si el doctor está en los favoritos del paciente
                 const favRepo = container.resolve<any>('FavoritoRepository');
                 doctor.isFavorite = await favRepo.existe(pacienteId!, id);
             }

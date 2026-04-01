@@ -171,4 +171,17 @@ centrosSaludRouter.get(
   (req, res) => controller.distribucionEspecialidades(req, res)
 );
 
+/**
+ * GET /centros-salud/:id
+ * Perfil público de un centro de salud — disponible para Paciente, Doctor y Centro.
+ * Devuelve la misma información que /centros-salud/mi-perfil.
+ */
+centrosSaludRouter.get(
+  '/:id',
+  autenticarJWT,
+  requireRole('Paciente', 'Doctor', 'Centro'),
+  translationMiddleware,
+  (req, res) => controller.obtenerPerfilPublico(req, res)
+);
+
 export default centrosSaludRouter;

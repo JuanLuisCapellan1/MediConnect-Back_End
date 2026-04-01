@@ -12907,6 +12907,81 @@ paths:
 
   # ─── CENTROS DE SALUD: PERFIL & GESTIÓN ───────────────────────────────────────
 
+  /centros-salud/{id}:
+    get:
+      summary: Perfil público de un centro de salud
+      tags:
+        - CentrosSalud
+      security:
+        - bearerAuth: []
+      description: |
+        Devuelve la información completa de un centro de salud por su ID de usuario.
+        Retorna **la misma información** que `GET /centros-salud/mi-perfil`.
+        
+        Accesible por roles: **Paciente**, **Doctor**, **Centro**.
+
+        **Traducción Automática:** Agrega `?target=en&translate_fields=descripcion,nombreComercial` para traducir campos de texto.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID de usuario del centro de salud
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "descripcion,nombreComercial"
+          description: "Campos a traducir separados por coma. Soporta dot-notation para arrays anidados"
+      responses:
+        '200':
+          description: Perfil del centro de salud
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/CentroSaludPerfil'
+        '404':
+          description: Centro de salud no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Acceso no autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /centros-salud/mi-perfil:
     get:
       summary: Obtener perfil completo del centro de salud autenticado
@@ -13574,9 +13649,28 @@ paths:
         
         Permite **traducción dinámica** de los campos de texto si se envían los parámetros `source`, `target` y `translate_fields`.
       parameters:
-        - $ref: '#/components/parameters/SourceLangParam'
-        - $ref: '#/components/parameters/TargetLangParam'
-        - $ref: '#/components/parameters/TranslateFieldsParam'
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: "Idioma origen (opcional, default: es)"
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: "Idioma destino para traducción automática (activa la traducción)"
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "data.nombre,data.tipoSeguro.nombre"
+          description: "Campos a traducir separados por coma. Soporta dot-notation para arrays anidados"
       responses:
         '200':
           description: Lista de seguros únicos

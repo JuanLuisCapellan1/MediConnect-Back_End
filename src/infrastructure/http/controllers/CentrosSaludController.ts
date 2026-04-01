@@ -45,6 +45,19 @@ export class CentrosSaludController {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // GET /centros-salud/:id  — Perfil público (Paciente / Doctor)
+  // ══════════════════════════════════════════════════════════════
+  async obtenerPerfilPublico(req: Request, res: Response): Promise<void> {
+    try {
+      const centroId = parseInt(req.params.id as string);
+      if (isNaN(centroId)) { res.status(400).json({ success: false, message: 'ID inválido' }); return; }
+      const data = await this.gestionarCentroUseCase.obtenerPerfil(centroId);
+      if (!data) { res.status(404).json({ success: false, message: 'Centro de salud no encontrado' }); return; }
+      res.status(200).json({ success: true, data });
+    } catch (error) { this.manejarError(error, res); }
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // GET /centros-salud/admin  (solo Administrador)
   // ══════════════════════════════════════════════════════════════
   async listarParaAdmin(req: Request, res: Response): Promise<void> {
