@@ -313,7 +313,22 @@ export class CentrosSaludController {
       const paramId = req.query.centroSaludId ? Number(req.query.centroSaludId) : undefined;
       const centroId = paramId ?? req.user?.userId;
       if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+
       const data = await this.solicitudesUseCase.listarSolicitudes(centroId, 'CentroSalud');
+
+      // Si el usuario logueado es Paciente y consultó con centroSaludId, agregar isFavorite a cada doctor
+      const rol = req.user?.rol;
+      const pacienteId = req.user?.userId;
+      if (rol === 'Paciente' && paramId && pacienteId) {
+        const { container } = await import('tsyringe');
+        const favRepo = container.resolve<any>('FavoritoRepository');
+        for (const solicitud of data as any[]) {
+          if (solicitud.doctor) {
+            solicitud.doctor.isFavorite = await favRepo.existe(pacienteId, solicitud.doctorId);
+          }
+        }
+      }
+
       res.status(200).json({ success: true, data });
     } catch (error) { this.manejarError(error, res); }
   }
@@ -372,7 +387,9 @@ export class CentrosSaludController {
   // GET /doctores/mis-centros
   async doctorListarMisCentros(req: Request, res: Response): Promise<void> {
     try {
-      const doctorId = req.user?.userId;
+      // Si se provee doctorId como query param, usarlo; si no, usar el doctor autenticado
+      const paramId = req.query.doctorId ? Number(req.query.doctorId) : undefined;
+      const doctorId = paramId ?? req.user?.userId;
       if (!doctorId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
       const data = await this.solicitudesUseCase.listarCentrosPorDoctor(doctorId);
       res.status(200).json({ success: true, data });

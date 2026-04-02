@@ -13479,6 +13479,9 @@ paths:
         Si se pasa **centroSaludId** como query param, se retornan las solicitudes de ese centro.
         Si no se pasa, se usa el centro del usuario autenticado (requiere rol Centro).
 
+        Si el usuario autenticado es **Paciente**, cada objeto `doctor` dentro de las solicitudes incluirá además:
+        - `isFavorite` (`true`/`false`): indica si ese doctor está en la lista de favoritos del paciente.
+
         **Traducción Automática:** Agrega `?target=en&translate_fields=doctor.especialidades.nombre` para traducir especialidades u otros campos.
       parameters:
         - name: centroSaludId
@@ -13521,10 +13524,24 @@ paths:
                   success:
                     type: boolean
                     example: true
-
+                  data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/SolicitudAlianza'
+                      allOf:
+                        - $ref: '#/components/schemas/SolicitudAlianza'
+                        - type: object
+                          properties:
+                            doctor:
+                              allOf:
+                                - type: object
+                                  description: Datos del doctor de la solicitud
+                                - type: object
+                                  properties:
+                                    isFavorite:
+                                      type: boolean
+                                      nullable: true
+                                      description: "Solo presente cuando el solicitante es Paciente. true si el doctor está en sus favoritos."
+                                      example: true
         '401':
           description: No autenticado
           content:
@@ -13753,11 +13770,20 @@ paths:
       security:
         - bearerAuth: []
       description: |
-        Retorna todos los centros de salud con los que el doctor autenticado tiene una solicitud de alianza **Aceptada**.
-        Incluye información completa del centro: nombre, tipo, ubicación con coordenadas PostGIS (lat/lng), teléfono y foto.
+        Retorna todos los centros de salud con alianza **Aceptada** del doctor indicado.
+
+        Si se pasa **doctorId** como query param, se consultan los centros de ese doctor (accesible por **Centro**, **Paciente** y **Administrador**).
+        Si no se pasa, se usa el doctor del usuario autenticado (accesible por **Doctor**).
 
         **Traducción Automática:** Agrega `?target=en&translate_fields=nombreComercial,descripcion` para traducir campos de texto.
       parameters:
+        - name: doctorId
+          in: query
+          required: false
+          schema:
+            type: integer
+          example: 13
+          description: ID del doctor a consultar (opcional; si no se envía, usa el doctor autenticado)
         - name: target
           in: query
           required: false

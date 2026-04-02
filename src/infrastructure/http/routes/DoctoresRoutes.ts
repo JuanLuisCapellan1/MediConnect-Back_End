@@ -243,11 +243,12 @@ router.delete(
 /**
  * GET /doctores/mis-centros
  * Doctor obtiene todos los centros de salud con los que tiene alianza aceptada.
+ * Centro y Paciente pueden pasar ?doctorId para consultar los centros de un doctor específico.
  */
 router.get(
     '/mis-centros',
     autenticarJWT,
-    requireRole('Doctor'),
+    requireRole('Doctor', 'Centro', 'Paciente', 'Administrador'),
     translationMiddleware,
     (req, res) => container.resolve(CentrosSaludController).doctorListarMisCentros(req, res)
 );
