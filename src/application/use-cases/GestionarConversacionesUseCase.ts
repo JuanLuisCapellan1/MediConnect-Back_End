@@ -32,7 +32,7 @@ export class GestionarConversacionesUseCase {
     private lecturasRepository: ILecturasConversacionRepository,
     @inject('UsuarioRepository')
     private usuarioRepository: IUsuarioRepository
-  ) {}
+  ) { }
 
   /**
    * Crea una nueva conversación entre dos usuarios
@@ -43,11 +43,21 @@ export class GestionarConversacionesUseCase {
       throw new ConversacionMismoUsuarioError(dto.emisorId);
     }
 
-    // Verificar que ambos usuarios existen
-    const [emisor, receptor] = await Promise.all([
-      this.usuarioRepository.buscarPorId(dto.emisorId),
-      this.usuarioRepository.buscarPorId(dto.receptorId)
-    ]);
+    let emisor = await this.usuarioRepository.buscarPorId(dto.emisorId);
+    let receptor = await this.usuarioRepository.buscarPorId(dto.receptorId);
+
+    // ── 1. MANEJO DE CASOS EXTREMOS (Fallback de ID de Perfil a ID de Usuario) ──
+    // Si el frontend envió un ID que no se encuentra en la tabla Usuario, interceptamos
+    // el flujo e intentamos buscar si por error era el ID de una tabla de perfil.
+    if (!receptor) {
+      console.warn(`[CHAT SEC] receptorId ${dto.receptorId} no encontrado en Usuario. Intentando mapeo de Perfil...`);
+      const receptorIdReal = await this.usuarioRepository.resolverIdPerfilAUsuario(dto.receptorId);
+
+      if (receptorIdReal !== dto.receptorId) {
+        dto.receptorId = receptorIdReal;
+        receptor = await this.usuarioRepository.buscarPorId(dto.receptorId);
+      }
+    }
 
     if (!emisor) {
       throw new UsuarioNoEncontradoError(dto.emisorId);
@@ -57,7 +67,7 @@ export class GestionarConversacionesUseCase {
       throw new UsuarioNoEncontradoError(dto.receptorId);
     }
 
-    // Validación: Verificar que los roles permiten crear conversación
+    // ── 2. VALIDACIÓN ESTRICTA DE ROLES Y MAPEO ──
     this.validarRolesPermitidos(emisor.rol, receptor.rol);
 
     // Verificar si ya existe una conversación activa entre estos usuarios
@@ -78,7 +88,7 @@ export class GestionarConversacionesUseCase {
         conversacionExistente.id,
         conversacionExistente
       );
-      
+
       if (!conversacionActualizada) {
         throw new Error('Error al reactivar la conversación');
       }
@@ -227,10 +237,14 @@ export class GestionarConversacionesUseCase {
    * Obtiene o crea una conversación entre dos usuarios
    */
   async obtenerOCrear(emisorId: number, receptorId: number): Promise<Conversacion> {
+
+    // ── 1. MANEJO DE CASOS EXTREMOS (Fallback de ID de Perfil a ID de Usuario) ──
+    const receptorIdReal = await this.usuarioRepository.resolverIdPerfilAUsuario(receptorId);
+
     // Buscar conversación existente
     const conversacionExistente = await this.conversacionesRepository.obtenerPorUsuarios(
       emisorId,
-      receptorId
+      receptorIdReal
     );
 
     if (conversacionExistente) {
@@ -248,7 +262,7 @@ export class GestionarConversacionesUseCase {
     }
 
     // Crear nueva conversación
-    return await this.crear({ emisorId, receptorId });
+    return await this.crear({ emisorId, receptorId: receptorIdReal });
   }
 
   /**
@@ -263,18 +277,18 @@ export class GestionarConversacionesUseCase {
       // Doctor - Paciente
       { rol1: 'Doctor', rol2: 'Paciente' },
       { rol1: 'Paciente', rol2: 'Doctor' },
-      
+
       // Centro de Salud - Doctor
       { rol1: 'Centro de Salud', rol2: 'Doctor' },
       { rol1: 'Doctor', rol2: 'Centro de Salud' },
-      
+
       // Paciente - Centro de Salud
       { rol1: 'Paciente', rol2: 'Centro de Salud' },
       { rol1: 'Centro de Salud', rol2: 'Paciente' }
     ];
 
     const esPermitida = combinacionesPermitidas.some(
-      combinacion => 
+      combinacion =>
         (combinacion.rol1 === rolEmisor && combinacion.rol2 === rolReceptor) ||
         (combinacion.rol1 === rolReceptor && combinacion.rol2 === rolEmisor)
     );

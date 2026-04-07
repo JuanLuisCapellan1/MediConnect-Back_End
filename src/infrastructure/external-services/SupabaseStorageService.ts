@@ -1,0 +1,149 @@
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { injectable } from 'tsyringe';
+import { IStorageService } from '../../application/interfaces/IStorageService';
+
+@injectable()
+export class SupabaseStorageService implements IStorageService {
+  private supabase: SupabaseClient;
+
+  constructor() {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('FATAL: Credenciales de Supabase no configuradas en .env');
+    }
+
+    this.supabase = createClient(supabaseUrl, supabaseKey);
+  }
+
+  async uploadFile(
+    fileBuffer: Buffer,
+    fileName: string,
+    bucket: 'public-assets' | 'secure-documents',
+    mimeType: string
+  ): Promise<string> {
+    console.log(`📤 Iniciando upload a Supabase:`, {
+      bucket,
+      fileName,
+      fileSize: `${(fileBuffer.length / 1024).toFixed(2)} KB`,
+      mimeType
+    });
+
+    const { data, error } = await this.supabase.storage
+      .from(bucket)
+      .upload(fileName, fileBuffer, {
+        contentType: mimeType,
+        upsert: true
+      });
+
+    if (error || !data) {
+      console.error(`❌ Error subiendo a Supabase [${bucket}]:`, {
+        error: error?.message,
+        errorDetails: error,
+        fileName,
+        bucket
+      });
+      throw new Error('No se pudo subir el archivo al almacenamiento.');
+    }
+
+    console.log(`✅ Archivo subido exitosamente:`, { bucket, path: data.path });
+
+    // Para assets públicos devolvemos la URL pública completa
+    if (bucket === 'public-assets') {
+      const { data: publicData } = this.supabase.storage.from(bucket).getPublicUrl(data.path);
+      return publicData.publicUrl;
+    }
+
+    // Para documentos seguros devolvemos SOLO EL PATH (no la URL firmada),
+    // para que al momento de servir el documento se genere una URL fresca.
+    return data.path;
+  }
+
+  getPublicUrl(path: string, bucket: 'public-assets'): string {
+    const { data } = this.supabase.storage.from(bucket).getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  async getSignedUrl(
+    path: string,
+    bucket: 'secure-documents',
+    expiresIn = 3600   // 1 hora por defecto
+  ): Promise<string> {
+    const { data, error } = await this.supabase.storage
+      .from(bucket)
+      .createSignedUrl(path, expiresIn);
+
+    if (error || !data) {
+      throw new Error('No se pudo generar el acceso seguro al documento.');
+    }
+
+    return data.signedUrl;
+  }
+
+  /**
+   * Detecta si el valor es un path puro (no una URL completa) y genera
+   * una URL firmada fresca. Si falla (e.g. path inválido extraído de URL vieja),
+   * devuelve el valor original para no romper la respuesta.
+   */
+  async refreshOrGetSignedUrl(pathOrUrl: string): Promise<string> {
+    if (!pathOrUrl) return pathOrUrl;
+
+    let path = pathOrUrl;
+
+    // Si ya es una URL completa (registro antiguo en DB), extraer el path
+    if (pathOrUrl.startsWith('http')) {
+      try {
+        const url = new URL(pathOrUrl);
+        // Supabase storage URLs tienen el formato:
+        // /storage/v1/object/sign/<bucket>/<path...>
+        // /storage/v1/object/authenticated/<bucket>/<path...>
+        const parts = url.pathname.split('/');
+        const bucketIdx = parts.findIndex(p => p === 'secure-documents');
+
+        if (bucketIdx === -1) {
+          console.warn('⚠️ refreshOrGetSignedUrl: no se encontró "secure-documents" en la URL:', url.pathname);
+          return pathOrUrl; // No es un documento seguro conocido, devolver original
+        }
+
+        // Decodificar caracteres URL-encoded (e.g., %40 → @, %20 → ' ')
+        path = parts.slice(bucketIdx + 1).map(decodeURIComponent).join('/');
+        console.log(`🔄 Regenerando URL firmada para path: ${path}`);
+      } catch (e) {
+        console.warn('⚠️ refreshOrGetSignedUrl: no se pudo parsear la URL:', pathOrUrl, e);
+        return pathOrUrl;
+      }
+    }
+
+    try {
+      const freshUrl = await this.getSignedUrl(path, 'secure-documents');
+      console.log(`✅ URL firmada regenerada exitosamente para: ${path}`);
+      return freshUrl;
+    } catch (e) {
+      console.error('❌ refreshOrGetSignedUrl: falló al regenerar URL para path:', path, e);
+      // Devolver el original para no romper la respuesta
+      return pathOrUrl;
+    }
+  }
+
+  async refreshSignedUrl(signedUrl: string, bucket: 'secure-documents'): Promise<string> {
+    try {
+      const url = new URL(signedUrl);
+      const parts = url.pathname.split('/');
+      const bucketIdx = parts.findIndex(p => p === bucket);
+      const path = bucketIdx !== -1 ? parts.slice(bucketIdx + 1).join('/') : parts.pop()!;
+
+      if (!path) throw new Error('URL firmada inválida');
+      return await this.getSignedUrl(path, bucket);
+    } catch {
+      throw new Error('No se pudo refrescar la URL firmada');
+    }
+  }
+
+  async deleteFile(path: string, bucket: string): Promise<void> {
+    const { error } = await this.supabase.storage.from(bucket).remove([path]);
+    if (error) {
+      console.error(`Error borrando archivo en Supabase: ${error.message}`);
+    }
+  }
+}

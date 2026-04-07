@@ -1,6 +1,6 @@
 /**
  * Horario.ts
- * Entidad de dominio que representa un Horario
+ * Entidad de dominio que representa un Horario (sin dia_semana — usa horarios_dias)
  */
 
 export class Horario {
@@ -8,11 +8,11 @@ export class Horario {
     public readonly id: number,
     public readonly doctorId: number,
     public readonly nombre: string,
-    public readonly diaSemana: number,
-    public readonly horaInicio: Date,
-    public readonly horaFin: Date,
-    public readonly ubicacionId: number,
+    public readonly horaInicio: string,
+    public readonly horaFin: string,
     public readonly estado: string,
-    public readonly creadoEn: Date
-  ) {}
+    public readonly creadoEn: Date,
+    /** Array de días de la semana (1=Lunes…7=Domingo), poblado desde horarios_dias */
+    public readonly dias: number[] = []
+  ) { }
 }

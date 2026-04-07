@@ -16,7 +16,7 @@ export class TranslationRateLimiter {
   private readonly windowMs: number;
   private readonly maxRequests: number;
 
-  private constructor(windowMs: number = 15 * 60 * 1000, maxRequests: number = 100) {
+  private constructor(windowMs: number = 15 * 60 * 1000, maxRequests: number = 1000) {
     this.requests = new Map();
     this.windowMs = windowMs; // 15 minutos por defecto
     this.maxRequests = maxRequests; // 100 peticiones por defecto
@@ -39,7 +39,7 @@ export class TranslationRateLimiter {
     // Intenta obtener la IP real considerando proxies
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
-      return typeof forwarded === 'string' 
+      return typeof forwarded === 'string'
         ? forwarded.split(',')[0].trim()
         : forwarded[0];
     }
@@ -52,7 +52,7 @@ export class TranslationRateLimiter {
   public checkLimit(req: Request): { allowed: boolean; remaining: number; resetTime: number } {
     const ip = this.getClientIp(req);
     const now = Date.now();
-    
+
     let entry = this.requests.get(ip);
 
     // Si no existe entrada o ha expirado, crear nueva
@@ -140,14 +140,14 @@ export class TranslationRateLimiter {
  */
 export function createTranslationRateLimiter(
   windowMs: number = 15 * 60 * 1000,
-  maxRequests: number = 100
+  maxRequests: number = 1000
 ) {
   const limiter = TranslationRateLimiter.getInstance(windowMs, maxRequests);
 
   return (req: Request, res: Response, next: NextFunction): void | Response => {
     // Solo aplicar rate limiting si hay parámetros de traducción
     const hasTranslationParams = req.query.target || req.query.translate_fields;
-    
+
     if (!hasTranslationParams) {
       return next();
     }
@@ -162,9 +162,9 @@ export function createTranslationRateLimiter(
     if (!allowed) {
       const retryAfter = Math.ceil((resetTime - Date.now()) / 1000);
       res.setHeader('Retry-After', retryAfter.toString());
-      
+
       console.warn(`⚠️ Rate limit excedido para IP: ${req.ip}`);
-      
+
       return res.status(429).json({
         error: 'Demasiadas solicitudes de traducción',
         message: 'Has excedido el límite de peticiones. Por favor, intenta más tarde.',

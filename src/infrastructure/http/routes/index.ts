@@ -6,20 +6,40 @@ import MunicipiosRoutes from './MunicipiosRoutes';
 import DistritosMunicipalesRoutes from './DistritosMunicipalesRoutes';
 import SeccionesRoutes from './SeccionesRoutes';
 import BarriosRoutes from './BarriosRoutes';
-import SubBarriosRoutes from './SubBarriosRoutes';
 import UbicacionesRoutes from './UbicacionesRoutes';
 import HorariosRoutes from './HorariosRoutes';
 import ServicioHorarioRoutes from './ServiciosHorariosRoutes';
-import TiposServiciosRoutes from './TiposServiciosRoutes';
+import EspecialidadesRoutes from './EspecialidadesRoutes';
+import PacientesRoutes from './PacientesRoutes';
+import DoctoresRoutes from './DoctoresRoutes';
+import AccionesRoutes from './AccionesRoutes';
 import TiposCentrosSaludRoutes from './TiposCentrosSaludRoutes';
-import ProfesionesRoutes from './ProfesionesRoutes';
+import CentrosSaludRoutes from './CentrosSaludRoutes';
+
 import ExperienciasLaboralesRoutes from './ExperienciasLaboralesRoutes';
+import FormacionesAcademicasRoutes from './FormacionesAcademicasRoutes';
+import PaisesRoutes from './PaisesRoutes';
+import UniversidadesRoutes from './UniversidadesRoutes';
+import AuthRoutes from './AuthRoutes';
+import AuthPasswordRoutes from './AuthPasswordRoutes';
 import NotificacionesRoutes from './notificaciones.routes';
-import AuthRoutes from './auth.routes';
 import ConversacionesRoutes from './conversaciones.routes';
-import MensajesRoutes from './mensajes.routes';
+import MensajesRoutes, { mensajesRouter } from './mensajes.routes';
+import CondicionesMedicasRoutes from './CondicionesMedicasRoutes';
+import SegurosRoutes from './SegurosRoutes';
+import TiposSegurosRoutes from './TiposSegurosRoutes';
+import ServiciosRoutes from './ServiciosRoutes';
 import { translationMiddleware } from '../middlewares/TranslationMiddleware';
 import { translationRateLimitMiddleware } from '../middlewares/TranslationRateLimiter';
+import DoctorIdiomasRoutes from './DoctorIdiomasRoutes';
+import CitasRoutes from './CitasRoutes';
+import TeleconsultasRoutes from './TeleconsultasRoutes';
+import ResenasRoutes from './ResenasRoutes';
+import MediaRoutes from './MediaRoutes';
+import FavoritosRoutes from './FavoritosRoutes';
+import BusquedaRoutes from './BusquedaRoutes';
+import EstadisticasAdminRoutes from './EstadisticasAdminRoutes';
+import ContactoRoutes from './ContactoRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -41,44 +61,56 @@ router.post('/translation/rate-limit/reset', (req, res) => translationUtilsContr
 router.get('/translation/validate/:code', (req, res) => translationUtilsController.validateLanguage(req, res));
 router.get('/translation/health', (req, res) => translationUtilsController.healthCheck(req, res));
 
-// Rutas de Provincias
+// Rutas de autenticación
+router.use('/auth', AuthRoutes);
+router.use('/auth', AuthPasswordRoutes);
+
+// Rutas de geografía
 router.use('/provincias', ProvinciasRoutes);
-
-// Rutas de Municipios
 router.use('/municipios', MunicipiosRoutes);
-
-// Rutas de Distritos Municipales
 router.use('/distritos', DistritosMunicipalesRoutes);
-
-// Rutas de Secciones
 router.use('/secciones', SeccionesRoutes);
-
-// Rutas de Barrios
 router.use('/barrios', BarriosRoutes);
-
-// Rutas de Sub Barrios
-router.use('/subBarrios', SubBarriosRoutes);
-
-// Rutas de Ubicaciones
 router.use('/ubicaciones', UbicacionesRoutes);
+router.use('/paises', PaisesRoutes);
+router.use('/universidades', UniversidadesRoutes);
 
-// Rutas de Horarios
+// Rutas de horarios
 router.use('/horarios', HorariosRoutes);
 
 // Rutas de Servicios Horarios
 router.use('/servicios-horarios', ServicioHorarioRoutes);
 
-// Rutas de Tipos de Servicios
-router.use('/tipos-servicios', TiposServiciosRoutes);
+
+// Rutas de Especialidades
+router.use('/especialidades', EspecialidadesRoutes);
+
+// Rutas de Pacientes
+router.use('/pacientes', PacientesRoutes);
+
+// Rutas de Doctores
+router.use('/doctores', DoctoresRoutes);
+
+// Rutas de Acciones (Revisión de Documentos)
+router.use('/acciones', AccionesRoutes);
 
 // Rutas de Tipos de Centros de Salud
 router.use('/tipos-centros-salud', TiposCentrosSaludRoutes);
 
-// Rutas de Profesiones
-router.use('/profesiones', ProfesionesRoutes);
+// Rutas de Centros de Salud
+router.use('/centros-salud', CentrosSaludRoutes);
+
+
 
 // Rutas de Experiencias Laborales
 router.use('/experiencias-laborales', ExperienciasLaboralesRoutes);
+
+// Rutas de Formaciones Académicas
+router.use('/formaciones-academicas', FormacionesAcademicasRoutes);
+
+// Rutas de Doctor Idiomas
+router.use('/doctores/idiomas', DoctorIdiomasRoutes);
+
 
 // Rutas de Autenticación
 router.use('/auth', AuthRoutes);
@@ -89,7 +121,46 @@ router.use('/notificaciones', NotificacionesRoutes);
 // Rutas de Conversaciones (Chat)
 router.use('/conversaciones', ConversacionesRoutes);
 
-// Rutas de Mensajes
+// Rutas de Mensajes (subrutas de conversaciones)
 router.use('/conversaciones', MensajesRoutes);
+
+// Rutas de Mensajes individuales (editar y eliminar)
+router.use('/mensajes', mensajesRouter);
+
+// Rutas de Condiciones Médicas (Catálogo, Doctores y Pacientes)
+router.use('/condiciones-medicas', CondicionesMedicasRoutes);
+
+// Rutas de Seguros Médicos
+router.use('/seguros', SegurosRoutes);
+
+// Rutas de Tipos de Seguros
+router.use('/tipos-seguros', TiposSegurosRoutes);
+
+// Rutas de Servicios
+router.use('/servicios', ServiciosRoutes);
+
+// Rutas de Citas
+router.use('/citas', CitasRoutes);
+
+// Rutas de Teleconsultas
+router.use('/teleconsultas', TeleconsultasRoutes);
+
+// Rutas de Reseñas
+router.use('/resenas', ResenasRoutes);
+
+// Rutas de Favoritos
+router.use('/favoritos', FavoritosRoutes);
+
+// Rutas de Media (archivos para el chat)
+router.use('/media', MediaRoutes);
+
+// Rutas de Búsqueda Unificada
+router.use('/busqueda', BusquedaRoutes);
+
+// Rutas de Estadísticas del Admin
+router.use('/admin/estadisticas', EstadisticasAdminRoutes);
+
+// Rutas de Contacto (formulario de contacto y newsletter) — públicas
+router.use('/contacto', ContactoRoutes);
 
 export default router;

@@ -23,18 +23,24 @@ export class MensajesController {
       const usuarioId = (req as any).usuarioId;
 
       if (!usuarioId) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          error: 'No autorizado' });
+          error: 'No autorizado'
+        });
       }
+
+      const limite = parseInt(req.query.limite as string) || 50;
+      const pagina = parseInt(req.query.pagina as string) || 1;
 
       const filtros: FiltroMensajesDto = {
         conversacionId,
         usuarioId,
         tipo: req.query.tipo as any,
         busqueda: req.query.busqueda as string,
-        limite: parseInt(req.query.limite as string) || 50,
-        offset: parseInt(req.query.offset as string) || 0,
+        limite,
+        pagina,
+        // offset sigue siendo compatible si se pasa explícitamente
+        offset: req.query.offset ? parseInt(req.query.offset as string) : undefined,
         antesDeId: req.query.antesDeId ? parseInt(req.query.antesDeId as string) : undefined
       };
 
@@ -44,20 +50,28 @@ export class MensajesController {
       return res.status(200).json({
         success: true,
         mensaje: 'Mensajes obtenidos exitosamente',
-        data: resultado
+        paginacion: {
+          pagina: resultado.pagina,
+          limite: resultado.limite,
+          total: resultado.total,
+          hayMas: resultado.hayMas,
+        },
+        data: resultado.mensajes,
       });
     } catch (error: any) {
       console.error('Error al obtener mensajes:', error);
-      
+
       if (error.message.includes('No tienes acceso')) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           success: false,
-          error: error.message });
+          error: error.message
+        });
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         success: false,
-        error: error.message || 'Error interno del servidor' });
+        error: error.message || 'Error interno del servidor'
+      });
     }
   }
 
@@ -71,9 +85,9 @@ export class MensajesController {
       const usuarioId = (req as any).usuarioId;
 
       if (!usuarioId) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          error: 'No autorizado' 
+          error: 'No autorizado'
         });
       }
 
@@ -101,8 +115,8 @@ export class MensajesController {
       if (mensajeCompleto && conversacion) {
         const wsService = container.resolve(ChatWebSocketService);
         wsService.enviarMensaje(
-          conversacionId, 
-          mensaje, 
+          conversacionId,
+          mensaje,
           mensajeCompleto,
           { emisorId: conversacion.emisorId, receptorId: conversacion.receptorId }
         );
@@ -113,26 +127,32 @@ export class MensajesController {
 
       return res.status(201).json({
         mensaje: 'Mensaje enviado exitosamente',
-        data: mensaje.toJSON()
+        data: mensajeCompleto ?? {
+          ...mensaje.toJSON(),
+          remitente: null,
+        },
       });
     } catch (error: any) {
       console.error('Error al crear mensaje:', error);
-      
+
       if (error.name === 'ConversacionNoEncontradaError') {
-        return res.status(404).json({ 
+        return res.status(404).json({
           success: false,
-          error: error.message });
+          error: error.message
+        });
       }
-      
+
       if (error.name === 'AccesoConversacionDenegadoError' || error.name === 'MensajeInvalidoError') {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: error.message });
+          error: error.message
+        });
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         success: false,
-        error: error.message || 'Error interno del servidor' });
+        error: error.message || 'Error interno del servidor'
+      });
     }
   }
 
@@ -146,9 +166,9 @@ export class MensajesController {
       const usuarioId = (req as any).usuarioId;
 
       if (!usuarioId) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          error: 'No autorizado' 
+          error: 'No autorizado'
         });
       }
 
@@ -179,22 +199,25 @@ export class MensajesController {
       });
     } catch (error: any) {
       console.error('Error al actualizar mensaje:', error);
-      
+
       if (error.name === 'MensajeNoEncontradoError') {
-        return res.status(404).json({ 
+        return res.status(404).json({
           success: false,
-          error: error.message });
+          error: error.message
+        });
       }
-      
+
       if (error.name === 'AccesoMensajeDenegadoError') {
-        return res.status(403).json({ 
+        return res.status(403).json({
           success: false,
-          error: error.message });
+          error: error.message
+        });
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         success: false,
-        error: error.message || 'Error interno del servidor' });
+        error: error.message || 'Error interno del servidor'
+      });
     }
   }
 
@@ -208,9 +231,9 @@ export class MensajesController {
       const usuarioId = (req as any).usuarioId;
 
       if (!usuarioId) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          error: 'No autorizado' 
+          error: 'No autorizado'
         });
       }
 
@@ -231,22 +254,25 @@ export class MensajesController {
       });
     } catch (error: any) {
       console.error('Error al eliminar mensaje:', error);
-      
+
       if (error.name === 'MensajeNoEncontradoError') {
-        return res.status(404).json({ 
+        return res.status(404).json({
           success: false,
-          error: error.message });
+          error: error.message
+        });
       }
-      
+
       if (error.name === 'AccesoMensajeDenegadoError') {
-        return res.status(403).json({ 
+        return res.status(403).json({
           success: false,
-          error: error.message });
+          error: error.message
+        });
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         success: false,
-        error: error.message || 'Error interno del servidor' });
+        error: error.message || 'Error interno del servidor'
+      });
     }
   }
 
@@ -260,17 +286,19 @@ export class MensajesController {
       const usuarioId = (req as any).usuarioId;
 
       if (!usuarioId) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          error: 'No autorizado' });
+          error: 'No autorizado'
+        });
       }
 
       const { ultimoMensajeLeidoId } = req.body;
 
       if (!ultimoMensajeLeidoId) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: 'ultimoMensajeLeidoId es requerido' });
+          error: 'ultimoMensajeLeidoId es requerido'
+        });
       }
 
       const dto: MarcarMensajesLeidosDto = {
@@ -292,16 +320,18 @@ export class MensajesController {
       });
     } catch (error: any) {
       console.error('Error al marcar mensajes como leídos:', error);
-      
+
       if (error.name === 'AccesoConversacionDenegadoError') {
-        return res.status(403).json({ 
+        return res.status(403).json({
           success: false,
-          error: error.message });
+          error: error.message
+        });
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         success: false,
-        error: error.message || 'Error interno del servidor' });
+        error: error.message || 'Error interno del servidor'
+      });
     }
   }
 
@@ -315,9 +345,9 @@ export class MensajesController {
       const usuarioId = (req as any).usuarioId;
 
       if (!usuarioId) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          error: 'No autorizado' 
+          error: 'No autorizado'
         });
       }
 
@@ -331,9 +361,9 @@ export class MensajesController {
       });
     } catch (error: any) {
       console.error('Error al contar mensajes no leídos:', error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         success: false,
-        error: error.message || 'Error interno del servidor'  
+        error: error.message || 'Error interno del servidor'
       });
     }
   }
@@ -349,16 +379,16 @@ export class MensajesController {
       const busqueda = req.query.q as string;
 
       if (!usuarioId) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
           error: 'No autorizado'
         });
       }
 
       if (!busqueda) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: 'Parámetro de búsqueda (q) es requerido' 
+          error: 'Parámetro de búsqueda (q) es requerido'
         });
       }
 
@@ -372,16 +402,18 @@ export class MensajesController {
       });
     } catch (error: any) {
       console.error('Error al buscar mensajes:', error);
-      
+
       if (error.name === 'AccesoConversacionDenegadoError') {
-        return res.status(403).json({ 
+        return res.status(403).json({
           success: false,
-          error: error.message });
+          error: error.message
+        });
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         success: false,
-        error: error.message || 'Error interno del servidor' });
+        error: error.message || 'Error interno del servidor'
+      });
     }
   }
 }

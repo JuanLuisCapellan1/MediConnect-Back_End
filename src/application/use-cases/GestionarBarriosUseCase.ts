@@ -9,7 +9,7 @@ export class GestionarBarriosUseCase {
     private barrioRepo: IBarriosRepository,
     @inject(BarrioValidator) private validator: BarrioValidator,
     @inject(EstadoValidator) private estadoValidator: EstadoValidator
-  ) {}
+  ) { }
 
   /**
    * Lista todos los barrios activos
@@ -91,4 +91,22 @@ export class GestionarBarriosUseCase {
   async eliminar(id: number) {
     return await this.barrioRepo.eliminar(id);
   }
+
+  /**
+   * Busca el barrio cuyo polígono contiene el punto (longitud, latitud).
+   * @param longitud - Longitud (X) del punto
+   * @param latitud  - Latitud (Y) del punto
+   */
+  async buscarPorCoordenadas(longitud: number, latitud: number) {
+    return await this.barrioRepo.buscarPorCoordenadas(longitud, latitud);
+  }
+
+  /**
+   * Obtiene un barrio con su geometría completa (GeoJSON).
+   * @param id - ID del barrio
+   */
+  async obtenerGeometria(id: number) {
+    return await this.barrioRepo.obtenerGeometria(id);
+  }
 }
+

@@ -4,10 +4,11 @@ import { injectable } from 'tsyringe';
 import jwt from 'jsonwebtoken';
 import { Notificacion } from '../../domain/entities/Notificacion';
 
-interface UsuarioSocket {
+// ─── Typed Socket ─────────────────────────────────────────────────────────────
+interface CustomSocket extends Socket {
   usuarioId: number;
-  socketId: string;
-  conectadoEn: Date;
+  email: string;
+  rol: string;
 }
 
 interface TokenPayload {
@@ -16,219 +17,191 @@ interface TokenPayload {
   rol: string;
 }
 
+// ─── Service ──────────────────────────────────────────────────────────────────
 @injectable()
 export class NotificacionesWebSocketService {
   private io: Server | null = null;
-  private usuariosConectados: Map<number, UsuarioSocket[]> = new Map();
+  private usuariosConectados: Map<number, string[]> = new Map(); // userId → socketIds[]
 
   /**
-   * Inicializa el servidor de WebSocket
+   * Inicializa el servidor de Socket.IO, configura el middleware JWT
+   * y los handlers de conexión.
    */
   inicializar(httpServer: HTTPServer): void {
     this.io = new Server(httpServer, {
       cors: {
         origin: process.env.CORS_ORIGIN || '*',
         methods: ['GET', 'POST'],
-        credentials: true
+        credentials: true,
       },
-      path: '/socket.io/'
+      path: '/socket.io/',
     });
 
-    // Middleware de autenticación para Socket.IO
+    // ── Middleware de autenticación JWT ───────────────────────────────────
     this.io.use((socket, next) => {
-      const token = socket.handshake.auth.token || socket.handshake.headers.authorization;
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) {
+        console.error(
+          '❌ FATAL: JWT_SECRET no está definido en las variables de entorno. ' +
+          'El servicio WebSocket no puede autenticar conexiones.'
+        );
+        return next(new Error('Error interno del servidor'));
+      }
 
-      if (!token) {
+      const rawToken =
+        (socket.handshake.auth as any).token ||
+        socket.handshake.headers.authorization;
+
+      if (!rawToken) {
         return next(new Error('Token de autenticación requerido'));
       }
 
       try {
-        // Remover "Bearer " si existe
-        const tokenLimpio = token.replace('Bearer ', '');
-        const secreto = process.env.JWT_SECRET || 'secret-key-temporal';
-        
-        const decoded = jwt.verify(tokenLimpio, secreto) as TokenPayload;
-        
-        // Agregar datos del usuario al socket
-        (socket as any).usuarioId = decoded.userId;
-        (socket as any).email = decoded.email;
-        (socket as any).rol = decoded.rol;
+        const token = String(rawToken).replace(/^Bearer\s+/i, '');
+        const decoded = jwt.verify(token, jwtSecret) as TokenPayload;
+
+        // Adjuntar datos de usuario al socket de forma tipada
+        const customSocket = socket as unknown as CustomSocket;
+        customSocket.usuarioId = decoded.userId;
+        customSocket.email = decoded.email;
+        customSocket.rol = decoded.rol;
 
         next();
-      } catch (error) {
-        console.error('Error al verificar token:', error);
+      } catch (err) {
+        console.error('❌ WebSocket: token inválido o expirado:', err);
         return next(new Error('Token inválido o expirado'));
       }
     });
 
-    // Manejar conexiones
-    this.io.on('connection', (socket: Socket) => {
-      this.manejarConexion(socket);
+    // ── Handler de conexión ───────────────────────────────────────────────
+    this.io.on('connection', (rawSocket: Socket) => {
+      this.manejarConexion(rawSocket as unknown as CustomSocket);
     });
 
     console.log('✅ Servicio de WebSocket inicializado');
   }
 
-  /**
-   * Maneja la conexión de un nuevo cliente
-   */
-  private manejarConexion(socket: Socket): void {
-    const usuarioId = (socket as any).usuarioId;
-    const email = (socket as any).email;
+  // ─── Handlers privados ────────────────────────────────────────────────────
+
+  private manejarConexion(socket: CustomSocket): void {
+    const { usuarioId, email } = socket;
 
     console.log(`🔌 Usuario conectado: ${email} (ID: ${usuarioId}, Socket: ${socket.id})`);
 
-    // Registrar conexión del usuario
-    this.registrarUsuario(usuarioId, socket.id);
+    this.registrarSocket(usuarioId, socket.id);
 
-    // Unir al usuario a su sala personal
+    // El usuario se une a su sala personal para recibir eventos directos
     socket.join(`usuario:${usuarioId}`);
 
-    // Emitir evento de conexión exitosa
     socket.emit('conectado', {
       mensaje: 'Conectado al servidor de notificaciones',
       usuarioId,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
-    // Manejar desconexión
     socket.on('disconnect', () => {
       console.log(`🔌 Usuario desconectado: ${email} (Socket: ${socket.id})`);
-      this.desregistrarUsuario(usuarioId, socket.id);
+      this.desregistrarSocket(usuarioId, socket.id);
     });
 
-    // Manejar solicitud de estado de conexión
     socket.on('ping', () => {
       socket.emit('pong', { timestamp: new Date() });
     });
 
-    // Manejar evento para unirse a salas adicionales (ej: salas de chat)
+    // Salas adicionales (ej: sala de cita para eventos de teleconsulta)
     socket.on('unirse-sala', (sala: string) => {
       socket.join(sala);
       console.log(`Usuario ${usuarioId} se unió a la sala: ${sala}`);
     });
 
-    // Manejar evento para salir de salas
     socket.on('salir-sala', (sala: string) => {
       socket.leave(sala);
       console.log(`Usuario ${usuarioId} salió de la sala: ${sala}`);
     });
   }
 
+  // ─── Registro de sockets ──────────────────────────────────────────────────
+
+  private registrarSocket(usuarioId: number, socketId: string): void {
+    const existentes = this.usuariosConectados.get(usuarioId) ?? [];
+    this.usuariosConectados.set(usuarioId, [...existentes, socketId]);
+  }
+
+  private desregistrarSocket(usuarioId: number, socketId: string): void {
+    const existentes = this.usuariosConectados.get(usuarioId) ?? [];
+    const restantes = existentes.filter(id => id !== socketId);
+    if (restantes.length === 0) {
+      this.usuariosConectados.delete(usuarioId);
+    } else {
+      this.usuariosConectados.set(usuarioId, restantes);
+    }
+  }
+
+  // ─── Emisión de eventos ───────────────────────────────────────────────────
+
   /**
-   * Envía una notificación a un usuario específico
+   * Envía una notificación en tiempo real a un usuario específico.
+   * Emite al canal `usuario:{usuarioId}`.
    */
   enviarNotificacionAUsuario(usuarioId: number, notificacion: Notificacion): void {
     if (!this.io) {
-      console.error('WebSocket no inicializado');
+      console.error('❌ WebSocket no inicializado — no se puede enviar notificación.');
       return;
     }
-
-    const sala = `usuario:${usuarioId}`;
-    this.io.to(sala).emit('nueva-notificacion', notificacion.toJSON());
-
+    this.io.to(`usuario:${usuarioId}`).emit('nueva-notificacion', notificacion.toJSON());
     console.log(`📬 Notificación enviada a usuario ${usuarioId}: ${notificacion.titulo}`);
   }
 
   /**
-   * Envía una notificación a múltiples usuarios
+   * Envía una notificación a múltiples usuarios.
    */
   enviarNotificacionAUsuarios(usuariosIds: number[], notificacion: Notificacion): void {
-    usuariosIds.forEach(usuarioId => {
-      this.enviarNotificacionAUsuario(usuarioId, notificacion);
-    });
+    usuariosIds.forEach(id => this.enviarNotificacionAUsuario(id, notificacion));
   }
 
   /**
-   * Envía una notificación broadcast a todos los usuarios conectados
-   */
-  enviarNotificacionBroadcast(notificacion: Notificacion, excepto?: number): void {
-    if (!this.io) {
-      console.error('WebSocket no inicializado');
-      return;
-    }
-
-    if (excepto) {
-      const salaExcepto = `usuario:${excepto}`;
-      this.io.except(salaExcepto).emit('nueva-notificacion', notificacion.toJSON());
-    } else {
-      this.io.emit('nueva-notificacion', notificacion.toJSON());
-    }
-
-    console.log('📣 Notificación broadcast enviada a todos los usuarios');
-  }
-
-  /**
-   * Envía actualización de contador de notificaciones no leídas
+   * Emite el contador de notificaciones no leídas a un usuario.
+   * Escuchado por el frontend para actualizar el badge de la campana.
    */
   enviarContadorNoLeidas(usuarioId: number, contador: number): void {
     if (!this.io) {
-      console.error('WebSocket no inicializado');
+      console.error('❌ WebSocket no inicializado — no se puede enviar contador.');
       return;
     }
-
-    const sala = `usuario:${usuarioId}`;
-    this.io.to(sala).emit('contador-no-leidas', { contador });
-
+    this.io.to(`usuario:${usuarioId}`).emit('contador-no-leidas', { contador });
     console.log(`🔔 Contador actualizado para usuario ${usuarioId}: ${contador}`);
   }
 
   /**
-   * Registra un usuario conectado
+   * Envía un evento genérico a todos los sockets de un usuario.
+   * Útil para otros módulos (teleconsulta, mensajes, etc.).
    */
-  private registrarUsuario(usuarioId: number, socketId: string): void {
-    const conexionesExistentes = this.usuariosConectados.get(usuarioId) || [];
-    
-    conexionesExistentes.push({
-      usuarioId,
-      socketId,
-      conectadoEn: new Date()
-    });
-
-    this.usuariosConectados.set(usuarioId, conexionesExistentes);
-  }
-
-  /**
-   * Desregistra un usuario desconectado
-   */
-  private desregistrarUsuario(usuarioId: number, socketId: string): void {
-    const conexionesExistentes = this.usuariosConectados.get(usuarioId) || [];
-    
-    const conexionesFiltradas = conexionesExistentes.filter(
-      c => c.socketId !== socketId
-    );
-
-    if (conexionesFiltradas.length === 0) {
-      this.usuariosConectados.delete(usuarioId);
-    } else {
-      this.usuariosConectados.set(usuarioId, conexionesFiltradas);
+  emitirAUsuario(usuarioId: number, evento: string, payload: any): void {
+    if (!this.io) {
+      console.error(`❌ WebSocket no inicializado — no se puede emitir '${evento}'.`);
+      return;
     }
+    this.io.to(`usuario:${usuarioId}`).emit(evento, payload);
   }
 
-  /**
-   * Verifica si un usuario está conectado
-   */
+  // ─── Estado de presencia ──────────────────────────────────────────────────
+
   usuarioEstaConectado(usuarioId: number): boolean {
-    const conexiones = this.usuariosConectados.get(usuarioId);
-    return conexiones !== undefined && conexiones.length > 0;
+    const sockets = this.usuariosConectados.get(usuarioId);
+    return sockets !== undefined && sockets.length > 0;
   }
 
-  /**
-   * Obtiene el número de usuarios conectados
-   */
   obtenerNumeroUsuariosConectados(): number {
     return this.usuariosConectados.size;
   }
 
-  /**
-   * Obtiene la lista de usuarios conectados
-   */
   obtenerUsuariosConectados(): number[] {
     return Array.from(this.usuariosConectados.keys());
   }
 
   /**
-   * Obtiene el servidor de Socket.IO
+   * Expone la instancia de Socket.IO para que otros servicios (ej: ChatWebSocketService)
+   * puedan compartir el mismo servidor.
    */
   obtenerIO(): Server | null {
     return this.io;

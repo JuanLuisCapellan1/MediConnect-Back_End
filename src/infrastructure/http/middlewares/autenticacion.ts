@@ -1,16 +1,27 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { prisma } from '../../database/prisma/client';
 
-interface TokenPayload {
+export interface TokenPayload {
   userId: number;
   email: string;
   rol: string;
+  scope?: string;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: TokenPayload;
+    }
+  }
 }
 
 /**
  * Middleware para verificar el token JWT en las peticiones HTTP
+ * Valida que el usuario esté activo (no eliminado)
  */
-export const autenticarJWT = (req: Request, res: Response, next: NextFunction): void => {
+export const autenticarJWT = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -20,8 +31,8 @@ export const autenticarJWT = (req: Request, res: Response, next: NextFunction): 
     }
 
     // Extraer el token del header "Bearer TOKEN"
-    const token = authHeader.startsWith('Bearer ') 
-      ? authHeader.substring(7) 
+    const token = authHeader.startsWith('Bearer ')
+      ? authHeader.substring(7)
       : authHeader;
 
     const secreto = process.env.JWT_SECRET || 'secret-key-temporal';
@@ -29,10 +40,36 @@ export const autenticarJWT = (req: Request, res: Response, next: NextFunction): 
     // Verificar y decodificar el token
     const decoded = jwt.verify(token, secreto) as TokenPayload;
 
+    // Asegurarnos de que sea un access token, no un refresh
+    if (decoded.scope && decoded.scope !== 'access') {
+      res.status(401).json({ error: 'Token de acceso inválido' });
+      return;
+    }
+
+    // Verificar que el usuario existe y está activo
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, estado: true, rol: true },
+    });
+
+    if (!usuario) {
+      res.status(401).json({ error: 'Usuario no encontrado' });
+      return;
+    }
+
+    // Validar que el usuario esté activo
+    if (usuario.estado !== 'Activo') {
+      res.status(403).json({
+        error: 'Cuenta inactiva',
+        mensaje: 'Tu cuenta ha sido eliminada o desactivada. Si deseas volver a usar nuestros servicios, puedes registrarte nuevamente con el mismo email.',
+      });
+      return;
+    }
+
     // Agregar la información del usuario al objeto request
+    req.user = decoded;
     (req as any).usuarioId = decoded.userId;
-    (req as any).email = decoded.email;
-    (req as any).rol = decoded.rol;
+    (req as any).rol = usuario.rol;
 
     next();
   } catch (error) {
@@ -54,18 +91,19 @@ export const autenticarJWTOpcional = (req: Request, res: Response, next: NextFun
       return;
     }
 
-    const token = authHeader.startsWith('Bearer ') 
-      ? authHeader.substring(7) 
+    const token = authHeader.startsWith('Bearer ')
+      ? authHeader.substring(7)
       : authHeader;
 
-    const secreto = process.env.JWT_SECRET || 'secret-key-temporal';
+    const secreto = process.env.JWT_SECRET || 'MediConnectSecretDefault2026';
     const decoded = jwt.verify(token, secreto) as TokenPayload;
 
-    (req as any).usuarioId = decoded.userId;
+    // Manejar tanto tokens estándar como tokens de registro de Google
+    (req as any).usuarioId = decoded.userId || undefined;
     (req as any).email = decoded.email;
-    (req as any).rol = decoded.rol;
-
-    next();
+    (req as any).rol = decoded.rol || undefined;
+    req.user = decoded; // Soporte para req.user también
+    next(); // CRÍTICO: continuar con el siguiente middleware
   } catch (error) {
     // No bloquear, solo continuar sin usuario autenticado
     next();
