@@ -871,3 +871,13 @@ model documentos_centros {
 
   @@index([id_centro_salud, tipo_documento], map: "idx_documentos_centros_centro_tipo")
 }
+
+/// Suscripciones al newsletter de MediConnect
+model SuscripcionNewsletter {
+  id       Int      @id @default(autoincrement())
+  correo   String   @unique @db.VarChar(120)
+  activo   Boolean  @default(true)
+  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz(6)
+
+  @@map("suscripciones_newsletter")
+}

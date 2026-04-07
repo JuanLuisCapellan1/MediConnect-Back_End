@@ -39,6 +39,7 @@ import MediaRoutes from './MediaRoutes';
 import FavoritosRoutes from './FavoritosRoutes';
 import BusquedaRoutes from './BusquedaRoutes';
 import EstadisticasAdminRoutes from './EstadisticasAdminRoutes';
+import ContactoRoutes from './ContactoRoutes';
 
 const router = Router();
 const traduccionController = new TraduccionController();
@@ -158,5 +159,8 @@ router.use('/busqueda', BusquedaRoutes);
 
 // Rutas de Estadísticas del Admin
 router.use('/admin/estadisticas', EstadisticasAdminRoutes);
+
+// Rutas de Contacto (formulario de contacto y newsletter) — públicas
+router.use('/contacto', ContactoRoutes);
 
 export default router;

@@ -118,13 +118,17 @@ export class NodemailerEmailService implements IEmailService {
 
   async enviarCorreo(destinatario: string, asunto: string, cuerpo: string): Promise<void> {
     try {
-      const html = this.resolverHtml(asunto, cuerpo);
+      // Si cuerpo ya es un documento HTML completo (generado por nuestros templates),
+      // lo usamos directamente sin re-envolver en otro layout.
+      const esHtmlCompleto = cuerpo.trimStart().startsWith('<!DOCTYPE html>') ||
+                             cuerpo.trimStart().startsWith('<html');
+      const html = esHtmlCompleto ? cuerpo : this.resolverHtml(asunto, cuerpo);
 
       await this.transporter.sendMail({
         from: `"MediConnect" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@mediconnect.com'}>`,
         to: destinatario,
         subject: asunto,
-        text: cuerpo, // fallback texto plano para clientes que no soportan HTML
+        text: cuerpo.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim(), // fallback texto plano
         html,
       });
 

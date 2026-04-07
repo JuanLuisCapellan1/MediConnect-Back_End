@@ -170,6 +170,8 @@ import { GestionarCitasUseCase } from '../../application/use-cases/GestionarCita
 import { GestionarResenasUseCase } from '../../application/use-cases/GestionarResenasUseCase';
 import { IVideoService } from '../../application/interfaces/IVideoService';
 import { IniciarTeleconsultaUseCase } from '../../application/use-cases/teleconsultas/IniciarTeleconsultaUseCase';
+import { ContactarSoporteUseCase } from '../../application/use-cases/ContactarSoporteUseCase';
+import { SuscribirseNewsletterUseCase } from '../../application/use-cases/SuscribirseNewsletterUseCase';
 
 // ===== REGISTRAR SERVICIOS EXTERNOS =====
 container.register<PrismaClient>('PrismaClient', {
@@ -1217,3 +1219,18 @@ container.register(NotificacionesController, {
   }
 });
 
+// ===== CONTACTO Y NEWSLETTER =====
+container.register(ContactarSoporteUseCase, {
+  useFactory: () => {
+    const emailService = container.resolve<IEmailService>('EmailService');
+    return new ContactarSoporteUseCase(emailService);
+  }
+});
+
+container.register(SuscribirseNewsletterUseCase, {
+  useFactory: () => {
+    const prismaClient = container.resolve<PrismaClient>('PrismaClient');
+    const emailService = container.resolve<IEmailService>('EmailService');
+    return new SuscribirseNewsletterUseCase(prismaClient, emailService);
+  }
+});

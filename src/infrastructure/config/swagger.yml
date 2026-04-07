@@ -82,6 +82,8 @@ tags:
     description: Endpoint unificado para buscar doctores y centros de salud con o sin filtro geográfico (PostGIS). Acepta filtros combinados por especialidad, idioma, turno, modalidad, seguro y más.
   - name: EstadisticasAdmin
     description: Endpoints de estadísticas del dashboard administrativo. Requieren autenticación y rol Administrador.
+  - name: Contacto
+    description: Endpoints públicos para el formulario de contacto y la suscripción al newsletter de MediConnect. No requieren autenticación.
 
 # --- RUTAS (ENDPOINTS) ---
 paths:
@@ -21009,6 +21011,144 @@ paths:
           description: Rol insuficiente
         '500':
           description: Error interno del servidor
+
+  # ─── Contacto ────────────────────────────────────────────────────────────────
+
+  /contacto/enviar:
+    post:
+      summary: Enviar formulario de contacto
+      tags:
+        - Contacto
+      description: |
+        Endpoint **público** (sin autenticación) que permite a cualquier usuario enviar un mensaje al equipo de MediConnect.
+
+        **Flujo:**
+        1. Se envía el mensaje al correo `servicios.mediconnect@gmail.com` con un email HTML premium.
+        2. Se envía un correo de confirmación al remitente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nombre
+                - correo
+                - asunto
+                - mensaje
+              properties:
+                nombre:
+                  type: string
+                  maxLength: 100
+                  example: "Juan Pérez"
+                  description: Nombre completo del remitente.
+                correo:
+                  type: string
+                  format: email
+                  example: "juan@example.com"
+                  description: Correo electrónico del remitente (recibirá una copia de confirmación).
+                asunto:
+                  type: string
+                  maxLength: 150
+                  example: "Consulta sobre el sistema"
+                  description: Asunto del mensaje.
+                mensaje:
+                  type: string
+                  maxLength: 2000
+                  example: "Hola, quisiera saber más sobre MediConnect."
+                  description: Cuerpo del mensaje (máximo 2000 caracteres).
+      responses:
+        '200':
+          description: Mensaje enviado correctamente. Se envía confirmación al remitente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Mensaje enviado correctamente. Te hemos enviado una confirmación a tu correo."
+        '400':
+          description: Datos inválidos (campos requeridos faltantes o mal formateados).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error al enviar el correo electrónico.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /contacto/newsletter:
+    post:
+      summary: Suscribirse al newsletter
+      tags:
+        - Contacto
+      description: |
+        Endpoint **público** (sin autenticación) que permite a cualquier usuario suscribir su correo al newsletter de MediConnect.
+
+        **Comportamiento:**
+        - Si el correo **no existe** → crea la suscripción y envía correo de bienvenida. `HTTP 201`
+        - Si el correo ya existe y está **activo** → respuesta amigable sin error. `HTTP 200`
+        - Si el correo existe pero estaba **inactivo** → reactiva la suscripción y envía correo de bienvenida. `HTTP 201`
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - correo
+              properties:
+                correo:
+                  type: string
+                  format: email
+                  example: "usuario@example.com"
+                  description: Correo electrónico a suscribir al newsletter.
+      responses:
+        '201':
+          description: Suscripción creada exitosamente. Se envía correo de bienvenida.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "¡Te has suscrito al newsletter de MediConnect exitosamente! Revisa tu correo."
+        '200':
+          description: El correo ya estaba suscrito activamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Este correo ya está suscrito al newsletter de MediConnect."
+        '400':
+          description: Correo electrónico inválido o faltante.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Error interno del servidor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   schemas:
