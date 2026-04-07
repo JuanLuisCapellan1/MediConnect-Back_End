@@ -1,6 +1,6 @@
 /**
  * PrismaHorariosRepository.ts
- * Implementación del repositorio para Horarios usando Prisma ORM y Redis para caching
+ * Repositorio para Horarios — usa horarios_dias (tabla pivote de días de semana)
  */
 
 import { Prisma, PrismaClient } from '@prisma/client';
@@ -9,6 +9,10 @@ import { IHorariosRepository } from '../../domain/repositories/IHorariosReposito
 import { HorarioConflictoError } from '../../domain/errors/Horarios/HorarioConflictoError';
 import { RedisCacheService } from '../external-services/RedisCacheService';
 
+const HORARIO_INCLUDE = {
+  horarios_dias: { select: { dia_semana: true } }
+} as const;
+
 export class PrismaHorariosRepository implements IHorariosRepository {
   private prisma: PrismaClient;
   private redis: RedisCacheService;
@@ -16,7 +20,7 @@ export class PrismaHorariosRepository implements IHorariosRepository {
   private readonly CACHE_KEY_POR_DOCTOR = (doctorId: number) => `horarios:doctor:${doctorId}`;
   private readonly CACHE_KEY_POR_DIA = (diaSemana: number) => `horarios:dia:${diaSemana}`;
   private readonly CACHE_KEY_POR_ESTADO = (estado: string) => `horarios:estado:${estado}`;
-  private readonly CACHE_TTL = 24 * 60 * 60; // 24 horas en segundos
+  private readonly CACHE_TTL = 24 * 60 * 60;
 
   constructor(prisma: PrismaClient, redis: RedisCacheService) {
     this.prisma = prisma;
@@ -26,157 +30,100 @@ export class PrismaHorariosRepository implements IHorariosRepository {
   async crear(
     doctorId: number,
     nombre: string,
-    diaSemana: number,
+    diasSemana: number[],
     horaInicio: Date,
-    horaFin: Date,
-    ubicacionId: number
+    horaFin: Date
   ): Promise<Horario> {
     try {
       const creado = await this.prisma.horario.create({
         data: {
           doctorId,
           nombre: nombre.trim(),
-          diaSemana,
           horaInicio,
           horaFin,
-          ubicacionId,
-          estado: 'Activo'
-        }
+          estado: 'Activo',
+          horarios_dias: {
+            createMany: {
+              data: diasSemana.map(dia => ({ dia_semana: dia }))
+            }
+          }
+        },
+        include: HORARIO_INCLUDE
       });
 
-      // INVALIDAR CACHÉ: Al cambiar datos, la caché vieja no sirve
       await this.redis.del(this.CACHE_KEY);
       await this.redis.del(this.CACHE_KEY_POR_DOCTOR(doctorId));
-      await this.redis.del(this.CACHE_KEY_POR_DIA(diaSemana));
+      for (const dia of diasSemana) {
+        await this.redis.del(this.CACHE_KEY_POR_DIA(dia));
+      }
 
       return this.mapToDomain(creado);
     } catch (error: any) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new HorarioConflictoError();
-        }
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new HorarioConflictoError();
       }
       throw error;
     }
   }
 
   async listarTodos(): Promise<Horario[]> {
-    // 1. Intentar obtener de Redis
     const cached = await this.redis.get(this.CACHE_KEY);
     if (cached) {
-      const horariosData = JSON.parse(cached);
-      return horariosData.map((h: any) => 
-        new Horario(
-          h.id,
-          h.doctorId,
-          h.nombre,
-          h.diaSemana,
-          new Date(h.horaInicio),
-          new Date(h.horaFin),
-          h.ubicacionId,
-          h.estado,
-          new Date(h.creadoEn)
-        )
-      );
+      return (JSON.parse(cached) as any[]).map(h => this.mapToDomain(h));
     }
 
-    // 2. Si no hay caché, buscar en DB
-    const horariosOrm = await this.prisma.horario.findMany({
+    const horariosOrm = await (this.prisma.horario as any).findMany({
       where: { estado: { equals: 'Activo' } },
-      orderBy: [{ doctorId: 'asc' }, { diaSemana: 'asc' }, { horaInicio: 'asc' }]
+      include: HORARIO_INCLUDE,
+      orderBy: [{ doctorId: 'asc' }, { horaInicio: 'asc' }]
     });
 
-    // 3. Mapear a Entidad de Dominio
-    const horarios = horariosOrm.map(h => this.mapToDomain(h));
-
-    // 4. Guardar en Redis (TTL 24 horas porque esto cambia poco)
     await this.redis.set(this.CACHE_KEY, JSON.stringify(horariosOrm), this.CACHE_TTL);
-
-    return horarios;
+    return horariosOrm.map((h: any) => this.mapToDomain(h));
   }
 
   async listarPorDoctor(doctorId: number): Promise<Horario[]> {
     const cacheKey = this.CACHE_KEY_POR_DOCTOR(doctorId);
-
-    // 1. Intentar obtener de Redis
     const cached = await this.redis.get(cacheKey);
     if (cached) {
-      const horariosData = JSON.parse(cached);
-      return horariosData.map((h: any) => 
-        new Horario(
-          h.id,
-          h.doctorId,
-          h.nombre,
-          h.diaSemana,
-          new Date(h.horaInicio),
-          new Date(h.horaFin),
-          h.ubicacionId,
-          h.estado,
-          new Date(h.creadoEn)
-        )
-      );
+      return (JSON.parse(cached) as any[]).map(h => this.mapToDomain(h));
     }
 
-    // 2. Si no hay caché, buscar en DB
-    const horariosOrm = await this.prisma.horario.findMany({
-      where: {
-        doctorId,
-        estado: { equals: 'Activo' }
-      },
-      orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }]
+    const horariosOrm = await (this.prisma.horario as any).findMany({
+      where: { doctorId, estado: { equals: 'Activo' } },
+      include: HORARIO_INCLUDE,
+      orderBy: [{ horaInicio: 'asc' }]
     });
 
-    // 3. Mapear a Entidad de Dominio
-    const horarios = horariosOrm.map(h => this.mapToDomain(h));
-
-    // 4. Guardar en Redis
     await this.redis.set(cacheKey, JSON.stringify(horariosOrm), this.CACHE_TTL);
-
-    return horarios;
+    return horariosOrm.map((h: any) => this.mapToDomain(h));
   }
 
   async listarPorDia(diaSemana: number): Promise<Horario[]> {
     const cacheKey = this.CACHE_KEY_POR_DIA(diaSemana);
-
-    // 1. Intentar obtener de Redis
     const cached = await this.redis.get(cacheKey);
     if (cached) {
-      const horariosData = JSON.parse(cached);
-      return horariosData.map((h: any) => 
-        new Horario(
-          h.id,
-          h.doctorId,
-          h.nombre,
-          h.diaSemana,
-          new Date(h.horaInicio),
-          new Date(h.horaFin),
-          h.ubicacionId,
-          h.estado,
-          new Date(h.creadoEn)
-        )
-      );
+      return (JSON.parse(cached) as any[]).map(h => this.mapToDomain(h));
     }
 
-    // 2. Si no hay caché, buscar en DB
-    const horariosOrm = await this.prisma.horario.findMany({
+    const horariosOrm = await (this.prisma.horario as any).findMany({
       where: {
-        diaSemana,
-        estado: { equals: 'Activo' }
+        estado: { equals: 'Activo' },
+        horarios_dias: { some: { dia_semana: diaSemana } }
       },
+      include: HORARIO_INCLUDE,
       orderBy: [{ doctorId: 'asc' }, { horaInicio: 'asc' }]
     });
 
-    // 3. Mapear a Entidad de Dominio
-    const horarios = horariosOrm.map(h => this.mapToDomain(h));
-
-    // 4. Guardar en Redis
     await this.redis.set(cacheKey, JSON.stringify(horariosOrm), this.CACHE_TTL);
-
-    return horarios;
+    return horariosOrm.map((h: any) => this.mapToDomain(h));
   }
 
   async buscarPorId(id: number): Promise<Horario | null> {
-    const horario = await this.prisma.horario.findUnique({ where: { id } });
+    const horario = await (this.prisma.horario as any).findUnique({
+      where: { id },
+      include: HORARIO_INCLUDE
+    });
     if (!horario) return null;
     return this.mapToDomain(horario);
   }
@@ -185,139 +132,112 @@ export class PrismaHorariosRepository implements IHorariosRepository {
     id: number,
     doctorId?: number,
     nombre?: string,
-    diaSemana?: number,
+    diasSemana?: number[],
     horaInicio?: Date,
     horaFin?: Date,
-    ubicacionId?: number,
     estado?: string
   ): Promise<Horario> {
     try {
-      // Obtener el horario existente para saber qué caché invalidar
-      const horarioExistente = await this.prisma.horario.findUnique({
-        where: { id }
-      });
-
+      const horarioExistente = await this.prisma.horario.findUnique({ where: { id } });
       if (!horarioExistente) {
         throw new Error(`Horario con ID ${id} no existe`);
       }
 
-      const dataActualizar: Prisma.HorarioUpdateInput = {};
-
+      const dataActualizar: any = {};
       if (doctorId !== undefined) dataActualizar.doctor = { connect: { usuarioId: doctorId } };
       if (nombre !== undefined) dataActualizar.nombre = nombre.trim();
-      if (diaSemana !== undefined) dataActualizar.diaSemana = diaSemana;
       if (horaInicio !== undefined) dataActualizar.horaInicio = horaInicio;
       if (horaFin !== undefined) dataActualizar.horaFin = horaFin;
-      if (ubicacionId !== undefined) dataActualizar.ubicacion = { connect: { id: ubicacionId } };
       if (estado !== undefined) dataActualizar.estado = estado;
 
-      const actualizado = await this.prisma.horario.update({
+      // Si se actualizan días: reemplazar todos los registros de horarios_dias
+      if (diasSemana !== undefined) {
+        dataActualizar.horarios_dias = {
+          deleteMany: {},
+          createMany: {
+            data: diasSemana.map(dia => ({ dia_semana: dia }))
+          }
+        };
+      }
+
+      const actualizado = await (this.prisma.horario as any).update({
         where: { id },
-        data: dataActualizar
+        data: dataActualizar,
+        include: HORARIO_INCLUDE
       });
 
-      // INVALIDAR CACHÉ
+      // Invalidar caché
       await this.redis.del(this.CACHE_KEY);
-
-      // Invalidar caché del doctor anterior (si el doctorId cambió)
+      await this.redis.del(this.CACHE_KEY_POR_DOCTOR(actualizado.doctorId));
       if (doctorId !== undefined && doctorId !== horarioExistente.doctorId) {
         await this.redis.del(this.CACHE_KEY_POR_DOCTOR(horarioExistente.doctorId));
       }
 
-      // Invalidar caché del doctor actual
-      await this.redis.del(this.CACHE_KEY_POR_DOCTOR(actualizado.doctorId));
-
-      // Invalidar caché del día anterior (si el diaSemana cambió)
-      if (diaSemana !== undefined && diaSemana !== horarioExistente.diaSemana) {
-        await this.redis.del(this.CACHE_KEY_POR_DIA(horarioExistente.diaSemana));
-      }
-
-      // Invalidar caché del día actual
-      await this.redis.del(this.CACHE_KEY_POR_DIA(actualizado.diaSemana));
-
       return this.mapToDomain(actualizado);
     } catch (error: any) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new HorarioConflictoError();
-        }
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new HorarioConflictoError();
       }
       throw error;
     }
   }
 
   async eliminar(id: number): Promise<Horario> {
-    const horarioAEliminar = await this.prisma.horario.findUnique({
-      where: { id }
+    const horarioAEliminar = await (this.prisma.horario as any).findUnique({
+      where: { id },
+      include: HORARIO_INCLUDE
     });
 
     if (!horarioAEliminar) {
       throw new Error(`Horario con ID ${id} no existe`);
     }
 
-    const eliminado = await this.prisma.horario.update({
+    const eliminado = await (this.prisma.horario as any).update({
       where: { id },
-      data: { estado: 'Eliminado' }
+      data: { estado: 'Eliminado' },
+      include: HORARIO_INCLUDE
     });
 
-    // INVALIDAR CACHÉ
     await this.redis.del(this.CACHE_KEY);
     await this.redis.del(this.CACHE_KEY_POR_DOCTOR(eliminado.doctorId));
-    await this.redis.del(this.CACHE_KEY_POR_DIA(eliminado.diaSemana));
 
     return this.mapToDomain(eliminado);
   }
 
   async listarPorEstado(estado: string): Promise<Horario[]> {
     const cacheKey = this.CACHE_KEY_POR_ESTADO(estado);
-
-    // 1. Intentar obtener de Redis
     const cached = await this.redis.get(cacheKey);
     if (cached) {
-      const horariosData = JSON.parse(cached);
-      return horariosData.map((h: any) => 
-        new Horario(
-          h.id,
-          h.doctorId,
-          h.nombre,
-          h.diaSemana,
-          new Date(h.horaInicio),
-          new Date(h.horaFin),
-          h.ubicacionId,
-          h.estado,
-          new Date(h.creadoEn)
-        )
-      );
+      return (JSON.parse(cached) as any[]).map(h => this.mapToDomain(h));
     }
 
-    // 2. Si no hay caché, buscar en DB
-    const horariosOrm = await this.prisma.horario.findMany({
+    const horariosOrm = await (this.prisma.horario as any).findMany({
       where: { estado },
-      orderBy: [{ doctorId: 'asc' }, { diaSemana: 'asc' }, { horaInicio: 'asc' }]
+      include: HORARIO_INCLUDE,
+      orderBy: [{ doctorId: 'asc' }, { horaInicio: 'asc' }]
     });
 
-    // 3. Mapear a Entidad de Dominio
-    const horarios = horariosOrm.map(h => this.mapToDomain(h));
-
-    // 4. Guardar en Redis
     await this.redis.set(cacheKey, JSON.stringify(horariosOrm), this.CACHE_TTL);
-
-    return horarios;
+    return horariosOrm.map((h: any) => this.mapToDomain(h));
   }
 
+  /**
+   * Verifica conflicto de horario para el doctor en cualquiera de los días dados.
+   * Conflicto = misma hora (solapamiento) en al menos uno de los diasSemana.
+   */
   async existeConflicto(
     doctorId: number,
-    diaSemana: number,
+    diasSemana: number[],
     horaInicio: Date,
     horaFin: Date,
     excluirId?: number
   ): Promise<boolean> {
-    const conflicto = await this.prisma.horario.findFirst({
+    const conflicto = await (this.prisma.horario as any).findFirst({
       where: {
         doctorId,
-        diaSemana,
         estado: { not: 'Eliminado' },
         ...(excluirId ? { NOT: { id: excluirId } } : {}),
+        horarios_dias: { some: { dia_semana: { in: diasSemana } } },
         AND: [
           { horaInicio: { lt: horaFin } },
           { horaFin: { gt: horaInicio } }
@@ -330,16 +250,25 @@ export class PrismaHorariosRepository implements IHorariosRepository {
   }
 
   private mapToDomain(horario: any): Horario {
+    const dias: number[] = (horario.horarios_dias ?? []).map((d: any) => d.dia_semana).sort((a: number, b: number) => a - b);
     return new Horario(
       horario.id,
       horario.doctorId,
       horario.nombre,
-      horario.diaSemana,
-      horario.horaInicio,
-      horario.horaFin,
-      horario.ubicacionId,
+      this.dateAHHMM(horario.horaInicio),
+      this.dateAHHMM(horario.horaFin),
       horario.estado,
-      horario.creadoEn
+      horario.creadoEn,
+      dias
     );
+  }
+
+  /** Convierte un Date (o string ISO) al formato "HH:mm" */
+  private dateAHHMM(value: Date | string | null | undefined): string {
+    if (!value) return '';
+    const d = value instanceof Date ? value : new Date(value);
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
   }
 }

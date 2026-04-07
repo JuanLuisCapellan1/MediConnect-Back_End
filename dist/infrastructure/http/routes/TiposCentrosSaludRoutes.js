@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const tsyringe_1 = require("tsyringe");
+const TipoCentroSaludController_1 = require("../controllers/TipoCentroSaludController");
+const tiposCentrosSaludRouter = (0, express_1.Router)();
+const controller = tsyringe_1.container.resolve(TipoCentroSaludController_1.TipoCentroSaludController);
+tiposCentrosSaludRouter.get('/', (req, res) => controller.listar(req, res));
+tiposCentrosSaludRouter.get('/:id', (req, res) => controller.obtener(req, res));
+tiposCentrosSaludRouter.post('/', (req, res) => controller.crear(req, res));
+tiposCentrosSaludRouter.put('/:id', (req, res) => controller.actualizar(req, res));
+tiposCentrosSaludRouter.delete('/:id', (req, res) => controller.eliminar(req, res));
+exports.default = tiposCentrosSaludRouter;

@@ -1,9 +1,7 @@
 export interface CrearExperienciaLaboralDto {
-  doctorId: number;
-  centroSaludId?: number;
-  institucionExterna?: string;
-  profesionId: number;
-  descripcionCargo: string;
+  doctorId?: number; // Opcional, se asigna desde JWT
+  institucion: string;
+  posicion: string;
   fechaInicio: string; // ISO 8601 format
   fechaFinalizacion?: string; // ISO 8601 format
   trabajaActualmente?: boolean;
@@ -11,10 +9,8 @@ export interface CrearExperienciaLaboralDto {
 }
 
 export interface ActualizarExperienciaLaboralDto {
-  centroSaludId?: number;
-  institucionExterna?: string;
-  profesionId?: number;
-  descripcionCargo?: string;
+  institucion?: string;
+  posicion?: string;
   fechaInicio?: string; // ISO 8601 format
   fechaFinalizacion?: string; // ISO 8601 format
   trabajaActualmente?: boolean;
@@ -22,12 +18,9 @@ export interface ActualizarExperienciaLaboralDto {
 }
 
 export interface FiltroExperienciasLaboralesDto {
-  doctorId?: number;
-  centroSaludId?: number;
-  profesionId?: number;
-  trabajaActualmente?: boolean;
+  doctorId?: number; // Se asigna desde JWT
   estado?: string;
-  busqueda?: string;
+  busqueda?: string; // Buscar en institución o posición
   pagina?: number;
   limite?: number;
 }

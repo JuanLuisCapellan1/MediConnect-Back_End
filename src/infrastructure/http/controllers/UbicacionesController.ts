@@ -21,48 +21,52 @@ export class UbicacionesController {
    */
   async crear(req: Request, res: Response): Promise<void> {
     try {
-      const { barrioId, direccion, subBarrioId, codigoPostal, puntoGeografico } = req.body;
+      const { barrioId, direccion, subBarrioId, codigoPostal, puntoGeografico, nombre } = req.body;
 
       // Validación de entrada
       if (barrioId === undefined || barrioId === null) {
-        res.status(400).json({ 
-          success: false,  
-          error: 'El campo barrioId es requerido' 
+        res.status(400).json({
+          success: false,
+          error: 'El campo barrioId es requerido'
         });
         return;
       }
       if (isNaN(barrioId)) {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El campo barrioId debe ser un número' 
+          error: 'El campo barrioId debe ser un número'
         });
         return;
       }
       if (!direccion || typeof direccion !== 'string') {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El campo direccion es requerido y debe ser string' 
+          error: 'El campo direccion es requerido y debe ser string'
         });
         return;
       }
-      if (subBarrioId !== undefined && (subBarrioId === null || isNaN(subBarrioId))) {
-        res.status(400).json({ 
-          success: false,
-          error: 'El campo subBarrioId debe ser un número válido' 
-        });
+      if (nombre !== undefined && typeof nombre !== 'string') {
+        res.status(400).json({ success: false, error: 'El campo nombre debe ser string' });
         return;
       }
       if (codigoPostal !== undefined && typeof codigoPostal !== 'string') {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El campo codigoPostal debe ser string' 
+          error: 'El campo codigoPostal debe ser string'
         });
         return;
       }
-      if (puntoGeografico !== undefined && typeof puntoGeografico !== 'string') {
-        res.status(400).json({ 
+      if (puntoGeografico === undefined || puntoGeografico === null) {
+        res.status(400).json({
           success: false,
-          error: 'El campo puntoGeografico debe ser string (formato GeoJSON)' 
+          error: 'El campo puntoGeografico es requerido'
+        });
+        return;
+      }
+      if (typeof puntoGeografico !== 'object' || Array.isArray(puntoGeografico)) {
+        res.status(400).json({
+          success: false,
+          error: 'El campo puntoGeografico debe ser un objeto GeoJSON Point: {"type":"Point","coordinates":[lon,lat]}'
         });
         return;
       }
@@ -70,14 +74,14 @@ export class UbicacionesController {
       const dto: CrearUbicacionDto = {
         barrioId,
         direccion,
-        subBarrioId: subBarrioId || undefined,
+        nombre: nombre || undefined,
         codigoPostal: codigoPostal || undefined,
-        puntoGeografico: puntoGeografico || undefined,
+        puntoGeografico: JSON.stringify(puntoGeografico),
       };
 
       const ubicacion = await this.gestionarUbicacionesUseCase.crear(dto);
-      res.status(201).json({ 
-        success: true, 
+      res.status(201).json({
+        success: true,
         data: ubicacion,
         message: 'Ubicación creada exitosamente'
       });
@@ -105,10 +109,10 @@ export class UbicacionesController {
   async listarTodas(req: Request, res: Response): Promise<void> {
     try {
       const ubicaciones = await this.gestionarUbicacionesUseCase.listarTodas();
-      res.status(200).json({ 
-        success: true, 
+      res.status(200).json({
+        success: true,
         count: ubicaciones.length,
-        data: ubicaciones 
+        data: ubicaciones
       });
     } catch (error) {
       res
@@ -128,18 +132,18 @@ export class UbicacionesController {
       const barrioId = parseInt(String(req.params.barrioId), 10);
 
       if (isNaN(barrioId)) {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El parámetro barrioId debe ser un número válido' 
+          error: 'El parámetro barrioId debe ser un número válido'
         });
         return;
       }
 
       const ubicaciones = await this.gestionarUbicacionesUseCase.listarPorBarrio(barrioId);
-      res.status(200).json({ 
-        success: true, 
+      res.status(200).json({
+        success: true,
         count: ubicaciones.length,
-        data: ubicaciones 
+        data: ubicaciones
       });
     } catch (error) {
       res
@@ -152,36 +156,6 @@ export class UbicacionesController {
   }
 
   /**
-   * GET /ubicaciones/subbarrio/:subBarrioId - Listar Ubicaciones por SubBarrio
-   */
-  async listarPorSubBarrio(req: Request, res: Response): Promise<void> {
-    try {
-      const subBarrioId = parseInt(String(req.params.subBarrioId), 10);
-
-      if (isNaN(subBarrioId)) {
-        res.status(400).json({ 
-          success: false,
-          error: 'El parámetro subBarrioId debe ser un número válido' });
-        return;
-      }
-
-      const ubicaciones = await this.gestionarUbicacionesUseCase.listarPorSubBarrio(subBarrioId);
-      res.status(200).json({ 
-        success: true, 
-        count: ubicaciones.length,
-        data: ubicaciones 
-      });
-    } catch (error) {
-      res
-        .status(500)
-        .json({
-          success: false,
-          error: error instanceof Error ? error.message : 'Error al listar ubicaciones por subbarrio',
-        });
-    }
-  }
-
-  /**
    * GET /ubicaciones/:id - Buscar Ubicacion por ID
    */
   async buscarPorId(req: Request, res: Response): Promise<void> {
@@ -189,18 +163,18 @@ export class UbicacionesController {
       const id = parseInt(String(req.params.id), 10);
 
       if (isNaN(id)) {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El parámetro id debe ser un número válido' 
+          error: 'El parámetro id debe ser un número válido'
         });
         return;
       }
 
       const ubicacion = await this.gestionarUbicacionesUseCase.buscarPorId(id);
       if (!ubicacion) {
-        res.status(404).json({ 
+        res.status(404).json({
           success: false,
-          error: 'Ubicación no encontrada' 
+          error: 'Ubicación no encontrada'
         });
         return;
       }
@@ -224,16 +198,16 @@ export class UbicacionesController {
       const direccion = req.params.direccion;
 
       if (!direccion || typeof direccion !== 'string') {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El parámetro direccion es requerido' 
+          error: 'El parámetro direccion es requerido'
         });
         return;
       }
 
       const ubicaciones = await this.gestionarUbicacionesUseCase.buscarPorDireccion(direccion);
       res.status(200).json({
-        success: true, 
+        success: true,
         count: ubicaciones.length,
         data: ubicaciones
       });
@@ -255,16 +229,16 @@ export class UbicacionesController {
       const codigoPostal = req.params.codigoPostal;
 
       if (!codigoPostal || typeof codigoPostal !== 'string') {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El parámetro codigoPostal es requerido' 
+          error: 'El parámetro codigoPostal es requerido'
         });
         return;
       }
 
       const ubicaciones = await this.gestionarUbicacionesUseCase.buscarPorCodigoPostal(codigoPostal);
       res.status(200).json({
-        success: true, 
+        success: true,
         count: ubicaciones.length,
         data: ubicaciones
       });
@@ -286,16 +260,16 @@ export class UbicacionesController {
       const estado = req.params.estado;
 
       if (!estado || typeof estado !== 'string') {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El parámetro estado es requerido' 
+          error: 'El parámetro estado es requerido'
         });
         return;
       }
 
       const ubicaciones = await this.gestionarUbicacionesUseCase.buscarPorEstado(estado);
       res.status(200).json({
-        success: true, 
+        success: true,
         count: ubicaciones.length,
         data: ubicaciones
       });
@@ -317,73 +291,69 @@ export class UbicacionesController {
       const id = parseInt(String(req.params.id), 10);
 
       if (isNaN(id)) {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El parámetro id debe ser un número válido' 
+          error: 'El parámetro id debe ser un número válido'
         });
         return;
       }
 
-      const { barrioId, subBarrioId, direccion, codigoPostal, estado, puntoGeografico } = req.body;
+      const { barrioId, subBarrioId, direccion, codigoPostal, estado, puntoGeografico, nombre } = req.body;
 
       // Validación de entrada
       if (
         barrioId !== undefined &&
         (barrioId === null || isNaN(barrioId))
       ) {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El campo barrioId debe ser un número válido' 
-        });
-        return;
-      }
-      if (
-        subBarrioId !== undefined &&
-        (subBarrioId === null || isNaN(subBarrioId))
-      ) {
-        res.status(400).json({ 
-          success: false,
-          error: 'El campo subBarrioId debe ser un número válido' 
+          error: 'El campo barrioId debe ser un número válido'
         });
         return;
       }
       if (direccion !== undefined && typeof direccion !== 'string') {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El campo direccion debe ser string' 
+          error: 'El campo direccion debe ser string'
         });
         return;
       }
+      if (nombre !== undefined && typeof nombre !== 'string') {
+        res.status(400).json({ success: false, error: 'El campo nombre debe ser string' });
+        return;
+      }
       if (codigoPostal !== undefined && typeof codigoPostal !== 'string') {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El campo codigoPostal debe ser string' 
+          error: 'El campo codigoPostal debe ser string'
         });
         return;
       }
       if (estado !== undefined && typeof estado !== 'string') {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El campo estado debe ser string' 
+          error: 'El campo estado debe ser string'
         });
         return;
       }
-      if (puntoGeografico !== undefined && typeof puntoGeografico !== 'string') {
-        res.status(400).json({ 
-          success: false,
-          error: 'El campo puntoGeografico debe ser string (formato GeoJSON)' 
-        });
-        return;
+      if (puntoGeografico !== undefined) {
+        if (typeof puntoGeografico !== 'object' || Array.isArray(puntoGeografico) || puntoGeografico === null) {
+          res.status(400).json({
+            success: false,
+            error: 'El campo puntoGeografico debe ser un objeto GeoJSON Point: {"type":"Point","coordinates":[lon,lat]}'
+          });
+          return;
+        }
       }
 
       const dto: ActualizarUbicacionDto = {
         id,
         barrioId: barrioId || undefined,
-        subBarrioId: subBarrioId || undefined,
         direccion: direccion || undefined,
+        nombre: nombre !== undefined ? nombre : undefined,
         codigoPostal: codigoPostal || undefined,
         estado: estado || undefined,
-        puntoGeografico: puntoGeografico || undefined,
+        puntoGeografico: puntoGeografico ? JSON.stringify(puntoGeografico) : undefined,
       };
 
       const ubicacion = await this.gestionarUbicacionesUseCase.actualizar(dto);
@@ -418,9 +388,9 @@ export class UbicacionesController {
       const id = parseInt(String(req.params.id), 10);
 
       if (isNaN(id)) {
-        res.status(400).json({ 
+        res.status(400).json({
           success: false,
-          error: 'El parámetro id debe ser un número válido' 
+          error: 'El parámetro id debe ser un número válido'
         });
         return;
       }
@@ -440,4 +410,106 @@ export class UbicacionesController {
         });
     }
   }
+
+  /**
+   * GET /ubicaciones/mis-ubicaciones - Listar ubicaciones del doctor autenticado
+   */
+  async listarMisUbicaciones(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = (req as any).usuarioId as number;
+
+      if (!doctorId) {
+        res.status(401).json({
+          success: false,
+          error: 'No se pudo identificar al doctor autenticado',
+        });
+        return;
+      }
+
+      const ubicaciones = await this.gestionarUbicacionesUseCase.listarPorDoctor(doctorId);
+      res.status(200).json({
+        success: true,
+        count: ubicaciones.length,
+        data: ubicaciones,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Error al listar ubicaciones del doctor',
+      });
+    }
+  }
+
+  /**
+   * POST /ubicaciones/mis-ubicaciones - Crear ubicación para el doctor autenticado
+   */
+  async crearMiUbicacion(req: Request, res: Response): Promise<void> {
+    try {
+      const doctorId = (req as any).usuarioId as number;
+
+      if (!doctorId) {
+        res.status(401).json({
+          success: false,
+          error: 'No se pudo identificar al doctor autenticado',
+        });
+        return;
+      }
+
+      const { barrioId, codigoPostal, puntoGeografico, direccion, nombre } = req.body;
+
+      if (barrioId === undefined || barrioId === null) {
+        res.status(400).json({ success: false, error: 'El campo barrioId es requerido' });
+        return;
+      }
+      if (isNaN(Number(barrioId))) {
+        res.status(400).json({ success: false, error: 'El campo barrioId debe ser un número' });
+        return;
+      }
+      if (!direccion || typeof direccion !== 'string') {
+        res.status(400).json({ success: false, error: 'El campo direccion es requerido y debe ser string' });
+        return;
+      }
+      if (nombre !== undefined && typeof nombre !== 'string') {
+        res.status(400).json({ success: false, error: 'El campo nombre debe ser string' });
+        return;
+      }
+      if (codigoPostal !== undefined && typeof codigoPostal !== 'string') {
+        res.status(400).json({ success: false, error: 'El campo codigoPostal debe ser string' });
+        return;
+      }
+      if (puntoGeografico === undefined || puntoGeografico === null) {
+        res.status(400).json({ success: false, error: 'El campo puntoGeografico es requerido' });
+        return;
+      }
+      if (typeof puntoGeografico !== 'object' || Array.isArray(puntoGeografico)) {
+        res.status(400).json({ success: false, error: 'El campo puntoGeografico debe ser un objeto GeoJSON Point: {"type":"Point","coordinates":[lon,lat]}' });
+        return;
+      }
+
+      const dto = {
+        barrioId: Number(barrioId),
+        direccion,
+        nombre: nombre || undefined,
+        codigoPostal: codigoPostal || undefined,
+        puntoGeografico: JSON.stringify(puntoGeografico),
+      };
+
+      const ubicacion = await this.gestionarUbicacionesUseCase.crearParaDoctor(doctorId, dto);
+      res.status(201).json({
+        success: true,
+        data: ubicacion,
+        message: 'Ubicación creada y asignada al doctor exitosamente',
+      });
+    } catch (error) {
+      if (error instanceof UbicacionFueraDeRangoError) {
+        res.status(400).json({ success: false, error: error.message });
+        return;
+      }
+      res.status(400).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Error al crear la ubicación',
+      });
+    }
+  }
 }
+

@@ -1,3 +1,10 @@
+export interface BuscarBarrioPorCoordenadasDto {
+	/** Longitud (X) del punto a buscar */
+	longitud: number;
+	/** Latitud (Y) del punto a buscar */
+	latitud: number;
+}
+
 export interface CrearBarrioDto {
 	// ID de la sección a la que pertenece el barrio
 	seccionId: number;

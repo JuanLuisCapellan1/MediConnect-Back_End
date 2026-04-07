@@ -1,7 +1,7 @@
 import { Conversacion } from '../entities/Conversacion';
-import { 
-  FiltroConversacionesDto, 
-  ConversacionConUltimoMensajeDto 
+import {
+  FiltroConversacionesDto,
+  ConversacionConUltimoMensajeDto
 } from '../../application/dtos/ConversacionDtos';
 
 export interface IConversacionesRepository {

@@ -1,8 +1,22 @@
-import 'reflect-metadata'; 
+import 'reflect-metadata';
 import dotenv from 'dotenv';
 
 // Cargar variables de entorno
 dotenv.config();
+
+// Fix para serialización de BigInt en JSON
+// Convierte BigInt a string automáticamente cuando se serializa a JSON
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
+// Fix para serialización de Decimal (Prisma) en JSON
+// Evita el formato interno {"s":1,"e":3,"d":[...]} y devuelve un número normal
+import { Decimal } from '@prisma/client/runtime/library';
+(Decimal.prototype as any).toJSON = function () {
+  return parseFloat(this.toString());
+};
+
 
 import './shared/container'; // Configuración del contenedor de inyección
 import express from 'express';
@@ -18,6 +32,11 @@ import path from 'path';
 import routes from './infrastructure/http/routes';
 import { NotificacionesWebSocketService } from './infrastructure/external-services/NotificacionesWebSocketService';
 import { ChatWebSocketService } from './infrastructure/external-services/ChatWebSocketService';
+import { AutoGestionCitasService } from './infrastructure/jobs/AutoGestionCitasService';
+import { NotificarMensajesPendientesService } from './infrastructure/jobs/NotificarMensajesPendientesService';
+import { EnviarNotificacionUseCase } from './application/use-cases/notificaciones/EnviarNotificacionUseCase';
+import { PrismaClient } from '@prisma/client';
+import { TranslationWarmUpService } from './infrastructure/services/TranslationWarmUpService';
 
 const app = express();
 const httpServer = createServer(app);
@@ -27,6 +46,18 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet()); // Headers de seguridad
 app.use(cors());   // Permitir peticiones externas
 app.use(express.json()); // Parsear JSON body
+
+// Error handler para JSON parsing
+app.use((err: any, req: any, res: any, next: any) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    console.error('❌ JSON Parse Error:', err.message);
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid JSON format in request body'
+    });
+  }
+  next(err);
+});
 
 
 // Controladores (Ejemplo de controlador) mover a una carpeta controllers más adelante
@@ -44,6 +75,23 @@ wsService.inicializar(httpServer);
 // Inicializar Chat WebSocket
 const chatWsService = container.resolve(ChatWebSocketService);
 chatWsService.inicializar(wsService.obtenerIO()!);
+
+// Iniciar cron de gestión automática de no-shows
+const prismaForCron = new PrismaClient();
+const enviarNotifUCForCron = container.resolve(EnviarNotificacionUseCase);
+const autoGestionCitas = new AutoGestionCitasService(prismaForCron, enviarNotifUCForCron);
+autoGestionCitas.iniciar();
+
+// Iniciar cron de notificación de mensajes pendientes (chat)
+const notificarMensajesPendientes = new NotificarMensajesPendientesService(
+  prismaForCron,
+  enviarNotifUCForCron
+);
+notificarMensajesPendientes.iniciar();
+
+// Precalentar caché de traducción (fire-and-forget, no bloquea el arranque)
+const warmUpService = new TranslationWarmUpService(prismaForCron);
+warmUpService.run().catch(err => console.error('❌ [WarmUp] Error no capturado:', err));
 
 // Iniciar servidor
 httpServer.listen(PORT, () => {

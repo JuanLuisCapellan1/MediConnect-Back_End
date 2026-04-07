@@ -1,0 +1,493 @@
+import { Request, Response } from 'express';
+import { container } from 'tsyringe';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+
+// Use Cases
+import { CrearSeguroMedicoUseCase } from '../../../application/use-cases/seguros/CrearSeguroMedicoUseCase';
+import { ObtenerTodosSegurosUseCase } from '../../../application/use-cases/seguros/ObtenerTodosSegurosUseCase';
+import { ActualizarSeguroMedicoUseCase } from '../../../application/use-cases/seguros/ActualizarSeguroMedicoUseCase';
+import { EliminarSeguroMedicoUseCase } from '../../../application/use-cases/seguros/EliminarSeguroMedicoUseCase';
+import { AgregarSeguroPacienteUseCase } from '../../../application/use-cases/seguros/AgregarSeguroPacienteUseCase';
+import { ObtenerMisSegurosUseCase } from '../../../application/use-cases/seguros/ObtenerMisSegurosUseCase';
+import { EliminarMiSeguroUseCase } from '../../../application/use-cases/seguros/EliminarMiSeguroUseCase';
+import { AgregarSeguroDoctorUseCase } from '../../../application/use-cases/seguros/AgregarSeguroDoctorUseCase';
+import { ObtenerSegurosAceptadosUseCase } from '../../../application/use-cases/seguros/ObtenerSegurosAceptadosUseCase';
+import { EliminarSeguroAceptadoUseCase } from '../../../application/use-cases/seguros/EliminarSeguroAceptadoUseCase';
+import { ObtenerSegurosPopularesUseCase } from '../../../application/use-cases/seguros/ObtenerSegurosPopularesUseCase';
+import { VerificarCompatibilidadSeguroUseCase } from '../../../application/use-cases/seguros/VerificarCompatibilidadSeguroUseCase';
+
+// DTOs
+import {
+    CrearSeguroMedicoDto,
+    ActualizarSeguroMedicoDto,
+    AgregarSeguroPacienteDto,
+    AgregarSeguroDoctorDto,
+    FiltroSegurosDto,
+} from '../../../application/dtos/SeguroMedicoDtos';
+
+export class SeguroMedicoController {
+    // ============================================
+    // Admin - CRUD completo
+    // ============================================
+
+    async crear(req: Request, res: Response): Promise<void> {
+        try {
+            const dto = plainToInstance(CrearSeguroMedicoDto, req.body);
+            const errors = await validate(dto);
+
+            if (errors.length > 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Validación fallida',
+                    errors: errors.map((e) => Object.values(e.constraints || {})).flat(),
+                });
+                return;
+            }
+
+            const useCase = container.resolve(CrearSeguroMedicoUseCase);
+            const seguro = await useCase.execute(dto);
+
+            res.status(201).json({
+                success: true,
+                message: 'Seguro creado exitosamente',
+                data: seguro,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    async obtenerTodos(req: Request, res: Response): Promise<void> {
+        try {
+            const filtros = plainToInstance(FiltroSegurosDto, req.query);
+
+            const useCase = container.resolve(ObtenerTodosSegurosUseCase);
+            const resultado = await useCase.execute(filtros);
+
+            res.status(200).json({
+                success: true,
+                message: 'Seguros obtenidos exitosamente',
+                data: resultado.datos,
+                total: resultado.total,
+                pagina: filtros.pagina || 1,
+                limite: filtros.limite || 20,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    async actualizar(req: Request, res: Response): Promise<void> {
+        try {
+            const id = parseInt(String(req.params.id));
+            const dto = plainToInstance(ActualizarSeguroMedicoDto, req.body);
+            const errors = await validate(dto);
+
+            if (errors.length > 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Validación fallida',
+                    errors: errors.map((e) => Object.values(e.constraints || {})).flat(),
+                });
+                return;
+            }
+
+            const useCase = container.resolve(ActualizarSeguroMedicoUseCase);
+            const seguro = await useCase.execute(id, dto);
+
+            res.status(200).json({
+                success: true,
+                message: 'Seguro actualizado exitosamente',
+                data: seguro,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    async eliminar(req: Request, res: Response): Promise<void> {
+        try {
+            const id = parseInt(String(req.params.id));
+
+            const useCase = container.resolve(EliminarSeguroMedicoUseCase);
+            await useCase.execute(id);
+
+            res.status(200).json({
+                success: true,
+                message: 'Seguro eliminado exitosamente',
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    // ============================================
+    // Paciente - Gestión de seguros (máximo 3)
+    // ============================================
+
+    async agregarMiSeguro(req: Request, res: Response): Promise<void> {
+        try {
+            const pacienteId = (req as any).user?.userId;
+            const dto = plainToInstance(AgregarSeguroPacienteDto, req.body);
+            const errors = await validate(dto);
+
+            if (errors.length > 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Validación fallida',
+                    errors: errors.map((e) => Object.values(e.constraints || {})).flat(),
+                });
+                return;
+            }
+
+            const useCase = container.resolve(AgregarSeguroPacienteUseCase);
+            const resultado = await useCase.execute(pacienteId, dto);
+
+            res.status(201).json({
+                success: true,
+                message: 'Seguro agregado exitosamente a tu perfil',
+                data: resultado,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    async obtenerMisSeguros(req: Request, res: Response): Promise<void> {
+        try {
+            const pacienteId = (req as any).user?.userId;
+            const incluirHistorial = req.query.incluirHistorial === 'true';
+
+            const useCase = container.resolve(ObtenerMisSegurosUseCase);
+            const seguros = await useCase.execute(pacienteId, incluirHistorial);
+
+            res.status(200).json({
+                success: true,
+                message: 'Seguros obtenidos exitosamente',
+                data: seguros,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    async eliminarMiSeguro(req: Request, res: Response): Promise<void> {
+        try {
+            const pacienteId = (req as any).user?.userId;
+            const seguroId = parseInt(String(req.params.id));
+
+            const useCase = container.resolve(EliminarMiSeguroUseCase);
+            await useCase.execute(pacienteId, seguroId);
+
+            res.status(200).json({
+                success: true,
+                message: 'Seguro eliminado exitosamente de tu perfil',
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    // ============================================
+    // Doctor - Gestión de seguros aceptados
+    // ============================================
+
+    async agregarSeguroAceptado(req: Request, res: Response): Promise<void> {
+        try {
+            const doctorId = (req as any).user?.userId;
+            const dto = plainToInstance(AgregarSeguroDoctorDto, req.body);
+            const errors = await validate(dto);
+
+            if (errors.length > 0) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Validación fallida',
+                    errors: errors.map((e) => Object.values(e.constraints || {})).flat(),
+                });
+                return;
+            }
+
+            const useCase = container.resolve(AgregarSeguroDoctorUseCase);
+            const resultado = await useCase.execute(doctorId, dto);
+
+            res.status(201).json({
+                success: true,
+                message: 'Seguro agregado exitosamente a tus seguros aceptados',
+                data: resultado,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    async obtenerSegurosAceptados(req: Request, res: Response): Promise<void> {
+        try {
+            const doctorId = (req as any).user?.userId;
+
+            const useCase = container.resolve(ObtenerSegurosAceptadosUseCase);
+            const seguros = await useCase.execute(doctorId);
+
+            res.status(200).json({
+                success: true,
+                message: 'Seguros aceptados obtenidos exitosamente',
+                data: seguros,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    async eliminarSeguroAceptado(req: Request, res: Response): Promise<void> {
+        try {
+            const doctorId = (req as any).user?.userId;
+            const seguroId = parseInt(String(req.params.seguroId));
+            const tipoSeguroId = parseInt(String(req.params.tipoSeguroId));
+
+            const useCase = container.resolve(EliminarSeguroAceptadoUseCase);
+            await useCase.execute(doctorId, seguroId, tipoSeguroId);
+
+            res.status(200).json({
+                success: true,
+                message: 'Seguro eliminado exitosamente de tus seguros aceptados',
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    // ============================================
+    // Público (autenticado) - Ver seguros disponibles
+    // ============================================
+
+    async obtenerSegurosDisponibles(req: Request, res: Response): Promise<void> {
+        try {
+            const filtros = plainToInstance(FiltroSegurosDto, {
+                ...req.query,
+                estado: 'Activo', // Solo mostrar seguros activos
+            });
+
+            const useCase = container.resolve(ObtenerTodosSegurosUseCase);
+            const resultado = await useCase.execute(filtros);
+
+            res.status(200).json({
+                success: true,
+                message: 'Seguros disponibles obtenidos exitosamente',
+                data: resultado.datos,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    // ============================================
+    // Público - Ver seguros aceptados de un doctor
+    // ============================================
+
+    /**
+     * GET /api/seguros/doctor/:doctorId/seguros-aceptados
+     * Obtener los seguros que acepta un doctor específico
+     * Visible para cualquier usuario autenticado (pacientes, otros doctores, etc.)
+     */
+    async obtenerSegurosAceptadosPorDoctor(req: Request, res: Response): Promise<void> {
+        try {
+            const doctorId = parseInt(String(req.params.doctorId));
+
+            if (isNaN(doctorId)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'ID de doctor inválido',
+                });
+                return;
+            }
+
+            const useCase = container.resolve(ObtenerSegurosAceptadosUseCase);
+            const seguros = await useCase.execute(doctorId);
+
+            res.status(200).json({
+                success: true,
+                message: 'Seguros aceptados por el doctor obtenidos exitosamente',
+                data: seguros,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    // ============================================
+    // Verificar compatibilidad de seguro
+    // ============================================
+
+    /**
+     * GET /api/seguros/verificar-compatibilidad/:seguroId/:tipoSeguroId/doctor/:doctorId
+     * Recibe seguroId y tipoSeguroId como path params.
+     * El paciente se identifica por el token JWT.
+     */
+    async verificarCompatibilidad(req: Request, res: Response): Promise<void> {
+        try {
+            const seguroId = parseInt(String(req.params.seguroId));
+            const tipoSeguroId = parseInt(String(req.params.tipoSeguroId));
+            const doctorId = parseInt(String(req.params.doctorId));
+            const pacienteId = (req as any).user?.userId;
+
+            if (isNaN(seguroId) || seguroId <= 0) {
+                res.status(400).json({ success: false, message: 'seguroId inválido.' });
+                return;
+            }
+            if (isNaN(tipoSeguroId) || tipoSeguroId <= 0) {
+                res.status(400).json({ success: false, message: 'tipoSeguroId inválido.' });
+                return;
+            }
+            if (isNaN(doctorId) || doctorId <= 0) {
+                res.status(400).json({ success: false, message: 'doctorId inválido.' });
+                return;
+            }
+            if (!pacienteId) {
+                res.status(401).json({ success: false, message: 'No autenticado.' });
+                return;
+            }
+
+            const useCase = container.resolve(VerificarCompatibilidadSeguroUseCase);
+            const resultado = await useCase.execute(seguroId, tipoSeguroId, doctorId, pacienteId);
+
+            res.status(200).json({
+                success: true,
+                message: resultado.mensaje,
+                data: resultado,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    // ============================================
+    // Manejo de errores
+    // ============================================
+
+    private manejarError(error: any, res: Response): void {
+        console.error('Error en SeguroMedicoController:', error);
+
+        if (error.message) {
+            res.status(400).json({
+                success: false,
+                message: error.message,
+            });
+            return;
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Error interno del servidor',
+        });
+    }
+
+    // ============================================
+    // Admin - Gestión de tipos por aseguradora
+    // ============================================
+
+    /**
+     * GET /api/seguros-medicos/:id/tipos
+     * Lista los tipos de plan válidos de una aseguradora.
+     */
+    async obtenerTiposDeSeguro(req: Request, res: Response): Promise<void> {
+        try {
+            const seguroId = parseInt(String(req.params.id));
+            const useCase = container.resolve(ObtenerTodosSegurosUseCase); // reutilizamos el repo via otro usecase
+            // Accedemos directo al repositorio a través del container
+            const repo = container.resolve<any>('SeguroMedicoRepository');
+            const tipos = await repo.obtenerTiposDeSeguro(seguroId);
+
+            res.status(200).json({
+                success: true,
+                message: 'Tipos de seguro obtenidos exitosamente',
+                data: tipos,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    /**
+     * POST /api/seguros-medicos/:id/tipos
+     * Asocia un tipo de plan a una aseguradora (Admin).
+     * Body: { idTipoSeguro: number }
+     */
+    async agregarTipoASeguro(req: Request, res: Response): Promise<void> {
+        try {
+            const seguroId = parseInt(String(req.params.id));
+            const tipoSeguroId = parseInt(String(req.body.idTipoSeguro));
+
+            if (isNaN(seguroId) || isNaN(tipoSeguroId) || tipoSeguroId <= 0) {
+                res.status(400).json({ success: false, message: 'idTipoSeguro inválido' });
+                return;
+            }
+
+            const repo = container.resolve<any>('SeguroMedicoRepository');
+            const resultado = await repo.agregarTipoASeguro(seguroId, tipoSeguroId);
+
+            res.status(201).json({
+                success: true,
+                message: 'Tipo de seguro asociado exitosamente',
+                data: resultado,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    /**
+     * DELETE /api/seguros-medicos/:id/tipos/:tipoId
+     * Desasocia un tipo de plan de una aseguradora (Admin).
+     */
+    async eliminarTipoDeSeguro(req: Request, res: Response): Promise<void> {
+        try {
+            const seguroId = parseInt(String(req.params.id));
+            const tipoSeguroId = parseInt(String(req.params.tipoId));
+
+            const repo = container.resolve<any>('SeguroMedicoRepository');
+            await repo.eliminarTipoDeSeguro(seguroId, tipoSeguroId);
+
+            res.status(200).json({
+                success: true,
+                message: 'Tipo de seguro desasociado exitosamente',
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+
+    // ============================================
+    // Rankings
+    // ============================================
+
+    /**
+     * GET /api/seguros/mas-utilizados
+     * Devuelve los seguros más utilizados por pacientes, ordenados por popularidad.
+     * Accesible por cualquier usuario autenticado.
+     */
+    async masUtilizados(req: Request, res: Response): Promise<void> {
+        try {
+            const limite = req.query.limite ? parseInt(req.query.limite as string) : 10;
+
+            if (isNaN(limite) || limite < 1) {
+                res.status(400).json({
+                    success: false,
+                    message: 'El parámetro “limite” debe ser un número positivo',
+                });
+                return;
+            }
+
+            const useCase = container.resolve(ObtenerSegurosPopularesUseCase);
+            const ranking = await useCase.ejecutar(limite);
+
+            res.status(200).json({
+                success: true,
+                mensaje: 'Seguros más utilizados obtenidos exitosamente',
+                total: ranking.length,
+                data: ranking,
+            });
+        } catch (error: any) {
+            this.manejarError(error, res);
+        }
+    }
+}

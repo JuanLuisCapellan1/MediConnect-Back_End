@@ -165,7 +165,7 @@ export class PrismaBarriosRepository implements IBarriosRepository {
     // INVALIDAR CACHÉ
     await this.redis.del(this.CACHE_KEY);
     await this.redis.del(this.CACHE_KEY_POR_SECCION(seccionPreviaId));
-    
+
     // Si cambió de sección, también invalidar la caché de la nueva sección
     if (seccionId !== undefined && seccionId !== seccionPreviaId) {
       await this.redis.del(this.CACHE_KEY_POR_SECCION(seccionId));
@@ -184,15 +184,7 @@ export class PrismaBarriosRepository implements IBarriosRepository {
       throw new Error(`Barrio con ID ${id} no encontrado`);
     }
 
-    // Validar que no tenga sub-barrios o ubicaciones
-    const tieneSubBarrios = await this.prisma.subBarrio.count({
-      where: { barrioId: id }
-    });
-
-    if (tieneSubBarrios > 0) {
-      throw new Error(`No se puede eliminar el barrio porque tiene ${tieneSubBarrios} sub-barrio(s) asociado(s)`);
-    }
-
+    // Validar que no tenga ubicaciones asociadas
     const tieneUbicaciones = await this.prisma.ubicacion.count({
       where: { barrioId: id }
     });
@@ -212,5 +204,188 @@ export class PrismaBarriosRepository implements IBarriosRepository {
     await this.redis.del(this.CACHE_KEY_POR_SECCION(barrioExistente.seccionId));
 
     return new Barrio(eliminado.id, eliminado.seccionId, eliminado.nombre, eliminado.estado, eliminado.creadoEn);
+  }
+
+  /**
+   * Busca el barrio cuyo polígono geom contiene el punto (longitud, latitud)
+   * e incluye toda la cadena geográfica: sección, distrito municipal, municipio y provincia.
+   *
+   * NOTA IMPORTANTE SOBRE EL SRID:
+   * Los datos de `geom` están en coordenadas métricas UTM Zona 19N (EPSG:32619)
+   * pero el SRID declarado en la columna es 4326 (incorrecto).
+   * Solución: ST_SetSRID(geom, 32619) + ST_Transform del punto de entrada.
+   */
+  async buscarPorCoordenadas(longitud: number, latitud: number): Promise<Barrio | null> {
+    type RawBarrioCompleto = {
+      id_barrio: number;
+      id_seccion: number;
+      barrio_nombre: string;
+      barrio_estado: string;
+      creado_en: Date;
+      geom_json: string | null;
+      // Sección
+      seccion_id: number;
+      seccion_nombre: string;
+      seccion_estado: string;
+      // Distrito Municipal
+      dm_id: number | null;
+      dm_nombre: string | null;
+      dm_estado: string | null;
+      // Municipio
+      municipio_id: number | null;
+      municipio_nombre: string | null;
+      municipio_estado: string | null;
+      // Provincia
+      provincia_id: number | null;
+      provincia_nombre: string | null;
+      provincia_estado: string | null;
+    };
+
+    const resultados = await this.prisma.$queryRaw<RawBarrioCompleto[]>`
+      SELECT
+        b.id_barrio,
+        b.id_seccion,
+        b.nombre            AS barrio_nombre,
+        b.estado            AS barrio_estado,
+        b.creado_en,
+        ST_AsGeoJSON(
+          ST_Transform(ST_SetSRID(b.geom, 32619), 4326)
+        )::text             AS geom_json,
+        s.id_seccion        AS seccion_id,
+        s.nombre            AS seccion_nombre,
+        s.estado            AS seccion_estado,
+        dm.id_distrito_municipal AS dm_id,
+        dm.nombre           AS dm_nombre,
+        dm.estado           AS dm_estado,
+        m.id_municipio      AS municipio_id,
+        m.nombre            AS municipio_nombre,
+        m.estado            AS municipio_estado,
+        p.id_provincia      AS provincia_id,
+        p.nombre            AS provincia_nombre,
+        p.estado            AS provincia_estado
+      FROM barrios b
+      INNER JOIN secciones s
+        ON s.id_seccion = b.id_seccion
+      LEFT JOIN distritos_municipales dm
+        ON dm.id_distrito_municipal = s.id_distrito_municipal
+      LEFT JOIN municipios m
+        ON m.id_municipio = COALESCE(dm.id_municipio, s.id_municipio)
+      LEFT JOIN provincias p
+        ON p.id_provincia = m.id_provincia
+      WHERE
+        b.geom IS NOT NULL
+        AND b.estado NOT IN ('Eliminado', 'Inactivo')
+        AND ST_Contains(
+          ST_SetSRID(b.geom, 32619),
+          ST_Transform(
+            ST_SetSRID(ST_MakePoint(${longitud}, ${latitud}), 4326),
+            32619
+          )
+        )
+      LIMIT 1
+    `;
+
+    if (!resultados || resultados.length === 0) return null;
+
+    const raw = resultados[0];
+    return new Barrio(
+      raw.id_barrio,
+      raw.id_seccion,
+      raw.barrio_nombre,
+      raw.barrio_estado,
+      raw.creado_en,
+      raw.geom_json ? JSON.parse(raw.geom_json) : null,
+      { id: raw.seccion_id, nombre: raw.seccion_nombre, estado: raw.seccion_estado },
+      raw.dm_id ? { id: raw.dm_id, nombre: raw.dm_nombre!, estado: raw.dm_estado! } : null,
+      raw.municipio_id ? { id: raw.municipio_id, nombre: raw.municipio_nombre!, estado: raw.municipio_estado! } : null,
+      raw.provincia_id ? { id: raw.provincia_id, nombre: raw.provincia_nombre!, estado: raw.provincia_estado! } : null
+    );
+  }
+
+  /**
+   * Obtiene un barrio con su geometría completa en GeoJSON (WGS84) e incluye
+   * toda la cadena geográfica: sección, distrito municipal, municipio y provincia.
+   *
+   * NOTA: Los datos de geom están en UTM 32619 (metros) con SRID incorrecto declarado como 4326.
+   * Se corrige con ST_SetSRID(geom, 32619) + ST_Transform(..., 4326) antes de ST_AsGeoJSON.
+   */
+  async obtenerGeometria(id: number): Promise<Barrio | null> {
+    type RawBarrioGeoCompleto = {
+      id_barrio: number;
+      id_seccion: number;
+      barrio_nombre: string;
+      barrio_estado: string;
+      creado_en: Date;
+      geom_json: string | null;
+      // Sección
+      seccion_id: number;
+      seccion_nombre: string;
+      seccion_estado: string;
+      // Distrito Municipal
+      dm_id: number | null;
+      dm_nombre: string | null;
+      dm_estado: string | null;
+      // Municipio
+      municipio_id: number | null;
+      municipio_nombre: string | null;
+      municipio_estado: string | null;
+      // Provincia
+      provincia_id: number | null;
+      provincia_nombre: string | null;
+      provincia_estado: string | null;
+    };
+
+    const resultados = await this.prisma.$queryRaw<RawBarrioGeoCompleto[]>`
+      SELECT
+        b.id_barrio,
+        b.id_seccion,
+        b.nombre             AS barrio_nombre,
+        b.estado             AS barrio_estado,
+        b.creado_en,
+        ST_AsGeoJSON(
+          ST_Transform(ST_SetSRID(b.geom, 32619), 4326)
+        )::text              AS geom_json,
+        s.id_seccion         AS seccion_id,
+        s.nombre             AS seccion_nombre,
+        s.estado             AS seccion_estado,
+        dm.id_distrito_municipal AS dm_id,
+        dm.nombre            AS dm_nombre,
+        dm.estado            AS dm_estado,
+        m.id_municipio       AS municipio_id,
+        m.nombre             AS municipio_nombre,
+        m.estado             AS municipio_estado,
+        p.id_provincia       AS provincia_id,
+        p.nombre             AS provincia_nombre,
+        p.estado             AS provincia_estado
+      FROM barrios b
+      INNER JOIN secciones s
+        ON s.id_seccion = b.id_seccion
+      LEFT JOIN distritos_municipales dm
+        ON dm.id_distrito_municipal = s.id_distrito_municipal
+      LEFT JOIN municipios m
+        ON m.id_municipio = COALESCE(dm.id_municipio, s.id_municipio)
+      LEFT JOIN provincias p
+        ON p.id_provincia = m.id_provincia
+      WHERE b.id_barrio = ${id}
+      LIMIT 1
+    `;
+
+    if (!resultados || resultados.length === 0) return null;
+
+    const raw = resultados[0];
+    const geomParsed = raw.geom_json ? JSON.parse(raw.geom_json) : null;
+
+    return new Barrio(
+      raw.id_barrio,
+      raw.id_seccion,
+      raw.barrio_nombre,
+      raw.barrio_estado,
+      raw.creado_en,
+      geomParsed,
+      { id: raw.seccion_id, nombre: raw.seccion_nombre, estado: raw.seccion_estado },
+      raw.dm_id ? { id: raw.dm_id, nombre: raw.dm_nombre!, estado: raw.dm_estado! } : null,
+      raw.municipio_id ? { id: raw.municipio_id, nombre: raw.municipio_nombre!, estado: raw.municipio_estado! } : null,
+      raw.provincia_id ? { id: raw.provincia_id, nombre: raw.provincia_nombre!, estado: raw.provincia_estado! } : null
+    );
   }
 }

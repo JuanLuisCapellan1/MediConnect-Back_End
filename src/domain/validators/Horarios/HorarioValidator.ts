@@ -4,7 +4,6 @@
  */
 
 import { inject, injectable } from 'tsyringe';
-import { IUbicacionesRepository } from '../../repositories/IUbicacionesRepository';
 import { IUsuarioRepository } from '../../repositories/IUsuarioRepository';
 import { IHorariosRepository } from '../../repositories/IHorariosRepository';
 import { HorarioConflictoError } from '../../errors/Horarios/HorarioConflictoError';
@@ -12,21 +11,20 @@ import { HorarioConflictoError } from '../../errors/Horarios/HorarioConflictoErr
 @injectable()
 export class HorarioValidator {
   constructor(
-    @inject('UbicacionesRepository') private ubicacionesRepository: IUbicacionesRepository,
     @inject('UsuarioRepository') private usuarioRepository: IUsuarioRepository,
     @inject('HorariosRepository') private horariosRepository: IHorariosRepository
-  ) {}
+  ) { }
 
   /**
-   * Valida datos base del horario y devuelve las horas parseadas.
-   */
+ * Valida datos del horario y devuelve las horas parseadas.
+ * @param diasSemana - Array de días (0=Domingo, 1=Lunes … 6=Sábado), mínimo 1 elemento
+ */
   async validarDatosHorario(
     doctorId: number,
     nombre: string,
-    diaSemana: number,
+    diasSemana: number[],
     horaInicio: string,
     horaFin: string,
-    ubicacionId: number,
     excluirId?: number
   ): Promise<{ horaInicioDate: Date; horaFinDate: Date }> {
     if (!doctorId || doctorId <= 0) {
@@ -41,26 +39,29 @@ export class HorarioValidator {
       throw new Error('El nombre del horario no puede exceder 100 caracteres');
     }
 
-    if (diaSemana === undefined || diaSemana < 0 || diaSemana > 6) {
-      throw new Error('El día de la semana debe estar entre 0 y 6');
+    if (!Array.isArray(diasSemana) || diasSemana.length === 0) {
+      throw new Error('Debe indicar al menos un día de la semana');
     }
 
-    if (!ubicacionId || ubicacionId <= 0) {
-      throw new Error('El ID de la ubicación es requerido y debe ser válido');
+    for (const dia of diasSemana) {
+      if (!Number.isInteger(dia) || dia < 0 || dia > 6) {
+        throw new Error(`Día inválido: ${dia}. Los valores permitidos son 0 (Domingo) a 6 (Sábado)`);
+      }
+    }
+
+    // Evitar duplicados en el array
+    const diasUnicos = [...new Set(diasSemana)];
+    if (diasUnicos.length !== diasSemana.length) {
+      throw new Error('El array diasSemana contiene días duplicados');
     }
 
     const usuario = await this.usuarioRepository.buscarPorId(doctorId);
-    if (!usuario || !usuario.esDoctor()) {
+    if (!usuario || usuario.rol !== 'Doctor') {
       throw new Error(`El usuario con ID ${doctorId} no es un Doctor válido`);
     }
 
-    if (!usuario.esActivo()) {
+    if (usuario.estado !== 'Activo') {
       throw new Error(`El doctor con ID ${doctorId} no está activo`);
-    }
-
-    const ubicacion = await this.ubicacionesRepository.buscarPorId(ubicacionId);
-    if (!ubicacion || ubicacion.estado !== 'Activo') {
-      throw new Error(`La ubicación con ID ${ubicacionId} no es válida o está inactiva`);
     }
 
     const horaInicioDate = this.parseHora(horaInicio);
@@ -68,18 +69,6 @@ export class HorarioValidator {
 
     if (horaFinDate.getTime() <= horaInicioDate.getTime()) {
       throw new Error('La hora de fin debe ser mayor a la hora de inicio');
-    }
-
-    const conflicto = await this.horariosRepository.existeConflicto(
-      doctorId,
-      diaSemana,
-      horaInicioDate,
-      horaFinDate,
-      excluirId
-    );
-
-    if (conflicto) {
-      throw new HorarioConflictoError();
     }
 
     return { horaInicioDate, horaFinDate };

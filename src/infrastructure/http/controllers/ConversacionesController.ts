@@ -9,6 +9,8 @@ import {
 import { ChatWebSocketService } from '../../external-services/ChatWebSocketService';
 
 export class ConversacionesController {
+
+
   /**
    * Obtiene todas las conversaciones de un usuario
    * GET /api/conversaciones
@@ -19,9 +21,9 @@ export class ConversacionesController {
       const usuarioId = (req as any).usuarioId || parseInt(req.query.usuarioId as string);
 
       if (!usuarioId) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: 'usuarioId es requerido' 
+          error: 'usuarioId es requerido'
         });
       }
 
@@ -44,9 +46,9 @@ export class ConversacionesController {
       });
     } catch (error: any) {
       console.error('Error al obtener conversaciones:', error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         success: false,
-        error: error.message || 'Error interno del servidor' 
+        error: error.message || 'Error interno del servidor'
       });
     }
   }
@@ -62,8 +64,8 @@ export class ConversacionesController {
 
       if (!usuarioId) {
         return res.status(401).json({
-          success: false, 
-          error: 'No autorizado' 
+          success: false,
+          error: 'No autorizado'
         });
       }
 
@@ -77,14 +79,15 @@ export class ConversacionesController {
       });
     } catch (error: any) {
       console.error('Error al obtener conversación:', error);
-      
+
       if (error.name === 'ConversacionNoEncontradaError' || error.name === 'AccesoConversacionDenegadoError') {
-        return res.status(404).json({ 
+        return res.status(404).json({
           success: false,
-          error: error.message });
+          error: error.message
+        });
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         success: false,
         error: error.message || 'Error interno del servidor'
       });
@@ -101,14 +104,14 @@ export class ConversacionesController {
       const { receptorId } = req.body;
 
       if (!usuarioId) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          error: 'No autorizado' 
+          error: 'No autorizado'
         });
       }
 
       if (!receptorId) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
           error: 'receptorId es requerido'
         });
@@ -124,10 +127,9 @@ export class ConversacionesController {
 
       // Notificar al receptor via WebSocket
       const wsService = container.resolve(ChatWebSocketService);
-      wsService.notificarNuevaConversacion(receptorId, conversacion, {
+      wsService.notificarNuevaConversacion(parseInt(receptorId as string), conversacion, {
         emisor: {
           id: usuarioId
-          // Aquí podrías incluir más datos del emisor si los tienes disponibles
         }
       });
 
@@ -138,36 +140,36 @@ export class ConversacionesController {
       });
     } catch (error: any) {
       console.error('Error al crear conversación:', error);
-      
+
       if (error.name === 'ConversacionYaExisteError') {
-        return res.status(409).json({ 
+        return res.status(409).json({
           success: false,
-          error: error.message  
+          error: error.message
         });
       }
-      
+
       if (error.name === 'UsuarioNoEncontradoError') {
-        return res.status(404).json({ 
+        return res.status(404).json({
           success: false,
-          error: error.message  
+          error: error.message
         });
       }
-      
+
       if (error.name === 'ConversacionMismoUsuarioError') {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: error.message  
+          error: error.message
         });
       }
-      
+
       if (error.name === 'ConversacionNoPermitidaEntreRolesError') {
-        return res.status(403).json({ 
+        return res.status(403).json({
           success: false,
-          error: error.message  
+          error: error.message
         });
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         success: false,
         error: error.message || 'Error interno del servidor'
       });
@@ -184,9 +186,9 @@ export class ConversacionesController {
       const usuarioId = (req as any).usuarioId;
 
       if (!usuarioId) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          error: 'No autorizado' 
+          error: 'No autorizado'
         });
       }
 
@@ -209,16 +211,18 @@ export class ConversacionesController {
       });
     } catch (error: any) {
       console.error('Error al actualizar conversación:', error);
-      
+
       if (error.name === 'ConversacionNoEncontradaError' || error.name === 'AccesoConversacionDenegadoError') {
-        return res.status(404).json({ 
+        return res.status(404).json({
           success: false,
-          error: error.message });
+          error: error.message
+        });
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         success: false,
-        error: error.message || 'Error interno del servidor' });
+        error: error.message || 'Error interno del servidor'
+      });
     }
   }
 
@@ -232,9 +236,9 @@ export class ConversacionesController {
       const usuarioId = (req as any).usuarioId;
 
       if (!usuarioId) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          error: 'No autorizado' 
+          error: 'No autorizado'
         });
       }
 
@@ -247,17 +251,18 @@ export class ConversacionesController {
       });
     } catch (error: any) {
       console.error('Error al eliminar conversación:', error);
-      
+
       if (error.name === 'ConversacionNoEncontradaError' || error.name === 'AccesoConversacionDenegadoError') {
-        return res.status(404).json({ 
+        return res.status(404).json({
           success: false,
-          error: error.message 
+          error: error.message
         });
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         success: false,
-        error: error.message || 'Error interno del servidor' });
+        error: error.message || 'Error interno del servidor'
+      });
     }
   }
 
@@ -271,19 +276,21 @@ export class ConversacionesController {
       const { receptorId } = req.body;
 
       if (!usuarioId) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
-          error: 'No autorizado' });
+          error: 'No autorizado'
+        });
       }
 
       if (!receptorId) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: 'receptorId es requerido' });
+          error: 'receptorId es requerido'
+        });
       }
 
       const useCase = container.resolve(GestionarConversacionesUseCase);
-      const conversacion = await useCase.obtenerOCrear(usuarioId, parseInt(receptorId));
+      const conversacion = await useCase.obtenerOCrear(usuarioId, parseInt(receptorId as string));
 
       return res.status(200).json({
         success: true,
@@ -292,31 +299,32 @@ export class ConversacionesController {
       });
     } catch (error: any) {
       console.error('Error al obtener o crear conversación:', error);
-      
+
       if (error.name === 'UsuarioNoEncontradoError') {
-        return res.status(404).json({ 
+        return res.status(404).json({
           success: false,
-          error: error.message  
+          error: error.message
         });
       }
-      
+
       if (error.name === 'ConversacionMismoUsuarioError') {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: error.message  
+          error: error.message
         });
       }
-      
+
       if (error.name === 'ConversacionNoPermitidaEntreRolesError') {
-        return res.status(403).json({ 
+        return res.status(403).json({
           success: false,
-          error: error.message  
+          error: error.message
         });
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         success: false,
-        error: error.message || 'Error interno del servidor' });
+        error: error.message || 'Error interno del servidor'
+      });
     }
   }
 }

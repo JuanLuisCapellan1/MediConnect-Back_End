@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const DistritosMunicipalesController_1 = require("../controllers/DistritosMunicipalesController");
+const TranslationMiddleware_1 = require("../middlewares/TranslationMiddleware");
+const routerDistritos = (0, express_1.Router)();
+const controlador = new DistritosMunicipalesController_1.DistritosMunicipalesController();
+routerDistritos.get('/', TranslationMiddleware_1.translationMiddleware, (req, res) => controlador.listarTodas(req, res));
+routerDistritos.get('/estado/:estado', TranslationMiddleware_1.translationMiddleware, (req, res) => controlador.buscarPorEstado(req, res));
+routerDistritos.get('/municipio/:municipioId', TranslationMiddleware_1.translationMiddleware, (req, res) => controlador.buscarPorMunicipio(req, res));
+routerDistritos.get('/nombre/:nombre/:municipioId/:estado', TranslationMiddleware_1.translationMiddleware, (req, res) => controlador.buscarPorNombre(req, res));
+routerDistritos.get('/:id', TranslationMiddleware_1.translationMiddleware, (req, res) => controlador.buscarPorId(req, res));
+routerDistritos.post('/', (req, res) => controlador.crear(req, res));
+routerDistritos.put('/:id', (req, res) => controlador.actualizar(req, res));
+routerDistritos.delete('/:id', (req, res) => controlador.eliminar(req, res));
+exports.default = routerDistritos;

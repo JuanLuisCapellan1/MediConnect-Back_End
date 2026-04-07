@@ -14,7 +14,7 @@ export class GestionarSeccionesUseCase {
     private validator: SeccionValidator,
     @inject('EstadoValidator')
     private estadoValidator: EstadoValidator
-  ) {}
+  ) { }
 
   async obtenerTodas(estado?: string) {
     return await this.seccionesRepository.obtenerTodas(estado);
@@ -30,6 +30,10 @@ export class GestionarSeccionesUseCase {
 
   async obtenerPorDistrito(distritoMunicipalId: number, estado?: string) {
     return await this.seccionesRepository.obtenerPorDistrito(distritoMunicipalId, estado);
+  }
+
+  async obtenerPorMunicipio(municipioId: number, estado?: string) {
+    return await this.seccionesRepository.obtenerPorMunicipio(municipioId, estado);
   }
 
   async buscarPorNombre(nombre: string, distritoMunicipalId?: number, estado?: string) {
@@ -48,7 +52,7 @@ export class GestionarSeccionesUseCase {
 
   async crear(dto: CrearSeccionDto) {
 
-    if(dto.distritoMunicipalId !== undefined) {
+    if (dto.distritoMunicipalId !== undefined) {
       await this.validator.validar(dto.nombre, dto.distritoMunicipalId);
     } else {
       await this.validator.validar(dto.nombre);
@@ -72,7 +76,7 @@ export class GestionarSeccionesUseCase {
   }
 
   async actualizar(id: number, dto: ActualizarSeccionDto) {
-    if ( dto.nombre !== undefined || dto.distritoMunicipalId !== undefined) {
+    if (dto.nombre !== undefined || dto.distritoMunicipalId !== undefined) {
       const seccionExistente = await this.obtenerPorId(id);
 
       const distritoFinal = dto.distritoMunicipalId !== undefined ? dto.distritoMunicipalId : seccionExistente.distritoMunicipalId;
@@ -87,7 +91,7 @@ export class GestionarSeccionesUseCase {
       await this.validator.validarActualizacionDistrito(dto.distritoMunicipalId, id);
     }
 
-     // Validar estado solo si se proporciona
+    // Validar estado solo si se proporciona
     if (dto.estado) {
       await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo', 'Eliminado']);
     }

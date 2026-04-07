@@ -18,7 +18,7 @@ import { ValidadorServicioHorario } from '../../domain/validators/ServiciosHorar
 export class GestionarServicioHorariosUseCase {
   constructor(
     @inject('ServicioHorarioRepository') private servicioHorarioRepository: IServicioHorarioRepository
-  ) {}
+  ) { }
 
   /**
    * Lista todos los ServiciosHorarios con paginación y filtros
@@ -33,8 +33,8 @@ export class GestionarServicioHorariosUseCase {
       throw new Error('La página debe ser mayor a 0');
     }
 
-    if (limite < 1 || limite > 100) {
-      throw new Error('El límite debe estar entre 1 y 100');
+    if (limite < 1 || limite > 1000) {
+      throw new Error('El límite debe estar entre 1 y 1000');
     }
 
     return await this.servicioHorarioRepository.obtenerTodas(filtros);

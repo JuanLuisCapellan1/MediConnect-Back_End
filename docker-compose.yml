@@ -4,7 +4,7 @@ services:
     container_name: mediconnect-translator
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "5001:5000"
     environment:
       # Carga solo Español e Inglés. 
       - LT_LOAD_ONLY=es,en

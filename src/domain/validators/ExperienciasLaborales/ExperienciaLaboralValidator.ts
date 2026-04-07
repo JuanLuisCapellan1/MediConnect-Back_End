@@ -1,31 +1,30 @@
 import { injectable, inject } from 'tsyringe';
-import { IExperienciasLaboralesRepository } from '../../repositories/IExperienciasLaboralesRepository';
+import { IExperienciaLaboralRepository } from '../../repositories/IExperienciaLaboralRepository';
 import { FechasInvalidasError } from '../../errors/ExperienciasLaborales/FechasInvalidasError';
-import { InstitucionRequeridaError } from '../../errors/ExperienciasLaborales/InstitucionRequeridaError';
 
 @injectable()
 export class ExperienciaLaboralValidator {
   constructor(
-    @inject('IExperienciasLaboralesRepository')
-    private experienciasLaboralesRepository: IExperienciasLaboralesRepository
-  ) {}
+    @inject('IExperienciaLaboralRepository')
+    private experienciaLaboralRepository: IExperienciaLaboralRepository
+  ) { }
 
   validarCamposRequeridos(
     doctorId?: number,
-    profesionId?: number,
-    descripcionCargo?: string,
+    institucion?: string,
+    posicion?: string,
     fechaInicio?: Date
   ): void {
     if (!doctorId || doctorId <= 0) {
       throw new Error('El ID del doctor es requerido y debe ser válido');
     }
 
-    if (!profesionId || profesionId <= 0) {
-      throw new Error('El ID de la profesión es requerido y debe ser válido');
+    if (!institucion || institucion.trim() === '') {
+      throw new Error('La institución es requerida');
     }
 
-    if (!descripcionCargo || descripcionCargo.trim() === '') {
-      throw new Error('La descripción del cargo es requerida');
+    if (!posicion || posicion.trim() === '') {
+      throw new Error('La posición es requerida');
     }
 
     if (!fechaInicio) {
@@ -33,15 +32,23 @@ export class ExperienciaLaboralValidator {
     }
   }
 
-  validarInstitucion(centroSaludId?: number, institucionExterna?: string): void {
-    // Al menos uno debe estar presente
-    if (!centroSaludId && (!institucionExterna || institucionExterna.trim() === '')) {
-      throw new InstitucionRequeridaError();
+  validarInstitucion(institucion: string): void {
+    if (institucion.trim().length < 2) {
+      throw new Error('El nombre de la institución debe tener al menos 2 caracteres');
     }
 
-    // No pueden estar ambos presentes
-    if (centroSaludId && institucionExterna && institucionExterna.trim() !== '') {
-      throw new Error('Solo puede especificar un centro de salud o una institución externa, no ambos');
+    if (institucion.length > 150) {
+      throw new Error('El nombre de la institución no puede exceder 150 caracteres');
+    }
+  }
+
+  validarPosicion(posicion: string): void {
+    if (posicion.trim().length < 2) {
+      throw new Error('La posición debe tener al menos 2 caracteres');
+    }
+
+    if (posicion.length > 100) {
+      throw new Error('La posición no puede exceder 100 caracteres');
     }
   }
 
@@ -90,22 +97,6 @@ export class ExperienciaLaboralValidator {
     const estadosValidos = ['Activo', 'Inactivo', 'Eliminado'];
     if (!estadosValidos.includes(estado)) {
       throw new Error(`Estado inválido. Debe ser uno de: ${estadosValidos.join(', ')}`);
-    }
-  }
-
-  validarDescripcionCargo(descripcion: string): void {
-    if (descripcion.length < 5) {
-      throw new Error('La descripción del cargo debe tener al menos 5 caracteres');
-    }
-
-    if (descripcion.length > 200) {
-      throw new Error('La descripción del cargo no puede exceder 200 caracteres');
-    }
-  }
-
-  validarInstitucionExterna(institucion: string): void {
-    if (institucion.length > 150) {
-      throw new Error('El nombre de la institución externa no puede exceder 150 caracteres');
     }
   }
 }
