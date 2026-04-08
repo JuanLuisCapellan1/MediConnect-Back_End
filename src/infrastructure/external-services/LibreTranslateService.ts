@@ -38,6 +38,8 @@ export class LibreTranslateService implements ITranslationService {
         source: sourceLang,
         target: targetLang,
         format: 'text'
+      }, {
+        timeout: 60000 // Timeout de 60 segundos
       });
 
       const traduccion = response.data.translatedText;
