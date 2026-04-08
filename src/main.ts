@@ -62,7 +62,7 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 // Controladores (Ejemplo de controlador) mover a una carpeta controllers más adelante
 
-const swaggerDocument = YAML.load(path.join(__dirname, './infrastructure/config/swagger.yml'));
+const swaggerDocument = YAML.load(path.join(process.cwd(), 'src/infrastructure/config/swagger.yml'));
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
