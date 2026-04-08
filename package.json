@@ -5,8 +5,8 @@
   "main": "main.ts",
   "scripts": {
     "dev": "nodemon src/main.ts",
-    "build": "npx rimraf dist && npx tsc",
-    "start": "node dist/main.ts",
+    "build": "rimraf dist && tsc",
+    "start": "node dist/main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },
