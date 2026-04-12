@@ -132,6 +132,7 @@ model CentroSalud {
   sitio_web               String?
   descripcion             String?
   foto_perfil             String?
+  estadoInfoPersonal      String                    @default("Pendiente") @map("estado_info_personal") @db.VarChar(20)
   tipoCentro              TipoCentroSalud           @relation(fields: [tipoCentroId], references: [id])
   ubicacion               Ubicacion                 @relation(fields: [ubicacionId], references: [id])
   usuario                 Usuario                   @relation(fields: [usuarioId], references: [id])
@@ -140,6 +141,7 @@ model CentroSalud {
   servicios_centros_salud servicios_centros_salud[]
   solicitudesAlianza      SolicitudAlianza[]
 
+  @@index([estadoInfoPersonal], map: "idx_centros_salud_estado_info_personal")
   @@map("centros_salud")
 }
 
