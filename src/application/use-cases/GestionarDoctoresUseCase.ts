@@ -68,11 +68,15 @@ export class GestionarDoctoresUseCase {
         let requiereRevisionAdmin = false;
         let razonRevision = '';
 
-        console.log(`[UPDATE DOCTOR] Evaluando doctor ${usuarioId} con estado actual: ${doctor.estadoVerificacion}`);
-        if (doctor.estadoVerificacion === 'Rechazado') {
-            console.log(`[UPDATE DOCTOR] Entró por RECHAZADO.`);
+        console.log(`[UPDATE DOCTOR] Evaluando doctor ${usuarioId} — estadoVerificacion: ${doctor.estadoVerificacion}, estadoInfoPersonal: ${(doctor as any).estadoInfoPersonal}`);
+
+        const infoPersonalRechazada = (doctor as any).estadoInfoPersonal === 'Rechazado';
+        const cuentaRechazada = doctor.estadoVerificacion === 'Rechazado';
+
+        if (cuentaRechazada || infoPersonalRechazada) {
+            console.log(`[UPDATE DOCTOR] Re-envío tras rechazo (cuenta=${cuentaRechazada}, infoPersonal=${infoPersonalRechazada}).`);
             requiereRevisionAdmin = true;
-            razonRevision = 'El doctor ha corregido sus datos tras ser rechazado previamente.';
+            razonRevision = 'El doctor ha corregido su información personal tras ser rechazado previamente.';
         } else if (doctor.estadoVerificacion === 'Aprobado') {
             const nombreCambiado = dto.nombre && dto.nombre.trim() !== doctor.nombre;
             const apellidoCambiado = dto.apellido && dto.apellido.trim() !== doctor.apellido;
@@ -95,6 +99,10 @@ export class GestionarDoctoresUseCase {
             // Realizamos la actualización en la tabla doctores usando Prisma directamente
             // o delegamos las partes posibles a la repo, pero necesitamos transaccionalidad con "Accion"
             const updatePayload: any = { actualizadoEn: new Date(), estadoVerificacion: estadoVerifActualizado };
+            // Si el doctor reenvía info tras rechazo, el estadoInfoPersonal vuelve a 'Pendiente'
+            if (requiereRevisionAdmin) {
+                updatePayload.estadoInfoPersonal = 'Pendiente';
+            }
             if (dto.nombre !== undefined) updatePayload.nombre = dto.nombre.trim();
             if (dto.apellido !== undefined) updatePayload.apellido = dto.apellido.trim();
             if (dto.fechaNacimiento !== undefined) updatePayload.fechaNacimiento = new Date(dto.fechaNacimiento);

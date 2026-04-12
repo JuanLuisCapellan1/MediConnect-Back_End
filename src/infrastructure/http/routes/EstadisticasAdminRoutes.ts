@@ -9,58 +9,29 @@ const controller = new EstadisticasAdminController();
 // Todas las rutas requieren autenticación y rol Administrador
 estadisticasAdminRouter.use(autenticarJWT, requireRole('Administrador'));
 
-// ============================================================
-// GET /api/admin/estadisticas/resumen
-// KPIs: total pacientes, doctores, centros de salud + % cambio vs mes anterior
-// ============================================================
-estadisticasAdminRouter.get(
-    '/resumen',
-    (req, res) => controller.resumen(req, res)
-);
+// ── KPIs superiores ──────────────────────────────────────────────────────────
+// GET /api/admin/estadisticas/resumen?periodo=mes
+// Periodos: semana | mes | 3meses | año | todo
+estadisticasAdminRouter.get('/resumen', (req, res) => controller.resumen(req, res));
 
-// ============================================================
-// GET /api/admin/estadisticas/consultas-mensuales?anio=2025
-// Citas agrupadas por mes (gráfico de barras)
-// ============================================================
-estadisticasAdminRouter.get(
-    '/consultas-mensuales',
-    (req, res) => controller.consultasMensuales(req, res)
-);
+// ── Gráfico de consultas (barras) ────────────────────────────────────────────
+// GET /api/admin/estadisticas/consultas?periodo=año
+estadisticasAdminRouter.get('/consultas', (req, res) => controller.consultas(req, res));
 
-// ============================================================
-// GET /api/admin/estadisticas/actividad-uso?anio=2025
-// Usuarios únicos activos por mes (gráfico de área)
-// ============================================================
-estadisticasAdminRouter.get(
-    '/actividad-uso',
-    (req, res) => controller.actividadUso(req, res)
-);
+// ── Gráfico de usuarios registrados (línea) ──────────────────────────────────
+// GET /api/admin/estadisticas/usuarios?periodo=año
+estadisticasAdminRouter.get('/usuarios', (req, res) => controller.usuarios(req, res));
 
-// ============================================================
-// GET /api/admin/estadisticas/servicios-populares?limite=5&anio=2025
-// Servicios más utilizados en citas (gráfico de torta)
-// ============================================================
-estadisticasAdminRouter.get(
-    '/servicios-populares',
-    (req, res) => controller.serviciosPopulares(req, res)
-);
+// ── Gráfico de torta: distribución de servicios ──────────────────────────────
+// GET /api/admin/estadisticas/servicios?periodo=año&limite=8
+estadisticasAdminRouter.get('/servicios', (req, res) => controller.servicios(req, res));
 
-// ============================================================
-// GET /api/admin/estadisticas/teleconsultas-vs-presenciales?anio=2025
-// Comparativa de modalidades (gráfico de torta)
-// ============================================================
-estadisticasAdminRouter.get(
-    '/teleconsultas-vs-presenciales',
-    (req, res) => controller.teleconsultasVsPresenciales(req, res)
-);
+// ── Gráfico de torta: presencial vs teleconsulta ─────────────────────────────
+// GET /api/admin/estadisticas/tipo-consulta?periodo=año
+estadisticasAdminRouter.get('/tipo-consulta', (req, res) => controller.tipoConsulta(req, res));
 
-// ============================================================
-// GET /api/admin/estadisticas/promedio-edad
-// Distribución de edades de pacientes y doctores por rangos
-// ============================================================
-estadisticasAdminRouter.get(
-    '/promedio-edad',
-    (req, res) => controller.promedioEdad(req, res)
-);
+// ── Top especialidades por calificación ──────────────────────────────────────
+// GET /api/admin/estadisticas/top-especialidades?limite=5
+estadisticasAdminRouter.get('/top-especialidades', (req, res) => controller.topEspecialidades(req, res));
 
 export default estadisticasAdminRouter;

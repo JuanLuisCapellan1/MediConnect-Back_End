@@ -2,10 +2,21 @@
 // DTOs de respuesta para el dashboard estadístico del Admin
 // ============================================================
 
+// Periodos disponibles (igual que el UI: Semana | Mes | 3 Meses | Año | Todo)
+export type PeriodoEstadistica = 'semana' | 'mes' | '3meses' | 'año' | 'todo';
+
+export interface RangoFechas {
+    inicio: Date;
+    fin: Date;
+}
+
+// -----------------------------------------------------------
+// KPIs: tarjetas superiores
+
 export interface KpiEntidadDto {
     total: number;
     cambioPorcentaje: number; // positivo = crecimiento, negativo = caída
-    totalMesAnterior: number;
+    totalPeriodoAnterior: number;
 }
 
 export interface ResumenKpiDto {
@@ -15,47 +26,45 @@ export interface ResumenKpiDto {
 }
 
 // -----------------------------------------------------------
+// Gráfico de consultas (barras) — granularidad adaptativa
 
-export interface ConsultaMensualDto {
-    mes: number;       // 1-12
-    nombreMes: string; // "Ene", "Feb", ...
+export interface PuntoTemporalDto {
+    etiqueta: string;  // "Lun", "Ene", "Mar 2025", etc.
     total: number;
+    fecha?: string;    // ISO opcional para tooltip
 }
 
-export interface ConsultasMensualesDto {
-    anio: number;
-    datos: ConsultaMensualDto[];
-}
-
-// -----------------------------------------------------------
-
-export interface ActividadMesDto {
-    mes: number;
-    nombreMes: string;
-    usuariosActivos: number;
-}
-
-export interface ActividadUsoDto {
-    anio: number;
-    datos: ActividadMesDto[];
+export interface ConsultasChartDto {
+    periodo: PeriodoEstadistica;
+    datos: PuntoTemporalDto[];
 }
 
 // -----------------------------------------------------------
+// Gráfico de usuarios registrados (línea) — granularidad adaptativa
 
-export interface ServicioPopularDto {
+export interface UsuariosChartDto {
+    periodo: PeriodoEstadistica;
+    datos: PuntoTemporalDto[];
+}
+
+// -----------------------------------------------------------
+// Gráfico de torta: distribución de servicios
+
+export interface ServicioDistribucionDto {
     nombre: string;
     total: number;
     porcentaje: number;
 }
 
-export interface ServiciosPopularesDto {
-    datos: ServicioPopularDto[];
+export interface ServiciosDistribucionDto {
     totalCitas: number;
+    datos: ServicioDistribucionDto[];
 }
 
 // -----------------------------------------------------------
+// Gráfico de torta: tipo de consulta (presencial vs teleconsulta)
 
-export interface TeleconsultasVsPresencialesDto {
+export interface TipoConsultaDto {
     presencial: number;
     teleconsulta: number;
     totalCitas: number;
@@ -64,27 +73,14 @@ export interface TeleconsultasVsPresencialesDto {
 }
 
 // -----------------------------------------------------------
+// Top especialidades por calificación promedio
 
-export interface RangoEdadDto {
-    rango: string;       // "0-18", "19-30", "31-45", "46-60", "60+"
-    pacientes: number;
-    doctores: number;
+export interface EspecialidadTopDto {
+    nombre: string;
+    calificacionPromedio: number;
+    totalResenas: number;
 }
 
-export interface PromedioEdadDto {
-    promedioEdadPacientes: number;
-    promedioEdadDoctores: number;
-    distribucion: RangoEdadDto[];
-}
-
-// -----------------------------------------------------------
-// Query params opcionales
-
-export interface FiltroEstadisticasAnioDto {
-    anio?: number;
-}
-
-export interface FiltroServiciosPopularesDto {
-    limite?: number;
-    anio?: number;
+export interface TopEspecialidadesDto {
+    datos: EspecialidadTopDto[];
 }

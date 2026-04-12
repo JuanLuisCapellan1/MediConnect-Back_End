@@ -4,9 +4,16 @@ import { prisma } from '../../infrastructure/database/prisma/client';
 import { EnviarNotificacionUseCase } from './notificaciones/EnviarNotificacionUseCase';
 
 /**
- * Caso de uso para aprobar o rechazar un documento específico.
- * Incluye lógica para aprobar automáticamente al doctor cuando todos sus documentos estén aprobados.
- * Emite notificaciones en tiempo real vía WebSocket usando EnviarNotificacionUseCase.
+ * Caso de uso para aprobar o rechazar un documento o la información personal de un doctor.
+ *
+ * Regla de negocio:
+ *   - `estadoInfoPersonal` refleja el estado de la revisión de los datos personales.
+ *   - `estadoRevision` de cada DocumentoDoctor refleja el estado de cada documento.
+ *   - `estadoVerificacion` (cuenta general) pasa a 'Aprobado' SOLO cuando:
+ *       · estadoInfoPersonal === 'Aprobado'  Y
+ *       · todos los DocumentoDoctor activos tienen estadoRevision === 'Aprobado'
+ *   - Cualquier rechazo vuelve el campo afectado a 'Rechazado' y estadoVerificacion a 'En revisión',
+ *     permitiendo que el doctor corrija y reenvíe.
  */
 @injectable()
 export class AprobarRechazarDocumentoUseCase {
@@ -29,7 +36,7 @@ export class AprobarRechazarDocumentoUseCase {
         // 2. Verificar que la acción existe y está pendiente
         const accion = await prisma.accion.findUnique({
             where: { id: dto.accionId },
-            include: { tipoAccion: true }, // Incluir tipo de acción para saber si es de Centro
+            include: { tipoAccion: true },
         });
 
         if (!accion) throw new Error('Acción no encontrada');
@@ -46,7 +53,7 @@ export class AprobarRechazarDocumentoUseCase {
         // 3. Obtener información del documento (solo si es revisión de un documento)
         let documentoDoctor: any = null;
         let documentoCentro: any = null;
-        
+
         if (accion.documentoId) {
             documentoDoctor = await prisma.documentoDoctor.findUnique({
                 where: { id: accion.documentoId },
@@ -78,12 +85,13 @@ export class AprobarRechazarDocumentoUseCase {
             });
 
             if (esRegistroCentro) {
-                // Lógica para Centro de Salud (Aprobado el perfil)
+                // Lógica para Centro de Salud
                 const nuevoEstadoCentro = dto.decision === 'Aprobada' ? 'Aprobado' : 'Rechazado';
                 await tx.centroSalud.update({
                     where: { usuarioId: accion.emisorId },
                     data: { estadoVerificacion: nuevoEstadoCentro, actualizadoEn: new Date() },
                 });
+
             } else if (esDocumentoCentro) {
                 // Lógica de Documento de Centro
                 const nuevoEstadoDoc = dto.decision === 'Aprobada' ? 'Aprobado' : 'Rechazado';
@@ -91,40 +99,87 @@ export class AprobarRechazarDocumentoUseCase {
                     where: { id_documento_centro: accion.id_documento_centro! },
                     data: { estado_revision: nuevoEstadoDoc, actualizado_en: new Date() },
                 });
+
             } else if (esRegistroDoctor) {
-                // Lógica para aprobación/rechazo del PERFIL/REGISTRO del doctor
-                const nuevoEstadoDoctor = dto.decision === 'Aprobada' ? 'Aprobado' : 'Rechazado';
-                await tx.doctor.update({
-                    where: { usuarioId: accion.emisorId },
-                    data: { estadoVerificacion: nuevoEstadoDoctor, actualizadoEn: new Date() },
-                });
-                cuentaDoctorAprobada = dto.decision === 'Aprobada';
+                // ── Aprobación/rechazo de INFORMACIÓN PERSONAL del doctor ──────────────
+                // Actualiza estadoInfoPersonal y recalcula estadoVerificacion global.
+                const nuevoEstadoInfoPersonal = dto.decision === 'Aprobada' ? 'Aprobado' : 'Rechazado';
+
+                if (dto.decision === 'Aprobada') {
+                    // Info personal aprobada → comprobar si todos los docs también están aprobados
+                    const documentos = await tx.documentoDoctor.findMany({
+                        where: { doctorId: accion.emisorId, estado: 'Activo' },
+                        select: { estadoRevision: true },
+                    });
+
+                    const todosDocumentosAprobados =
+                        documentos.length > 0 &&
+                        documentos.every((doc) => doc.estadoRevision === 'Aprobado');
+
+                    const nuevoEstadoVerif = todosDocumentosAprobados ? 'Aprobado' : 'En revisión';
+                    await tx.doctor.update({
+                        where: { usuarioId: accion.emisorId },
+                        data: {
+                            estadoInfoPersonal: nuevoEstadoInfoPersonal,
+                            estadoVerificacion: nuevoEstadoVerif,
+                            actualizadoEn: new Date(),
+                        },
+                    });
+                    cuentaDoctorAprobada = todosDocumentosAprobados;
+                } else {
+                    // Info personal rechazada → estadoInfoPersonal = 'Rechazado', cuenta pasa a 'Rechazado'
+                    // para que el doctor sepa que debe corregir y reenviar su información personal.
+                    await tx.doctor.update({
+                        where: { usuarioId: accion.emisorId },
+                        data: {
+                            estadoInfoPersonal: nuevoEstadoInfoPersonal,
+                            estadoVerificacion: 'Rechazado',
+                            actualizadoEn: new Date(),
+                        },
+                    });
+                }
+
             } else {
-                // Lógica de un Documento de Doctor específico
+                // ── Aprobación/rechazo de un DOCUMENTO específico del doctor ──────────
                 const nuevoEstadoDoc = dto.decision === 'Aprobada' ? 'Aprobado' : 'Rechazado';
                 await tx.documentoDoctor.update({
                     where: { id: accion.documentoId! },
                     data: { estadoRevision: nuevoEstadoDoc, actualizadoEn: new Date() },
                 });
 
-                // Si fue aprobado el documento, revisar si TODOS están aprobados para aprobar la cuenta
                 if (dto.decision === 'Aprobada') {
-                    const todosLosDocumentos = await tx.documentoDoctor.findMany({
+                    // Documento aprobado → comprobar si todos los docs Y la info personal están aprobados
+                    const documentos = await tx.documentoDoctor.findMany({
                         where: { doctorId: documentoDoctor.doctorId, estado: 'Activo' },
-                        select: { id: true, estadoRevision: true },
+                        select: { estadoRevision: true },
                     });
 
-                    const todosAprobados = todosLosDocumentos.every(
+                    const todosDocumentosAprobados = documentos.every(
                         (doc) => doc.estadoRevision === 'Aprobado',
                     );
 
-                    if (todosAprobados) {
-                        await tx.doctor.update({
+                    if (todosDocumentosAprobados) {
+                        // Verificar también que la info personal esté aprobada
+                        const doctorActual = await tx.doctor.findUnique({
                             where: { usuarioId: documentoDoctor.doctorId },
-                            data: { estadoVerificacion: 'Aprobado', actualizadoEn: new Date() },
+                            select: { estadoInfoPersonal: true },
                         });
-                        cuentaDoctorAprobada = true;
+
+                        if (doctorActual?.estadoInfoPersonal === 'Aprobado') {
+                            await tx.doctor.update({
+                                where: { usuarioId: documentoDoctor.doctorId },
+                                data: { estadoVerificacion: 'Aprobado', actualizadoEn: new Date() },
+                            });
+                            cuentaDoctorAprobada = true;
+                        }
+                        // Si la info personal no está aprobada, estadoVerificacion se queda en 'En revisión'
                     }
+                } else {
+                    // Documento rechazado → cuenta vuelve a 'En revisión' para que corrija y reenvíe
+                    await tx.doctor.update({
+                        where: { usuarioId: documentoDoctor.doctorId },
+                        data: { estadoVerificacion: 'En revisión', actualizadoEn: new Date() },
+                    });
                 }
             }
         });
@@ -170,31 +225,42 @@ export class AprobarRechazarDocumentoUseCase {
                     });
                 }
             } else if (esRegistroDoctor) {
-                // Notificación para aprobación/rechazo del registro del doctor
-                if (dto.decision === 'Aprobada') {
+                // Notificaciones de información personal
+                if (dto.decision === 'Aprobada' && cuentaDoctorAprobada) {
+                    // Info personal + todos los docs aprobados → cuenta completa
                     await this.enviarNotifUC.execute({
                         usuarioId: accion.emisorId,
-                        titulo: '¡Cuenta Aprobada!',
-                        mensaje: 'Tu cuenta de doctor ha sido aprobada. Ya puedes comenzar a ofrecer tus servicios en MediConnect.',
+                        titulo: '¡Cuenta Completamente Aprobada!',
+                        mensaje: '¡Felicidades! Tu información personal y todos tus documentos han sido aprobados. Ya puedes comenzar a ofrecer tus servicios en MediConnect.',
+                        tipoAlerta: 'Exito',
+                        tipoEntidad: 'Perfil',
+                    });
+                } else if (dto.decision === 'Aprobada') {
+                    // Info personal aprobada, aún hay docs pendientes
+                    await this.enviarNotifUC.execute({
+                        usuarioId: accion.emisorId,
+                        titulo: 'Información Personal Aprobada',
+                        mensaje: 'Tu información personal ha sido aprobada. Tu cuenta quedará completamente verificada una vez que tus documentos sean revisados.',
                         tipoAlerta: 'Exito',
                         tipoEntidad: 'Perfil',
                     });
                 } else {
+                    // Info personal rechazada
                     await this.enviarNotifUC.execute({
                         usuarioId: accion.emisorId,
-                        titulo: 'Revisión de Registro',
-                        mensaje: `Tu información de registro ha sido rechazada por el administrador. ${dto.comentario ? `Motivo: ${dto.comentario}` : 'Por favor, actualiza tu información para continuar con el proceso.'}`,
+                        titulo: 'Información Personal Rechazada',
+                        mensaje: `Tu información personal ha sido rechazada. ${dto.comentario ? `Motivo: ${dto.comentario}` : 'Por favor, corrígela y vuelve a enviarla para continuar con el proceso de verificación.'}`,
                         tipoAlerta: 'Importante',
                         tipoEntidad: 'Perfil',
                     });
                 }
             } else {
-                // Doctor — notificación de un documento específico
+                // Notificaciones de documento específico del doctor
                 if (dto.decision === 'Aprobada' && cuentaDoctorAprobada) {
                     await this.enviarNotifUC.execute({
                         usuarioId: documentoDoctor.doctorId,
-                        titulo: '¡Todos los documentos aprobados!',
-                        mensaje: 'Todos tus documentos han sido aprobados. Tu cuenta está completamente verificada en MediConnect.',
+                        titulo: '¡Cuenta Completamente Aprobada!',
+                        mensaje: 'Todos tus documentos e información personal han sido aprobados. Tu cuenta está completamente verificada en MediConnect.',
                         tipoAlerta: 'Exito',
                         tipoEntidad: 'Perfil',
                     });
@@ -209,7 +275,7 @@ export class AprobarRechazarDocumentoUseCase {
                 } else {
                     await this.enviarNotifUC.execute({
                         usuarioId: documentoDoctor.doctorId,
-                        titulo: 'Actualización de Verificación',
+                        titulo: 'Documento Rechazado',
                         mensaje: `Tu documento "${documentoDoctor.tipoDocumento}" ha sido rechazado. ${dto.comentario ? `Motivo: ${dto.comentario}` : 'Por favor, actualízalo para continuar con el proceso de verificación.'}`,
                         tipoAlerta: 'Importante',
                         tipoEntidad: 'Perfil',
