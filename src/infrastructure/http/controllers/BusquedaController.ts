@@ -66,17 +66,21 @@ export class BusquedaController {
             const esDoctor = (req as any).user?.rol === 'Doctor';
             const doctorId = esDoctor ? ((req as any).user?.userId as number) : undefined;
 
+            // ── centroId para estaConectado (en doctores) ────────────────────
+            const esCentro = (req as any).user?.rol === 'Centro';
+            const centroId = esCentro ? ((req as any).user?.userId as number) : undefined;
+
             // ── Repos desde el contenedor ────────────────────────────────────
             const doctorRepo = container.resolve(GestionarDoctoresUseCase)['doctorRepository'];
             const centroRepo = container.resolve(GestionarCentroSaludUseCase)['centroRepo'];
 
             // ── Ejecución paralela ────────────────────────────────────────────
             const quiereDoctores = !tipo || tipo === 'Doctor';
-            const quiereCentros = !tipo || tipo === 'CentroSalud';
+            const quiereCentros = !tipo || tipo === 'Centro';
 
             const [doctores, centros] = await Promise.all([
                 quiereDoctores
-                    ? doctorRepo.buscarCercanos(latFinal, lngFinal, radioFinal, filtrosDoctor, pacienteId)
+                    ? doctorRepo.buscarCercanos(latFinal, lngFinal, radioFinal, filtrosDoctor, pacienteId, centroId)
                     : Promise.resolve([]),
                 quiereCentros
                     ? centroRepo.buscarCercanos(latFinal, lngFinal, radioFinal, filtrosCentro, doctorId)

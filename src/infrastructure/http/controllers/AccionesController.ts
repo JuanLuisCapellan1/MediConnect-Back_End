@@ -91,7 +91,7 @@ export class AccionesController {
                 .map((a) => a.emisorId);
 
             const emisoresCentro = acciones
-                .filter((a) => a.emisor.rol === 'Centro' || a.emisor.rol === 'CentroSalud')
+                .filter((a) => a.emisor.rol === 'Centro' || a.emisor.rol === 'Centro')
                 .map((a) => a.emisorId);
 
             // Query en lote para enriquecer datos
@@ -148,7 +148,7 @@ export class AccionesController {
                     let perfilEmisor: any = null;
                     if (accion.emisor.rol === 'Doctor') {
                         perfilEmisor = doctoresMap.get(accion.emisorId) || null;
-                    } else if (accion.emisor.rol === 'Centro' || accion.emisor.rol === 'CentroSalud') {
+                    } else if (accion.emisor.rol === 'Centro' || accion.emisor.rol === 'Centro') {
                         perfilEmisor = centrosMap.get(accion.emisorId) || null;
                     }
 

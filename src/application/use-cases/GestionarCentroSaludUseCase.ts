@@ -34,17 +34,16 @@ export class GestionarCentroSaludUseCase {
         let requiereRevisionAdmin = false;
         let razonRevision = '';
 
-        // Análisis de reglas de negocio para re-evalución
-        if (centro.estadoVerificacion === 'Rechazado') {
-            // Caso 1: Estaba rechazado, cualquier actualización es un intento de arreglo
+        // Caso 1: La información del centro fue rechazada → cualquier actualización es un intento de corrección
+        if (centro.estadoInfoPersonal === 'Rechazado') {
             requiereRevisionAdmin = true;
-            razonRevision = 'El centro ha corregido sus datos tras ser rechazado previamente.';
+            razonRevision = 'El centro ha corregido la información de su perfil tras ser rechazado previamente.';
         } else if (centro.estadoVerificacion === 'Aprobado' || centro.estadoVerificacion === 'En revisión') {
-            // Caso 2: Estaba aprobado (o en revisión por documentos pendientes). 
+            // Caso 2: Info ya aprobada (o en revisión por documentos pendientes).
             // Revisar si cambian datos legales críticos (RNC / Nombre Comercial)
             const nombreCambiado = dto.nombreComercial !== undefined && dto.nombreComercial.trim() !== centro.nombreComercial;
             const rncCambiado = dto.rnc !== undefined && dto.rnc.trim() !== centro.rnc;
-            
+
             if (nombreCambiado || rncCambiado) {
                 // Verificar si YA tiene una acción pendiente de Registro/Revisión de Perfil
                 const accionPerfilPendiente = await this.prisma.accion.findFirst({
@@ -55,7 +54,6 @@ export class GestionarCentroSaludUseCase {
                     }
                 });
 
-                // Si no hay acción pendiente para el perfil, o si estaba ya aprobado, exigimos revisión
                 if (!accionPerfilPendiente) {
                     requiereRevisionAdmin = true;
                     razonRevision = 'El centro ha modificado su información legal sensible (RNC o Nombre Comercial).';
@@ -65,7 +63,6 @@ export class GestionarCentroSaludUseCase {
 
         // Realizamos la transición transaccional para evitar inconsistencias
         return await this.prisma.$transaction(async (tx) => {
-            // Actualizar datos de Centro en Prisma directamente o usar logica de actualizacion
             const updatePayload: any = { actualizadoEn: new Date() };
 
             if (dto.nombreComercial !== undefined) updatePayload.nombreComercial = dto.nombreComercial?.trim();
@@ -76,7 +73,9 @@ export class GestionarCentroSaludUseCase {
             if (dto.telefono !== undefined) updatePayload.usuario = { update: { telefono: dto.telefono?.trim() } };
 
             if (requiereRevisionAdmin) {
-                updatePayload.estadoVerificacion = 'En revisión';
+                // Resetear estado de info personal a Pendiente para que el admin lo revise de nuevo
+                updatePayload.estadoInfoPersonal = 'Pendiente';
+                updatePayload.estadoVerificacion = 'Pendiente';
             }
 
             const centroActualizado = await tx.centroSalud.update({
@@ -85,7 +84,7 @@ export class GestionarCentroSaludUseCase {
                 include: { usuario: true, tipoCentro: true, ubicacion: true }
             });
 
-            // Si se requiere revisión, generar nueva acción "Registro Centro de Salud"
+            // Si se requiere revisión, generar nueva acción “Registro Centro de Salud”
             if (requiereRevisionAdmin) {
                 let tipoAccion = await tx.tipoAccion.findFirst({
                     where: { nombre: 'Registro Centro de Salud' },
@@ -143,19 +142,21 @@ export class GestionarCentroSaludUseCase {
         const centro = await this.centroRepo.obtenerPorId(centroId);
         if (!centro) throw new Error('Centro de salud no encontrado');
 
-        // Si estaba Rechazado, una actualización de ubicación es un intento de corrección → En revisión
-        if (centro.estadoVerificacion === 'Rechazado') {
+        // Si la información del centro fue rechazada, una actualización de ubicación
+        // es un intento de corrección → resetear estadoInfoPersonal y crear accion de revisión
+        if (centro.estadoInfoPersonal === 'Rechazado') {
             return await this.prisma.$transaction(async (tx) => {
-                // Actualizar ubicación
                 const result = await this.centroRepo.actualizarUbicacion(centroId, dto);
 
-                // Cambiar estado a En revisión
                 await tx.centroSalud.update({
                     where: { usuarioId: centroId },
-                    data: { estadoVerificacion: 'En revisión', actualizadoEn: new Date() },
+                    data: {
+                        estadoInfoPersonal: 'Pendiente',
+                        estadoVerificacion: 'Pendiente',
+                        actualizadoEn: new Date(),
+                    },
                 });
 
-                // Crear / reutilizar TipoAccion
                 let tipoAccion = await tx.tipoAccion.findFirst({
                     where: { nombre: 'Registro Centro de Salud' },
                 });
@@ -165,7 +166,6 @@ export class GestionarCentroSaludUseCase {
                     });
                 }
 
-                // Crear acción de revisión
                 await tx.accion.create({
                     data: {
                         tipoAccionId: tipoAccion.id,

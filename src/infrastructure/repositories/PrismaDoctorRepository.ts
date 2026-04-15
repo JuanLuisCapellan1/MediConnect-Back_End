@@ -599,6 +599,7 @@ export class PrismaDoctorRepository implements IDoctorRepository {
         radioKm?: number,
         filtros?: FiltroDoctoresCercania,
         pacienteId?: number,
+        centroId?: number,
     ): Promise<any[]> {
         const useGeo = lat != null && lng != null && radioKm != null;
         const radioMetros = useGeo ? radioKm! * 1000 : 0;
@@ -844,6 +845,23 @@ export class PrismaDoctorRepository implements IDoctorRepository {
             }
         }
 
+        // ── Alianzas del centro con cada doctor ────────────────────────────────
+        // Cuando el usuario autenticado es un Centro de Salud, se consultan sus
+        // solicitudes de alianza con los doctores del resultado.
+        const alianzaMap = new Map<number, { id: number; estado: string }>();
+        if (centroId !== undefined) {
+            const alianzas = await this.prisma.solicitudAlianza.findMany({
+                where: { centroSaludId: centroId, doctorId: { in: idsOrdenados } },
+                select: { id: true, doctorId: true, estado: true },
+                orderBy: { creadoEn: 'desc' },
+            });
+            for (const a of alianzas) {
+                if (!alianzaMap.has(a.doctorId)) {
+                    alianzaMap.set(a.doctorId, { id: a.id, estado: a.estado });
+                }
+            }
+        }
+
         // ── Favoritos del paciente ─────────────────────────────────────────────
         const favoritosSet = new Set<number>();
         if (pacienteId) {
@@ -869,6 +887,9 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                     tarifas: d.tarifas != null ? Number(d.tarifas) : null,
                     cantidadResenas: d._count?.resenas ?? 0,
                     esFavorito: pacienteId ? favoritosSet.has(id) : false,
+                    estaConectado: centroId !== undefined ? (alianzaMap.get(id)?.estado === 'Aceptada') : false,
+                    estadoAlianza: centroId !== undefined ? (alianzaMap.get(id)?.estado ?? null) : null,
+                    solicitudAlianzaId: centroId !== undefined ? (alianzaMap.get(id)?.id ?? null) : null,
                     servicios: (d.servicios ?? []).map((s: any) => ({
                         ...s,
                         precio: s.precio != null ? Number(s.precio) : null,
