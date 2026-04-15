@@ -19,11 +19,11 @@ export class GestionarSolicitudesAlianzaUseCase {
      */
     async enviarSolicitud(
         remitenteId: number,
-        rol: 'Doctor' | 'CentroSalud',
+        rol: 'Doctor' | 'Centro',
         dto: CrearSolicitudAlianzaDto
     ): Promise<any> {
         const doctorId = rol === 'Doctor' ? remitenteId : dto.destinatarioId;
-        const centroSaludId = rol === 'CentroSalud' ? remitenteId : dto.destinatarioId;
+        const centroSaludId = rol === 'Centro' ? remitenteId : dto.destinatarioId;
         const iniciadaPor = rol === 'Doctor' ? 'Doctor' : 'Centro';
 
         // Validar que el centro de salud destinatario existe
@@ -69,8 +69,8 @@ export class GestionarSolicitudesAlianzaUseCase {
     /**
      * Listar solicitudes según el rol del usuario autenticado.
      */
-    async listarSolicitudes(usuarioId: number, rol: 'Doctor' | 'CentroSalud'): Promise<any[]> {
-        if (rol === 'CentroSalud') {
+    async listarSolicitudes(usuarioId: number, rol: 'Doctor' | 'Centro'): Promise<any[]> {
+        if (rol === 'Centro') {
             return await this.solicitudRepo.listarPorCentro(usuarioId);
         }
         return await this.solicitudRepo.listarPorDoctor(usuarioId);
@@ -83,7 +83,7 @@ export class GestionarSolicitudesAlianzaUseCase {
     async responderSolicitud(
         solicitudId: number,
         usuarioId: number,
-        rol: 'Doctor' | 'CentroSalud',
+        rol: 'Doctor' | 'Centro',
         dto: ResponderSolicitudAlianzaDto
     ): Promise<any> {
         const solicitud = await this.solicitudRepo.buscarPorId(solicitudId);
@@ -94,7 +94,7 @@ export class GestionarSolicitudesAlianzaUseCase {
         }
 
         // Validar que quien responde es el destinatario (no quien inició)
-        if (rol === 'CentroSalud') {
+        if (rol === 'Centro') {
             if (solicitud.centroSaludId !== usuarioId) {
                 throw new Error('No tienes permisos para responder esta solicitud');
             }
@@ -121,7 +121,7 @@ export class GestionarSolicitudesAlianzaUseCase {
         });
 
         // ─ Notificar al REMITENTE sobre el resultado ─────────────────────────
-        const remitenteId = rol === 'CentroSalud' ? solicitud.doctorId : solicitud.centroSaludId;
+        const remitenteId = rol === 'Centro' ? solicitud.doctorId : solicitud.centroSaludId;
         const accion = dto.estado === 'Aceptada' ? 'aprobada' : 'rechazada';
         this.enviarNotifUC.execute({
             usuarioId: remitenteId,
@@ -143,12 +143,12 @@ export class GestionarSolicitudesAlianzaUseCase {
     async desconectarAlianza(
         solicitudId: number,
         usuarioId: number,
-        rol: 'Doctor' | 'CentroSalud'
+        rol: 'Doctor' | 'Centro'
     ): Promise<void> {
         const solicitud = await this.solicitudRepo.buscarPorId(solicitudId);
         if (!solicitud) throw new Error('Solicitud de alianza no encontrada');
 
-        if (rol === 'CentroSalud' && solicitud.centroSaludId !== usuarioId) {
+        if (rol === 'Centro' && solicitud.centroSaludId !== usuarioId) {
             throw new Error('No tienes permisos para eliminar esta alianza');
         }
         if (rol === 'Doctor' && solicitud.doctorId !== usuarioId) {

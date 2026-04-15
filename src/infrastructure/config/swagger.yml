@@ -20645,12 +20645,23 @@ paths:
       tags:
         - EstadisticasAdmin
       description: |
-        Retorna los totales de **pacientes**, **doctores** y **centros de salud** registrados,
-        junto con el porcentaje de cambio respecto al mes anterior.
-        
+        Retorna los totales de pacientes, doctores y centros de salud registrados,
+        junto con el porcentaje de cambio respecto al periodo anterior equivalente.
+
+        **Periodos disponibles:** `semana` · `mes` · `3meses` · `año` · `todo`
+
         **Requiere rol Administrador.**
       security:
         - bearerAuth: []
+      parameters:
+        - name: periodo
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [semana, mes, 3meses, año, todo]
+            default: mes
+          description: Periodo de comparación para calcular el % de cambio.
       responses:
         '200':
           description: KPIs obtenidos exitosamente
@@ -20666,53 +20677,51 @@ paths:
                     type: object
                     properties:
                       pacientes:
-                        $ref: '#/components/schemas/KpiEntidadDto'
+                        $ref: '#/components/schemas/KpiEntidad'
                       doctores:
-                        $ref: '#/components/schemas/KpiEntidadDto'
+                        $ref: '#/components/schemas/KpiEntidad'
                       centrosSalud:
-                        $ref: '#/components/schemas/KpiEntidadDto'
+                        $ref: '#/components/schemas/KpiEntidad'
         '401':
           description: No autenticado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Rol insuficiente (requiere Administrador)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          description: Rol insuficiente
         '500':
           description: Error interno del servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
-  /admin/estadisticas/consultas-mensuales:
+  /admin/estadisticas/consultas:
     get:
-      summary: Citas agrupadas por mes
+      summary: Citas agrupadas por periodo (barras)
       tags:
         - EstadisticasAdmin
       description: |
-        Retorna el conteo de citas agrupado mes a mes para el año indicado.
-        Usado para el **gráfico de barras** de consultas mensuales.
-        
+        Retorna las citas del sistema agrupadas con granularidad adaptativa según el periodo:
+
+        | Periodo   | Agrupación          |
+        |-----------|---------------------|
+        | `semana`  | Por día (7 puntos)  |
+        | `mes`     | Por semana (~4 pts) |
+        | `3meses`  | Por semana (~13 pts)|
+        | `año`     | Por mes (12 puntos) |
+        | `todo`    | Por año             |
+
+        Usado para el **gráfico de barras de Consultas**.
+
         **Requiere rol Administrador.**
       security:
         - bearerAuth: []
       parameters:
-        - name: anio
+        - name: periodo
           in: query
           required: false
           schema:
-            type: integer
-            example: 2026
-          description: Año a consultar. Por defecto el año actual.
+            type: string
+            enum: [semana, mes, 3meses, año, todo]
+            default: año
+          description: Periodo a visualizar.
       responses:
         '200':
-          description: Consultas mensuales obtenidas
+          description: Datos del gráfico obtenidos
           content:
             application/json:
               schema:
@@ -20724,23 +20733,13 @@ paths:
                   data:
                     type: object
                     properties:
-                      anio:
-                        type: integer
-                        example: 2026
+                      periodo:
+                        type: string
+                        example: "año"
                       datos:
                         type: array
                         items:
-                          type: object
-                          properties:
-                            mes:
-                              type: integer
-                              example: 1
-                            nombreMes:
-                              type: string
-                              example: "Ene"
-                            total:
-                              type: integer
-                              example: 670
+                          $ref: '#/components/schemas/PuntoTemporal'
         '401':
           description: No autenticado
         '403':
@@ -20748,30 +20747,39 @@ paths:
         '500':
           description: Error interno del servidor
 
-  /admin/estadisticas/actividad-uso:
+  /admin/estadisticas/usuarios:
     get:
-      summary: Usuarios activos por mes
+      summary: Usuarios registrados por periodo (línea)
       tags:
         - EstadisticasAdmin
       description: |
-        Retorna la cantidad de usuarios únicos (pacientes + doctores) con actividad
-        en citas por cada mes del año indicado.
-        Usado para el **gráfico de área** de actividad de uso.
-        
+        Retorna los usuarios registrados en el sistema agrupados con granularidad adaptativa según el periodo:
+
+        | Periodo   | Agrupación          |
+        |-----------|---------------------|
+        | `semana`  | Por día (7 puntos)  |
+        | `mes`     | Por semana (~4 pts) |
+        | `3meses`  | Por semana (~13 pts)|
+        | `año`     | Por mes (12 puntos) |
+        | `todo`    | Por año             |
+
+        Usado para el **gráfico de línea de Usuarios**.
+
         **Requiere rol Administrador.**
       security:
         - bearerAuth: []
       parameters:
-        - name: anio
+        - name: periodo
           in: query
           required: false
           schema:
-            type: integer
-            example: 2026
-          description: Año a consultar. Por defecto el año actual.
+            type: string
+            enum: [semana, mes, 3meses, año, todo]
+            default: año
+          description: Periodo a visualizar.
       responses:
         '200':
-          description: Actividad de uso obtenida
+          description: Datos del gráfico obtenidos
           content:
             application/json:
               schema:
@@ -20783,23 +20791,13 @@ paths:
                   data:
                     type: object
                     properties:
-                      anio:
-                        type: integer
-                        example: 2026
+                      periodo:
+                        type: string
+                        example: "año"
                       datos:
                         type: array
                         items:
-                          type: object
-                          properties:
-                            mes:
-                              type: integer
-                              example: 6
-                            nombreMes:
-                              type: string
-                              example: "Jun"
-                            usuariosActivos:
-                              type: integer
-                              example: 1830
+                          $ref: '#/components/schemas/PuntoTemporal'
         '401':
           description: No autenticado
         '403':
@@ -20807,46 +20805,46 @@ paths:
         '500':
           description: Error interno del servidor
 
-  /admin/estadisticas/servicios-populares:
+  /admin/estadisticas/servicios:
     get:
-      summary: Servicios más utilizados en citas
+      summary: Distribución de servicios en citas (torta)
       tags:
         - EstadisticasAdmin
       description: |
-        Retorna los servicios más solicitados en citas, ordenados por frecuencia descendente.
-        Incluye el porcentaje respecto al total.
-        Usado para el **gráfico de torta** de servicios más utilizados.
+        Retorna los servicios más solicitados en citas, con porcentaje sobre el total.
+        Usado para el **gráfico de torta de Servicios**.
 
         **Traducción Automática:**
-        El campo `nombre` del servicio puede traducirse usando:
+        El campo `nombre` puede traducirse con:
         `?target=en&translate_fields=nombre`
 
         **Requiere rol Administrador.**
       security:
         - bearerAuth: []
       parameters:
+        - name: periodo
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [semana, mes, 3meses, año, todo]
+            default: año
+          description: Periodo a filtrar.
         - name: limite
           in: query
           required: false
           schema:
             type: integer
-            default: 5
-            example: 5
+            default: 8
+            example: 8
           description: Número máximo de servicios a retornar.
-        - name: anio
-          in: query
-          required: false
-          schema:
-            type: integer
-            example: 2026
-          description: Filtrar por año. Sin este parámetro incluye todos los registros.
         - name: target
           in: query
           required: false
           schema:
             type: string
           example: "en"
-          description: Idioma destino para traducción automática del campo `nombre`.
+          description: Idioma destino para traducción automática.
         - name: source
           in: query
           required: false
@@ -20861,11 +20859,10 @@ paths:
           schema:
             type: string
           example: "nombre"
-          description: Campos a traducir separados por coma (ej. `nombre`).
+          description: Campos a traducir separados por coma.
       responses:
-
         '200':
-          description: Servicios populares obtenidos
+          description: Distribución de servicios obtenida
           content:
             application/json:
               schema:
@@ -20901,30 +20898,31 @@ paths:
         '500':
           description: Error interno del servidor
 
-  /admin/estadisticas/teleconsultas-vs-presenciales:
+  /admin/estadisticas/tipo-consulta:
     get:
-      summary: Comparativa TeleConsulta vs Presencial
+      summary: Presencial vs Teleconsulta (torta)
       tags:
         - EstadisticasAdmin
       description: |
         Retorna el conteo y porcentaje de citas según su modalidad:
         **Presencial** vs **Teleconsulta**.
-        Usado para el **gráfico de torta** de TeleConsulta vs Consultas Presenciales.
-        
+        Usado para el **gráfico de torta de Consultas**.
+
         **Requiere rol Administrador.**
       security:
         - bearerAuth: []
       parameters:
-        - name: anio
+        - name: periodo
           in: query
           required: false
           schema:
-            type: integer
-            example: 2026
-          description: Filtrar por año. Sin este parámetro incluye todos los registros.
+            type: string
+            enum: [semana, mes, 3meses, año, todo]
+            default: año
+          description: Periodo a filtrar.
       responses:
         '200':
-          description: Comparativa de modalidades obtenida
+          description: Distribución por tipo de consulta obtenida
           content:
             application/json:
               schema:
@@ -20958,22 +20956,56 @@ paths:
         '500':
           description: Error interno del servidor
 
-  /admin/estadisticas/promedio-edad:
+  /admin/estadisticas/top-especialidades:
     get:
-      summary: Distribución de edades de pacientes y doctores
+      summary: Top especialidades por calificación promedio
       tags:
         - EstadisticasAdmin
       description: |
-        Retorna el promedio de edad de pacientes y doctores, junto con
-        la distribución por rangos etários: `0-18`, `19-30`, `31-45`, `46-60`, `60+`.
-        Usado para el **gráfico de área** de promedio de edad de usuarios.
-        
+        Retorna las especialidades con mejor calificación promedio según las reseñas activas
+        de los doctores del sistema. Usado para el **panel de Top Especialidades**.
+
+        **Traducción Automática:**
+        El campo `nombre` puede traducirse con:
+        `?target=en&translate_fields=nombre`
+
         **Requiere rol Administrador.**
       security:
         - bearerAuth: []
+      parameters:
+        - name: limite
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 5
+            example: 5
+          description: Número de especialidades a retornar.
+        - name: target
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "en"
+          description: Idioma destino para traducción automática del campo `nombre`.
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "es"
+          example: "es"
+          description: Idioma origen (por defecto español).
+        - name: translate_fields
+          in: query
+          required: false
+          schema:
+            type: string
+          example: "nombre"
+          description: Campos a traducir separados por coma.
       responses:
         '200':
-          description: Distribución de edades obtenida
+          description: Top especialidades obtenido
           content:
             application/json:
               schema:
@@ -20985,33 +21017,26 @@ paths:
                   data:
                     type: object
                     properties:
-                      promedioEdadPacientes:
-                        type: number
-                        example: 34.5
-                      promedioEdadDoctores:
-                        type: number
-                        example: 42.1
-                      distribucion:
+                      datos:
                         type: array
                         items:
                           type: object
                           properties:
-                            rango:
+                            nombre:
                               type: string
-                              example: "19-30"
-                            pacientes:
+                              example: "Psicología"
+                            calificacionPromedio:
+                              type: number
+                              example: 4.9
+                            totalResenas:
                               type: integer
-                              example: 120
-                            doctores:
-                              type: integer
-                              example: 15
+                              example: 82
         '401':
           description: No autenticado
         '403':
           description: Rol insuficiente
         '500':
           description: Error interno del servidor
-
   # ─── Contacto ────────────────────────────────────────────────────────────────
 
   /contacto/enviar:
@@ -21152,7 +21177,41 @@ paths:
 
 components:
   schemas:
-    # ─── Media ───────────────────────────────────────────────────────────────
+    # ─── Estadísticas Admin ───────────────────────────────────────────────────
+    KpiEntidad:
+      type: object
+      description: KPI de una entidad del sistema (pacientes, doctores, centros).
+      properties:
+        total:
+          type: integer
+          example: 412
+          description: Total acumulado de registros.
+        totalPeriodoAnterior:
+          type: integer
+          example: 35
+          description: Registros nuevos en el periodo anterior equivalente.
+        cambioPorcentaje:
+          type: number
+          example: 14.3
+          description: Porcentaje de cambio respecto al periodo anterior. Positivo = crecimiento.
+
+    PuntoTemporal:
+      type: object
+      description: Punto de datos en una serie temporal del dashboard.
+      properties:
+        etiqueta:
+          type: string
+          example: "Ene"
+          description: Etiqueta del eje X (día, semana, mes, año).
+        total:
+          type: integer
+          example: 345
+          description: Cantidad de registros en ese punto temporal.
+        fecha:
+          type: string
+          example: "2026-01-01"
+          description: Fecha ISO opcional para tooltips (puede ser null).
+
     Media:
       type: object
       description: Archivo multimedia registrado en el sistema (imagen, audio, video, documento).

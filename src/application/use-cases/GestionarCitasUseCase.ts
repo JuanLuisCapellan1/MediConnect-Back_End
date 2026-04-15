@@ -782,6 +782,23 @@ export class GestionarCitasUseCase {
         const historial = await this.citaRepo.buscarHistorialPorCita(citaId);
         if (!historial) throw new Error('Esta cita no tiene historial aún.');
 
+        // ── Generar URLs firmadas para los archivos adjuntos del diagnóstico ──
+        if (historial.adjuntos?.length > 0) {
+            await Promise.all(
+                historial.adjuntos.map(async (adjunto: any) => {
+                    if (!adjunto.media?.archivo) return;
+                    try {
+                        adjunto.media.urlFirmada = await this.storage.refreshOrGetSignedUrl(
+                            adjunto.media.archivo,
+                        );
+                    } catch (e: any) {
+                        console.warn(`[historial] No se pudo firmar URL para media ${adjunto.media.id}:`, e?.message);
+                        adjunto.media.urlFirmada = null;
+                    }
+                }),
+            );
+        }
+
         return historial;
     }
 

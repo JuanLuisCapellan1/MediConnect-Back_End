@@ -1,16 +1,26 @@
 import { Request, Response } from 'express';
 import { EstadisticasAdminUseCase } from '../../../application/use-cases/EstadisticasAdminUseCase';
+import { PeriodoEstadistica } from '../../../application/dtos/EstadisticasAdminDtos';
 
 const useCase = new EstadisticasAdminUseCase();
 
+const PERIODOS_VALIDOS: PeriodoEstadistica[] = ['semana', 'mes', '3meses', 'año', 'todo'];
+
+function parsePeriodo(raw: unknown, defecto: PeriodoEstadistica = 'año'): PeriodoEstadistica {
+    const val = typeof raw === 'string' ? raw.toLowerCase() : '';
+    return (PERIODOS_VALIDOS.includes(val as PeriodoEstadistica) ? val : defecto) as PeriodoEstadistica;
+}
+
 export class EstadisticasAdminController {
     /**
-     * GET /api/admin/estadisticas/resumen
-     * KPIs: total pacientes, doctores, centros de salud + % cambio vs mes anterior
+     * GET /api/admin/estadisticas/resumen?periodo=mes
+     * KPIs: total pacientes, doctores, centros de salud + % cambio vs periodo anterior.
+     * Periodos: semana | mes | 3meses | año | todo
      */
     async resumen(req: Request, res: Response): Promise<void> {
         try {
-            const datos = await useCase.obtenerResumen();
+            const periodo = parsePeriodo(req.query.periodo, 'mes');
+            const datos = await useCase.obtenerResumen(periodo);
             res.status(200).json({ success: true, data: datos });
         } catch (error: any) {
             console.error('[EstadisticasAdmin] resumen:', error);
@@ -19,77 +29,80 @@ export class EstadisticasAdminController {
     }
 
     /**
-     * GET /api/admin/estadisticas/consultas-mensuales?anio=2025
-     * Citas agrupadas mes a mes (gráfico de barras)
+     * GET /api/admin/estadisticas/consultas?periodo=año
+     * Citas agrupadas con granularidad adaptativa (barras).
+     * Periodos: semana | mes | 3meses | año | todo
      */
-    async consultasMensuales(req: Request, res: Response): Promise<void> {
+    async consultas(req: Request, res: Response): Promise<void> {
         try {
-            const anio = req.query.anio ? Number(req.query.anio) : undefined;
-            const datos = await useCase.obtenerConsultasMensuales(anio);
+            const periodo = parsePeriodo(req.query.periodo, 'año');
+            const datos = await useCase.obtenerConsultas(periodo);
             res.status(200).json({ success: true, data: datos });
         } catch (error: any) {
-            console.error('[EstadisticasAdmin] consultasMensuales:', error);
-            res.status(500).json({ success: false, message: 'Error al obtener las consultas mensuales.' });
+            console.error('[EstadisticasAdmin] consultas:', error);
+            res.status(500).json({ success: false, message: 'Error al obtener las consultas.' });
         }
     }
 
     /**
-     * GET /api/admin/estadisticas/actividad-uso?anio=2025
-     * Usuarios únicos activos por mes (gráfico de área)
+     * GET /api/admin/estadisticas/usuarios?periodo=año
+     * Usuarios registrados agrupados con granularidad adaptativa (línea).
+     * Periodos: semana | mes | 3meses | año | todo
      */
-    async actividadUso(req: Request, res: Response): Promise<void> {
+    async usuarios(req: Request, res: Response): Promise<void> {
         try {
-            const anio = req.query.anio ? Number(req.query.anio) : undefined;
-            const datos = await useCase.obtenerActividadUso(anio);
+            const periodo = parsePeriodo(req.query.periodo, 'año');
+            const datos = await useCase.obtenerUsuarios(periodo);
             res.status(200).json({ success: true, data: datos });
         } catch (error: any) {
-            console.error('[EstadisticasAdmin] actividadUso:', error);
-            res.status(500).json({ success: false, message: 'Error al obtener la actividad de uso.' });
+            console.error('[EstadisticasAdmin] usuarios:', error);
+            res.status(500).json({ success: false, message: 'Error al obtener los usuarios.' });
         }
     }
 
     /**
-     * GET /api/admin/estadisticas/servicios-populares?limite=5&anio=2025
-     * Servicios más utilizados en citas (gráfico de torta)
+     * GET /api/admin/estadisticas/servicios?periodo=año&limite=8
+     * Distribución de servicios en citas (torta).
      */
-    async serviciosPopulares(req: Request, res: Response): Promise<void> {
+    async servicios(req: Request, res: Response): Promise<void> {
+        try {
+            const periodo = parsePeriodo(req.query.periodo, 'año');
+            const limite = req.query.limite ? Number(req.query.limite) : 8;
+            const datos = await useCase.obtenerServiciosDistribucion(periodo, limite);
+            res.status(200).json({ success: true, data: datos });
+        } catch (error: any) {
+            console.error('[EstadisticasAdmin] servicios:', error);
+            res.status(500).json({ success: false, message: 'Error al obtener la distribución de servicios.' });
+        }
+    }
+
+    /**
+     * GET /api/admin/estadisticas/tipo-consulta?periodo=año
+     * Presencial vs Teleconsulta (torta).
+     */
+    async tipoConsulta(req: Request, res: Response): Promise<void> {
+        try {
+            const periodo = parsePeriodo(req.query.periodo, 'año');
+            const datos = await useCase.obtenerTipoConsulta(periodo);
+            res.status(200).json({ success: true, data: datos });
+        } catch (error: any) {
+            console.error('[EstadisticasAdmin] tipoConsulta:', error);
+            res.status(500).json({ success: false, message: 'Error al obtener el tipo de consulta.' });
+        }
+    }
+
+    /**
+     * GET /api/admin/estadisticas/top-especialidades?limite=5
+     * Top especialidades por calificación promedio de reseñas.
+     */
+    async topEspecialidades(req: Request, res: Response): Promise<void> {
         try {
             const limite = req.query.limite ? Number(req.query.limite) : 5;
-            const anio = req.query.anio ? Number(req.query.anio) : undefined;
-            const datos = await useCase.obtenerServiciosPopulares(limite, anio);
+            const datos = await useCase.obtenerTopEspecialidades(limite);
             res.status(200).json({ success: true, data: datos });
         } catch (error: any) {
-            console.error('[EstadisticasAdmin] serviciosPopulares:', error);
-            res.status(500).json({ success: false, message: 'Error al obtener los servicios populares.' });
-        }
-    }
-
-    /**
-     * GET /api/admin/estadisticas/teleconsultas-vs-presenciales?anio=2025
-     * Comparativa de modalidades (gráfico de torta)
-     */
-    async teleconsultasVsPresenciales(req: Request, res: Response): Promise<void> {
-        try {
-            const anio = req.query.anio ? Number(req.query.anio) : undefined;
-            const datos = await useCase.obtenerTeleconsultasVsPresenciales(anio);
-            res.status(200).json({ success: true, data: datos });
-        } catch (error: any) {
-            console.error('[EstadisticasAdmin] teleconsultasVsPresenciales:', error);
-            res.status(500).json({ success: false, message: 'Error al obtener la comparativa de modalidades.' });
-        }
-    }
-
-    /**
-     * GET /api/admin/estadisticas/promedio-edad
-     * Distribución de edades por rangos (gráfico de área/línea)
-     */
-    async promedioEdad(req: Request, res: Response): Promise<void> {
-        try {
-            const datos = await useCase.obtenerPromedioEdad();
-            res.status(200).json({ success: true, data: datos });
-        } catch (error: any) {
-            console.error('[EstadisticasAdmin] promedioEdad:', error);
-            res.status(500).json({ success: false, message: 'Error al obtener el promedio de edad.' });
+            console.error('[EstadisticasAdmin] topEspecialidades:', error);
+            res.status(500).json({ success: false, message: 'Error al obtener el top de especialidades.' });
         }
     }
 }

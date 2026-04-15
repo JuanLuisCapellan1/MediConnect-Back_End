@@ -72,7 +72,7 @@ class BusquedaController {
             const centroRepo = tsyringe_1.container.resolve(GestionarCentroSaludUseCase_1.GestionarCentroSaludUseCase)['centroRepo'];
             // ── Ejecución paralela ────────────────────────────────────────────
             const quiereDoctores = !tipo || tipo === 'Doctor';
-            const quiereCentros = !tipo || tipo === 'CentroSalud';
+            const quiereCentros = !tipo || tipo === 'Centro';
             const [doctores, centros] = await Promise.all([
                 quiereDoctores
                     ? doctorRepo.buscarCercanos(latFinal, lngFinal, radioFinal, filtrosDoctor, pacienteId)

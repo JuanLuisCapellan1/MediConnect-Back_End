@@ -11,6 +11,6 @@ export interface IDoctorRepository {
     eliminar(usuarioId: number): Promise<void>;
     existePorExequatur(exequatur: string, excluirUsuarioId?: number): Promise<boolean>;
     existePorDocumento(numeroDocumento: string, excluirUsuarioId?: number): Promise<boolean>;
-    buscarCercanos(lat?: number, lng?: number, radioKm?: number, filtros?: FiltroDoctoresCercania, pacienteId?: number): Promise<any[]>;
+    buscarCercanos(lat?: number, lng?: number, radioKm?: number, filtros?: FiltroDoctoresCercania, pacienteId?: number, centroId?: number): Promise<any[]>;
 }
 

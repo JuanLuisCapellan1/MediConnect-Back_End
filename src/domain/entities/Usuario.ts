@@ -30,7 +30,7 @@ export class Usuario {
   }
 
   public esCentroSalud(): boolean {
-    return this.rol === "Centro de Salud";
+    return this.rol === "Centro";
   }
 
   public actualizarEstado(nuevoEstado: string): void {

@@ -28,7 +28,7 @@ let GestionarSolicitudesAlianzaUseCase = class GestionarSolicitudesAlianzaUseCas
      */
     async enviarSolicitud(remitenteId, rol, dto) {
         const doctorId = rol === 'Doctor' ? remitenteId : dto.destinatarioId;
-        const centroSaludId = rol === 'CentroSalud' ? remitenteId : dto.destinatarioId;
+        const centroSaludId = rol === 'Centro' ? remitenteId : dto.destinatarioId;
         const iniciadaPor = rol === 'Doctor' ? 'Doctor' : 'Centro';
         // Validar que el centro de salud destinatario existe
         const centro = await this.centroRepo.obtenerPorId(centroSaludId);
@@ -69,7 +69,7 @@ let GestionarSolicitudesAlianzaUseCase = class GestionarSolicitudesAlianzaUseCas
      * Listar solicitudes según el rol del usuario autenticado.
      */
     async listarSolicitudes(usuarioId, rol) {
-        if (rol === 'CentroSalud') {
+        if (rol === 'Centro') {
             return await this.solicitudRepo.listarPorCentro(usuarioId);
         }
         return await this.solicitudRepo.listarPorDoctor(usuarioId);
@@ -86,7 +86,7 @@ let GestionarSolicitudesAlianzaUseCase = class GestionarSolicitudesAlianzaUseCas
             throw new Error('Solo se pueden responder solicitudes en estado Pendiente');
         }
         // Validar que quien responde es el destinatario (no quien inició)
-        if (rol === 'CentroSalud') {
+        if (rol === 'Centro') {
             if (solicitud.centroSaludId !== usuarioId) {
                 throw new Error('No tienes permisos para responder esta solicitud');
             }
@@ -111,7 +111,7 @@ let GestionarSolicitudesAlianzaUseCase = class GestionarSolicitudesAlianzaUseCas
             motivoRechazo: dto.estado === 'Rechazada' ? dto.motivoRechazo : null,
         });
         // ─ Notificar al REMITENTE sobre el resultado ─────────────────────────
-        const remitenteId = rol === 'CentroSalud' ? solicitud.doctorId : solicitud.centroSaludId;
+        const remitenteId = rol === 'Centro' ? solicitud.doctorId : solicitud.centroSaludId;
         const accion = dto.estado === 'Aceptada' ? 'aprobada' : 'rechazada';
         this.enviarNotifUC.execute({
             usuarioId: remitenteId,
