@@ -846,8 +846,8 @@ export class PrismaDoctorRepository implements IDoctorRepository {
         }
 
         // ── Alianzas del centro con cada doctor ────────────────────────────────
-        // Cuando quien busca es un Centro de Salud se consultan sus solicitudes
-        // de alianza con los doctores del resultado para exponer el estado.
+        // Cuando el usuario autenticado es un Centro de Salud, se consultan sus
+        // solicitudes de alianza con los doctores del resultado.
         const alianzaMap = new Map<number, { id: number; estado: string }>();
         if (centroId !== undefined) {
             const alianzas = await this.prisma.solicitudAlianza.findMany({
@@ -856,7 +856,6 @@ export class PrismaDoctorRepository implements IDoctorRepository {
                 orderBy: { creadoEn: 'desc' },
             });
             for (const a of alianzas) {
-                // Conservar solo la solicitud más reciente por doctor
                 if (!alianzaMap.has(a.doctorId)) {
                     alianzaMap.set(a.doctorId, { id: a.id, estado: a.estado });
                 }

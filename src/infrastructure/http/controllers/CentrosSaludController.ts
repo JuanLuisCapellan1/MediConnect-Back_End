@@ -168,11 +168,11 @@ export class CentrosSaludController {
     try {
       const centroId = req.user?.userId;
       if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
-      
+
       const { ObtenerEstadoDocumentosCentroUseCase } = await import('../../../application/use-cases/ObtenerEstadoDocumentosCentroUseCase');
       const { container } = await import('tsyringe');
       const useCase = container.resolve(ObtenerEstadoDocumentosCentroUseCase);
-      
+
       const data = await useCase.execute(centroId);
       res.status(200).json({ success: true, data });
     } catch (error) { this.manejarError(error, res); }
@@ -193,7 +193,7 @@ export class CentrosSaludController {
 
       // Usamos un dto vacío/opcional ya que el modelo asume que siempre se actualiza el certificado de sanidad del centro
       await useCase.execute(centroId, { descripcion: req.body.descripcion }, req.file);
-      
+
       res.status(200).json({ success: true, message: 'Documento (Certificación Sanitaria) actualizado exitosamente. Será revisado nuevamente.' });
     } catch (error) { this.manejarError(error, res); }
   }
@@ -266,7 +266,7 @@ export class CentrosSaludController {
       if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
       const solicitudId = Number(req.params.id);
       if (isNaN(solicitudId)) { res.status(400).json({ success: false, message: 'ID de solicitud inválido' }); return; }
-      await this.solicitudesUseCase.desconectarAlianza(solicitudId, centroId, 'CentroSalud');
+      await this.solicitudesUseCase.desconectarAlianza(solicitudId, centroId, 'Centro');
       res.status(200).json({ success: true, message: 'Conexión eliminada exitosamente' });
     } catch (error) { this.manejarError(error, res); }
   }
@@ -298,7 +298,7 @@ export class CentrosSaludController {
         return;
       }
       const data = await this.solicitudesUseCase.enviarSolicitud(
-        centroId, 'CentroSalud', { destinatarioId: Number(destinatarioId), mensaje }
+        centroId, 'Centro', { destinatarioId: Number(destinatarioId), mensaje }
       );
       res.status(201).json({ success: true, data, message: 'Solicitud de alianza enviada exitosamente' });
     } catch (error) { this.manejarError(error, res); }
@@ -314,7 +314,7 @@ export class CentrosSaludController {
       const centroId = paramId ?? req.user?.userId;
       if (!centroId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
 
-      const data = await this.solicitudesUseCase.listarSolicitudes(centroId, 'CentroSalud');
+      const data = await this.solicitudesUseCase.listarSolicitudes(centroId, 'Centro');
 
       // Si el usuario logueado es Paciente y consultó con centroSaludId, agregar isFavorite a cada doctor
       const rol = req.user?.rol;
@@ -348,7 +348,7 @@ export class CentrosSaludController {
         return;
       }
       const data = await this.solicitudesUseCase.responderSolicitud(
-        solicitudId, centroId, 'CentroSalud', { estado, motivoRechazo }
+        solicitudId, centroId, 'Centro', { estado, motivoRechazo }
       );
       res.status(200).json({ success: true, data, message: `Solicitud ${estado.toLowerCase()} exitosamente` });
     } catch (error) { this.manejarError(error, res); }

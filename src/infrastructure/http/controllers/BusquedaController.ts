@@ -67,7 +67,7 @@ export class BusquedaController {
             const doctorId = esDoctor ? ((req as any).user?.userId as number) : undefined;
 
             // ── centroId para estaConectado (en doctores) ────────────────────
-            const esCentro = (req as any).user?.rol === 'CentroSalud';
+            const esCentro = (req as any).user?.rol === 'Centro';
             const centroId = esCentro ? ((req as any).user?.userId as number) : undefined;
 
             // ── Repos desde el contenedor ────────────────────────────────────
@@ -76,7 +76,7 @@ export class BusquedaController {
 
             // ── Ejecución paralela ────────────────────────────────────────────
             const quiereDoctores = !tipo || tipo === 'Doctor';
-            const quiereCentros = !tipo || tipo === 'CentroSalud';
+            const quiereCentros = !tipo || tipo === 'Centro';
 
             const [doctores, centros] = await Promise.all([
                 quiereDoctores
