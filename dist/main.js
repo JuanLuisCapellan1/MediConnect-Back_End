@@ -34,6 +34,7 @@ const AutoGestionCitasService_1 = require("./infrastructure/jobs/AutoGestionCita
 const NotificarMensajesPendientesService_1 = require("./infrastructure/jobs/NotificarMensajesPendientesService");
 const EnviarNotificacionUseCase_1 = require("./application/use-cases/notificaciones/EnviarNotificacionUseCase");
 const client_1 = require("@prisma/client");
+const TranslationWarmUpService_1 = require("./infrastructure/services/TranslationWarmUpService");
 const app = (0, express_1.default)();
 const httpServer = (0, http_1.createServer)(app);
 const PORT = process.env.PORT || 3000;
@@ -53,7 +54,7 @@ app.use((err, req, res, next) => {
     next(err);
 });
 // Controladores (Ejemplo de controlador) mover a una carpeta controllers más adelante
-const swaggerDocument = yamljs_1.default.load(path_1.default.join(__dirname, './infrastructure/config/swagger.yml'));
+const swaggerDocument = yamljs_1.default.load(path_1.default.join(process.cwd(), 'src/infrastructure/config/swagger.yml'));
 app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swaggerDocument));
 app.use('/api', routes_1.default);
 // Inicializar WebSocket
@@ -70,6 +71,9 @@ autoGestionCitas.iniciar();
 // Iniciar cron de notificación de mensajes pendientes (chat)
 const notificarMensajesPendientes = new NotificarMensajesPendientesService_1.NotificarMensajesPendientesService(prismaForCron, enviarNotifUCForCron);
 notificarMensajesPendientes.iniciar();
+// Precalentar caché de traducción (fire-and-forget, no bloquea el arranque)
+const warmUpService = new TranslationWarmUpService_1.TranslationWarmUpService(prismaForCron);
+warmUpService.run().catch(err => console.error('❌ [WarmUp] Error no capturado:', err));
 // Iniciar servidor
 httpServer.listen(PORT, () => {
     console.log(`🚀 Servidor MediConnect corriendo en http://localhost:${PORT}`);

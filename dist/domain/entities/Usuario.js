@@ -29,7 +29,7 @@ class Usuario {
         return this.rol === "Paciente";
     }
     esCentroSalud() {
-        return this.rol === "Centro de Salud";
+        return this.rol === "Centro";
     }
     actualizarEstado(nuevoEstado) {
         this.estado = nuevoEstado;

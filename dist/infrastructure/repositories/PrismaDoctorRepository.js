@@ -3,12 +3,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrismaDoctorRepository = void 0;
 const client_1 = require("@prisma/client");
 const Doctor_1 = require("../../domain/entities/Doctor");
+const SupabaseStorageService_1 = require("../external-services/SupabaseStorageService");
 class PrismaDoctorRepository {
     constructor(prisma) {
         this.prisma = prisma;
+        this.storage = new SupabaseStorageService_1.SupabaseStorageService();
     }
     mapearEntidad(data) {
-        return new Doctor_1.Doctor(data.usuarioId, data.usuarioId, data.nombre, data.apellido, data.tipoDocIdentificacion, data.numeroDocumentoIdentificacion, data.fechaNacimiento, data.genero, data.nacionalidad, data.exequatur, data.biografia, data.anosExperiencia, data.estadoVerificacion, data.calificacionPromedio ? parseFloat(data.calificacionPromedio.toString()) : null, data.estado, data.creadoEn, data.actualizadoEn, data.duracionCitaPromedio, data.tarifas ? parseFloat(data.tarifas.toString()) : null);
+        const doc = new Doctor_1.Doctor(data.usuarioId, data.usuarioId, data.nombre, data.apellido, data.tipoDocIdentificacion, data.numeroDocumentoIdentificacion, data.fechaNacimiento, data.genero, data.nacionalidad, data.exequatur, data.biografia, data.anosExperiencia, data.estadoVerificacion, data.calificacionPromedio ? parseFloat(data.calificacionPromedio.toString()) : null, data.estado, data.creadoEn, data.actualizadoEn, data.duracionCitaPromedio, data.tarifas ? parseFloat(data.tarifas.toString()) : null);
+        // Si vienen las especialidades incluidas desde Prisma, mapear objeto estructurado
+        if (data.especialidades && Array.isArray(data.especialidades)) {
+            doc.especialidades = data.especialidades.map((e) => ({
+                id_especialidad: e.especialidadId,
+                nombre: e.especialidades?.nombre || null,
+                es_principal: e.es_principal
+            }));
+        }
+        return doc;
     }
     async obtenerPorId(id) {
         const doctor = await this.prisma.doctor.findUnique({
@@ -64,7 +75,18 @@ class PrismaDoctorRepository {
                 },
             },
         });
-        return doctor ? this.mapearEntidad(doctor) : null;
+        if (!doctor)
+            return null;
+        // Regenerar URLs firmadas frescas para cada documento
+        if (doctor.documentos && Array.isArray(doctor.documentos)) {
+            doctor.documentos = await Promise.all(doctor.documentos.map(async (doc) => ({
+                ...doc,
+                urlArchivo: doc.urlArchivo
+                    ? await this.storage.refreshOrGetSignedUrl(doc.urlArchivo).catch(() => doc.urlArchivo)
+                    : null,
+            })));
+        }
+        return this.mapearEntidad(doctor);
     }
     /**
      * Obtiene el perfil completo del doctor con todas sus relaciones
@@ -79,6 +101,7 @@ class PrismaDoctorRepository {
                         email: true,
                         telefono: true,
                         fotoPerfil: true,
+                        banner: true,
                         emailVerificado: true,
                     },
                 },
@@ -94,17 +117,16 @@ class PrismaDoctorRepository {
                     },
                     include: {
                         acciones: {
-                            where: {
-                                comentarioAdmin: { not: null }
-                            },
                             orderBy: {
-                                fechaResolucion: 'desc'
+                                fechaEmision: 'desc'
                             },
-                            take: 1,
+                            take: 3,
                             select: {
+                                id: true,
                                 comentarioAdmin: true,
                                 estado: true,
-                                fechaResolucion: true
+                                fechaResolucion: true,
+                                fechaEmision: true,
                             }
                         }
                     },
@@ -177,36 +199,47 @@ class PrismaDoctorRepository {
                 where: {
                     emisorId: usuarioId,
                     documentoId: null,
-                    comentarioAdmin: { not: null }
                 },
                 orderBy: {
-                    fechaResolucion: 'desc'
+                    fechaEmision: 'desc'
                 },
                 select: {
+                    id: true,
                     comentarioAdmin: true,
                     estado: true,
                     fechaResolucion: true
                 }
             });
             // Always add verification comment fields (null if not found)
+            doctor.idAccionRegistro = accionVerificacion?.id || null;
             doctor.comentarioVerificacion = accionVerificacion?.comentarioAdmin || null;
             doctor.estadoAccionVerificacion = accionVerificacion?.estado || null;
             doctor.fechaResolucionVerificacion = accionVerificacion?.fechaResolucion || null;
-            // Process documents to always include comentarioAdmin field
+            // Process documents: aplanar comentarioAdmin y regenerar URL firmada fresca
             if (doctor.documentos && Array.isArray(doctor.documentos)) {
-                doctor.documentos = doctor.documentos.map((doc) => {
-                    const comentarioAdmin = doc.acciones?.[0]?.comentarioAdmin || null;
-                    const estadoAccion = doc.acciones?.[0]?.estado || null;
-                    const fechaResolucion = doc.acciones?.[0]?.fechaResolucion || null;
-                    // Remove acciones array and add flat fields
+                doctor.documentos = await Promise.all(doctor.documentos.map(async (doc) => {
+                    const accionPendiente = doc.acciones?.find((a) => a.estado === 'Pendiente') || null;
+                    const accionResuelta = doc.acciones?.find((a) => a.comentarioAdmin) || null;
+                    // idAccion → la acción Pendiente (la que el admin puede aprobar/rechazar ahora)
+                    const idAccion = accionPendiente?.id || null;
+                    // comentario del admin → el del rechazo previo, para que el doctor vea el motivo
+                    const comentarioAdmin = accionResuelta?.comentarioAdmin || null;
+                    const estadoAccion = accionPendiente?.estado || accionResuelta?.estado || null;
+                    const fechaResolucion = accionResuelta?.fechaResolucion || null;
                     const { acciones, ...docSinAcciones } = doc;
+                    // Regenerar URL firmada fresca (1 hora de validez)
+                    const urlArchivo = docSinAcciones.urlArchivo
+                        ? await this.storage.refreshOrGetSignedUrl(docSinAcciones.urlArchivo).catch(() => docSinAcciones.urlArchivo)
+                        : null;
                     return {
                         ...docSinAcciones,
+                        urlArchivo,
+                        idAccion,
                         comentarioAdmin,
                         estadoAccion,
                         fechaResolucionAccion: fechaResolucion
                     };
-                });
+                }));
             }
         }
         // Convertir campos Decimal de Prisma a number plano para evitar serialización interna ({s,e,d})
@@ -221,6 +254,56 @@ class PrismaDoctorRepository {
                     ...s,
                     precio: s.precio != null ? parseFloat(s.precio.toString()) : null,
                 }));
+            }
+        }
+        // Enriquecer ubicaciones con coords PostGIS (latitud, longitud y dirección completa)
+        if (doctor && Array.isArray(doctor.ubicaciones) && doctor.ubicaciones.length > 0) {
+            const ubicIds = doctor.ubicaciones
+                .map((u) => u.id)
+                .filter(Boolean);
+            if (ubicIds.length > 0) {
+                const geoRows = await this.prisma.$queryRaw `
+                    SELECT
+                        u.id_ubicacion                        AS id,
+                        ST_Y(u.punto_geografico::geometry)    AS latitud,
+                        ST_X(u.punto_geografico::geometry)    AS longitud,
+                        b.nombre                              AS barrio_nombre,
+                        m.nombre                              AS municipio_nombre,
+                        p.nombre                              AS provincia_nombre
+                    FROM ubicaciones u
+                    LEFT JOIN barrios              b  ON b.id_barrio             = u.id_barrio
+                    LEFT JOIN secciones            s  ON s.id_seccion             = b.id_seccion
+                    LEFT JOIN distritos_municipales dm ON dm.id_distrito_municipal = s.id_distrito_municipal
+                    LEFT JOIN municipios           m  ON m.id_municipio           = COALESCE(dm.id_municipio, s.id_municipio)
+                    LEFT JOIN provincias           p  ON p.id_provincia           = m.id_provincia
+                    WHERE u.id_ubicacion IN (${client_1.Prisma.join(ubicIds)})
+                `;
+                const geoMap = new Map();
+                for (const row of geoRows)
+                    geoMap.set(Number(row.id), row);
+                doctor.ubicaciones = doctor.ubicaciones.map((u) => {
+                    const geo = geoMap.get(u.id);
+                    if (!geo)
+                        return u;
+                    const partes = [];
+                    if (u.direccion)
+                        partes.push(u.direccion.trim());
+                    if (geo.barrio_nombre)
+                        partes.push(geo.barrio_nombre.trim());
+                    if (geo.municipio_nombre)
+                        partes.push(geo.municipio_nombre.trim());
+                    if (geo.provincia_nombre)
+                        partes.push(geo.provincia_nombre.trim());
+                    return {
+                        ...u,
+                        latitud: geo.latitud != null ? Number(geo.latitud) : null,
+                        longitud: geo.longitud != null ? Number(geo.longitud) : null,
+                        barrioNombre: geo.barrio_nombre,
+                        municipioNombre: geo.municipio_nombre,
+                        provinciaNombre: geo.provincia_nombre,
+                        direccionCompleta: partes.join(', '),
+                    };
+                });
             }
         }
         return doctor;
@@ -445,7 +528,7 @@ class PrismaDoctorRepository {
     // ────────────────────────────────────────────────────────────────────────────
     // Buscar doctores — con o sin filtro geográfico (PostGIS opcional)
     // ────────────────────────────────────────────────────────────────────────────
-    async buscarCercanos(lat, lng, radioKm, filtros, pacienteId) {
+    async buscarCercanos(lat, lng, radioKm, filtros, pacienteId, centroId) {
         const useGeo = lat != null && lng != null && radioKm != null;
         const radioMetros = useGeo ? radioKm * 1000 : 0;
         // Rangos de turno en formato HH:MM
@@ -687,6 +770,22 @@ class PrismaDoctorRepository {
                 }
             }
         }
+        // ── Alianzas del centro con cada doctor ────────────────────────────────
+        // Cuando el usuario autenticado es un Centro de Salud, se consultan sus
+        // solicitudes de alianza con los doctores del resultado.
+        const alianzaMap = new Map();
+        if (centroId !== undefined) {
+            const alianzas = await this.prisma.solicitudAlianza.findMany({
+                where: { centroSaludId: centroId, doctorId: { in: idsOrdenados } },
+                select: { id: true, doctorId: true, estado: true },
+                orderBy: { creadoEn: 'desc' },
+            });
+            for (const a of alianzas) {
+                if (!alianzaMap.has(a.doctorId)) {
+                    alianzaMap.set(a.doctorId, { id: a.id, estado: a.estado });
+                }
+            }
+        }
         // ── Favoritos del paciente ─────────────────────────────────────────────
         const favoritosSet = new Set();
         if (pacienteId) {
@@ -713,6 +812,9 @@ class PrismaDoctorRepository {
                 tarifas: d.tarifas != null ? Number(d.tarifas) : null,
                 cantidadResenas: d._count?.resenas ?? 0,
                 esFavorito: pacienteId ? favoritosSet.has(id) : false,
+                estaConectado: centroId !== undefined ? (alianzaMap.get(id)?.estado === 'Aceptada') : false,
+                estadoAlianza: centroId !== undefined ? (alianzaMap.get(id)?.estado ?? null) : null,
+                solicitudAlianzaId: centroId !== undefined ? (alianzaMap.get(id)?.id ?? null) : null,
                 servicios: (d.servicios ?? []).map((s) => ({
                     ...s,
                     precio: s.precio != null ? Number(s.precio) : null,

@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const multer_1 = __importDefault(require("multer"));
 const AuthController_1 = require("../controllers/AuthController");
+const autenticacion_1 = require("../middlewares/autenticacion");
 const routerAuth = (0, express_1.Router)();
 // Configurar multer para recibir archivos en memoria
 const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
@@ -135,12 +136,17 @@ routerAuth.post('/password/validar-codigo', (req, res) => authController.validar
  */
 routerAuth.post('/password/cambiar', (req, res) => authController.cambiarPasswordConToken(req, res));
 /**
+ * PATCH /auth/password/cambiar-autenticado
+ * Cambia la contraseña del usuario ya autenticado (JWT).
+ * Requiere: Bearer token + passwordActual + nuevaPassword + confirmarPassword
+ */
+routerAuth.patch('/password/cambiar-autenticado', autenticacion_1.autenticarJWT, (req, res) => authController.cambiarPasswordAutenticado(req, res));
+/**
  * PATCH /auth/foto-perfil
  * Actualiza la foto de perfil del usuario autenticado
  * Requiere: JWT token en Authorization header
  * Body: multipart/form-data con campo 'fotoPerfil'
  */
-const autenticacion_1 = require("../middlewares/autenticacion");
 routerAuth.patch('/foto-perfil', autenticacion_1.autenticarJWT, upload.single('fotoPerfil'), (req, res) => authController.actualizarFotoPerfil(req, res));
 // Actualizar banner del usuario autenticado
 routerAuth.patch('/banner', autenticacion_1.autenticarJWT, upload.single('banner'), (req, res) => authController.actualizarBanner(req, res));
@@ -162,4 +168,11 @@ routerAuth.get('/verificar-documento', (req, res) => authController.verificarDoc
  * Requiere autenticación JWT
  */
 routerAuth.patch('/cambiar-email', autenticacion_1.autenticarJWT, (req, res) => authController.cambiarEmail(req, res));
+/**
+ * POST /auth/verificar-identidad
+ * Verifica la contraseña del usuario autenticado para confirmar su identidad.
+ * Útil antes de operaciones sensibles (cambio de email, eliminación de cuenta, etc.)
+ * Requiere: JWT válido. Body: { password: string }
+ */
+routerAuth.post('/verificar-identidad', autenticacion_1.autenticarJWT, (req, res) => authController.verificarIdentidad(req, res));
 exports.default = routerAuth;

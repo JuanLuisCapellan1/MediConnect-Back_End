@@ -38,16 +38,20 @@ const MAX_IMAGENES = 10;
 const TIPOS_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 const BUCKET = 'public-assets';
 class GestionarServiciosUseCase {
-    constructor(servicioRepository, storageService, enviarNotifUC) {
+    constructor(servicioRepository, storageService, enviarNotifUC, hydrator) {
         this.servicioRepository = servicioRepository;
         this.storageService = storageService;
         this.enviarNotifUC = enviarNotifUC;
+        this.hydrator = hydrator;
     }
     // ─── Crear ────────────────────────────────────────────────────────────────
     async crear(doctorId, dto, imagenes = []) {
         this.validarImagenes(imagenes);
         this.validarModalidad(dto.modalidad);
         const servicio = await this.servicioRepository.crear(doctorId, dto.especialidadId, dto.nombre.trim(), dto.descripcion?.trim() ?? null, dto.precio, dto.duracionMinutos, dto.sesiones ?? 1, dto.maxPacientesDia ?? null, dto.modalidad, dto.centroSaludIds, dto.ubicacionIds, dto.horarioIds);
+        // Hidratar caché con nombre y descripción (fire-and-forget)
+        const stringsServicio = [dto.nombre.trim(), dto.descripcion?.trim()].filter(Boolean);
+        this.hydrator?.hydrateStrings(stringsServicio).catch(() => { });
         if (imagenes.length > 0) {
             await this.subirYGuardarImagenes(servicio.id, doctorId, imagenes);
         }
@@ -101,7 +105,7 @@ class GestionarServiciosUseCase {
         if (dto.estado !== undefined && !['Activo', 'Inactivo'].includes(dto.estado)) {
             throw new Error('Estado inválido. Valores permitidos: Activo, Inactivo');
         }
-        return this.servicioRepository.actualizar(dto.id, {
+        const resultado = await this.servicioRepository.actualizar(dto.id, {
             especialidadId: dto.especialidadId,
             nombre: dto.nombre?.trim(),
             descripcion: dto.descripcion?.trim(),
@@ -115,6 +119,11 @@ class GestionarServiciosUseCase {
             ubicacionIds: dto.ubicacionIds,
             horarioIds: dto.horarioIds,
         });
+        // Hidratar caché si cambiaron nombre o descripción (fire-and-forget)
+        const stringsAct = [dto.nombre?.trim(), dto.descripcion?.trim()].filter(Boolean);
+        if (stringsAct.length > 0)
+            this.hydrator?.hydrateStrings(stringsAct).catch(() => { });
+        return resultado;
     }
     // ─── Eliminar / Desactivar ────────────────────────────────────────────────
     async eliminar(id, doctorId) {

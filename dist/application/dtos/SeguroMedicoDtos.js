@@ -28,6 +28,12 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CrearSeguroMedicoDto.prototype, "urlImage", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)({ each: true, message: 'Cada elemento de tiposPermitidos debe ser un número entero' }),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Array)
+], CrearSeguroMedicoDto.prototype, "tiposPermitidos", void 0);
 /**
  * DTO para actualizar un seguro médico (Admin)
  */
@@ -50,6 +56,12 @@ __decorate([
     (0, class_validator_1.IsIn)(['Activo', 'Inactivo'], { message: 'El estado debe ser Activo o Inactivo' }),
     __metadata("design:type", String)
 ], ActualizarSeguroMedicoDto.prototype, "estado", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)({ each: true, message: 'Cada elemento de tiposPermitidos debe ser un número entero' }),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Array)
+], ActualizarSeguroMedicoDto.prototype, "tiposPermitidos", void 0);
 /**
  * DTO para agregar un seguro a un paciente (máximo 3)
  */

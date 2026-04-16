@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttachPasswordToGoogleAccountUseCase = void 0;
 const tsyringe_1 = require("tsyringe");
 const AuthService_1 = require("../../infrastructure/external-services/AuthService");
+const PasswordPolicy_1 = require("../../shared/utils/PasswordPolicy");
 let AttachPasswordToGoogleAccountUseCase = class AttachPasswordToGoogleAccountUseCase {
     constructor(authService, usuarioRepository, passwordHasher) {
         this.authService = authService;
@@ -38,6 +39,8 @@ let AttachPasswordToGoogleAccountUseCase = class AttachPasswordToGoogleAccountUs
         if (usuario.password) {
             throw new Error('El usuario ya tiene contraseña local. Use login con email y contraseña.');
         }
+        // Validar política de contraseña segura
+        (0, PasswordPolicy_1.validarPasswordSegura)(newPassword);
         // Hashear y actualizar contraseña
         const hashed = await this.passwordHasher.hash(newPassword);
         await this.usuarioRepository.actualizar(usuario.id, { password: hashed });

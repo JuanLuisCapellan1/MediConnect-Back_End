@@ -63,7 +63,23 @@ const CITA_INCLUDE = {
     tipoSeguro: { select: { id: true, nombre: true } },
     ubicacion: {
         include: {
-            barrio: { select: { id: true, nombre: true } },
+            barrio: {
+                include: {
+                    seccion: {
+                        include: {
+                            distritoMunicipal: {
+                                include: {
+                                    municipio: {
+                                        include: {
+                                            provincia: { select: { id: true, nombre: true } },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
     },
     historial: {
@@ -93,7 +109,6 @@ class PrismaCitaRepository {
                 motivoConsulta: datos.motivoConsulta ?? null,
                 totalAPagar: datos.totalAPagar,
                 ubicacionId: datos.ubicacionId ?? null,
-                id_grupo: datos.grupoId ?? null,
                 estado: 'Programada',
             },
             include: CITA_INCLUDE,
@@ -263,16 +278,18 @@ class PrismaCitaRepository {
             this.prisma.cita.findMany({
                 where,
                 include: CITA_INCLUDE,
-                orderBy: { fechaInicio: 'asc' },
+                orderBy: { fechaInicio: 'desc' },
                 skip,
                 take: limite,
             }),
             this.prisma.cita.count({ where }),
         ]);
-        // ── Enriquecer ubicaciones de citas con coords + dirección completa ──
+        // ── Enriquecer ubicaciones de citas con coords + cadena geográfica completa (solo Presencial) ──
         const ubicacionIds = citas
+            .filter((c) => c.modalidad === 'Presencial')
             .map((c) => c.ubicacionId)
             .filter((id) => id != null);
+        const geoMap = new Map();
         if (ubicacionIds.length > 0) {
             const uniqueIds = [...new Set(ubicacionIds)];
             const geoRows = await this.prisma.$queryRaw `
@@ -291,19 +308,31 @@ class PrismaCitaRepository {
                 LEFT JOIN provincias            p  ON p.id_provincia            = m.id_provincia
                 WHERE u.id_ubicacion IN (${client_1.Prisma.join(uniqueIds)})
             `;
-            const geoMap = new Map();
             for (const row of geoRows)
                 geoMap.set(Number(row.id), row);
-            for (const cita of citas) {
-                if (!cita.ubicacion || !cita.ubicacionId)
-                    continue;
-                const geo = geoMap.get(cita.ubicacionId);
-                if (!geo)
-                    continue;
+        }
+        for (const cita of citas) {
+            // Si la cita no es Presencial, limpiar la ubicación para no exponer datos irrelevantes
+            if (cita.modalidad !== 'Presencial') {
+                cita.ubicacion = null;
+                continue;
+            }
+            if (!cita.ubicacion || !cita.ubicacionId)
+                continue;
+            const geo = geoMap.get(cita.ubicacionId);
+            if (geo) {
                 if (geo.latitud != null)
                     cita.ubicacion.latitud = Number(geo.latitud);
                 if (geo.longitud != null)
                     cita.ubicacion.longitud = Number(geo.longitud);
+                // Fallback: si seccion.distritoMunicipal es null, inyectar municipio directo en seccion
+                const seccion = cita.ubicacion.barrio?.seccion;
+                if (seccion && !seccion.distritoMunicipal && geo.municipio_nombre) {
+                    seccion.municipio = {
+                        nombre: geo.municipio_nombre,
+                        provincia: geo.provincia_nombre ? { nombre: geo.provincia_nombre } : null,
+                    };
+                }
                 const partes = [];
                 if (cita.ubicacion.direccion)
                     partes.push(cita.ubicacion.direccion.trim());
@@ -549,10 +578,8 @@ class PrismaCitaRepository {
             data: {
                 citaId: datos.citaId,
                 pacienteId: datos.pacienteId,
-                resumen: datos.resumen,
-                diagnostico: datos.diagnostico,
-                tratamiento: datos.tratamiento ?? null,
-                observacion: datos.observacion ?? null,
+                nombre_diagnostico: datos.nombreDiagnostico, // eslint-disable-line @typescript-eslint/naming-convention
+                descripcion_diagnostico: datos.descripcionDiagnostico, // eslint-disable-line @typescript-eslint/naming-convention
             },
             include: {
                 cita: {
@@ -673,7 +700,7 @@ class PrismaCitaRepository {
                                     },
                                 },
                             },
-                            servicio: { include: { especialidad: true } },
+                            servicio: { include: { especialidad: true, ubicaciones: true } },
                             seguro: { select: { nombre: true, urlImage: true } },
                             tipoSeguro: { select: { nombre: true } },
                         },
@@ -687,6 +714,140 @@ class PrismaCitaRepository {
             this.prisma.historialConsulta.count({ where: { pacienteId } }),
         ]);
         return { datos: datos.map((d) => this._mapHistorial(d)), total };
+    }
+    async listarHistorialPacientePorDoctor(doctorId, pacienteId, filtros) {
+        // Validar que el paciente haya tenido al menos una cita con este doctor
+        const citaExistente = await this.prisma.cita.findFirst({
+            where: { doctorUsuarioId: doctorId, pacienteId },
+            select: { id: true },
+        });
+        if (!citaExistente) {
+            throw new Error('Este paciente no ha tenido citas con el doctor autenticado.');
+        }
+        const pagina = filtros.pagina ?? 1;
+        const limite = filtros.limite ?? 10;
+        const skip = (pagina - 1) * limite;
+        const [datos, total] = await Promise.all([
+            this.prisma.historialConsulta.findMany({
+                where: { pacienteId },
+                include: {
+                    cita: {
+                        include: {
+                            paciente: {
+                                include: {
+                                    usuario: {
+                                        select: {
+                                            email: true,
+                                            fotoPerfil: true,
+                                            banner: true,
+                                        },
+                                    },
+                                    ubicacion: {
+                                        select: { id: true, nombre: true, direccion: true },
+                                    },
+                                    caracteristicas: {
+                                        where: { estado: 'Activo' },
+                                        include: {
+                                            condicion: {
+                                                select: { id: true, nombre: true, tipo: true },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                            doctor: {
+                                include: {
+                                    usuario: {
+                                        select: {
+                                            email: true,
+                                            fotoPerfil: true,
+                                            banner: true,
+                                        },
+                                    },
+                                    especialidades: {
+                                        where: { es_principal: true },
+                                        include: { especialidades: { select: { nombre: true } } },
+                                    },
+                                },
+                            },
+                            servicio: { include: { especialidad: true, ubicaciones: true } },
+                            seguro: { select: { nombre: true, urlImage: true } },
+                            tipoSeguro: { select: { nombre: true } },
+                        },
+                    },
+                    adjuntos: { include: { media: true } },
+                },
+                orderBy: { creadoEn: 'desc' },
+                skip,
+                take: limite,
+            }),
+            this.prisma.historialConsulta.count({ where: { pacienteId } }),
+        ]);
+        return { datos: datos.map((d) => this._mapHistorial(d)), total };
+    }
+    async listarHistorialPorDoctor(pacienteId, doctorId, filtros) {
+        const pagina = filtros.pagina ?? 1;
+        const limite = filtros.limite ?? 10;
+        const skip = (pagina - 1) * limite;
+        // Filtra historial del paciente, únicamente citas con el doctor solicitado
+        const where = {
+            pacienteId,
+            cita: { doctorUsuarioId: doctorId },
+        };
+        const [datos, total] = await Promise.all([
+            this.prisma.historialConsulta.findMany({
+                where,
+                include: {
+                    cita: {
+                        include: {
+                            paciente: {
+                                include: {
+                                    usuario: { select: { email: true, fotoPerfil: true, banner: true } },
+                                    ubicacion: { select: { id: true, nombre: true, direccion: true } },
+                                    caracteristicas: {
+                                        where: { estado: 'Activo' },
+                                        include: { condicion: { select: { id: true, nombre: true, tipo: true } } },
+                                    },
+                                },
+                            },
+                            doctor: {
+                                include: {
+                                    usuario: { select: { email: true, fotoPerfil: true, banner: true } },
+                                    especialidades: {
+                                        where: { es_principal: true },
+                                        include: { especialidades: { select: { nombre: true } } },
+                                    },
+                                },
+                            },
+                            servicio: { include: { especialidad: true, ubicaciones: true } },
+                            seguro: { select: { nombre: true, urlImage: true } },
+                            tipoSeguro: { select: { nombre: true } },
+                        },
+                    },
+                    adjuntos: { include: { media: true } },
+                },
+                orderBy: { creadoEn: 'desc' },
+                skip,
+                take: limite,
+            }),
+            this.prisma.historialConsulta.count({ where }),
+        ]);
+        return { datos: datos.map((d) => this._mapHistorial(d)), total };
+    }
+    async listarServiciosPaciente(pacienteId) {
+        const citas = await this.prisma.cita.findMany({
+            where: { pacienteId },
+            select: {
+                servicioId: true,
+                servicio: { select: { id: true, nombre: true, estado: true } },
+            },
+            distinct: ['servicioId'],
+            orderBy: { servicio: { nombre: 'asc' } },
+        });
+        return citas
+            .map((c) => c.servicio)
+            .filter(Boolean)
+            .map((s) => ({ id: s.id, nombre: s.nombre, estado: s.estado }));
     }
     // ─── ESTADÍSTICAS DE PACIENTES ─────────────────────────────────────────────
     async estadisticasPacientes(doctorId, filtros) {

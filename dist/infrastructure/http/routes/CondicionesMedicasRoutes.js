@@ -11,10 +11,10 @@ const controller = tsyringe_1.container.resolve(CondicionMedicaController_1.Cond
 // RUTAS PARA PACIENTES (AUTO-GESTIÓN)
 // ==========================================
 // IMPORTANTE: Estas rutas deben ir PRIMERO para evitar conflictos con /:id
-// Listar alergias disponibles en el catálogo
-condicionesMedicasRouter.get('/alergias/disponibles', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Paciente'), (req, res) => controller.listarAlergiasDisponibles(req, res));
-// Buscar alergias por nombre
-condicionesMedicasRouter.get('/alergias/buscar', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Paciente'), (req, res) => controller.buscarAlergias(req, res));
+// Listar alergias disponibles en el catálogo (Paciente y Administrador)
+condicionesMedicasRouter.get('/alergias/disponibles', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Paciente', 'Administrador'), (req, res) => controller.listarAlergiasDisponibles(req, res));
+// Buscar alergias por nombre (Paciente y Administrador)
+condicionesMedicasRouter.get('/alergias/buscar', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Paciente', 'Administrador'), (req, res) => controller.buscarAlergias(req, res));
 // Agregar una alergia del catálogo al perfil del paciente
 condicionesMedicasRouter.post('/mis-alergias', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Paciente'), (req, res) => controller.agregarMiAlergia(req, res));
 // Actualizar una alergia del paciente
@@ -30,24 +30,27 @@ condicionesMedicasRouter.patch('/mis-condiciones/:id', autenticacion_1.autentica
 // Eliminar una condición médica del paciente
 condicionesMedicasRouter.delete('/mis-condiciones/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Paciente'), (req, res) => controller.eliminarMiCondicion(req, res));
 // ==========================================
-// RUTAS PARA GESTIÓN DE CONDICIONES DE PACIENTES (SOLO DOCTORES)
+// ADMIN - Visualización del catálogo de Alergias
 // ==========================================
-condicionesMedicasRouter.post('/:condicionId/pacientes/:pacienteId', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => controller.asignarAPaciente(req, res));
-condicionesMedicasRouter.get('/pacientes/:pacienteId', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => controller.obtenerCondicionesPaciente(req, res));
-condicionesMedicasRouter.patch('/pacientes/:pacienteId/condiciones/:condicionId', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => controller.actualizarCondicionPaciente(req, res));
-condicionesMedicasRouter.delete('/pacientes/:pacienteId/condiciones/:condicionId', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => controller.removerCondicionPaciente(req, res));
+// Listar TODAS las alergias del catálogo (incluyendo inactivas/eliminadas)
+// Usa ?estado=Activo|Inactivo|Eliminado&nombre=x&pagina=1&limite=10
+condicionesMedicasRouter.get('/admin/alergias', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => {
+    // Forzar tipo=Alergia y pasar el resto de filtros
+    req.query.tipo = 'Alergia';
+    return controller.listar(req, res);
+});
 // ==========================================
-// RUTAS DEL CATÁLOGO DE CONDICIONES MÉDICAS
+// RUTAS DEL CATÁLOGO DE CONDICIONES MÉDICAS (SOLO ADMINISTRADOR)
 // ==========================================
 // IMPORTANTE: Estas rutas con /:id van AL FINAL para no capturar rutas específicas
-// Listar condiciones: acceso público o con autenticación básica
-condicionesMedicasRouter.get('/', (req, res) => controller.listar(req, res));
-// Crear: solo doctores y administradores
-condicionesMedicasRouter.post('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor', 'Administrador'), (req, res) => controller.crear(req, res));
-// Obtener por ID: acceso público o con autenticación básica
-condicionesMedicasRouter.get('/:id', (req, res) => controller.obtener(req, res));
-// Actualizar: solo doctores y administradores
-condicionesMedicasRouter.patch('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor', 'Administrador'), (req, res) => controller.actualizar(req, res));
-// Eliminar del catálogo: solo doctores y administradores
-condicionesMedicasRouter.delete('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor', 'Administrador'), (req, res) => controller.eliminar(req, res));
+// Listar condiciones: solo Administrador
+condicionesMedicasRouter.get('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.listar(req, res));
+// Crear entrada en el catálogo: solo Administrador (únicamente Alergias)
+condicionesMedicasRouter.post('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.crear(req, res));
+// Obtener por ID: solo Administrador
+condicionesMedicasRouter.get('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.obtener(req, res));
+// Actualizar entrada del catálogo: solo Administrador (únicamente Alergias)
+condicionesMedicasRouter.patch('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.actualizar(req, res));
+// Eliminar (soft delete) del catálogo: solo Administrador (únicamente Alergias)
+condicionesMedicasRouter.delete('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.eliminar(req, res));
 exports.default = condicionesMedicasRouter;

@@ -53,6 +53,72 @@ class PacienteController {
             return this.manejarError(error, res);
         }
     }
+    // ══════════════════════════════════════════════════════════════
+    // GET /pacientes/admin  — Listado para Administrador
+    // ══════════════════════════════════════════════════════════════
+    async listarParaAdmin(req, res) {
+        try {
+            const useCase = tsyringe_1.container.resolve(GestionarPacientesUseCase_1.GestionarPacientesUseCase);
+            const getNombre = (value) => {
+                if (Array.isArray(value))
+                    return value[0];
+                return value;
+            };
+            const filtros = {
+                nombre: getNombre(req.query.nombre),
+                apellido: getNombre(req.query.apellido),
+                estado: getNombre(req.query.estado),
+                genero: getNombre(req.query.genero),
+                tipoSangre: getNombre(req.query.tipoSangre),
+                pagina: req.query.pagina ? parseInt(req.query.pagina) : undefined,
+                limite: req.query.limite ? parseInt(req.query.limite) : undefined,
+            };
+            const resultado = await useCase.listar(filtros);
+            // Filtrar datos sensibles: solo tabla pacientes + usuario
+            const datos = resultado.datos.map((p) => this.filtrarDatosAdmin(p));
+            return res.status(200).json({
+                success: true,
+                data: datos,
+                paginacion: {
+                    total: resultado.total,
+                    pagina: filtros.pagina || 1,
+                    limite: filtros.limite || 10,
+                    totalPaginas: Math.ceil(resultado.total / (filtros.limite || 10)),
+                },
+            });
+        }
+        catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // GET /pacientes/admin/:id  — Detalle para Administrador
+    // ══════════════════════════════════════════════════════════════
+    async obtenerParaAdmin(req, res) {
+        try {
+            const useCase = tsyringe_1.container.resolve(GestionarPacientesUseCase_1.GestionarPacientesUseCase);
+            const id = parseInt(req.params.id);
+            if (isNaN(id)) {
+                return res.status(400).json({ success: false, message: 'ID inválido' });
+            }
+            const paciente = await useCase.obtenerPorId(id);
+            return res.status(200).json({
+                success: true,
+                data: this.filtrarDatosAdmin(paciente),
+            });
+        }
+        catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+    /**
+     * Helper: filtra los datos que el Administrador puede ver.
+     * Excluye: condicionesMedicas, seguros y datos médicos sensibles.
+     */
+    filtrarDatosAdmin(paciente) {
+        const { condicionesMedicas, seguros, ...resto } = paciente;
+        return resto;
+    }
     async obtenerPerfil(req, res) {
         try {
             const useCase = tsyringe_1.container.resolve(GestionarPacientesUseCase_1.GestionarPacientesUseCase);

@@ -48,13 +48,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GestionarCitasUseCase = void 0;
 const tsyringe_1 = require("tsyringe");
 const EnviarNotificacionUseCase_1 = require("./notificaciones/EnviarNotificacionUseCase");
+const SupabaseStorageService_1 = require("../../infrastructure/external-services/SupabaseStorageService");
+const client_1 = require("../../infrastructure/database/prisma/client");
 let GestionarCitasUseCase = class GestionarCitasUseCase {
-    constructor(citaRepo, doctorRepo, pacienteRepo, inactividadRepo, enviarNotifUC) {
+    constructor(citaRepo, doctorRepo, pacienteRepo, inactividadRepo, enviarNotifUC, storage) {
         this.citaRepo = citaRepo;
         this.doctorRepo = doctorRepo;
         this.pacienteRepo = pacienteRepo;
         this.inactividadRepo = inactividadRepo;
         this.enviarNotifUC = enviarNotifUC;
+        this.storage = storage;
     }
     // ===================================================================
     // Helper: combina una fecha "YYYY-MM-DD" y una hora "HH:MM" en Date UTC
@@ -568,7 +571,7 @@ let GestionarCitasUseCase = class GestionarCitasUseCase {
     // ===================================================================
     // DOCTOR: Diagnosticar (marca fechaFin=now y completa la cita)
     // ===================================================================
-    async diagnosticarCita(citaId, doctorId, dto) {
+    async diagnosticarCita(citaId, doctorId, dto, archivos = []) {
         const cita = await this.citaRepo.buscarPorId(citaId);
         if (!cita)
             throw new Error('Cita no encontrada.');
@@ -578,44 +581,68 @@ let GestionarCitasUseCase = class GestionarCitasUseCase {
         if (!['Programada', 'En Progreso', 'Reprogramada', 'En curso'].includes(cita.estado)) {
             throw new Error('Solo puedes diagnosticar citas en estado Programada, En Progreso, Reprogramada o En curso.');
         }
+        // ── 1. Subir archivos a Supabase (si hay) ───────────────────────
+        const mediaCreados = [];
+        for (const archivo of archivos) {
+            const ext = this._getExtension(archivo.mimetype);
+            const fileName = `historiales/${citaId}/doc-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+            const url = await this.storage.uploadFile(archivo.buffer, fileName, 'secure-documents', archivo.mimetype);
+            const media = await client_1.prisma.media.create({
+                data: {
+                    archivo: url,
+                    nombre: archivo.originalname,
+                    tipoMime: archivo.mimetype,
+                    tamanioBytes: BigInt(archivo.size),
+                    estado: 'Activo',
+                },
+            });
+            mediaCreados.push({ id: media.id });
+        }
+        // ── 2. Crear o actualizar historial ──────────────────────────────
         const historialExistente = await this.citaRepo.buscarHistorialPorCita(citaId);
-        let historial;
+        let historialId;
         if (historialExistente) {
-            const { PrismaClient } = await Promise.resolve().then(() => __importStar(require('@prisma/client')));
-            const prisma = new PrismaClient();
-            historial = await prisma.historialConsulta.update({
+            await client_1.prisma.historialConsulta.update({
                 where: { citaId },
                 data: {
-                    resumen: dto.resumen,
-                    diagnostico: dto.diagnostico,
-                    tratamiento: dto.tratamiento,
-                    observacion: dto.observacion,
+                    nombre_diagnostico: dto.nombreDiagnostico, // eslint-disable-line @typescript-eslint/naming-convention
+                    descripcion_diagnostico: dto.descripcionDiagnostico, // eslint-disable-line @typescript-eslint/naming-convention
                     actualizadoEn: new Date(),
                 },
             });
-            await prisma.$disconnect();
+            historialId = historialExistente.id;
         }
         else {
-            historial = await this.citaRepo.crearHistorial({
+            const nuevo = await this.citaRepo.crearHistorial({
                 citaId,
                 pacienteId: cita.pacienteId,
-                resumen: dto.resumen,
-                diagnostico: dto.diagnostico,
-                tratamiento: dto.tratamiento,
-                observacion: dto.observacion,
+                nombreDiagnostico: dto.nombreDiagnostico,
+                descripcionDiagnostico: dto.descripcionDiagnostico,
+            });
+            historialId = nuevo.id;
+        }
+        // ── 3. Vincular media al historial ───────────────────────────────
+        if (mediaCreados.length > 0) {
+            await client_1.prisma.adjuntoHistorial.createMany({
+                data: mediaCreados.map(m => ({
+                    mediaId: m.id,
+                    historialId,
+                })),
+                skipDuplicates: true,
             });
         }
-        // Calcular fechaFin como fechaInicio + duración del servicio.
-        // Combinar fecha (YYYY-MM-DD) y hora (HH:MM) para obtener una fecha válida
-        const fechaCompleta = `${cita.fechaInicio}T${cita.horaInicio}:00.000Z`;
-        const fechaInicioDate = new Date(fechaCompleta);
-        const duracionMs = (cita.servicio?.duracionMinutos ?? 30) * 60 * 1000;
-        const fechaFin = new Date(fechaInicioDate.getTime() + duracionMs);
-        await this.citaRepo.actualizar(citaId, {
-            estado: 'Completada',
-            fechaFin,
-        });
-        // ─ Notificar al paciente que su historial/diagnóstico está disponible ─
+        // ── 4. Marcar cita como Completada ───────────────────────────────
+        // Usamos SQL directo para garantizar la escritura sin importar como
+        // esté configurado el mapper o el accessor del PrismaClient.
+        const duracionMin = (cita.servicio?.duracionMinutos ?? 30);
+        await client_1.prisma.$executeRaw `
+            UPDATE citas
+            SET estado        = 'Completada',
+                fecha_hora_fin = fecha_hora_inicio + (${duracionMin} * interval '1 minute'),
+                actualizado_en = NOW()
+            WHERE id_cita = ${citaId}
+        `;
+        // ── 5. Notificar al paciente ─────────────────────────────────────
         this.enviarNotifUC.execute({
             usuarioId: cita.pacienteId,
             titulo: 'Historial Médico Actualizado',
@@ -624,7 +651,19 @@ let GestionarCitasUseCase = class GestionarCitasUseCase {
             tipoEntidad: 'Cita',
             entidadId: citaId,
         }).catch((e) => console.error('notif diagnosticarCita:', e));
-        return historial;
+        // ── 6. Retornar historial completo con adjuntos ──────────────────
+        return this.citaRepo.buscarHistorialPorCita(citaId);
+    }
+    _getExtension(mimeType) {
+        const map = {
+            'image/jpeg': 'jpg',
+            'image/png': 'png',
+            'image/webp': 'webp',
+            'application/pdf': 'pdf',
+            'application/msword': 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+        };
+        return map[mimeType] ?? 'bin';
     }
     // ===================================================================
     // PACIENTE / DOCTOR: Historial de una cita específica
@@ -642,6 +681,20 @@ let GestionarCitasUseCase = class GestionarCitasUseCase {
         const historial = await this.citaRepo.buscarHistorialPorCita(citaId);
         if (!historial)
             throw new Error('Esta cita no tiene historial aún.');
+        // ── Generar URLs firmadas para los archivos adjuntos del diagnóstico ──
+        if (historial.adjuntos?.length > 0) {
+            await Promise.all(historial.adjuntos.map(async (adjunto) => {
+                if (!adjunto.media?.archivo)
+                    return;
+                try {
+                    adjunto.media.urlFirmada = await this.storage.refreshOrGetSignedUrl(adjunto.media.archivo);
+                }
+                catch (e) {
+                    console.warn(`[historial] No se pudo firmar URL para media ${adjunto.media.id}:`, e?.message);
+                    adjunto.media.urlFirmada = null;
+                }
+            }));
+        }
         return historial;
     }
     // ===================================================================
@@ -649,6 +702,28 @@ let GestionarCitasUseCase = class GestionarCitasUseCase {
     // ===================================================================
     async obtenerHistorialPaciente(pacienteId, filtros) {
         return await this.citaRepo.listarHistorialPaciente(pacienteId, filtros);
+    }
+    // ===================================================================
+    // DOCTOR: Historial completo de un paciente suyo
+    // ===================================================================
+    async obtenerHistorialPacientePorDoctor(doctorId, pacienteId, filtros) {
+        return await this.citaRepo.listarHistorialPacientePorDoctor(doctorId, pacienteId, filtros);
+    }
+    // ===================================================================
+    // PACIENTE: Historial de citas completadas con un doctor específico
+    // ===================================================================
+    async obtenerHistorialPorDoctor(pacienteId, doctorId, filtros) {
+        return await this.citaRepo.listarHistorialPorDoctor(pacienteId, doctorId, filtros);
+    }
+    // ===================================================================
+    // PACIENTE / DOCTOR: Servicios en los que el paciente ha tenido citas
+    // ===================================================================
+    async obtenerServiciosPaciente(pacienteId, doctorId) {
+        if (doctorId !== undefined) {
+            // Delega en el repo que internamente hace findFirst
+            await this.citaRepo.listarHistorialPacientePorDoctor(doctorId, pacienteId, { pagina: 1, limite: 1 });
+        }
+        return this.citaRepo.listarServiciosPaciente(pacienteId);
     }
     // ===================================================================
     // DOCTOR: Registrar periodo de inactividad
@@ -950,5 +1025,7 @@ exports.GestionarCitasUseCase = GestionarCitasUseCase = __decorate([
     __param(2, (0, tsyringe_1.inject)('PacienteRepository')),
     __param(3, (0, tsyringe_1.inject)('InactividadRepository')),
     __param(4, (0, tsyringe_1.inject)(EnviarNotificacionUseCase_1.EnviarNotificacionUseCase)),
-    __metadata("design:paramtypes", [Object, Object, Object, Object, EnviarNotificacionUseCase_1.EnviarNotificacionUseCase])
+    __param(5, (0, tsyringe_1.inject)(SupabaseStorageService_1.SupabaseStorageService)),
+    __metadata("design:paramtypes", [Object, Object, Object, Object, EnviarNotificacionUseCase_1.EnviarNotificacionUseCase,
+        SupabaseStorageService_1.SupabaseStorageService])
 ], GestionarCitasUseCase);

@@ -11,9 +11,28 @@ const controller = new SeguroMedicoController_1.SeguroMedicoController();
 // Admin - CRUD completo
 // ============================================
 routerSeguros.post('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.crear(req, res));
-routerSeguros.get('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), TranslationMiddleware_1.translationMiddleware, (req, res) => controller.obtenerTodos(req, res));
+routerSeguros.get('/', autenticacion_1.autenticarJWT, TranslationMiddleware_1.translationMiddleware, (req, res) => controller.obtenerTodos(req, res));
 routerSeguros.patch('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.actualizar(req, res));
 routerSeguros.delete('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.eliminar(req, res));
+// ============================================
+// Admin - Gestión de tipos por aseguradora
+// ============================================
+/**
+ * GET /api/seguros/:id/tipos
+ * Lista los tipos de plan válidos de una aseguradora.
+ */
+routerSeguros.get('/:id/tipos', autenticacion_1.autenticarJWT, (req, res) => controller.obtenerTiposDeSeguro(req, res));
+/**
+ * POST /api/seguros/:id/tipos
+ * Asocia un tipo de plan a una aseguradora.
+ * Body: { idTipoSeguro: number }
+ */
+routerSeguros.post('/:id/tipos', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.agregarTipoASeguro(req, res));
+/**
+ * DELETE /api/seguros/:id/tipos/:tipoId
+ * Desasocia un tipo de plan de una aseguradora.
+ */
+routerSeguros.delete('/:id/tipos/:tipoId', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.eliminarTipoDeSeguro(req, res));
 // ============================================
 // Público (autenticado) - Ver seguros disponibles
 // ============================================

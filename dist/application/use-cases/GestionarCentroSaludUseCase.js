@@ -14,11 +14,13 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GestionarCentroSaludUseCase = void 0;
 const tsyringe_1 = require("tsyringe");
+const client_1 = require("@prisma/client");
 const SupabaseStorageService_1 = require("../../infrastructure/external-services/SupabaseStorageService");
 let GestionarCentroSaludUseCase = class GestionarCentroSaludUseCase {
-    constructor(centroRepo, supabase) {
+    constructor(centroRepo, supabase, prisma) {
         this.centroRepo = centroRepo;
         this.supabase = supabase;
+        this.prisma = prisma;
     }
     // ─── Perfil ────────────────────────────────────────────────────────────────
     async obtenerPerfil(centroId) {
@@ -37,12 +39,80 @@ let GestionarCentroSaludUseCase = class GestionarCentroSaludUseCase {
             if (dto.nombreComercial.trim().length > 120)
                 throw new Error('El nombre comercial no puede exceder 120 caracteres');
         }
-        return await this.centroRepo.actualizarPerfil(centroId, {
-            nombreComercial: dto.nombreComercial?.trim(),
-            rnc: dto.rnc?.trim(),
-            tipoCentroId: dto.tipoCentroId,
-            sitio_web: dto.sitio_web,
-            descripcion: dto.descripcion,
+        let requiereRevisionAdmin = false;
+        let razonRevision = '';
+        // Caso 1: La información del centro fue rechazada → cualquier actualización es un intento de corrección
+        if (centro.estadoInfoPersonal === 'Rechazado') {
+            requiereRevisionAdmin = true;
+            razonRevision = 'El centro ha corregido la información de su perfil tras ser rechazado previamente.';
+        }
+        else if (centro.estadoVerificacion === 'Aprobado' || centro.estadoVerificacion === 'En revisión') {
+            // Caso 2: Info ya aprobada (o en revisión por documentos pendientes).
+            // Revisar si cambian datos legales críticos (RNC / Nombre Comercial)
+            const nombreCambiado = dto.nombreComercial !== undefined && dto.nombreComercial.trim() !== centro.nombreComercial;
+            const rncCambiado = dto.rnc !== undefined && dto.rnc.trim() !== centro.rnc;
+            if (nombreCambiado || rncCambiado) {
+                // Verificar si YA tiene una acción pendiente de Registro/Revisión de Perfil
+                const accionPerfilPendiente = await this.prisma.accion.findFirst({
+                    where: {
+                        emisorId: centroId,
+                        estado: 'Pendiente',
+                        tipoAccion: { nombre: { in: ['Registro Centro de Salud', 'Revisión Centro de Salud'] } }
+                    }
+                });
+                if (!accionPerfilPendiente) {
+                    requiereRevisionAdmin = true;
+                    razonRevision = 'El centro ha modificado su información legal sensible (RNC o Nombre Comercial).';
+                }
+            }
+        }
+        // Realizamos la transición transaccional para evitar inconsistencias
+        return await this.prisma.$transaction(async (tx) => {
+            const updatePayload = { actualizadoEn: new Date() };
+            if (dto.nombreComercial !== undefined)
+                updatePayload.nombreComercial = dto.nombreComercial?.trim();
+            if (dto.rnc !== undefined)
+                updatePayload.rnc = dto.rnc?.trim();
+            if (dto.tipoCentroId !== undefined)
+                updatePayload.tipoCentro = { connect: { id: dto.tipoCentroId } };
+            if (dto.sitio_web !== undefined)
+                updatePayload.sitio_web = dto.sitio_web;
+            if (dto.descripcion !== undefined)
+                updatePayload.descripcion = dto.descripcion;
+            if (dto.telefono !== undefined)
+                updatePayload.usuario = { update: { telefono: dto.telefono?.trim() } };
+            if (requiereRevisionAdmin) {
+                // Resetear estado de info personal a Pendiente para que el admin lo revise de nuevo
+                updatePayload.estadoInfoPersonal = 'Pendiente';
+                updatePayload.estadoVerificacion = 'Pendiente';
+            }
+            const centroActualizado = await tx.centroSalud.update({
+                where: { usuarioId: centroId },
+                data: updatePayload,
+                include: { usuario: true, tipoCentro: true, ubicacion: true }
+            });
+            // Si se requiere revisión, generar nueva acción “Registro Centro de Salud”
+            if (requiereRevisionAdmin) {
+                let tipoAccion = await tx.tipoAccion.findFirst({
+                    where: { nombre: 'Registro Centro de Salud' },
+                });
+                if (!tipoAccion) {
+                    tipoAccion = await tx.tipoAccion.create({
+                        data: { nombre: 'Registro Centro de Salud', estado: 'Activo' }
+                    });
+                }
+                await tx.accion.create({
+                    data: {
+                        tipoAccionId: tipoAccion.id,
+                        emisorId: centroId,
+                        detalle: 'Revisión de datos del perfil del Centro',
+                        comentarioEmisor: razonRevision,
+                        estado: 'Pendiente',
+                        fechaEmision: new Date(),
+                    },
+                });
+            }
+            return centroActualizado;
         });
     }
     async actualizarFoto(centroId, file) {
@@ -71,6 +141,40 @@ let GestionarCentroSaludUseCase = class GestionarCentroSaludUseCase {
         const centro = await this.centroRepo.obtenerPorId(centroId);
         if (!centro)
             throw new Error('Centro de salud no encontrado');
+        // Si la información del centro fue rechazada, una actualización de ubicación
+        // es un intento de corrección → resetear estadoInfoPersonal y crear accion de revisión
+        if (centro.estadoInfoPersonal === 'Rechazado') {
+            return await this.prisma.$transaction(async (tx) => {
+                const result = await this.centroRepo.actualizarUbicacion(centroId, dto);
+                await tx.centroSalud.update({
+                    where: { usuarioId: centroId },
+                    data: {
+                        estadoInfoPersonal: 'Pendiente',
+                        estadoVerificacion: 'Pendiente',
+                        actualizadoEn: new Date(),
+                    },
+                });
+                let tipoAccion = await tx.tipoAccion.findFirst({
+                    where: { nombre: 'Registro Centro de Salud' },
+                });
+                if (!tipoAccion) {
+                    tipoAccion = await tx.tipoAccion.create({
+                        data: { nombre: 'Registro Centro de Salud', estado: 'Activo' },
+                    });
+                }
+                await tx.accion.create({
+                    data: {
+                        tipoAccionId: tipoAccion.id,
+                        emisorId: centroId,
+                        detalle: 'Revisión de ubicación del Centro',
+                        comentarioEmisor: 'El centro ha corregido su ubicación tras ser rechazado previamente.',
+                        estado: 'Pendiente',
+                        fechaEmision: new Date(),
+                    },
+                });
+                return result;
+            });
+        }
         return await this.centroRepo.actualizarUbicacion(centroId, dto);
     }
     // ─── Doctores asociados ────────────────────────────────────────────────────
@@ -101,11 +205,23 @@ let GestionarCentroSaludUseCase = class GestionarCentroSaludUseCase {
             throw new Error('Centro de salud no encontrado');
         return await this.centroRepo.distribucionEspecialidades(centroId);
     }
+    async listarParaAdmin(filtros) {
+        return await this.centroRepo.listarParaAdmin(filtros);
+    }
+    // ─── Seguros de doctores afiliados ─────────────────────────────────────────
+    async listarSegurosCentro(centroId) {
+        const centro = await this.centroRepo.obtenerPorId(centroId);
+        if (!centro)
+            throw new Error('Centro de salud no encontrado');
+        return await this.centroRepo.obtenerSegurosCentro(centroId);
+    }
 };
 exports.GestionarCentroSaludUseCase = GestionarCentroSaludUseCase;
 exports.GestionarCentroSaludUseCase = GestionarCentroSaludUseCase = __decorate([
     (0, tsyringe_1.injectable)(),
     __param(0, (0, tsyringe_1.inject)('CentroSaludRepository')),
     __param(1, (0, tsyringe_1.inject)(SupabaseStorageService_1.SupabaseStorageService)),
-    __metadata("design:paramtypes", [Object, SupabaseStorageService_1.SupabaseStorageService])
+    __param(2, (0, tsyringe_1.inject)('PrismaClient')),
+    __metadata("design:paramtypes", [Object, SupabaseStorageService_1.SupabaseStorageService,
+        client_1.PrismaClient])
 ], GestionarCentroSaludUseCase);

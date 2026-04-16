@@ -272,12 +272,14 @@ let CitaController = class CitaController {
                 res.status(400).json({ success: false, message: 'ID de cita inválido.' });
                 return;
             }
-            const { resumen, diagnostico, tratamiento, observacion } = req.body;
-            if (!resumen?.trim() || !diagnostico?.trim()) {
-                res.status(400).json({ success: false, message: 'resumen y diagnostico son requeridos.' });
+            const { nombreDiagnostico, descripcionDiagnostico } = req.body;
+            if (!nombreDiagnostico?.trim() || !descripcionDiagnostico?.trim()) {
+                res.status(400).json({ success: false, message: 'nombreDiagnostico y descripcionDiagnostico son requeridos.' });
                 return;
             }
-            const data = await this.citasUseCase.diagnosticarCita(citaId, doctorId, { resumen, diagnostico, tratamiento, observacion });
+            // Archivos adjuntos (pueden no haber)
+            const archivos = req.files ?? [];
+            const data = await this.citasUseCase.diagnosticarCita(citaId, doctorId, { nombreDiagnostico, descripcionDiagnostico }, archivos);
             res.status(200).json({ success: true, data, message: 'Diagnóstico registrado. Cita marcada como Completada.' });
         }
         catch (error) {
@@ -302,6 +304,92 @@ let CitaController = class CitaController {
                 data: datos,
                 paginacion: { total, pagina: pag, limite: lim, totalPaginas: Math.ceil(total / lim) },
             });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // GET /citas/historial/:pacienteId — Historial de un paciente (Doctor)
+    async historialPacienteDoctor(req, res) {
+        try {
+            const doctorId = req.user?.userId;
+            if (!doctorId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const pacienteId = Number(req.params.pacienteId);
+            if (isNaN(pacienteId)) {
+                res.status(400).json({ success: false, message: 'ID de paciente inválido.' });
+                return;
+            }
+            const pagina = req.query.pagina ? Number(req.query.pagina) : undefined;
+            const limite = req.query.limite ? Number(req.query.limite) : undefined;
+            const { datos, total } = await this.citasUseCase.obtenerHistorialPacientePorDoctor(doctorId, pacienteId, { pagina, limite });
+            const lim = limite ?? 10;
+            const pag = pagina ?? 1;
+            res.status(200).json({
+                success: true,
+                data: datos,
+                paginacion: { total, pagina: pag, limite: lim, totalPaginas: Math.ceil(total / lim) },
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // GET /citas/historial/doctor/:doctorId — Paciente consulta sus citas completadas con un doctor
+    async historialPorDoctor(req, res) {
+        try {
+            const pacienteId = req.user?.userId;
+            if (!pacienteId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const doctorId = Number(req.params.doctorId);
+            if (isNaN(doctorId) || doctorId <= 0) {
+                res.status(400).json({ success: false, message: 'ID de doctor inválido.' });
+                return;
+            }
+            const pagina = req.query.pagina ? Number(req.query.pagina) : undefined;
+            const limite = req.query.limite ? Number(req.query.limite) : undefined;
+            const { datos, total } = await this.citasUseCase.obtenerHistorialPorDoctor(pacienteId, doctorId, { pagina, limite });
+            const lim = limite ?? 10;
+            const pag = pagina ?? 1;
+            res.status(200).json({
+                success: true,
+                data: datos,
+                paginacion: { total, pagina: pag, limite: lim, totalPaginas: Math.ceil(total / lim) },
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // GET /citas/servicios — Servicios en los que el paciente ha tenido citas
+    async serviciosPaciente(req, res) {
+        try {
+            const userId = req.user?.userId;
+            const rol = req.user?.rol;
+            if (!userId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            let pacienteId;
+            let doctorId;
+            if (rol === 'Paciente') {
+                pacienteId = userId;
+            }
+            else {
+                // Doctor debe enviar ?pacienteId=X
+                pacienteId = Number(req.query.pacienteId);
+                if (isNaN(pacienteId) || pacienteId <= 0) {
+                    res.status(400).json({ success: false, message: 'pacienteId es requerido para el rol Doctor.' });
+                    return;
+                }
+                doctorId = userId;
+            }
+            const data = await this.citasUseCase.obtenerServiciosPaciente(pacienteId, doctorId);
+            res.status(200).json({ success: true, data });
         }
         catch (error) {
             this.manejarError(error, res);

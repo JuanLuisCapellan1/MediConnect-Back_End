@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CambiarPasswordConTokenUseCase = void 0;
 const tsyringe_1 = require("tsyringe");
 const AuthService_1 = require("../../infrastructure/external-services/AuthService");
+const PasswordPolicy_1 = require("../../shared/utils/PasswordPolicy");
 let CambiarPasswordConTokenUseCase = class CambiarPasswordConTokenUseCase {
     constructor(usuarioRepository, passwordHasher, authService) {
         this.usuarioRepository = usuarioRepository;
@@ -25,9 +26,7 @@ let CambiarPasswordConTokenUseCase = class CambiarPasswordConTokenUseCase {
         if (nuevaPassword !== confirmarPassword) {
             throw new Error('Las contraseñas no coinciden.');
         }
-        if (nuevaPassword.length < 6) {
-            throw new Error('La contraseña debe tener al menos 6 caracteres.');
-        }
+        (0, PasswordPolicy_1.validarPasswordSegura)(nuevaPassword);
         const email = this.authService.validatePasswordResetToken(token);
         if (!email) {
             throw new Error('Token de cambio de contraseña inválido o expirado.');
