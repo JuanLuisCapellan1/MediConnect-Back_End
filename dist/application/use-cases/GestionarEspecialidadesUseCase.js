@@ -17,11 +17,13 @@ const tsyringe_1 = require("tsyringe");
 const EspecialidadValidator_1 = require("../../domain/validators/Especialidades/EspecialidadValidator");
 const EspecialidadNoEncontradaError_1 = require("../../domain/errors/Especialidades/EspecialidadNoEncontradaError");
 const EstadoValidator_1 = require("../../domain/validators/Estados/EstadoValidator");
+const TranslationHydrator_1 = require("../../infrastructure/services/TranslationHydrator");
 let GestionarEspecialidadesUseCase = class GestionarEspecialidadesUseCase {
-    constructor(especialidadRepository, validator, estadoValidator) {
+    constructor(especialidadRepository, validator, estadoValidator, hydrator) {
         this.especialidadRepository = especialidadRepository;
         this.validator = validator;
         this.estadoValidator = estadoValidator;
+        this.hydrator = hydrator;
     }
     async crear(dto) {
         if (dto.estado) {
@@ -29,7 +31,10 @@ let GestionarEspecialidadesUseCase = class GestionarEspecialidadesUseCase {
             await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo']);
         }
         await this.validator.validarCreacion(dto.nombre);
-        return await this.especialidadRepository.crear(dto);
+        const resultado = await this.especialidadRepository.crear(dto);
+        // Hidratar caché con el nuevo nombre (fire-and-forget)
+        this.hydrator.hydrateStrings([dto.nombre]).catch(() => { });
+        return resultado;
     }
     async obtenerPorId(id) {
         const encontrado = await this.especialidadRepository.obtenerPorId(id);
@@ -56,7 +61,11 @@ let GestionarEspecialidadesUseCase = class GestionarEspecialidadesUseCase {
             dto.estado = this.normalizarEstado(dto.estado);
             await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo', 'Eliminado']);
         }
-        return await this.especialidadRepository.actualizar(id, dto);
+        const resultado = await this.especialidadRepository.actualizar(id, dto);
+        // Hidratar caché si el nombre fue modificado (fire-and-forget)
+        if (dto.nombre)
+            this.hydrator.hydrateStrings([dto.nombre]).catch(() => { });
+        return resultado;
     }
     async eliminar(id) {
         const existente = await this.especialidadRepository.obtenerPorId(id);
@@ -77,6 +86,8 @@ exports.GestionarEspecialidadesUseCase = GestionarEspecialidadesUseCase = __deco
     __param(0, (0, tsyringe_1.inject)('EspecialidadRepository')),
     __param(1, (0, tsyringe_1.inject)(EspecialidadValidator_1.EspecialidadValidator)),
     __param(2, (0, tsyringe_1.inject)(EstadoValidator_1.EstadoValidator)),
+    __param(3, (0, tsyringe_1.inject)(TranslationHydrator_1.TranslationHydrator)),
     __metadata("design:paramtypes", [Object, EspecialidadValidator_1.EspecialidadValidator,
-        EstadoValidator_1.EstadoValidator])
+        EstadoValidator_1.EstadoValidator,
+        TranslationHydrator_1.TranslationHydrator])
 ], GestionarEspecialidadesUseCase);

@@ -24,7 +24,7 @@ const doctorEspecialidadController = new DoctorEspecialidadController_1.DoctorEs
  * GET /doctores
  * Listar doctores (Admin: todos; Paciente: solo activos y verificados)
  */
-router.get('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin', 'Paciente'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.listar(req, res));
+router.get('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador', 'Paciente', 'Centro'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.listar(req, res));
 /**
  * GET /doctores/me
  * Obtener perfil del doctor autenticado con toda su información
@@ -108,6 +108,17 @@ router.get('/pacientes-info/:pacienteId', autenticacion_1.autenticarJWT, (0, rol
 router.post('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => tsyringe_1.container.resolve(CentrosSaludController_1.CentrosSaludController).doctorEnviarSolicitud(req, res));
 router.get('/solicitudes-alianza', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => tsyringe_1.container.resolve(CentrosSaludController_1.CentrosSaludController).doctorListarSolicitudes(req, res));
 router.put('/solicitudes-alianza/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => tsyringe_1.container.resolve(CentrosSaludController_1.CentrosSaludController).doctorResponderSolicitud(req, res));
+/**
+ * DELETE /doctores/solicitudes-alianza/:id
+ * Doctor quita la conexión con un centro de salud (elimina la alianza).
+ */
+router.delete('/solicitudes-alianza/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => tsyringe_1.container.resolve(CentrosSaludController_1.CentrosSaludController).desconectarDoctor(req, res));
+/**
+ * GET /doctores/mis-centros
+ * Doctor obtiene todos los centros de salud con los que tiene alianza aceptada.
+ * Centro y Paciente pueden pasar ?doctorId para consultar los centros de un doctor específico.
+ */
+router.get('/mis-centros', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor', 'Centro', 'Paciente', 'Administrador'), TranslationMiddleware_1.translationMiddleware, (req, res) => tsyringe_1.container.resolve(CentrosSaludController_1.CentrosSaludController).doctorListarMisCentros(req, res));
 // ─── Periodos de Inactividad del Doctor (antes de /:id) ─────────────
 /**
  * POST /doctores/inactividad
@@ -159,18 +170,28 @@ router.get('/estadisticas/productividad', autenticacion_1.autenticarJWT, (0, rol
  */
 router.get('/estadisticas/servicios-mas-utilizados', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.serviciosMasUtilizados(req, res));
 /**
+ * GET /doctores/admin
+ * Admin lista todos los doctores con filtros (nombre, apellido, estado, estadoVerificacion, etc.)
+ */
+router.get('/admin', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.listarParaAdmin(req, res));
+/**
+ * GET /doctores/admin/:id
+ * Admin obtiene perfil completo del doctor (documentos, verificación, ubicaciones, etc.)
+ */
+router.get('/admin/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.obtenerParaAdmin(req, res));
+/**
  * GET /doctores/:id
  * Obtener doctor por ID (cualquier usuario autenticado)
  */
-router.get('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin', 'Paciente', 'Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.obtenerPorId(req, res));
+router.get('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador', 'Paciente', 'Doctor', 'Centro'), TranslationMiddleware_1.translationMiddleware, (req, res) => doctorController.obtenerPorId(req, res));
 /**
  * PATCH /doctores/:id
- * Actualizar doctor por ID (solo Admin)
+ * Actualizar doctor por ID (solo Administrador)
  */
-router.patch('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin'), (req, res) => doctorController.actualizar(req, res));
+router.patch('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => doctorController.actualizar(req, res));
 /**
  * DELETE /doctores/:id
- * Eliminar doctor (solo Admin)
+ * Eliminar doctor (solo Administrador)
  */
-router.delete('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin'), (req, res) => doctorController.eliminar(req, res));
+router.delete('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => doctorController.eliminar(req, res));
 exports.default = router;

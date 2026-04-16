@@ -10,16 +10,16 @@ const accionesController = new AccionesController_1.AccionesController();
  * GET /acciones/pendientes
  * Listar todas las acciones pendientes de revisión de documentos (solo Admin)
  */
-router.get('/pendientes', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin'), (req, res) => accionesController.listarAccionesPendientes(req, res));
+router.get('/pendientes', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => accionesController.listarAccionesPendientes(req, res));
 /**
  * GET /acciones/:id
  * Obtener detalle de una acción específica (solo Admin)
  */
-router.get('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin'), (req, res) => accionesController.obtenerDetalleAccion(req, res));
+router.get('/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => accionesController.obtenerDetalleAccion(req, res));
 /**
  * PATCH /acciones/:id/revisar
  * Aprobar o rechazar un documento específico (solo Admin)
  * Body: { decision: 'Aprobada' | 'Rechazada', comentario?: string }
  */
-router.patch('/:id/revisar', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin'), (req, res) => accionesController.aprobarRechazarDocumento(req, res));
+router.patch('/:id/revisar', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => accionesController.aprobarRechazarDocumento(req, res));
 exports.default = router;

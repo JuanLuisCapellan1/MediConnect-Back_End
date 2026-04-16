@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RegistrarPacienteDto = void 0;
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
+const PasswordPolicy_1 = require("../../shared/utils/PasswordPolicy");
 /**
  * DTO para registro de pacientes
  * Recibe: multipart/form-data con archivos
@@ -44,7 +45,7 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsNotEmpty)({ message: 'La contraseña es requerida' }),
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.MinLength)(8, { message: 'La contraseña debe tener al menos 8 caracteres' }),
+    (0, class_validator_1.Matches)(PasswordPolicy_1.STRONG_PASSWORD_REGEX, { message: PasswordPolicy_1.STRONG_PASSWORD_MESSAGE }),
     (0, class_validator_1.MaxLength)(100, { message: 'La contraseña no puede exceder 100 caracteres' }),
     __metadata("design:type", String)
 ], RegistrarPacienteDto.prototype, "password", void 0);

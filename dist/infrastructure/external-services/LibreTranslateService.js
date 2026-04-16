@@ -46,6 +46,8 @@ let LibreTranslateService = class LibreTranslateService {
                 source: sourceLang,
                 target: targetLang,
                 format: 'text'
+            }, {
+                timeout: 60000 // Timeout de 60 segundos
             });
             const traduccion = response.data.translatedText;
             //GUARDAR EN REDIS PARA LA PRÓXIMA (Por 24 horas = 86400 seg)

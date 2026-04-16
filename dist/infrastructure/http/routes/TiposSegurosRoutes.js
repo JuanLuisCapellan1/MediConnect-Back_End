@@ -16,9 +16,9 @@ const controller = new TipoSeguroController_1.TipoSeguroController();
 routerTiposSeguros.post('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.crear(req, res));
 /**
  * GET /api/tipos-seguros
- * Obtener todos los tipos de seguros con filtros (Solo Admin)
+ * Obtener todos los tipos de seguros con filtros
  */
-routerTiposSeguros.get('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), (req, res) => controller.obtenerTodos(req, res));
+routerTiposSeguros.get('/', autenticacion_1.autenticarJWT, (req, res) => controller.obtenerTodos(req, res));
 // ============================================
 // Público - Solo lectura de tipos activos
 // ============================================

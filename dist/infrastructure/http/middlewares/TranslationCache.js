@@ -7,8 +7,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TranslationCache = void 0;
 class TranslationCache {
     constructor() {
-        this.MAX_CACHE_SIZE = 1000; // Máximo de entradas en caché
-        this.CACHE_TTL = 3600000; // 1 hora en milisegundos
+        this.MAX_CACHE_SIZE = 5000; // Máximo de entradas en caché
+        this.CACHE_TTL = 86400000; // 24 horas en milisegundos (datos médicos raramente cambian)
         this.cache = new Map();
         // Limpiar entradas expiradas cada 10 minutos
         setInterval(() => this.cleanExpiredEntries(), 600000);

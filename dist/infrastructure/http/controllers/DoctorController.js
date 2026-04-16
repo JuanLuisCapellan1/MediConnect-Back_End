@@ -107,21 +107,17 @@ class DoctorController {
             if (isNaN(id)) {
                 return res.status(400).json({ success: false, message: 'ID inválido.' });
             }
-            // Para pacientes usamos obtenerPerfilCompleto (datos públicos)
-            // Para admins también está bien, ya que tiene más info
-            const doctor = esPaciente
-                ? await useCase['doctorRepository'].obtenerPerfilCompleto(id)
-                : await useCase.obtenerPorId(id);
+            // Siempre usamos obtenerPerfilCompleto para devolver foto, banner y datos completos
+            const doctor = await useCase['doctorRepository'].obtenerPerfilCompleto(id);
             if (!doctor) {
                 return res.status(404).json({ success: false, message: 'Doctor no encontrado.' });
             }
-            // Si es paciente, ocultamos datos sensibles y calculamos isFavorite
+            // Para pacientes, ocultamos datos sensibles y calculamos isFavorite
             if (esPaciente) {
                 delete doctor.documentos;
                 delete doctor.comentarioVerificacion;
                 delete doctor.estadoAccionVerificacion;
                 delete doctor.fechaResolucionVerificacion;
-                // Verificar si el doctor está en los favoritos del paciente
                 const favRepo = tsyringe_1.container.resolve('FavoritoRepository');
                 doctor.isFavorite = await favRepo.existe(pacienteId, id);
             }
@@ -144,6 +140,69 @@ class DoctorController {
                     success: false,
                     message: 'Doctor no encontrado',
                 });
+            }
+            return res.status(200).json({
+                success: true,
+                data: doctor,
+            });
+        }
+        catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+    /**
+     * GET /doctores/admin
+     * Admin lista todos los doctores con filtros completos (sin restricciones de estado)
+     */
+    async listarParaAdmin(req, res) {
+        try {
+            const useCase = tsyringe_1.container.resolve(GestionarDoctoresUseCase_1.GestionarDoctoresUseCase);
+            const getString = (value) => {
+                if (Array.isArray(value))
+                    return value[0];
+                return value;
+            };
+            const filtros = {
+                nombre: getString(req.query.nombre),
+                apellido: getString(req.query.apellido),
+                genero: getString(req.query.genero),
+                nacionalidad: getString(req.query.nacionalidad),
+                especialidadId: req.query.especialidadId ? parseInt(req.query.especialidadId) : undefined,
+                estado: getString(req.query.estado),
+                estadoVerificacion: getString(req.query.estadoVerificacion),
+                pagina: req.query.pagina ? parseInt(req.query.pagina) : 1,
+                limite: req.query.limite ? parseInt(req.query.limite) : 10,
+            };
+            const resultado = await useCase.listar(filtros);
+            return res.status(200).json({
+                success: true,
+                data: resultado.datos,
+                paginacion: {
+                    total: resultado.total,
+                    pagina: filtros.pagina,
+                    limite: filtros.limite,
+                    totalPaginas: Math.ceil(resultado.total / filtros.limite),
+                },
+            });
+        }
+        catch (error) {
+            return this.manejarError(error, res);
+        }
+    }
+    /**
+     * GET /doctores/admin/:id
+     * Admin obtiene toda la información de un doctor (sin filtrar datos sensibles)
+     * Incluye: documentos, comentarioVerificacion, estadoVerificacion, ubicaciones, etc.
+     */
+    async obtenerParaAdmin(req, res) {
+        try {
+            const id = parseInt(req.params.id);
+            if (isNaN(id)) {
+                return res.status(400).json({ success: false, message: 'ID inválido.' });
+            }
+            const doctor = await tsyringe_1.container.resolve(GestionarDoctoresUseCase_1.GestionarDoctoresUseCase)['doctorRepository'].obtenerPerfilCompleto(id);
+            if (!doctor) {
+                return res.status(404).json({ success: false, message: 'Doctor no encontrado.' });
             }
             return res.status(200).json({
                 success: true,

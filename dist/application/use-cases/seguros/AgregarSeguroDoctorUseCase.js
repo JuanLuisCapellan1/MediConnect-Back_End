@@ -28,6 +28,11 @@ let AgregarSeguroDoctorUseCase = class AgregarSeguroDoctorUseCase {
         if (seguro.estado !== 'Activo') {
             throw new Error('El seguro seleccionado no está disponible');
         }
+        // Validar que el tipo de seguro pertenece a esta aseguradora
+        const tipoValido = await this.repository.tipoPertenecEAlSeguro(dto.idSeguro, dto.idTipoSeguro);
+        if (!tipoValido) {
+            throw new Error('El tipo de seguro seleccionado no pertenece a esta aseguradora');
+        }
         // Validar que el doctor no tenga ya este seguro con este tipo
         const yaExiste = await this.repository.verificarSeguroExistenteDoctor(doctorId, dto.idSeguro, dto.idTipoSeguro);
         if (yaExiste) {

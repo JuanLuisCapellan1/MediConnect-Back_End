@@ -1,10 +1,43 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
@@ -58,6 +91,98 @@ let CentrosSaludController = class CentrosSaludController {
         }
     }
     // ══════════════════════════════════════════════════════════════
+    // GET /centros-salud/:id  — Perfil público (Paciente / Doctor / Centro)
+    // ══════════════════════════════════════════════════════════════
+    async obtenerPerfilPublico(req, res) {
+        try {
+            const centroId = parseInt(req.params.id);
+            if (isNaN(centroId)) {
+                res.status(400).json({ success: false, message: 'ID inválido' });
+                return;
+            }
+            const data = await this.gestionarCentroUseCase.obtenerPerfil(centroId);
+            if (!data) {
+                res.status(404).json({ success: false, message: 'Centro de salud no encontrado' });
+                return;
+            }
+            // Agregar estado de alianza entre el usuario logueado y este centro
+            const userId = req.user?.userId;
+            const rol = req.user?.rol;
+            let estadoAlianza = null;
+            let solicitudAlianzaId = null;
+            if (userId && (rol === 'Doctor' || rol === 'Centro')) {
+                const alianzaRepo = this.solicitudesUseCase['solicitudRepo'];
+                const where = rol === 'Doctor'
+                    ? { doctorId: userId, centroSaludId: centroId }
+                    : { doctorId: centroId, centroSaludId: userId };
+                const alianza = await alianzaRepo['prisma'].solicitudAlianza.findFirst({
+                    where,
+                    orderBy: { creadoEn: 'desc' },
+                    select: { id: true, estado: true },
+                });
+                estadoAlianza = alianza?.estado ?? null;
+                solicitudAlianzaId = alianza?.id ?? null;
+            }
+            res.status(200).json({ success: true, data: { ...data, estadoAlianza, solicitudAlianzaId } });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // GET /centros-salud/admin  (solo Administrador)
+    // ══════════════════════════════════════════════════════════════
+    async listarParaAdmin(req, res) {
+        try {
+            const filtros = {
+                nombre: req.query.nombre,
+                estadoVerificacion: req.query.estadoVerificacion,
+                estado: req.query.estado,
+                tipoCentroId: req.query.tipoCentroId ? Number(req.query.tipoCentroId) : undefined,
+                pagina: req.query.pagina ? Number(req.query.pagina) : 1,
+                limite: req.query.limite ? Number(req.query.limite) : 10,
+            };
+            const { datos, total } = await this.gestionarCentroUseCase.listarParaAdmin(filtros);
+            const totalPaginas = Math.ceil(total / (filtros.limite || 10));
+            res.status(200).json({
+                success: true,
+                data: datos,
+                paginacion: {
+                    total,
+                    pagina: filtros.pagina,
+                    limite: filtros.limite,
+                    totalPaginas,
+                },
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // GET /centros-salud/admin/:id  (solo Administrador)
+    // ══════════════════════════════════════════════════════════════
+    async obtenerParaAdmin(req, res) {
+        try {
+            const id = parseInt(req.params.id);
+            if (isNaN(id)) {
+                res.status(400).json({ success: false, message: 'ID inválido.' });
+                return;
+            }
+            // Accedemos al repositorio directamente para obtener el perfil completo sin filtrar
+            const repo = this.gestionarCentroUseCase['centroRepo'];
+            const data = await repo.obtenerPerfilCompleto(id);
+            if (!data) {
+                res.status(404).json({ success: false, message: 'Centro de salud no encontrado.' });
+                return;
+            }
+            res.status(200).json({ success: true, data });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
     // PUT /centros-salud/mi-perfil
     // ══════════════════════════════════════════════════════════════
     async actualizarPerfil(req, res) {
@@ -99,6 +224,51 @@ let CentrosSaludController = class CentrosSaludController {
         }
     }
     // ══════════════════════════════════════════════════════════════
+    // GET /centros-salud/mis-documentos
+    // ══════════════════════════════════════════════════════════════
+    async obtenerEstadoDocumentos(req, res) {
+        try {
+            const centroId = req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const { ObtenerEstadoDocumentosCentroUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/use-cases/ObtenerEstadoDocumentosCentroUseCase')));
+            const { container } = await Promise.resolve().then(() => __importStar(require('tsyringe')));
+            const useCase = container.resolve(ObtenerEstadoDocumentosCentroUseCase);
+            const data = await useCase.execute(centroId);
+            res.status(200).json({ success: true, data });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // PUT /centros-salud/documentos/:id
+    // ══════════════════════════════════════════════════════════════
+    async actualizarDocumento(req, res) {
+        try {
+            const centroId = req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            if (!req.file) {
+                res.status(400).json({ success: false, message: 'Se requiere el archivo de certificación sanitaria' });
+                return;
+            }
+            const { ActualizarDocumentoCentroUseCase } = await Promise.resolve().then(() => __importStar(require('../../../application/use-cases/ActualizarDocumentoCentroUseCase')));
+            const { container } = await Promise.resolve().then(() => __importStar(require('tsyringe')));
+            const useCase = container.resolve(ActualizarDocumentoCentroUseCase);
+            // Usamos un dto vacío/opcional ya que el modelo asume que siempre se actualiza el certificado de sanidad del centro
+            await useCase.execute(centroId, { descripcion: req.body.descripcion }, req.file);
+            res.status(200).json({ success: true, message: 'Documento (Certificación Sanitaria) actualizado exitosamente. Será revisado nuevamente.' });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
     // GET /centros-salud/mi-ubicacion
     // ══════════════════════════════════════════════════════════════
     async obtenerUbicacion(req, res) {
@@ -125,12 +295,14 @@ let CentrosSaludController = class CentrosSaludController {
                 res.status(401).json({ success: false, message: 'No autenticado' });
                 return;
             }
-            const { barrioId, subBarrioId, direccion, codigoPostal } = req.body;
+            const { barrioId, subBarrioId, direccion, codigoPostal, latitud, longitud } = req.body;
             const dto = {
                 barrioId: barrioId !== undefined ? Number(barrioId) : undefined,
                 subBarrioId: subBarrioId !== undefined ? (subBarrioId === null ? null : Number(subBarrioId)) : undefined,
                 direccion,
                 codigoPostal: codigoPostal ?? undefined,
+                latitud: latitud !== undefined ? Number(latitud) : undefined,
+                longitud: longitud !== undefined ? Number(longitud) : undefined,
             };
             const data = await this.gestionarCentroUseCase.actualizarUbicacion(centroId, dto);
             res.status(200).json({ success: true, data, message: 'Ubicación actualizada exitosamente' });
@@ -157,6 +329,69 @@ let CentrosSaludController = class CentrosSaludController {
         }
     }
     // ══════════════════════════════════════════════════════════════
+    // GET /centros-salud/seguros
+    // ══════════════════════════════════════════════════════════════
+    async listarSeguros(req, res) {
+        try {
+            // Si se provee centroSaludId como query param, usarlo; si no, usar el centro autenticado
+            const paramId = req.query.centroSaludId ? Number(req.query.centroSaludId) : undefined;
+            const centroId = paramId ?? req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const data = await this.gestionarCentroUseCase.listarSegurosCentro(centroId);
+            res.status(200).json({ success: true, data });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // DELETE /centros-salud/solicitudes-alianza/:id  (Centro desconecta a doctor)
+    // ══════════════════════════════════════════════════════════════
+    async desconectarCentro(req, res) {
+        try {
+            const centroId = req.user?.userId;
+            if (!centroId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const solicitudId = Number(req.params.id);
+            if (isNaN(solicitudId)) {
+                res.status(400).json({ success: false, message: 'ID de solicitud inválido' });
+                return;
+            }
+            await this.solicitudesUseCase.desconectarAlianza(solicitudId, centroId, 'Centro');
+            res.status(200).json({ success: true, message: 'Conexión eliminada exitosamente' });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
+    // DELETE /doctores/solicitudes-alianza/:id  (Doctor desconecta de un centro)
+    // ══════════════════════════════════════════════════════════════
+    async desconectarDoctor(req, res) {
+        try {
+            const doctorId = req.user?.userId;
+            if (!doctorId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const solicitudId = Number(req.params.id);
+            if (isNaN(solicitudId)) {
+                res.status(400).json({ success: false, message: 'ID de solicitud inválido' });
+                return;
+            }
+            await this.solicitudesUseCase.desconectarAlianza(solicitudId, doctorId, 'Doctor');
+            res.status(200).json({ success: true, message: 'Conexión eliminada exitosamente' });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ══════════════════════════════════════════════════════════════
     // POST /centros-salud/solicitudes-alianza
     // ══════════════════════════════════════════════════════════════
     async enviarSolicitud(req, res) {
@@ -171,7 +406,7 @@ let CentrosSaludController = class CentrosSaludController {
                 res.status(400).json({ success: false, message: 'destinatarioId (ID del doctor) es requerido y debe ser numérico' });
                 return;
             }
-            const data = await this.solicitudesUseCase.enviarSolicitud(centroId, 'CentroSalud', { destinatarioId: Number(destinatarioId), mensaje });
+            const data = await this.solicitudesUseCase.enviarSolicitud(centroId, 'Centro', { destinatarioId: Number(destinatarioId), mensaje });
             res.status(201).json({ success: true, data, message: 'Solicitud de alianza enviada exitosamente' });
         }
         catch (error) {
@@ -183,12 +418,26 @@ let CentrosSaludController = class CentrosSaludController {
     // ══════════════════════════════════════════════════════════════
     async listarSolicitudes(req, res) {
         try {
-            const centroId = req.user?.userId;
+            // Si se provee centroSaludId como query param, usarlo; si no, usar el centro autenticado
+            const paramId = req.query.centroSaludId ? Number(req.query.centroSaludId) : undefined;
+            const centroId = paramId ?? req.user?.userId;
             if (!centroId) {
                 res.status(401).json({ success: false, message: 'No autenticado' });
                 return;
             }
-            const data = await this.solicitudesUseCase.listarSolicitudes(centroId, 'CentroSalud');
+            const data = await this.solicitudesUseCase.listarSolicitudes(centroId, 'Centro');
+            // Si el usuario logueado es Paciente y consultó con centroSaludId, agregar isFavorite a cada doctor
+            const rol = req.user?.rol;
+            const pacienteId = req.user?.userId;
+            if (rol === 'Paciente' && paramId && pacienteId) {
+                const { container } = await Promise.resolve().then(() => __importStar(require('tsyringe')));
+                const favRepo = container.resolve('FavoritoRepository');
+                for (const solicitud of data) {
+                    if (solicitud.doctor) {
+                        solicitud.doctor.isFavorite = await favRepo.existe(pacienteId, solicitud.doctorId);
+                    }
+                }
+            }
             res.status(200).json({ success: true, data });
         }
         catch (error) {
@@ -215,7 +464,7 @@ let CentrosSaludController = class CentrosSaludController {
                 res.status(400).json({ success: false, message: 'estado debe ser Aceptada o Rechazada' });
                 return;
             }
-            const data = await this.solicitudesUseCase.responderSolicitud(solicitudId, centroId, 'CentroSalud', { estado, motivoRechazo });
+            const data = await this.solicitudesUseCase.responderSolicitud(solicitudId, centroId, 'Centro', { estado, motivoRechazo });
             res.status(200).json({ success: true, data, message: `Solicitud ${estado.toLowerCase()} exitosamente` });
         }
         catch (error) {
@@ -254,6 +503,23 @@ let CentrosSaludController = class CentrosSaludController {
                 return;
             }
             const data = await this.solicitudesUseCase.listarSolicitudes(doctorId, 'Doctor');
+            res.status(200).json({ success: true, data });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // GET /doctores/mis-centros
+    async doctorListarMisCentros(req, res) {
+        try {
+            // Si se provee doctorId como query param, usarlo; si no, usar el doctor autenticado
+            const paramId = req.query.doctorId ? Number(req.query.doctorId) : undefined;
+            const doctorId = paramId ?? req.user?.userId;
+            if (!doctorId) {
+                res.status(401).json({ success: false, message: 'No autenticado' });
+                return;
+            }
+            const data = await this.solicitudesUseCase.listarCentrosPorDoctor(doctorId);
             res.status(200).json({ success: true, data });
         }
         catch (error) {
