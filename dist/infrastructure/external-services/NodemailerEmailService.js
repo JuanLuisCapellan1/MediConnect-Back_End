@@ -28,14 +28,12 @@ let NodemailerEmailService = class NodemailerEmailService {
     if (!smtpUser || !smtpPassword) {
       console.warn('⚠️  SMTP credentials no configuradas. El servicio de email no funcionará correctamente.');
     }
-    this.transporter = nodemailer_1.default.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465, // true para 465, false para otros puertos
+    this.transporter = nodemailer.createTransport({
+      service: 'gmail', // Nodemailer configura los puertos y hosts de Google por ti
       auth: {
-        user: smtpUser,
-        pass: smtpPassword,
-      },
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD
+      }
     });
   }
   /**
