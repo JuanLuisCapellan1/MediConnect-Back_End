@@ -18,10 +18,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GestionarUbicacionesUseCase = void 0;
 const tsyringe_1 = require("tsyringe");
 const UbicacionValidator_1 = require("../../domain/validators/Ubicaciones/UbicacionValidator");
+const TranslationHydrator_1 = require("../../infrastructure/services/TranslationHydrator");
 let GestionarUbicacionesUseCase = class GestionarUbicacionesUseCase {
-    constructor(validator, repository) {
+    constructor(validator, repository, hydrator) {
         this.validator = validator;
         this.repository = repository;
+        this.hydrator = hydrator;
     }
     async crear(dto) {
         await this.validator.validarCreacion(dto.barrioId, dto.direccion);
@@ -31,7 +33,10 @@ let GestionarUbicacionesUseCase = class GestionarUbicacionesUseCase {
         if (dto.puntoGeografico) {
             this.validator.validarPuntoGeografico(dto.puntoGeografico);
         }
-        return await this.repository.crear(dto.barrioId, dto.direccion, dto.codigoPostal, dto.puntoGeografico, dto.nombre);
+        const resultado = await this.repository.crear(dto.barrioId, dto.direccion, dto.codigoPostal, dto.puntoGeografico, dto.nombre);
+        if (dto.nombre)
+            this.hydrator?.hydrateStrings([dto.nombre]).catch(() => { });
+        return resultado;
     }
     async listarTodas() {
         return await this.repository.listarTodas();
@@ -65,7 +70,10 @@ let GestionarUbicacionesUseCase = class GestionarUbicacionesUseCase {
         if (dto.puntoGeografico !== undefined) {
             this.validator.validarPuntoGeografico(dto.puntoGeografico);
         }
-        return await this.repository.actualizar(dto.id, dto.barrioId, dto.direccion, dto.codigoPostal, dto.estado, dto.puntoGeografico, dto.nombre);
+        const resultado = await this.repository.actualizar(dto.id, dto.barrioId, dto.direccion, dto.codigoPostal, dto.estado, dto.puntoGeografico, dto.nombre);
+        if (dto.nombre)
+            this.hydrator?.hydrateStrings([dto.nombre]).catch(() => { });
+        return resultado;
     }
     async eliminar(id) {
         return await this.repository.eliminar(id);
@@ -81,7 +89,10 @@ let GestionarUbicacionesUseCase = class GestionarUbicacionesUseCase {
         if (dto.puntoGeografico) {
             this.validator.validarPuntoGeografico(dto.puntoGeografico);
         }
-        return await this.repository.crearParaDoctor(doctorId, dto.barrioId, dto.direccion, dto.codigoPostal, dto.puntoGeografico, dto.nombre);
+        const resultado = await this.repository.crearParaDoctor(doctorId, dto.barrioId, dto.direccion, dto.codigoPostal, dto.puntoGeografico, dto.nombre);
+        if (dto.nombre)
+            this.hydrator?.hydrateStrings([dto.nombre]).catch(() => { });
+        return resultado;
     }
 };
 exports.GestionarUbicacionesUseCase = GestionarUbicacionesUseCase;
@@ -89,5 +100,6 @@ exports.GestionarUbicacionesUseCase = GestionarUbicacionesUseCase = __decorate([
     (0, tsyringe_1.injectable)(),
     __param(0, (0, tsyringe_1.inject)('UbicacionValidator')),
     __param(1, (0, tsyringe_1.inject)('IUbicacionesRepository')),
-    __metadata("design:paramtypes", [UbicacionValidator_1.UbicacionValidator, Object])
+    __param(2, (0, tsyringe_1.inject)(TranslationHydrator_1.TranslationHydrator)),
+    __metadata("design:paramtypes", [UbicacionValidator_1.UbicacionValidator, Object, TranslationHydrator_1.TranslationHydrator])
 ], GestionarUbicacionesUseCase);

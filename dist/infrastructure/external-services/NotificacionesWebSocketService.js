@@ -25,8 +25,8 @@ let NotificacionesWebSocketService = class NotificacionesWebSocketService {
      */
     inicializar(httpServer) {
         this.io = new socket_io_1.Server(httpServer, {
-            pingInterval: 25000, // Ping cada 25 segundos para mantener la conexión viva
-            pingTimeout: 60000,  // Timeout de 60 segundos para detectar desconexiones
+            pingInterval: 25000, // Ping cada 30 segundos para mantener la conexión viva
+            pingTimeout: 60000, // Timeout de 60 segundos para detectar desconexiones
             cors: {
                 origin: process.env.CORS_ORIGIN || '*',
                 methods: ['GET', 'POST'],

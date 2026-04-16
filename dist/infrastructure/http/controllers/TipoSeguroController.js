@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TipoSeguroController = void 0;
 const tsyringe_1 = require("tsyringe");
+const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 // Use Cases
 const CrearTipoSeguroUseCase_1 = require("../../../application/use-cases/tipos-seguros/CrearTipoSeguroUseCase");
@@ -18,7 +19,7 @@ class TipoSeguroController {
     // ============================================
     async crear(req, res) {
         try {
-            const dto = Object.assign(new TipoSeguroDtos_1.CrearTipoSeguroDto(req.body.nombre, req.body.descripcion), req.body);
+            const dto = (0, class_transformer_1.plainToInstance)(TipoSeguroDtos_1.CrearTipoSeguroDto, req.body);
             const errors = await (0, class_validator_1.validate)(dto);
             if (errors.length > 0) {
                 res.status(400).json({
@@ -42,7 +43,7 @@ class TipoSeguroController {
     }
     async obtenerTodos(req, res) {
         try {
-            const filtros = new TipoSeguroDtos_1.FiltroTiposSegurosDto(req.query.estado, req.query.busqueda, req.query.pagina ? parseInt(req.query.pagina) : undefined, req.query.limite ? parseInt(req.query.limite) : undefined);
+            const filtros = (0, class_transformer_1.plainToInstance)(TipoSeguroDtos_1.FiltroTiposSegurosDto, req.query);
             const useCase = tsyringe_1.container.resolve(ObtenerTodosTiposSegurosUseCase_1.ObtenerTodosTiposSegurosUseCase);
             const resultado = await useCase.execute(filtros);
             res.status(200).json({
@@ -76,7 +77,7 @@ class TipoSeguroController {
     async actualizar(req, res) {
         try {
             const id = parseInt(req.params.id);
-            const dto = Object.assign(new TipoSeguroDtos_1.ActualizarTipoSeguroDto(), req.body);
+            const dto = (0, class_transformer_1.plainToInstance)(TipoSeguroDtos_1.ActualizarTipoSeguroDto, req.body);
             const errors = await (0, class_validator_1.validate)(dto);
             if (errors.length > 0) {
                 res.status(400).json({

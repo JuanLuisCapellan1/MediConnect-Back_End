@@ -67,6 +67,12 @@ class BusquedaController {
             // ── pacienteId para esFavorito ────────────────────────────────────
             const esPaciente = req.user?.rol === 'Paciente';
             const pacienteId = esPaciente ? req.user?.userId : undefined;
+            // ── doctorId para estaConectado (en centros) ─────────────────────
+            const esDoctor = req.user?.rol === 'Doctor';
+            const doctorId = esDoctor ? req.user?.userId : undefined;
+            // ── centroId para estaConectado (en doctores) ────────────────────
+            const esCentro = req.user?.rol === 'Centro';
+            const centroId = esCentro ? req.user?.userId : undefined;
             // ── Repos desde el contenedor ────────────────────────────────────
             const doctorRepo = tsyringe_1.container.resolve(GestionarDoctoresUseCase_1.GestionarDoctoresUseCase)['doctorRepository'];
             const centroRepo = tsyringe_1.container.resolve(GestionarCentroSaludUseCase_1.GestionarCentroSaludUseCase)['centroRepo'];
@@ -75,10 +81,10 @@ class BusquedaController {
             const quiereCentros = !tipo || tipo === 'Centro';
             const [doctores, centros] = await Promise.all([
                 quiereDoctores
-                    ? doctorRepo.buscarCercanos(latFinal, lngFinal, radioFinal, filtrosDoctor, pacienteId)
+                    ? doctorRepo.buscarCercanos(latFinal, lngFinal, radioFinal, filtrosDoctor, pacienteId, centroId)
                     : Promise.resolve([]),
                 quiereCentros
-                    ? centroRepo.buscarCercanos(latFinal, lngFinal, radioFinal, filtrosCentro)
+                    ? centroRepo.buscarCercanos(latFinal, lngFinal, radioFinal, filtrosCentro, doctorId)
                     : Promise.resolve([]),
             ]);
             return res.status(200).json({

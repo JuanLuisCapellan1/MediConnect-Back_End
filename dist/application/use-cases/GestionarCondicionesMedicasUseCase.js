@@ -17,11 +17,13 @@ const tsyringe_1 = require("tsyringe");
 const CondicionMedicaValidator_1 = require("../../domain/validators/CondicionesMedicas/CondicionMedicaValidator");
 const CondicionMedicaNoEncontradaError_1 = require("../../domain/errors/CondicionesMedicas/CondicionMedicaNoEncontradaError");
 const EstadoValidator_1 = require("../../domain/validators/Estados/EstadoValidator");
+const TranslationHydrator_1 = require("../../infrastructure/services/TranslationHydrator");
 let GestionarCondicionesMedicasUseCase = class GestionarCondicionesMedicasUseCase {
-    constructor(condicionMedicaRepository, validator, estadoValidator) {
+    constructor(condicionMedicaRepository, validator, estadoValidator, hydrator) {
         this.condicionMedicaRepository = condicionMedicaRepository;
         this.validator = validator;
         this.estadoValidator = estadoValidator;
+        this.hydrator = hydrator;
     }
     async crear(dto) {
         // Normalizar tipo
@@ -30,7 +32,11 @@ let GestionarCondicionesMedicasUseCase = class GestionarCondicionesMedicasUseCas
         await this.validarTipo(dto.tipo);
         // Validar nombre único
         await this.validator.validarCreacion(dto.nombre);
-        return await this.condicionMedicaRepository.crear(dto);
+        const resultado = await this.condicionMedicaRepository.crear(dto);
+        // Hidratar caché con nombre y descripción (fire-and-forget)
+        const stringsCrear = [dto.nombre, dto.descripcion].filter(Boolean);
+        this.hydrator.hydrateStrings(stringsCrear).catch(() => { });
+        return resultado;
     }
     async obtenerPorId(id) {
         const encontrado = await this.condicionMedicaRepository.obtenerPorId(id);
@@ -64,7 +70,12 @@ let GestionarCondicionesMedicasUseCase = class GestionarCondicionesMedicasUseCas
             dto.estado = this.normalizarEstado(dto.estado);
             await this.estadoValidator.validarEstado(dto.estado, ['Activa', 'Inactiva', 'Eliminada']);
         }
-        return await this.condicionMedicaRepository.actualizar(id, dto);
+        const resultado = await this.condicionMedicaRepository.actualizar(id, dto);
+        // Hidratar caché con campos actualizados (fire-and-forget)
+        const stringsToHydrate = [dto.nombre, dto.descripcion].filter(Boolean);
+        if (stringsToHydrate.length > 0)
+            this.hydrator.hydrateStrings(stringsToHydrate).catch(() => { });
+        return resultado;
     }
     async eliminar(id) {
         const existente = await this.condicionMedicaRepository.obtenerPorId(id);
@@ -213,6 +224,8 @@ exports.GestionarCondicionesMedicasUseCase = GestionarCondicionesMedicasUseCase 
     __param(0, (0, tsyringe_1.inject)('CondicionMedicaRepository')),
     __param(1, (0, tsyringe_1.inject)(CondicionMedicaValidator_1.CondicionMedicaValidator)),
     __param(2, (0, tsyringe_1.inject)(EstadoValidator_1.EstadoValidator)),
+    __param(3, (0, tsyringe_1.inject)(TranslationHydrator_1.TranslationHydrator)),
     __metadata("design:paramtypes", [Object, CondicionMedicaValidator_1.CondicionMedicaValidator,
-        EstadoValidator_1.EstadoValidator])
+        EstadoValidator_1.EstadoValidator,
+        TranslationHydrator_1.TranslationHydrator])
 ], GestionarCondicionesMedicasUseCase);

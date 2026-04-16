@@ -1,3 +1,4 @@
+import dns from 'dns';
 import nodemailer, { Transporter } from 'nodemailer';
 import { injectable } from 'tsyringe';
 import { IEmailService } from '../../application/interfaces/IEmailService';
@@ -17,6 +18,10 @@ export class NodemailerEmailService implements IEmailService {
   private transporter: Transporter;
 
   constructor() {
+    // Forzar IPv4 en la resolución DNS para compatibilidad con Railway
+    // (Railway no soporta IPv6 y smtp.gmail.com puede resolver a IPv6)
+    dns.setDefaultResultOrder('ipv4first');
+
     const smtpHost     = process.env.SMTP_HOST     || 'smtp.gmail.com';
     const smtpPort     = parseInt(process.env.SMTP_PORT     || '587');
     const smtpUser     = process.env.SMTP_USER;
@@ -31,7 +36,9 @@ export class NodemailerEmailService implements IEmailService {
       port: smtpPort,
       secure: smtpPort === 465,
       auth: { user: smtpUser, pass: smtpPassword },
-    });
+      // family: 4 fuerza la conexión TCP a usar IPv4 explícitamente
+      family: 4,
+    } as any);
   }
 
   /**

@@ -15,12 +15,14 @@ const RefreshTokenUseCase_1 = require("../../../application/use-cases/RefreshTok
 const SolicitarRecuperacionPasswordUseCase_1 = require("../../../application/use-cases/SolicitarRecuperacionPasswordUseCase");
 const ValidarCodigoRecuperacionPasswordUseCase_1 = require("../../../application/use-cases/ValidarCodigoRecuperacionPasswordUseCase");
 const CambiarPasswordConTokenUseCase_1 = require("../../../application/use-cases/CambiarPasswordConTokenUseCase");
+const CambiarPasswordAutenticadoUseCase_1 = require("../../../application/use-cases/CambiarPasswordAutenticadoUseCase");
 const RefreshAccessTokenUseCase_1 = require("../../../application/use-cases/RefreshAccessTokenUseCase");
 const AttachPasswordToGoogleAccountUseCase_1 = require("../../../application/use-cases/AttachPasswordToGoogleAccountUseCase");
 const ActualizarFotoPerfilUseCase_1 = require("../../../application/use-cases/ActualizarFotoPerfilUseCase");
 const ActualizarBannerUseCase_1 = require("../../../application/use-cases/ActualizarBannerUseCase");
 const CambiarEmailUseCase_1 = require("../../../application/use-cases/CambiarEmailUseCase");
 const EliminarCuentaUseCase_1 = require("../../../application/use-cases/EliminarCuentaUseCase");
+const VerificarIdentidadUseCase_1 = require("../../../application/use-cases/VerificarIdentidadUseCase");
 // DTOs (Tuyos)
 const RegistrarPacienteDto_1 = require("../../../application/dtos/RegistrarPacienteDto");
 const RegistrarDoctorDto_1 = require("../../../application/dtos/RegistrarDoctorDto");
@@ -386,6 +388,48 @@ class AuthController {
         }
     }
     /**
+     * PATCH /auth/password/cambiar-autenticado
+     * Cambia la contraseña del usuario ya autenticado (JWT).
+     * Requiere: Bearer token válido + contraseña actual + nueva contraseña.
+     * Ideal para el flujo de Configuración de perfil.
+     */
+    async cambiarPasswordAutenticado(req, res) {
+        try {
+            const usuarioId = req.user?.userId;
+            if (!usuarioId) {
+                res.status(401).json({ success: false, message: 'No autorizado. Debe iniciar sesión.' });
+                return;
+            }
+            const { passwordActual, nuevaPassword, confirmarPassword } = req.body;
+            if (!passwordActual || !nuevaPassword || !confirmarPassword) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Se requieren: passwordActual, nuevaPassword y confirmarPassword.',
+                });
+                return;
+            }
+            const useCase = tsyringe_1.container.resolve(CambiarPasswordAutenticadoUseCase_1.CambiarPasswordAutenticadoUseCase);
+            await useCase.execute(usuarioId, passwordActual, nuevaPassword, confirmarPassword);
+            res.status(200).json({ success: true, message: 'Contraseña actualizada correctamente.' });
+        }
+        catch (error) {
+            if (error instanceof Error) {
+                if (error.message.includes('actual es incorrecta')) {
+                    res.status(401).json({ success: false, message: error.message });
+                    return;
+                }
+                if (error.message.includes('no coinciden') ||
+                    error.message.includes('igual a la contraseña actual') ||
+                    error.message.includes('contraseña local') ||
+                    error.message.includes('política')) {
+                    res.status(400).json({ success: false, message: error.message });
+                    return;
+                }
+            }
+            this.manejarError(error, res);
+        }
+    }
+    /**
      * POST /auth/refresh-access-token
      * Recibe un refreshToken y devuelve un nuevo accessToken
      *
@@ -541,6 +585,40 @@ class AuthController {
     // ===========================================================================
     // HELPERS PRIVADOS
     // ===========================================================================
+    /**
+     * POST /auth/verificar-identidad
+     * Verifica la contraseña del usuario autenticado (prueba de identidad).
+     * Requiere JWT válido en Authorization header.
+     * Body: { password: string }
+     */
+    async verificarIdentidad(req, res) {
+        try {
+            const usuarioId = req.user?.userId;
+            if (!usuarioId) {
+                res.status(401).json({ success: false, message: 'No autorizado.' });
+                return;
+            }
+            const { password } = req.body;
+            if (!password) {
+                res.status(400).json({ success: false, message: 'La contraseña es requerida.' });
+                return;
+            }
+            const useCase = tsyringe_1.container.resolve(VerificarIdentidadUseCase_1.VerificarIdentidadUseCase);
+            await useCase.execute(usuarioId, password);
+            res.status(200).json({ success: true, verificado: true });
+        }
+        catch (error) {
+            if (error instanceof Error && error.message === 'Credenciales inválidas.') {
+                res.status(401).json({ success: false, message: 'Credenciales inválidas.' });
+                return;
+            }
+            if (error instanceof Error && error.message.includes('contraseña local')) {
+                res.status(400).json({ success: false, message: error.message });
+                return;
+            }
+            this.manejarError(error, res);
+        }
+    }
     extraerToken(req) {
         // Intentar obtener el header preservado primero (middleware preserveAuthHeaders)
         let authHeader = req.originalAuthorization ||

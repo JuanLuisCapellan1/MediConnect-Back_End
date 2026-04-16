@@ -61,7 +61,7 @@ class PrismaSolicitudAlianzaRepository {
         });
     }
     async listarPorCentro(centroSaludId) {
-        return await this.prisma.solicitudAlianza.findMany({
+        const solicitudes = await this.prisma.solicitudAlianza.findMany({
             where: { centroSaludId },
             include: {
                 doctor: {
@@ -72,10 +72,22 @@ class PrismaSolicitudAlianzaRepository {
                         exequatur: true,
                         calificacionPromedio: true,
                         estado: true,
+                        anosExperiencia: true,
                         usuario: { select: { email: true, fotoPerfil: true } },
                         especialidades: {
-                            where: { es_principal: true },
-                            select: { id_especialidad: true, es_principal: true }
+                            where: { estado: 'Activo' },
+                            include: { especialidades: { select: { id: true, nombre: true } } }
+                        },
+                        idiomas: {
+                            where: { estado: 'Activo' },
+                            select: { id: true, nombre: true, nivel: true }
+                        },
+                        segurosAceptados: {
+                            where: { estado: 'Activo' },
+                            include: {
+                                seguro: { select: { id: true, nombre: true, urlImage: true } },
+                                tipoSeguro: { select: { id: true, nombre: true } },
+                            }
                         }
                     }
                 },
@@ -84,6 +96,38 @@ class PrismaSolicitudAlianzaRepository {
                 }
             },
             orderBy: { creadoEn: 'desc' },
+        });
+        return solicitudes.map((s) => {
+            const doctor = s.doctor;
+            if (doctor) {
+                return {
+                    ...s,
+                    doctor: {
+                        ...doctor,
+                        especialidades: (doctor.especialidades || []).map((e) => ({
+                            id: e.id_especialidad,
+                            nombre: e.especialidades?.nombre,
+                            esPrincipal: e.es_principal,
+                        })),
+                        idiomas: (doctor.idiomas || []).map((i) => ({
+                            id: i.id,
+                            nombre: i.nombre,
+                            nivel: i.nivel,
+                        })),
+                        seguros: (doctor.segurosAceptados || []).map((ds) => ({
+                            id: ds.seguro?.id,
+                            nombre: ds.seguro?.nombre,
+                            urlImage: ds.seguro?.urlImage || null,
+                            tipoSeguro: ds.tipoSeguro ? { id: ds.tipoSeguro.id, nombre: ds.tipoSeguro.nombre } : null,
+                        })),
+                        anosExperiencia: doctor.anosExperiencia || null,
+                        calificacionPromedio: doctor.calificacionPromedio != null
+                            ? parseFloat(doctor.calificacionPromedio.toString())
+                            : null,
+                    }
+                };
+            }
+            return s;
         });
     }
     async listarPorDoctor(doctorId) {
@@ -115,6 +159,9 @@ class PrismaSolicitudAlianzaRepository {
                 centroSalud: { select: { usuarioId: true, nombreComercial: true } }
             }
         });
+    }
+    async eliminar(id) {
+        await this.prisma.solicitudAlianza.delete({ where: { id } });
     }
 }
 exports.PrismaSolicitudAlianzaRepository = PrismaSolicitudAlianzaRepository;

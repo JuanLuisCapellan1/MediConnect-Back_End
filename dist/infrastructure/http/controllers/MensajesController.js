@@ -102,7 +102,6 @@ class MensajesController {
                     ...mensaje.toJSON(),
                     remitente: null,
                 },
-                esPropio: true,
             });
         }
         catch (error) {

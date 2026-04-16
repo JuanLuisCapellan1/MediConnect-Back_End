@@ -7,6 +7,7 @@ const class_validator_1 = require("class-validator");
 const AprobarRechazarDocumentoUseCase_1 = require("../../../application/use-cases/AprobarRechazarDocumentoUseCase");
 const AprobarRechazarDocumentoDto_1 = require("../../../application/dtos/AprobarRechazarDocumentoDto");
 const client_1 = require("../../database/prisma/client");
+const SupabaseStorageService_1 = require("../../external-services/SupabaseStorageService");
 // Helper function para aplanar errores de validación
 function flattenValidationErrors(errors) {
     const messages = [];
@@ -20,10 +21,22 @@ function flattenValidationErrors(errors) {
     }
     return messages;
 }
+// Helper: regenera la URL firmada de cualquier documento que tenga urlArchivo
+async function regenerarUrlArchivo(doc, storage) {
+    if (!doc || !doc.urlArchivo)
+        return doc;
+    return {
+        ...doc,
+        urlArchivo: await storage.refreshOrGetSignedUrl(doc.urlArchivo),
+    };
+}
 /**
  * Controlador para gestión de acciones (revisión de documentos)
  */
 class AccionesController {
+    constructor() {
+        this.storage = new SupabaseStorageService_1.SupabaseStorageService();
+    }
     /**
      * GET /api/acciones/pendientes
      * Lista todas las acciones pendientes de revisión de documentos
@@ -31,23 +44,13 @@ class AccionesController {
     async listarAccionesPendientes(req, res) {
         try {
             const acciones = await client_1.prisma.accion.findMany({
-                where: {
-                    estado: 'Pendiente',
-                    documentoId: { not: null },
-                },
+                where: { estado: 'Pendiente' },
                 include: {
                     emisor: {
-                        select: {
-                            id: true,
-                            email: true,
-                            rol: true,
-                        },
+                        select: { id: true, email: true, rol: true, fotoPerfil: true },
                     },
                     tipoAccion: {
-                        select: {
-                            id: true,
-                            nombre: true,
-                        },
+                        select: { id: true, nombre: true },
                     },
                     documento: {
                         select: {
@@ -63,19 +66,95 @@ class AccionesController {
                                     nombre: true,
                                     apellido: true,
                                     exequatur: true,
+                                    estadoVerificacion: true,
                                 },
                             },
                         },
                     },
+                    documentos_centros: {
+                        select: {
+                            id_documento_centro: true,
+                            tipo_documento: true,
+                            descripcion: true,
+                            url_archivo: true,
+                            nombre_original: true,
+                            creado_en: true,
+                        }
+                    }
                 },
-                orderBy: {
-                    fechaEmision: 'asc',
-                },
+                orderBy: { fechaEmision: 'asc' },
             });
-            res.status(200).json({
-                success: true,
-                data: acciones,
-            });
+            // Recopilar IDs de emisores para enriquecer con datos Doctor/CentroSalud
+            const emisoresDoctor = acciones
+                .filter((a) => a.emisor.rol === 'Doctor')
+                .map((a) => a.emisorId);
+            const emisoresCentro = acciones
+                .filter((a) => a.emisor.rol === 'Centro' || a.emisor.rol === 'Centro')
+                .map((a) => a.emisorId);
+            // Query en lote para enriquecer datos
+            const [doctoresMap, centrosMap] = await Promise.all([
+                emisoresDoctor.length > 0
+                    ? client_1.prisma.doctor.findMany({
+                        where: { usuarioId: { in: emisoresDoctor } },
+                        select: {
+                            usuarioId: true,
+                            nombre: true,
+                            apellido: true,
+                            exequatur: true,
+                            estadoVerificacion: true,
+                        },
+                    }).then((docs) => new Map(docs.map((d) => [d.usuarioId, d])))
+                    : Promise.resolve(new Map()),
+                emisoresCentro.length > 0
+                    ? client_1.prisma.centroSalud.findMany({
+                        where: { usuarioId: { in: emisoresCentro } },
+                        select: {
+                            usuarioId: true,
+                            nombreComercial: true,
+                            estadoVerificacion: true,
+                        },
+                    }).then((centros) => new Map(centros.map((c) => [c.usuarioId, c])))
+                    : Promise.resolve(new Map()),
+            ]);
+            // Regenerar URL firmada fresca + adjuntar datos del emisor enriquecidos
+            const accionesEnriquecidas = await Promise.all(acciones.map(async (accion) => {
+                let documentoMapeado = null;
+                if (accion.documento) {
+                    documentoMapeado = await regenerarUrlArchivo(accion.documento, this.storage);
+                }
+                else if (accion.documentos_centros) {
+                    // Mapear documentos_centros al formato que espera el frontend (camelCase)
+                    const docCentro = {
+                        id: accion.documentos_centros.id_documento_centro,
+                        tipoDocumento: accion.documentos_centros.tipo_documento,
+                        descripcion: accion.documentos_centros.descripcion,
+                        urlArchivo: accion.documentos_centros.url_archivo,
+                        nombreOriginal: accion.documentos_centros.nombre_original,
+                        creadoEn: accion.documentos_centros.creado_en,
+                    };
+                    documentoMapeado = await regenerarUrlArchivo(docCentro, this.storage);
+                }
+                // tipoRevision orienta al frontend sobre qué renderizar
+                const tipoRevision = documentoMapeado ? 'documento' : 'registro';
+                // Datos adicionales del emisor según su rol
+                let perfilEmisor = null;
+                if (accion.emisor.rol === 'Doctor') {
+                    perfilEmisor = doctoresMap.get(accion.emisorId) || null;
+                }
+                else if (accion.emisor.rol === 'Centro' || accion.emisor.rol === 'Centro') {
+                    perfilEmisor = centrosMap.get(accion.emisorId) || null;
+                }
+                // Removemos documentos_centros puro de la respuesta por limpieza, 
+                // devolviéndolo dentro de "documento" como espera el frontend
+                const { documentos_centros, ...accionSinDocCentro } = accion;
+                return {
+                    ...accionSinDocCentro,
+                    tipoRevision,
+                    documento: documentoMapeado,
+                    perfilEmisor,
+                };
+            }));
+            res.status(200).json({ success: true, data: accionesEnriquecidas });
         }
         catch (error) {
             res.status(500).json({
@@ -141,6 +220,18 @@ class AccionesController {
                             },
                         },
                     },
+                    documentos_centros: {
+                        select: {
+                            id_documento_centro: true,
+                            tipo_documento: true,
+                            descripcion: true,
+                            url_archivo: true,
+                            nombre_original: true,
+                            estado_revision: true,
+                            creado_en: true,
+                            actualizado_en: true,
+                        }
+                    }
                 },
             });
             if (!accion) {
@@ -150,9 +241,32 @@ class AccionesController {
                 });
                 return;
             }
+            let documentoMapeado = null;
+            if (accion.documento) {
+                documentoMapeado = await regenerarUrlArchivo(accion.documento, this.storage);
+            }
+            else if (accion.documentos_centros) {
+                const docCentro = {
+                    id: accion.documentos_centros.id_documento_centro,
+                    tipoDocumento: accion.documentos_centros.tipo_documento,
+                    descripcion: accion.documentos_centros.descripcion,
+                    urlArchivo: accion.documentos_centros.url_archivo,
+                    nombreOriginal: accion.documentos_centros.nombre_original,
+                    estadoRevision: accion.documentos_centros.estado_revision,
+                    creadoEn: accion.documentos_centros.creado_en,
+                    actualizadoEn: accion.documentos_centros.actualizado_en,
+                };
+                documentoMapeado = await regenerarUrlArchivo(docCentro, this.storage);
+            }
+            const { documentos_centros, ...accionSinDocCentro } = accion;
+            // Regenerar URL firmada fresca
+            const accionConUrl = {
+                ...accionSinDocCentro,
+                documento: documentoMapeado,
+            };
             res.status(200).json({
                 success: true,
-                data: accion,
+                data: accionConUrl,
             });
         }
         catch (error) {
@@ -176,7 +290,6 @@ class AccionesController {
                 });
                 return;
             }
-            // Validar DTO
             const dto = (0, class_transformer_1.plainToInstance)(AprobarRechazarDocumentoDto_1.AprobarRechazarDocumentoDto, {
                 ...req.body,
                 accionId,
@@ -190,7 +303,6 @@ class AccionesController {
                 });
                 return;
             }
-            // Ejecutar caso de uso
             const adminId = req.user.userId;
             const useCase = tsyringe_1.container.resolve(AprobarRechazarDocumentoUseCase_1.AprobarRechazarDocumentoUseCase);
             await useCase.execute(adminId, dto);

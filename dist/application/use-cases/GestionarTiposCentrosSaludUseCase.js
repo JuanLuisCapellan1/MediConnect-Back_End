@@ -17,11 +17,13 @@ const tsyringe_1 = require("tsyringe");
 const TipoCentroSaludValidator_1 = require("../../domain/validators/TiposCentrosSalud/TipoCentroSaludValidator");
 const TipoCentroSaludNoEncontradoError_1 = require("../../domain/errors/TiposCentrosSalud/TipoCentroSaludNoEncontradoError");
 const EstadoValidator_1 = require("../../domain/validators/Estados/EstadoValidator");
+const TranslationHydrator_1 = require("../../infrastructure/services/TranslationHydrator");
 let GestionarTiposCentrosSaludUseCase = class GestionarTiposCentrosSaludUseCase {
-    constructor(tipoCentroSaludRepository, validator, estadoValidator) {
+    constructor(tipoCentroSaludRepository, validator, estadoValidator, hydrator) {
         this.tipoCentroSaludRepository = tipoCentroSaludRepository;
         this.validator = validator;
         this.estadoValidator = estadoValidator;
+        this.hydrator = hydrator;
     }
     async crear(dto) {
         if (dto.estado) {
@@ -29,7 +31,9 @@ let GestionarTiposCentrosSaludUseCase = class GestionarTiposCentrosSaludUseCase 
             await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo']);
         }
         await this.validator.validarCreacion(dto.nombre);
-        return await this.tipoCentroSaludRepository.crear(dto);
+        const resultado = await this.tipoCentroSaludRepository.crear(dto);
+        this.hydrator.hydrateStrings([dto.nombre]).catch(() => { });
+        return resultado;
     }
     async obtenerPorId(id) {
         const encontrado = await this.tipoCentroSaludRepository.obtenerPorId(id);
@@ -56,7 +60,10 @@ let GestionarTiposCentrosSaludUseCase = class GestionarTiposCentrosSaludUseCase 
             dto.estado = this.normalizarEstado(dto.estado);
             await this.estadoValidator.validarEstado(dto.estado, ['Activo', 'Inactivo', 'Eliminado']);
         }
-        return await this.tipoCentroSaludRepository.actualizar(id, dto);
+        const resultado = await this.tipoCentroSaludRepository.actualizar(id, dto);
+        if (dto.nombre)
+            this.hydrator.hydrateStrings([dto.nombre]).catch(() => { });
+        return resultado;
     }
     async eliminar(id) {
         const existente = await this.tipoCentroSaludRepository.obtenerPorId(id);
@@ -77,6 +84,8 @@ exports.GestionarTiposCentrosSaludUseCase = GestionarTiposCentrosSaludUseCase = 
     __param(0, (0, tsyringe_1.inject)('TipoCentroSaludRepository')),
     __param(1, (0, tsyringe_1.inject)(TipoCentroSaludValidator_1.TipoCentroSaludValidator)),
     __param(2, (0, tsyringe_1.inject)(EstadoValidator_1.EstadoValidator)),
+    __param(3, (0, tsyringe_1.inject)(TranslationHydrator_1.TranslationHydrator)),
     __metadata("design:paramtypes", [Object, TipoCentroSaludValidator_1.TipoCentroSaludValidator,
-        EstadoValidator_1.EstadoValidator])
+        EstadoValidator_1.EstadoValidator,
+        TranslationHydrator_1.TranslationHydrator])
 ], GestionarTiposCentrosSaludUseCase);

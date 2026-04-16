@@ -50,6 +50,7 @@ let LoginUseCase = class LoginUseCase {
                 id: base.id,
                 email: base.email,
                 rol: base.rol,
+                telefono: base.telefono ?? null,
                 fotoPerfil: fotoPerfil ?? null,
                 banner: banner ?? null,
                 paciente: base.paciente ?? null,

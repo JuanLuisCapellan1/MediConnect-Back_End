@@ -59,10 +59,10 @@ router.get('/cercanos', (0, roleMiddleware_1.requireRole)('Doctor', 'Administrad
 router.get('/mis-servicios', (0, roleMiddleware_1.requireRole)('Doctor'), (req, res) => serviciosController.listarMisServicios(req, res));
 /**
  * @route GET /servicios/doctor/:doctorId
- * @description Lista los servicios de un doctor (para pacientes/admin)
- * @access Doctor, Administrador, Paciente
+ * @description Lista los servicios de un doctor (para pacientes/admin/centro)
+ * @access Doctor, Administrador, Paciente, Centro
  */
-router.get('/doctor/:doctorId', (0, roleMiddleware_1.requireRole)('Doctor', 'Administrador', 'Paciente'), (req, res) => serviciosController.listarPorDoctor(req, res));
+router.get('/doctor/:doctorId', (0, roleMiddleware_1.requireRole)('Doctor', 'Administrador', 'Paciente', 'Centro'), (req, res) => serviciosController.listarPorDoctor(req, res));
 /**
  * @route GET /servicios/centro/:centroId
  * @description Lista todos los servicios ofrecidos en un centro de salud
@@ -93,9 +93,9 @@ router.get('/:id/slots', (0, roleMiddleware_1.requireRole)('Paciente', 'Doctor',
 /**
  * @route GET /servicios/:id
  * @description Obtiene el detalle completo de un servicio
- * @access Doctor, Administrador, Paciente
+ * @access Doctor, Administrador, Paciente, Centro
  */
-router.get('/:id', (0, roleMiddleware_1.requireRole)('Doctor', 'Administrador', 'Paciente'), (req, res) => serviciosController.obtenerDetalle(req, res));
+router.get('/:id', (0, roleMiddleware_1.requireRole)('Doctor', 'Administrador', 'Paciente', 'Centro'), (req, res) => serviciosController.obtenerDetalle(req, res));
 /**
  * @route PUT /servicios/:id
  * @description Actualiza los datos de un servicio (solo el doctor propietario)

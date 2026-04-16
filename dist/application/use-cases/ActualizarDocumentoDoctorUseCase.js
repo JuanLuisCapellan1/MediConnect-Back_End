@@ -31,8 +31,11 @@ let ActualizarDocumentoDoctorUseCase = class ActualizarDocumentoDoctorUseCase {
         if (!doctor) {
             throw new Error('Doctor no encontrado');
         }
-        if (doctor.estadoVerificacion !== 'En revisión') {
-            throw new Error('Solo los doctores en revisión pueden actualizar documentos');
+        if (doctor.estadoVerificacion === 'Aprobado') {
+            throw new Error('Tu cuenta ya está aprobada. No es necesario actualizar documentos.');
+        }
+        if (!['En revisión', 'Rechazado'].includes(doctor.estadoVerificacion)) {
+            throw new Error('No se pueden actualizar documentos en el estado actual de verificación.');
         }
         // 2. Verificar que el documento existe y pertenece al doctor
         const documento = await client_1.prisma.documentoDoctor.findUnique({

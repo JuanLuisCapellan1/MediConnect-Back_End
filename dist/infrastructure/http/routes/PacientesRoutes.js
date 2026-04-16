@@ -12,6 +12,17 @@ const pacienteController = new PacienteController_1.PacienteController();
  * Listar pacientes (solo Admin)
  */
 router.get('/', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Admin'), TranslationMiddleware_1.translationMiddleware, (req, res) => pacienteController.listar(req, res));
+// ─── Vista para Administrador ──────────────────────────────────────────────────
+/**
+ * GET /pacientes/admin
+ * Listar todos los pacientes (Administrador) — sin datos médicos sensibles
+ */
+router.get('/admin', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), TranslationMiddleware_1.translationMiddleware, (req, res) => pacienteController.listarParaAdmin(req, res));
+/**
+ * GET /pacientes/admin/:id
+ * Obtener datos de un paciente por ID (Administrador) — sin datos médicos sensibles
+ */
+router.get('/admin/:id', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Administrador'), TranslationMiddleware_1.translationMiddleware, (req, res) => pacienteController.obtenerParaAdmin(req, res));
 /**
  * GET /pacientes/me
  * Obtener perfil del paciente autenticado

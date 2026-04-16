@@ -333,6 +333,74 @@ class SeguroMedicoController {
         });
     }
     // ============================================
+    // Admin - Gestión de tipos por aseguradora
+    // ============================================
+    /**
+     * GET /api/seguros-medicos/:id/tipos
+     * Lista los tipos de plan válidos de una aseguradora.
+     */
+    async obtenerTiposDeSeguro(req, res) {
+        try {
+            const seguroId = parseInt(String(req.params.id));
+            const useCase = tsyringe_1.container.resolve(ObtenerTodosSegurosUseCase_1.ObtenerTodosSegurosUseCase); // reutilizamos el repo via otro usecase
+            // Accedemos directo al repositorio a través del container
+            const repo = tsyringe_1.container.resolve('SeguroMedicoRepository');
+            const tipos = await repo.obtenerTiposDeSeguro(seguroId);
+            res.status(200).json({
+                success: true,
+                message: 'Tipos de seguro obtenidos exitosamente',
+                data: tipos,
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    /**
+     * POST /api/seguros-medicos/:id/tipos
+     * Asocia un tipo de plan a una aseguradora (Admin).
+     * Body: { idTipoSeguro: number }
+     */
+    async agregarTipoASeguro(req, res) {
+        try {
+            const seguroId = parseInt(String(req.params.id));
+            const tipoSeguroId = parseInt(String(req.body.idTipoSeguro));
+            if (isNaN(seguroId) || isNaN(tipoSeguroId) || tipoSeguroId <= 0) {
+                res.status(400).json({ success: false, message: 'idTipoSeguro inválido' });
+                return;
+            }
+            const repo = tsyringe_1.container.resolve('SeguroMedicoRepository');
+            const resultado = await repo.agregarTipoASeguro(seguroId, tipoSeguroId);
+            res.status(201).json({
+                success: true,
+                message: 'Tipo de seguro asociado exitosamente',
+                data: resultado,
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    /**
+     * DELETE /api/seguros-medicos/:id/tipos/:tipoId
+     * Desasocia un tipo de plan de una aseguradora (Admin).
+     */
+    async eliminarTipoDeSeguro(req, res) {
+        try {
+            const seguroId = parseInt(String(req.params.id));
+            const tipoSeguroId = parseInt(String(req.params.tipoId));
+            const repo = tsyringe_1.container.resolve('SeguroMedicoRepository');
+            await repo.eliminarTipoDeSeguro(seguroId, tipoSeguroId);
+            res.status(200).json({
+                success: true,
+                message: 'Tipo de seguro desasociado exitosamente',
+            });
+        }
+        catch (error) {
+            this.manejarError(error, res);
+        }
+    }
+    // ============================================
     // Rankings
     // ============================================
     /**

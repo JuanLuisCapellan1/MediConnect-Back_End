@@ -123,6 +123,29 @@ let GestionarSolicitudesAlianzaUseCase = class GestionarSolicitudesAlianzaUseCas
         }).catch((e) => console.error('notif responderSolicitud:', e));
         return solicitudActualizada;
     }
+    /**
+     * Desconectar (eliminar) una alianza entre doctor y centro.
+     * El centro puede eliminar cualquier alianza que le pertenezca.
+     * El doctor puede eliminar cualquier alianza en la que participe.
+     */
+    async desconectarAlianza(solicitudId, usuarioId, rol) {
+        const solicitud = await this.solicitudRepo.buscarPorId(solicitudId);
+        if (!solicitud)
+            throw new Error('Solicitud de alianza no encontrada');
+        if (rol === 'Centro' && solicitud.centroSaludId !== usuarioId) {
+            throw new Error('No tienes permisos para eliminar esta alianza');
+        }
+        if (rol === 'Doctor' && solicitud.doctorId !== usuarioId) {
+            throw new Error('No tienes permisos para eliminar esta alianza');
+        }
+        await this.solicitudRepo.eliminar(solicitudId);
+    }
+    /**
+     * Listar los centros de salud en los que trabaja el doctor (alianzas Aceptadas).
+     */
+    async listarCentrosPorDoctor(doctorId) {
+        return await this.centroRepo.listarCentrosPorDoctor(doctorId);
+    }
 };
 exports.GestionarSolicitudesAlianzaUseCase = GestionarSolicitudesAlianzaUseCase;
 exports.GestionarSolicitudesAlianzaUseCase = GestionarSolicitudesAlianzaUseCase = __decorate([

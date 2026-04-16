@@ -75,6 +75,8 @@ const ResenasRoutes_1 = __importDefault(require("./ResenasRoutes"));
 const MediaRoutes_1 = __importDefault(require("./MediaRoutes"));
 const FavoritosRoutes_1 = __importDefault(require("./FavoritosRoutes"));
 const BusquedaRoutes_1 = __importDefault(require("./BusquedaRoutes"));
+const EstadisticasAdminRoutes_1 = __importDefault(require("./EstadisticasAdminRoutes"));
+const ContactoRoutes_1 = __importDefault(require("./ContactoRoutes"));
 const router = (0, express_1.Router)();
 const traduccionController = new TraduccionController_1.TraduccionController();
 const translationUtilsController = new TranslationUtilsController_1.TranslationUtilsController();
@@ -155,4 +157,8 @@ router.use('/favoritos', FavoritosRoutes_1.default);
 router.use('/media', MediaRoutes_1.default);
 // Rutas de Búsqueda Unificada
 router.use('/busqueda', BusquedaRoutes_1.default);
+// Rutas de Estadísticas del Admin
+router.use('/admin/estadisticas', EstadisticasAdminRoutes_1.default);
+// Rutas de Contacto (formulario de contacto y newsletter) — públicas
+router.use('/contacto', ContactoRoutes_1.default);
 exports.default = router;
