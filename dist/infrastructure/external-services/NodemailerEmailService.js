@@ -1,48 +1,50 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first'); // Obliga a Node.js a usar IPv4
 "use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
+  var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+  if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+  else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+  return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+  if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+  return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NodemailerEmailService = void 0;
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const tsyringe_1 = require("tsyringe");
 let NodemailerEmailService = class NodemailerEmailService {
-    constructor() {
-        // Configuración del transporter de Nodemailer
-        // Usa variables de entorno para configuración segura
-        const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-        const smtpPort = parseInt(process.env.SMTP_PORT || '587');
-        const smtpUser = process.env.SMTP_USER;
-        const smtpPassword = process.env.SMTP_PASSWORD;
-        if (!smtpUser || !smtpPassword) {
-            console.warn('⚠️  SMTP credentials no configuradas. El servicio de email no funcionará correctamente.');
-        }
-        this.transporter = nodemailer_1.default.createTransport({
-            host: smtpHost,
-            port: smtpPort,
-            secure: smtpPort === 465, // true para 465, false para otros puertos
-            auth: {
-                user: smtpUser,
-                pass: smtpPassword,
-            },
-        });
+  constructor() {
+    // Configuración del transporter de Nodemailer
+    // Usa variables de entorno para configuración segura
+    const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const smtpPort = parseInt(process.env.SMTP_PORT || '587');
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPassword = process.env.SMTP_PASSWORD;
+    if (!smtpUser || !smtpPassword) {
+      console.warn('⚠️  SMTP credentials no configuradas. El servicio de email no funcionará correctamente.');
     }
-    /**
-     * Genera el HTML del correo con la identidad visual de MediConnect.
-     * Colores: Deep Forest Green #092610, Soft Sage #D7E3C9, Dusty Blue #8BB1CA, Pale Herbal Cream #EFF2D7, White #FFFFFF.
-     */
-    construirHtmlMediConnect(asunto, cuerpo) {
-        const cuerpoHtml = cuerpo.replace(/\n/g, '<br>');
-        return `
+    this.transporter = nodemailer_1.default.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465, // true para 465, false para otros puertos
+      auth: {
+        user: smtpUser,
+        pass: smtpPassword,
+      },
+    });
+  }
+  /**
+   * Genera el HTML del correo con la identidad visual de MediConnect.
+   * Colores: Deep Forest Green #092610, Soft Sage #D7E3C9, Dusty Blue #8BB1CA, Pale Herbal Cream #EFF2D7, White #FFFFFF.
+   */
+  construirHtmlMediConnect(asunto, cuerpo) {
+    const cuerpoHtml = cuerpo.replace(/\n/g, '<br>');
+    return `
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -97,28 +99,28 @@ let NodemailerEmailService = class NodemailerEmailService {
   </table>
 </body>
 </html>`;
+  }
+  async enviarCorreo(destinatario, asunto, cuerpo) {
+    try {
+      const html = this.construirHtmlMediConnect(asunto, cuerpo);
+      const mailOptions = {
+        from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@mediconnect.com',
+        to: destinatario,
+        subject: asunto,
+        text: cuerpo,
+        html,
+      };
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log(`✅ Correo enviado a ${destinatario}:`, info.messageId);
     }
-    async enviarCorreo(destinatario, asunto, cuerpo) {
-        try {
-            const html = this.construirHtmlMediConnect(asunto, cuerpo);
-            const mailOptions = {
-                from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@mediconnect.com',
-                to: destinatario,
-                subject: asunto,
-                text: cuerpo,
-                html,
-            };
-            const info = await this.transporter.sendMail(mailOptions);
-            console.log(`✅ Correo enviado a ${destinatario}:`, info.messageId);
-        }
-        catch (error) {
-            console.error('❌ Error enviando correo:', error);
-            throw new Error('No se pudo enviar el correo electrónico. Por favor, intente más tarde.');
-        }
+    catch (error) {
+      console.error('❌ Error enviando correo:', error);
+      throw new Error('No se pudo enviar el correo electrónico. Por favor, intente más tarde.');
     }
+  }
 };
 exports.NodemailerEmailService = NodemailerEmailService;
 exports.NodemailerEmailService = NodemailerEmailService = __decorate([
-    (0, tsyringe_1.injectable)(),
-    __metadata("design:paramtypes", [])
+  (0, tsyringe_1.injectable)(),
+  __metadata("design:paramtypes", [])
 ], NodemailerEmailService);
