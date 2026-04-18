@@ -8,13 +8,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NodemailerEmailService = void 0;
-const dns_1 = __importDefault(require("dns"));
-const nodemailer_1 = __importDefault(require("nodemailer"));
+const resend_1 = require("resend");
 const tsyringe_1 = require("tsyringe");
 const EmailTemplates_1 = require("./EmailTemplates");
 /** Extrae el código OTP (6 dígitos) del texto del cuerpo */
@@ -24,24 +20,12 @@ function extraerOTP(cuerpo) {
 }
 let NodemailerEmailService = class NodemailerEmailService {
     constructor() {
-        // Forzar IPv4 en la resolución DNS para compatibilidad con Railway
-        // (Railway no soporta IPv6 y smtp.gmail.com puede resolver a IPv6)
-        dns_1.default.setDefaultResultOrder('ipv4first');
-        const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
-        const smtpPort = parseInt(process.env.SMTP_PORT || '587');
-        const smtpUser = process.env.SMTP_USER;
-        const smtpPassword = process.env.SMTP_PASSWORD;
-        if (!smtpUser || !smtpPassword) {
-            console.warn('⚠️  SMTP credentials no configuradas. El servicio de email no funcionará correctamente.');
+        const apiKey = process.env.RESEND_API_KEY;
+        if (!apiKey) {
+            console.warn('⚠️  RESEND_API_KEY no configurada. El servicio de email no funcionará correctamente.');
         }
-        this.transporter = nodemailer_1.default.createTransport({
-            host: smtpHost,
-            port: smtpPort,
-            secure: smtpPort === 465,
-            auth: { user: smtpUser, pass: smtpPassword },
-            // family: 4 fuerza la conexión TCP a usar IPv4 explícitamente
-            family: 4,
-        });
+        // Resend usa HTTP (puerto 443) — compatible con Railway y cualquier cloud provider
+        this.resend = new resend_1.Resend(apiKey);
     }
     /**
      * Selecciona el template HTML apropiado basándose en el asunto del correo.
@@ -127,13 +111,18 @@ let NodemailerEmailService = class NodemailerEmailService {
             const esHtmlCompleto = cuerpo.trimStart().startsWith('<!DOCTYPE html>') ||
                 cuerpo.trimStart().startsWith('<html');
             const html = esHtmlCompleto ? cuerpo : this.resolverHtml(asunto, cuerpo);
-            await this.transporter.sendMail({
-                from: `"MediConnect" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@mediconnect.com'}>`,
-                to: destinatario,
+            const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'MediConnect <onboarding@resend.dev>';
+            const { error } = await this.resend.emails.send({
+                from,
+                to: [destinatario],
                 subject: asunto,
                 text: cuerpo.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim(), // fallback texto plano
                 html,
             });
+            if (error) {
+                console.error('❌ [Email] Error de Resend:', error);
+                throw new Error(error.message);
+            }
             console.log(`✅ [Email] Enviado a ${destinatario} — Asunto: "${asunto}"`);
         }
         catch (error) {
