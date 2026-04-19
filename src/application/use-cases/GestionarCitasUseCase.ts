@@ -803,13 +803,42 @@ export class GestionarCitasUseCase {
     }
 
     // ===================================================================
+    // Helper: genera urlFirmada para cada adjunto de una lista de historiales
+    // ===================================================================
+    private async _firmarAdjuntosHistorial(datos: any[]): Promise<void> {
+        await Promise.all(
+            datos.map(async (item: any) => {
+                if (!item.adjuntos?.length) return;
+                await Promise.all(
+                    item.adjuntos.map(async (adjunto: any) => {
+                        if (!adjunto.media?.archivo) return;
+                        try {
+                            adjunto.media.urlFirmada = await this.storage.refreshOrGetSignedUrl(
+                                adjunto.media.archivo,
+                            );
+                        } catch (e: any) {
+                            console.warn(
+                                `[historial] No se pudo firmar URL para media ${adjunto.media.id}:`,
+                                e?.message,
+                            );
+                            adjunto.media.urlFirmada = null;
+                        }
+                    }),
+                );
+            }),
+        );
+    }
+
+    // ===================================================================
     // PACIENTE: Historial completo de consultas
     // ===================================================================
     async obtenerHistorialPaciente(
         pacienteId: number,
         filtros: { pagina?: number; limite?: number },
     ): Promise<{ datos: any[]; total: number }> {
-        return await this.citaRepo.listarHistorialPaciente(pacienteId, filtros);
+        const resultado = await this.citaRepo.listarHistorialPaciente(pacienteId, filtros);
+        await this._firmarAdjuntosHistorial(resultado.datos);
+        return resultado;
     }
 
     // ===================================================================
@@ -820,7 +849,9 @@ export class GestionarCitasUseCase {
         pacienteId: number,
         filtros: { pagina?: number; limite?: number },
     ): Promise<{ datos: any[]; total: number }> {
-        return await this.citaRepo.listarHistorialPacientePorDoctor(doctorId, pacienteId, filtros);
+        const resultado = await this.citaRepo.listarHistorialPacientePorDoctor(doctorId, pacienteId, filtros);
+        await this._firmarAdjuntosHistorial(resultado.datos);
+        return resultado;
     }
 
     // ===================================================================
@@ -831,7 +862,9 @@ export class GestionarCitasUseCase {
         doctorId: number,
         filtros: { pagina?: number; limite?: number },
     ): Promise<{ datos: any[]; total: number }> {
-        return await this.citaRepo.listarHistorialPorDoctor(pacienteId, doctorId, filtros);
+        const resultado = await this.citaRepo.listarHistorialPorDoctor(pacienteId, doctorId, filtros);
+        await this._firmarAdjuntosHistorial(resultado.datos);
+        return resultado;
     }
 
     // ===================================================================
