@@ -28,11 +28,19 @@ export class NotificacionesWebSocketService {
    * y los handlers de conexión.
    */
   inicializar(httpServer: HTTPServer): void {
+    // CORS_ORIGIN puede ser una URL única o una lista separada por comas.
+    // Si no está definido usamos `true` (reflejar el origen del request),
+    // que es la única forma de soportar credentials:true con origen dinámico.
+    const rawOrigin = process.env.CORS_ORIGIN;
+    const corsOrigin: string | string[] | boolean = rawOrigin
+      ? rawOrigin.split(',').map((o) => o.trim())
+      : true;
+
     this.io = new Server(httpServer, {
-      pingInterval: 25000, // Ping cada 30 segundos para mantener la conexión viva
-      pingTimeout: 60000,  // Timeout de 60 segundos para detectar desconexiones
+      pingInterval: 25000,
+      pingTimeout: 60000,
       cors: {
-        origin: process.env.CORS_ORIGIN || '*',
+        origin: corsOrigin,
         methods: ['GET', 'POST'],
         credentials: true,
       },
