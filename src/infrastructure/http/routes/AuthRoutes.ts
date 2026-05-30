@@ -1,7 +1,7 @@
-import { Router, Request, Response, NextFunction } from 'express';
-import multer from 'multer';
-import { AuthController } from '../controllers/AuthController';
-import { autenticarJWT } from '../middlewares/autenticacion';
+import { Router, Request, Response, NextFunction } from "express";
+import multer from "multer";
+import { AuthController } from "../controllers/AuthController";
+import { autenticarJWT } from "../middlewares/autenticacion";
 
 const routerAuth = Router();
 
@@ -12,7 +12,11 @@ const upload = multer({ storage: multer.memoryStorage() });
 const authController = new AuthController();
 
 // Middleware específico para preservar headers de autorización en rutas de registro
-const preserveAuthHeaders = (req: Request, res: Response, next: NextFunction) => {
+const preserveAuthHeaders = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   // Guardar el header de autorización antes de que multer procese la petición
   const authHeader = req.headers.authorization || req.headers.Authorization;
   if (authHeader) {
@@ -27,37 +31,42 @@ const preserveAuthHeaders = (req: Request, res: Response, next: NextFunction) =>
  * Completar registro de paciente con archivos
  */
 routerAuth.post(
-  '/registro/paciente',
+  "/registro/paciente",
   preserveAuthHeaders,
   upload.fields([
-    { name: 'fotoPerfil', maxCount: 1 },
-    { name: 'fotoDocumento', maxCount: 1 },
+    { name: "fotoPerfil", maxCount: 1 },
+    { name: "fotoDocumento", maxCount: 1 },
   ]),
-  (req, res) => authController.completarRegistroPaciente(req, res)
+  (req, res) => authController.completarRegistroPaciente(req, res),
 );
 
 // Middleware para manejar errores de Multer con mensajes amigables
-const handleMulterError = (err: any, req: Request, res: Response, next: NextFunction) => {
+const handleMulterError = (
+  err: any,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   if (err instanceof multer.MulterError) {
     // Errores específicos de Multer
-    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    if (err.code === "LIMIT_UNEXPECTED_FILE") {
       // Determinar qué campo excedió el límite
       const fieldLimits: Record<string, number> = {
-        'fotoPerfil': 1,
-        'fotoDocumento': 2,
-        'tituloAcademico': 10,
-        'certificaciones': 100
+        fotoPerfil: 1,
+        fotoDocumento: 2,
+        tituloAcademico: 10,
+        certificaciones: 100,
       };
 
-      const fieldName = err.field || 'desconocido';
-      const maxCount = fieldLimits[fieldName] || 'desconocido';
+      const fieldName = err.field || "desconocido";
+      const maxCount = fieldLimits[fieldName] || "desconocido";
 
-      let message = '';
-      if (fieldName === 'fotoDocumento') {
+      let message = "";
+      if (fieldName === "fotoDocumento") {
         message = `Has subido demasiadas fotos de documento. El máximo permitido es ${maxCount}. Por favor, selecciona solo las más importantes.`;
-      } else if (fieldName === 'tituloAcademico') {
+      } else if (fieldName === "tituloAcademico") {
         message = `Has subido demasiados títulos académicos. El máximo permitido es ${maxCount}. Por favor, selecciona solo los más relevantes.`;
-      } else if (fieldName === 'fotoPerfil') {
+      } else if (fieldName === "fotoPerfil") {
         message = `Solo puedes subir 1 foto de perfil.`;
       } else {
         message = `Has excedido el límite de archivos para el campo "${fieldName}". Máximo permitido: ${maxCount}.`;
@@ -65,17 +74,19 @@ const handleMulterError = (err: any, req: Request, res: Response, next: NextFunc
 
       return res.status(400).json({
         success: false,
-        message: message
+        message: message,
       });
-    } else if (err.code === 'LIMIT_FILE_SIZE') {
+    } else if (err.code === "LIMIT_FILE_SIZE") {
       return res.status(400).json({
         success: false,
-        message: 'Uno o más archivos exceden el tamaño máximo permitido de 5MB. Por favor, comprime las imágenes o reduce el tamaño de los archivos.'
+        message:
+          "Uno o más archivos exceden el tamaño máximo permitido de 5MB. Por favor, comprime las imágenes o reduce el tamaño de los archivos.",
       });
-    } else if (err.code === 'LIMIT_FILE_COUNT') {
+    } else if (err.code === "LIMIT_FILE_COUNT") {
       return res.status(400).json({
         success: false,
-        message: 'Has subido demasiados archivos en total. Por favor, revisa los límites permitidos para cada campo.'
+        message:
+          "Has subido demasiados archivos en total. Por favor, revisa los límites permitidos para cada campo.",
       });
     }
   }
@@ -89,55 +100,53 @@ const handleMulterError = (err: any, req: Request, res: Response, next: NextFunc
  * Completar registro de doctor con archivos múltiples
  */
 routerAuth.post(
-  '/registro/doctor',
+  "/registro/doctor",
   preserveAuthHeaders,
   upload.fields([
-    { name: 'fotoPerfil', maxCount: 1 },
-    { name: 'fotoDocumento', maxCount: 2 },        // Máximo 2 documentos
-    { name: 'tituloAcademico', maxCount: 10 },     // Máximo 10 títulos
-    { name: 'certificaciones', maxCount: 100 },    // Ilimitadas (límite práctico)
+    { name: "fotoPerfil", maxCount: 1 },
+    { name: "fotoDocumento", maxCount: 2 }, // Máximo 2 documentos
+    { name: "tituloAcademico", maxCount: 10 }, // Máximo 10 títulos
+    { name: "certificaciones", maxCount: 100 }, // Ilimitadas (límite práctico)
   ]),
-  handleMulterError,  // Agregar middleware de manejo de errores
-  (req: Request, res: Response) => authController.completarRegistroDoctor(req, res)
+  handleMulterError, // Agregar middleware de manejo de errores
+  (req: Request, res: Response) =>
+    authController.completarRegistroDoctor(req, res),
 );
-
-
-
 
 /**
  * POST /auth/registro/solicitar-codigo
  * Solicita un código OTP para el registro
  */
-routerAuth.post('/registro/solicitar-codigo', (req, res) =>
-  authController.solicitarCodigo(req, res)
+routerAuth.post("/registro/solicitar-codigo", (req, res) =>
+  authController.solicitarCodigo(req, res),
 );
 
 /**
  * POST /auth/registro/validar-codigo
  * Valida un código OTP y genera un token de registro
  */
-routerAuth.post('/registro/validar-codigo', (req, res) =>
-  authController.validarCodigo(req, res)
+routerAuth.post("/registro/validar-codigo", (req, res) =>
+  authController.validarCodigo(req, res),
 );
 
 /**
  * POST /auth/login
  * Login con email y contraseña. Body { email, password }. Devuelve JWT y usuario.
  */
-routerAuth.post('/login', (req, res) => authController.login(req, res));
+routerAuth.post("/login", (req, res) => authController.login(req, res));
 
 /**
  * POST /auth/google
  * Login con Google: body { idToken }. Devuelve JWT y datos de usuario (login / vincular / registro rápido).
  */
-routerAuth.post('/google', (req, res) => authController.loginGoogle(req, res));
+routerAuth.post("/google", (req, res) => authController.loginGoogle(req, res));
 
 /**
  * POST /auth/google/attach-password
  * Body: { idToken, password }
  */
-routerAuth.post('/google/attach-password', (req, res) =>
-  authController.attachPasswordGoogle(req, res)
+routerAuth.post("/google/attach-password", (req, res) =>
+  authController.attachPasswordGoogle(req, res),
 );
 
 /**
@@ -145,32 +154,32 @@ routerAuth.post('/google/attach-password', (req, res) =>
  * Recibe un refreshToken y devuelve un nuevo accessToken y refreshToken
  * Body: { refreshToken: string }
  */
-routerAuth.post('/refresh-access-token', (req, res) =>
-  authController.refreshAccessToken(req, res)
+routerAuth.post("/refresh-access-token", (req, res) =>
+  authController.refreshAccessToken(req, res),
 );
 
 /**
  * POST /auth/password/solicitar-codigo
  * Solicita un código de recuperación al correo
  */
-routerAuth.post('/password/solicitar-codigo', (req, res) =>
-  authController.solicitarCodigoRecuperacion(req, res)
+routerAuth.post("/password/solicitar-codigo", (req, res) =>
+  authController.solicitarCodigoRecuperacion(req, res),
 );
 
 /**
  * POST /auth/password/validar-codigo
  * Valida el código de recuperación y devuelve un token
  */
-routerAuth.post('/password/validar-codigo', (req, res) =>
-  authController.validarCodigoRecuperacion(req, res)
+routerAuth.post("/password/validar-codigo", (req, res) =>
+  authController.validarCodigoRecuperacion(req, res),
 );
 
 /**
  * POST /auth/password/cambiar
  * Cambia la contraseña usando el token de recuperación (header X-Recovery-Token)
  */
-routerAuth.post('/password/cambiar', (req, res) =>
-  authController.cambiarPasswordConToken(req, res)
+routerAuth.post("/password/cambiar", (req, res) =>
+  authController.cambiarPasswordConToken(req, res),
 );
 
 /**
@@ -178,10 +187,8 @@ routerAuth.post('/password/cambiar', (req, res) =>
  * Cambia la contraseña del usuario ya autenticado (JWT).
  * Requiere: Bearer token + passwordActual + nuevaPassword + confirmarPassword
  */
-routerAuth.patch(
-  '/password/cambiar-autenticado',
-  autenticarJWT,
-  (req, res) => authController.cambiarPasswordAutenticado(req, res)
+routerAuth.patch("/password/cambiar-autenticado", autenticarJWT, (req, res) =>
+  authController.cambiarPasswordAutenticado(req, res),
 );
 
 /**
@@ -192,18 +199,18 @@ routerAuth.patch(
  */
 
 routerAuth.patch(
-  '/foto-perfil',
+  "/foto-perfil",
   autenticarJWT,
-  upload.single('fotoPerfil'),
-  (req, res) => authController.actualizarFotoPerfil(req, res)
+  upload.single("fotoPerfil"),
+  (req, res) => authController.actualizarFotoPerfil(req, res),
 );
 
 // Actualizar banner del usuario autenticado
 routerAuth.patch(
-  '/banner',
+  "/banner",
   autenticarJWT,
-  upload.single('banner'),
-  (req, res) => authController.actualizarBanner(req, res)
+  upload.single("banner"),
+  (req, res) => authController.actualizarBanner(req, res),
 );
 
 /**
@@ -211,10 +218,8 @@ routerAuth.patch(
  * Elimina (soft delete) la cuenta del usuario autenticado.
  * Requiere: JWT token en Authorization header
  */
-routerAuth.delete(
-  '/cuenta',
-  autenticarJWT,
-  (req, res) => authController.eliminarCuenta(req, res)
+routerAuth.delete("/cuenta", autenticarJWT, (req, res) =>
+  authController.eliminarCuenta(req, res),
 );
 
 /**
@@ -222,8 +227,8 @@ routerAuth.delete(
  * Verifica si un número de documento ya está registrado
  * Query params: numero (string)
  */
-routerAuth.get('/verificar-documento', (req, res) =>
-  authController.verificarDocumento(req, res)
+routerAuth.get("/verificar-documento", (req, res) =>
+  authController.verificarDocumento(req, res),
 );
 
 /**
@@ -231,10 +236,8 @@ routerAuth.get('/verificar-documento', (req, res) =>
  * Permite al usuario cambiar su dirección de email
  * Requiere autenticación JWT
  */
-routerAuth.patch(
-  '/cambiar-email',
-  autenticarJWT,
-  (req, res) => authController.cambiarEmail(req, res)
+routerAuth.patch("/cambiar-email", autenticarJWT, (req, res) =>
+  authController.cambiarEmail(req, res),
 );
 
 /**
@@ -243,10 +246,11 @@ routerAuth.patch(
  * Útil antes de operaciones sensibles (cambio de email, eliminación de cuenta, etc.)
  * Requiere: JWT válido. Body: { password: string }
  */
-routerAuth.post(
-  '/verificar-identidad',
-  autenticarJWT,
-  (req, res) => authController.verificarIdentidad(req, res)
+routerAuth.post("/verificar-identidad", autenticarJWT, (req, res) =>
+  authController.verificarIdentidad(req, res),
 );
+
+// Añade esta línea donde defines tus otras rutas (ej. register, login, etc)
+routerAuth.post("/iniciar-sesion-web", authController.iniciarSesionWeb);
 
 export default routerAuth;

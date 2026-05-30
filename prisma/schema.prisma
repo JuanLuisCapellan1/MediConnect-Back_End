@@ -885,3 +885,22 @@ model SuscripcionNewsletter {
 
   @@map("suscripciones_newsletter")
 }
+
+model bot_sessions {
+  id                  Int       @id @default(autoincrement())
+  phone_number        String    @unique(map: "ix_bot_sessions_phone_number") @db.VarChar(20)
+  state               String    @db.VarChar(50)
+  temp_nombre         String?   @db.VarChar(80)
+  temp_apellido       String?   @db.VarChar(80)
+  temp_cedula         String?   @db.VarChar(20)
+  temp_email          String?   @db.VarChar(120)
+  temp_password       String?   @db.VarChar(255)
+  access_token_enc    String?
+  refresh_token_enc   String?
+  mediconnect_user_id Int?
+  created_at          DateTime  @db.Timestamp(6)
+  updated_at          DateTime  @db.Timestamp(6)
+  failed_attempts     Int
+  web_token           String?   @db.VarChar
+  web_token_expires   DateTime? @db.Timestamp(6)
+}
