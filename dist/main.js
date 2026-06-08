@@ -34,29 +34,35 @@ const AutoGestionCitasService_1 = require("./infrastructure/jobs/AutoGestionCita
 const NotificarMensajesPendientesService_1 = require("./infrastructure/jobs/NotificarMensajesPendientesService");
 const EnviarNotificacionUseCase_1 = require("./application/use-cases/notificaciones/EnviarNotificacionUseCase");
 const client_1 = require("@prisma/client");
-const TranslationWarmUpService_1 = require("./infrastructure/services/TranslationWarmUpService");
 const app = (0, express_1.default)();
 const httpServer = (0, http_1.createServer)(app);
 const PORT = process.env.PORT || 3000;
 // Middlewares Globales
 app.use((0, helmet_1.default)()); // Headers de seguridad
-app.use((0, cors_1.default)()); // Permitir peticiones externas
+app.use((0, cors_1.default)({
+    origin: ["http://localhost:5173", "http://127.0.0.1:8000"],
+    credentials: true,
+})); // Permitir peticiones externas
 app.use(express_1.default.json()); // Parsear JSON body
 // Error handler para JSON parsing
 app.use((err, req, res, next) => {
-    if (err instanceof SyntaxError && 'body' in err) {
-        console.error('❌ JSON Parse Error:', err.message);
+    if (err instanceof SyntaxError && "body" in err) {
+        console.error("❌ JSON Parse Error:", err.message);
         return res.status(400).json({
             success: false,
-            message: 'Invalid JSON format in request body'
+            message: "Invalid JSON format in request body",
         });
     }
     next(err);
 });
-// Controladores (Ejemplo de controlador) mover a una carpeta controllers más adelante
-const swaggerDocument = yamljs_1.default.load(path_1.default.join(process.cwd(), 'src/infrastructure/config/swagger.yml'));
-app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swaggerDocument));
-app.use('/api', routes_1.default);
+// Redirigir la ruta raíz a la documentación
+app.get("/", (req, res) => {
+    res.redirect("/api-docs");
+});
+// Documentación Swagger
+const swaggerDocument = yamljs_1.default.load(path_1.default.join(__dirname, "./infrastructure/config/swagger.yml"));
+app.use("/api-docs", swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swaggerDocument));
+app.use("/api", routes_1.default);
 // Inicializar WebSocket
 const wsService = tsyringe_1.container.resolve(NotificacionesWebSocketService_1.NotificacionesWebSocketService);
 wsService.inicializar(httpServer);
@@ -71,9 +77,6 @@ autoGestionCitas.iniciar();
 // Iniciar cron de notificación de mensajes pendientes (chat)
 const notificarMensajesPendientes = new NotificarMensajesPendientesService_1.NotificarMensajesPendientesService(prismaForCron, enviarNotifUCForCron);
 notificarMensajesPendientes.iniciar();
-// Precalentar caché de traducción (fire-and-forget, no bloquea el arranque)
-const warmUpService = new TranslationWarmUpService_1.TranslationWarmUpService(prismaForCron);
-warmUpService.run().catch(err => console.error('❌ [WarmUp] Error no capturado:', err));
 // Iniciar servidor
 httpServer.listen(PORT, () => {
     console.log(`🚀 Servidor MediConnect corriendo en http://localhost:${PORT}`);

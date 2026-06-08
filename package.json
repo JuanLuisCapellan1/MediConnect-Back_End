@@ -5,7 +5,7 @@
   "main": "main.ts",
   "scripts": {
     "dev": "nodemon src/main.ts",
-    "build": "rimraf dist && tsc",
+    "build": "rimraf dist && tsc && node -e \"const fs=require('fs');const path=require('path');const src=path.join('src','infrastructure','config','swagger.yml');const dest=path.join('dist','infrastructure','config','swagger.yml');fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(src,dest);\"",
     "start": "node dist/main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"

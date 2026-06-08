@@ -5,6 +5,7 @@ import { IPacienteRepository } from '../../domain/repositories/IPacienteReposito
 import { IInactividadRepository } from '../../domain/repositories/IInactividadRepository';
 import {
     CrearCitaDto,
+    CrearCitaDoctorDto,
     EditarCitaDto,
     CancelarCitaDto,
     ReprogramarCitaDto,
@@ -12,6 +13,8 @@ import {
     FiltroCitasDto,
     CrearPeriodoInactividadDto,
 } from '../dtos/CitaDtos';
+import { hash as bcryptHash } from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import { EnviarNotificacionUseCase } from './notificaciones/EnviarNotificacionUseCase';
 import { SupabaseStorageService } from '../../infrastructure/external-services/SupabaseStorageService';
 import { prisma as prismaSingleton } from '../../infrastructure/database/prisma/client';
@@ -414,6 +417,239 @@ export class GestionarCitasUseCase {
             }).catch((e: any) => console.error('notif agendarCita:', e));
 
             return citaCreada;
+        } finally {
+            await prisma.$disconnect();
+        }
+    }
+
+    // ===================================================================
+    // DOCTOR: Agendar cita para un paciente (nuevo o existente)
+    // Implementa el patrón "Shadow Account" para pacientes sin cuenta
+    // ===================================================================
+    async agendarCitaComoDoctor(doctorId: number, dto: CrearCitaDoctorDto): Promise<any> {
+        this._validarFecha(dto.fecha);
+        this._validarHora(dto.hora);
+
+        const fechaInicio = this._combinarFechaHora(dto.fecha, dto.hora);
+
+        const { PrismaClient } = await import('@prisma/client');
+        const prisma = new PrismaClient();
+
+        try {
+            // ── 1. Validar que el servicio existe y pertenece al doctor ──
+            const servicio = await prisma.servicio.findUnique({
+                where: { id: dto.servicioId },
+                include: {
+                    doctor: {
+                        include: {
+                            segurosAceptados: { where: { estado: 'Activo' } },
+                        },
+                    },
+                    horarios: {
+                        where: { estado: 'Activo' },
+                        include: {
+                            horario: {
+                                include: { horarios_dias: { select: { dia_semana: true } } },
+                            },
+                        },
+                    },
+                },
+            });
+
+            if (!servicio || servicio.estado !== 'Activo') {
+                throw new Error('El servicio no existe o no está disponible.');
+            }
+            if (servicio.doctorId !== doctorId) {
+                throw new Error('El servicio no pertenece al doctor autenticado.');
+            }
+
+            // ── 2. Validar horario, día, franja, inactividad, conflictos ──
+            const horarioVinculado = servicio.horarios.find(
+                (sh: any) => sh.horarioId === dto.horarioId,
+            );
+            if (!horarioVinculado) {
+                throw new Error('El horario seleccionado no está disponible para este servicio.');
+            }
+
+            const horario = horarioVinculado.horario as any;
+            const diasDelHorario: number[] = horario.horarios_dias.map((d: any) => d.dia_semana);
+            const diaSolicitado = this._diaSemana(fechaInicio);
+            if (!diasDelHorario.includes(diaSolicitado)) {
+                throw new Error('El servicio no está disponible ese día de la semana.');
+            }
+
+            const horaInicioHorario = this._aplicarHoraEnFecha(fechaInicio, new Date(horario.horaInicio));
+            const horaFinHorario = this._aplicarHoraEnFecha(fechaInicio, new Date(horario.horaFin));
+            const duracion = servicio.duracionMinutos ?? 30;
+            const fechaFinEstimada = new Date(fechaInicio.getTime() + duracion * 60 * 1000);
+
+            if (fechaInicio < horaInicioHorario || fechaFinEstimada > horaFinHorario) {
+                throw new Error(
+                    `La hora seleccionada está fuera del horario del servicio ` +
+                    `(${horario.horaInicio?.toISOString().substring(11, 16)} – ` +
+                    `${horario.horaFin?.toISOString().substring(11, 16)} UTC).`,
+                );
+            }
+
+            const inactividades = await this.inactividadRepo.buscarSolapantes(
+                doctorId, fechaInicio, fechaFinEstimada,
+            );
+            if (inactividades.length > 0) {
+                throw new Error('El doctor no está disponible en esa franja horaria (periodo de inactividad).');
+            }
+
+            const conflictos = await this.citaRepo.obtenerCitasEnRango(
+                doctorId, fechaInicio, fechaFinEstimada,
+            );
+            if (conflictos.length > 0) {
+                throw new Error(
+                    'Ya tienes una cita programada en ese horario. ' +
+                    'Usa GET /servicios/:id/slots?fecha=YYYY-MM-DD para ver los slots disponibles.',
+                );
+            }
+
+            // ── 3. Validar seguro (simplificada: solo valida que el doctor lo acepte) ──
+            const tieneSeguroId = dto.seguroId != null;
+            const tieneTipoSeguroId = dto.tipoSeguroId != null;
+
+            if (tieneSeguroId !== tieneTipoSeguroId) {
+                throw new Error(
+                    'Para agendar con seguro debes enviar tanto "seguroId" como "tipoSeguroId". ' +
+                    'Si no usas seguro, omite ambos campos.',
+                );
+            }
+
+            if (tieneSeguroId && tieneTipoSeguroId) {
+                const doctorSeguro = await prisma.doctorSeguro.findFirst({
+                    where: { doctorId, seguroId: dto.seguroId, estado: 'Activo' },
+                });
+                if (!doctorSeguro) {
+                    throw new Error('No aceptas el seguro seleccionado.');
+                }
+            }
+
+            // ── 4. Resolver o crear paciente (Shadow Account) ──
+            const datosPaciente = dto.paciente;
+            let pacienteId: number;
+            let pacienteCreado = false;
+
+            // Buscar paciente existente por número de documento
+            const pacienteExistente = await prisma.paciente.findFirst({
+                where: {
+                    numero_documento_identificacion: datosPaciente.numeroDocumento,
+                    estado: { not: 'Eliminado' },
+                },
+            });
+
+            if (pacienteExistente) {
+                pacienteId = pacienteExistente.usuarioId;
+            } else {
+                // Crear Shadow Account en transacción
+                const emailFicticio = `${datosPaciente.numeroDocumento}@invitado.mediconnect.com`;
+
+                // Verificar que el email ficticio no exista ya (caso borde)
+                const emailExiste = await prisma.usuario.findFirst({
+                    where: { email: emailFicticio },
+                });
+                if (emailExiste) {
+                    throw new Error(
+                        'Ya existe una cuenta asociada a este número de documento. ' +
+                        'Verifique los datos del paciente.',
+                    );
+                }
+
+                // Generar contraseña aleatoria hasheada (el paciente no la necesita ahora)
+                const passwordAleatoria = randomUUID();
+                const passwordHasheada = await bcryptHash(passwordAleatoria, 10);
+
+                // Parsear fecha de nacimiento
+                const fechaNac = new Date(datosPaciente.fechaNacimiento);
+                if (isNaN(fechaNac.getTime())) {
+                    throw new Error('La fecha de nacimiento del paciente no es válida. Formato esperado: YYYY-MM-DD.');
+                }
+
+                // Crear usuario + paciente en transacción
+                const nuevoUsuario = await prisma.$transaction(async (tx: any) => {
+                    const usuario = await tx.usuario.create({
+                        data: {
+                            email: emailFicticio,
+                            password: passwordHasheada,
+                            rol: 'Paciente',
+                            estado: 'Invitado',
+                            emailVerificado: false,
+                            telefono: datosPaciente.telefono ?? null,
+                            creadoEn: new Date(),
+                        },
+                    });
+
+                    await tx.paciente.create({
+                        data: {
+                            usuarioId: usuario.id,
+                            nombre: datosPaciente.nombre,
+                            apellido: datosPaciente.apellido,
+                            tipoDocIdentificacion: datosPaciente.tipoDocumento ?? 'Cédula',
+                            numero_documento_identificacion: datosPaciente.numeroDocumento,
+                            fechaNacimiento: fechaNac,
+                            genero: datosPaciente.genero,
+                            altura: datosPaciente.altura ?? null,
+                            peso: datosPaciente.peso ?? null,
+                            tipoSangre: datosPaciente.tipoSangre ?? null,
+                            estado: 'Activo',
+                            creadoEn: new Date(),
+                        },
+                    });
+
+                    return usuario;
+                });
+
+                pacienteId = nuevoUsuario.id;
+                pacienteCreado = true;
+            }
+
+            // ── 5. Crear la cita ──
+            const numPacientes = dto.numPacientes ?? 1;
+            const totalAPagar = parseFloat(servicio.precio.toString()) * numPacientes;
+
+            const citaCreada = await this.citaRepo.crear({
+                pacienteId,
+                doctorId,
+                servicioId: dto.servicioId,
+                horarioId: dto.horarioId,
+                fechaInicio,
+                duracionMinutos: servicio.duracionMinutos ?? 30,
+                modalidad: dto.modalidad,
+                numPacientes,
+                seguroId: dto.seguroId,
+                tipoSeguroId: dto.tipoSeguroId,
+                motivoConsulta: dto.motivoConsulta,
+                totalAPagar,
+            });
+
+            // ── 6. Notificaciones ──
+            // Notificación interna siempre (estará disponible si el paciente reclama su cuenta)
+            const emailPaciente = pacienteExistente
+                ? (await prisma.usuario.findUnique({ where: { id: pacienteId }, select: { email: true } }))?.email
+                : null;
+
+            const esEmailReal = emailPaciente && !emailPaciente.endsWith('@invitado.mediconnect.com');
+
+            // Crear notificación interna siempre
+            this.enviarNotifUC.execute({
+                usuarioId: pacienteId,
+                titulo: 'Nueva Cita Agendada',
+                mensaje: 'Tu doctor ha agendado una nueva cita para ti.',
+                tipoAlerta: 'Informacion',
+                tipoEntidad: 'Cita',
+                entidadId: citaCreada.id,
+                // Si el email no es real, la notificación se guardará internamente
+                // pero no se enviará por email/push
+            }).catch((e: any) => console.error('notif agendarCitaDoctor (paciente):', e));
+
+            return {
+                ...citaCreada,
+                pacienteCreado,
+                esShadowAccount: !esEmailReal,
+            };
         } finally {
             await prisma.$disconnect();
         }

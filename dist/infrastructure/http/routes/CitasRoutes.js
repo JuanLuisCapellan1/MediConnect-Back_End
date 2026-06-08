@@ -34,10 +34,11 @@ const ctrl = () => tsyringe_1.container.resolve(CitaController_1.CitaController)
 // ── ESTÁTICAS (antes de /:id) ─────────────────────────────────────────
 // GET /citas/historial — Historial del paciente
 router.get('/historial', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Paciente'), TranslationMiddleware_1.translationMiddleware, (req, res) => ctrl().historialPaciente(req, res));
+// GET /citas/historial/doctor/:doctorId — Paciente consulta citas completadas con un doctor
+// IMPORTANT: must be registered BEFORE /historial/:pacienteId to avoid route shadowing
+router.get('/historial/doctor/:doctorId', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Paciente'), TranslationMiddleware_1.translationMiddleware, (req, res) => ctrl().historialPorDoctor(req, res));
 // GET /citas/historial/:pacienteId — Doctor consulta historial de un paciente suyo
 router.get('/historial/:pacienteId', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => ctrl().historialPacienteDoctor(req, res));
-// GET /citas/historial/doctor/:doctorId — Paciente consulta citas completadas con un doctor
-router.get('/historial/doctor/:doctorId', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Paciente'), TranslationMiddleware_1.translationMiddleware, (req, res) => ctrl().historialPorDoctor(req, res));
 // GET /citas/doctor — Doctor lista sus citas
 router.get('/doctor', autenticacion_1.autenticarJWT, (0, roleMiddleware_1.requireRole)('Doctor'), TranslationMiddleware_1.translationMiddleware, (req, res) => ctrl().listarCitasDoctor(req, res));
 // GET /citas/calendario — Vista de calendario (Paciente o Doctor)

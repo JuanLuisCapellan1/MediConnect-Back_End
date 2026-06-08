@@ -154,6 +154,34 @@ export interface IUsuarioRepository {
   saveDoctorWithDocuments(data: SaveDoctorWithDocumentsData): Promise<Usuario>;
 
   /**
+   * Busca si existe un paciente con el número de documento proporcionado y
+   * retorna la información básica si el estado del usuario es 'Invitado' (Shadow Account).
+   */
+  buscarUsuarioInvitadoPorDocumento(numeroDocumento: string): Promise<{ id: number; estado: string } | null>;
+
+  /**
+   * Actualiza una Shadow Account (Invitado) a un usuario activo.
+   * Actualiza el usuario (email, password, estado) y sobrescribe los datos del paciente.
+   */
+  reclamarPacienteShadow(usuarioId: number, data: {
+    email: string;
+    password: string;
+    paciente: {
+      nombre: string;
+      apellido: string;
+      numero_documento_identificacion: string;
+      tipo_documento_identificacion: string;
+      foto_documento?: string | null;
+      foto_perfil?: string | null;
+      fecha_nacimiento?: Date;
+      genero?: string;
+      altura?: number;
+      peso?: number;
+      tipo_sangre?: string;
+    };
+  }): Promise<Usuario>;
+
+  /**
    * Helper de Seguridad: Intercepta IDs que podrían pertenecer a perfiles en vez de usuarios.
    * Busca el usuarioId equivalente en la base de datos y lo devuelve, sino retorna el mismo ID.
    */

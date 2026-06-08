@@ -698,22 +698,48 @@ let GestionarCitasUseCase = class GestionarCitasUseCase {
         return historial;
     }
     // ===================================================================
+    // Helper: genera urlFirmada para cada adjunto de una lista de historiales
+    // ===================================================================
+    async _firmarAdjuntosHistorial(datos) {
+        await Promise.all(datos.map(async (item) => {
+            if (!item.adjuntos?.length)
+                return;
+            await Promise.all(item.adjuntos.map(async (adjunto) => {
+                if (!adjunto.media?.archivo)
+                    return;
+                try {
+                    adjunto.media.urlFirmada = await this.storage.refreshOrGetSignedUrl(adjunto.media.archivo);
+                }
+                catch (e) {
+                    console.warn(`[historial] No se pudo firmar URL para media ${adjunto.media.id}:`, e?.message);
+                    adjunto.media.urlFirmada = null;
+                }
+            }));
+        }));
+    }
+    // ===================================================================
     // PACIENTE: Historial completo de consultas
     // ===================================================================
     async obtenerHistorialPaciente(pacienteId, filtros) {
-        return await this.citaRepo.listarHistorialPaciente(pacienteId, filtros);
+        const resultado = await this.citaRepo.listarHistorialPaciente(pacienteId, filtros);
+        await this._firmarAdjuntosHistorial(resultado.datos);
+        return resultado;
     }
     // ===================================================================
     // DOCTOR: Historial completo de un paciente suyo
     // ===================================================================
     async obtenerHistorialPacientePorDoctor(doctorId, pacienteId, filtros) {
-        return await this.citaRepo.listarHistorialPacientePorDoctor(doctorId, pacienteId, filtros);
+        const resultado = await this.citaRepo.listarHistorialPacientePorDoctor(doctorId, pacienteId, filtros);
+        await this._firmarAdjuntosHistorial(resultado.datos);
+        return resultado;
     }
     // ===================================================================
     // PACIENTE: Historial de citas completadas con un doctor específico
     // ===================================================================
     async obtenerHistorialPorDoctor(pacienteId, doctorId, filtros) {
-        return await this.citaRepo.listarHistorialPorDoctor(pacienteId, doctorId, filtros);
+        const resultado = await this.citaRepo.listarHistorialPorDoctor(pacienteId, doctorId, filtros);
+        await this._firmarAdjuntosHistorial(resultado.datos);
+        return resultado;
     }
     // ===================================================================
     // PACIENTE / DOCTOR: Servicios en los que el paciente ha tenido citas

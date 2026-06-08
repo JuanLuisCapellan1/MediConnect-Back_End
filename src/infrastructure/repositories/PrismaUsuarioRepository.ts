@@ -776,6 +776,89 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
     return { existe: false };
   }
 
+  async buscarUsuarioInvitadoPorDocumento(numeroDocumento: string): Promise<{ id: number; estado: string } | null> {
+    const paciente = await prisma.paciente.findFirst({
+      where: {
+        numero_documento_identificacion: numeroDocumento,
+        estado: { not: 'Eliminado' }
+      },
+      include: {
+        usuario: true
+      }
+    });
+
+    if (paciente && paciente.usuario.estado === 'Invitado') {
+      return { id: paciente.usuario.id, estado: paciente.usuario.estado };
+    }
+    return null;
+  }
+
+  async reclamarPacienteShadow(usuarioId: number, data: {
+    email: string;
+    password: string;
+    paciente: {
+      nombre: string;
+      apellido: string;
+      numero_documento_identificacion: string;
+      tipo_documento_identificacion: string;
+      foto_documento?: string | null;
+      foto_perfil?: string | null;
+      fecha_nacimiento?: Date;
+      genero?: string;
+      altura?: number;
+      peso?: number;
+      tipo_sangre?: string;
+    };
+  }): Promise<Usuario> {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Actualizar Usuario
+      const usuario = await tx.usuario.update({
+        where: { id: usuarioId },
+        data: {
+          email: data.email,
+          password: data.password,
+          estado: 'Activo',
+          emailVerificado: true,
+          fotoPerfil: data.paciente.foto_perfil,
+          actualizadoEn: new Date(),
+        },
+      });
+
+      // 2. Actualizar Paciente
+      await tx.paciente.update({
+        where: { usuarioId: usuarioId },
+        data: {
+          nombre: data.paciente.nombre,
+          apellido: data.paciente.apellido,
+          numero_documento_identificacion: data.paciente.numero_documento_identificacion,
+          tipoDocIdentificacion: data.paciente.tipo_documento_identificacion,
+          foto_documento: data.paciente.foto_documento,
+          fechaNacimiento: data.paciente.fecha_nacimiento,
+          genero: data.paciente.genero,
+          altura: data.paciente.altura,
+          peso: data.paciente.peso,
+          tipoSangre: data.paciente.tipo_sangre,
+          estado: 'Activo',
+          actualizadoEn: new Date(),
+        },
+      });
+
+      return new Usuario(
+        usuario.id,
+        usuario.email,
+        usuario.rol,
+        usuario.estado,
+        usuario.fotoPerfil ?? undefined,
+        usuario.telefono ?? undefined,
+        usuario.password,
+        usuario.emailVerificado,
+        usuario.creadoEn,
+        usuario.actualizadoEn ?? undefined,
+        usuario.banner ?? undefined
+      );
+    });
+  }
+
   /**
    * Guarda un Doctor con documentos múltiples (transacción de 6 pasos)
    */

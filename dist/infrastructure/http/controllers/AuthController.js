@@ -23,6 +23,7 @@ const ActualizarBannerUseCase_1 = require("../../../application/use-cases/Actual
 const CambiarEmailUseCase_1 = require("../../../application/use-cases/CambiarEmailUseCase");
 const EliminarCuentaUseCase_1 = require("../../../application/use-cases/EliminarCuentaUseCase");
 const VerificarIdentidadUseCase_1 = require("../../../application/use-cases/VerificarIdentidadUseCase");
+const IniciarSesionWebUseCase_1 = require("../../../application/use-cases/IniciarSesionWebUseCase");
 // DTOs (Tuyos)
 const RegistrarPacienteDto_1 = require("../../../application/dtos/RegistrarPacienteDto");
 const RegistrarDoctorDto_1 = require("../../../application/dtos/RegistrarDoctorDto");
@@ -32,12 +33,12 @@ const EliminarCuentaDto_1 = require("../../../application/dtos/EliminarCuentaDto
 // Errores y Servicios
 const RedisCacheService_1 = require("../../../infrastructure/external-services/RedisCacheService");
 /** Recorre recursivamente ValidationError y devuelve todos los mensajes */
-function flattenValidationErrors(errors, prefix = '') {
+function flattenValidationErrors(errors, prefix = "") {
     const messages = [];
     for (const e of errors) {
         const path = prefix ? `${prefix}.${e.property}` : e.property;
         if (e.constraints) {
-            messages.push(...Object.values(e.constraints).map((msg) => (path ? `${path}: ${msg}` : msg)));
+            messages.push(...Object.values(e.constraints).map((msg) => path ? `${path}: ${msg}` : msg));
         }
         if (e.children?.length) {
             messages.push(...flattenValidationErrors(e.children, path));
@@ -46,9 +47,35 @@ function flattenValidationErrors(errors, prefix = '') {
     return messages;
 }
 class AuthController {
-    // ===========================================================================
-    // MÉTODOS DE PRODUCCIÓN (Clean Architecture - TUS CAMBIOS)
-    // ===========================================================================
+    constructor() {
+        // ===========================================================================
+        // MÉTODOS DE PRODUCCIÓN (Clean Architecture - TUS CAMBIOS)
+        // ===========================================================================
+        this.iniciarSesionWeb = async (req, res) => {
+            try {
+                const { token } = req.body;
+                const iniciarSesionWebUseCase = new IniciarSesionWebUseCase_1.IniciarSesionWebUseCase();
+                const resultado = await iniciarSesionWebUseCase.execute(token);
+                return res.status(200).json({
+                    success: true,
+                    data: resultado,
+                });
+            }
+            catch (error) {
+                console.error(error);
+                if (error.message.includes("UNAUTHORIZED")) {
+                    return res.status(401).json({
+                        success: false,
+                        error: error.message.replace("UNAUTHORIZED: ", ""),
+                    });
+                }
+                return res.status(500).json({
+                    success: false,
+                    error: "Error interno del servidor",
+                });
+            }
+        };
+    }
     /**
      * POST /auth/registro/paciente
      */
@@ -58,7 +85,7 @@ class AuthController {
             if (!token) {
                 res.status(401).json({
                     success: false,
-                    message: 'Token de registro no proporcionado.',
+                    message: "Token de registro no proporcionado.",
                 });
                 return;
             }
@@ -69,8 +96,8 @@ class AuthController {
                 const messages = flattenValidationErrors(errors);
                 res.status(400).json({
                     success: false,
-                    message: 'Validación fallida',
-                    errors: messages.join('; '),
+                    message: "Validación fallida",
+                    errors: messages.join("; "),
                 });
                 return;
             }
@@ -78,7 +105,7 @@ class AuthController {
             await useCase.execute(dto, files, token);
             res.status(201).json({
                 success: true,
-                message: 'Paciente registrado exitosamente',
+                message: "Paciente registrado exitosamente",
             });
         }
         catch (error) {
@@ -92,11 +119,18 @@ class AuthController {
         try {
             const token = this.extraerToken(req);
             if (!token) {
-                res.status(401).json({ success: false, message: 'Token de registro no proporcionado.' });
+                res
+                    .status(401)
+                    .json({
+                    success: false,
+                    message: "Token de registro no proporcionado.",
+                });
                 return;
             }
-            if (!req.files || typeof req.files !== 'object') {
-                res.status(400).json({ success: false, message: 'No se proporcionaron archivos' });
+            if (!req.files || typeof req.files !== "object") {
+                res
+                    .status(400)
+                    .json({ success: false, message: "No se proporcionaron archivos" });
                 return;
             }
             const files = req.files;
@@ -107,7 +141,7 @@ class AuthController {
             if (files.fotoPerfil && files.fotoPerfil.length > 1) {
                 res.status(400).json({
                     success: false,
-                    message: 'Solo puedes subir 1 foto de perfil'
+                    message: "Solo puedes subir 1 foto de perfil",
                 });
                 return;
             }
@@ -115,14 +149,14 @@ class AuthController {
             if (!files.fotoDocumento || files.fotoDocumento.length === 0) {
                 res.status(400).json({
                     success: false,
-                    message: 'Al menos una foto de documento es requerida'
+                    message: "Al menos una foto de documento es requerida",
                 });
                 return;
             }
             if (files.fotoDocumento.length > MAX_FOTO_DOCUMENTO) {
                 res.status(400).json({
                     success: false,
-                    message: `Has subido ${files.fotoDocumento.length} fotos de documento. El máximo permitido es ${MAX_FOTO_DOCUMENTO}. Por favor, selecciona solo las más importantes.`
+                    message: `Has subido ${files.fotoDocumento.length} fotos de documento. El máximo permitido es ${MAX_FOTO_DOCUMENTO}. Por favor, selecciona solo las más importantes.`,
                 });
                 return;
             }
@@ -130,14 +164,14 @@ class AuthController {
             if (!files.tituloAcademico || files.tituloAcademico.length === 0) {
                 res.status(400).json({
                     success: false,
-                    message: 'Al menos un título académico es requerido'
+                    message: "Al menos un título académico es requerido",
                 });
                 return;
             }
             if (files.tituloAcademico.length > MAX_TITULO_ACADEMICO) {
                 res.status(400).json({
                     success: false,
-                    message: `Has subido ${files.tituloAcademico.length} títulos académicos. El máximo permitido es ${MAX_TITULO_ACADEMICO}. Por favor, selecciona solo los más relevantes.`
+                    message: `Has subido ${files.tituloAcademico.length} títulos académicos. El máximo permitido es ${MAX_TITULO_ACADEMICO}. Por favor, selecciona solo los más relevantes.`,
                 });
                 return;
             }
@@ -151,8 +185,8 @@ class AuthController {
                 const messages = flattenValidationErrors(errors);
                 res.status(400).json({
                     success: false,
-                    message: 'Validación fallida',
-                    errors: messages.join('; '),
+                    message: "Validación fallida",
+                    errors: messages.join("; "),
                 });
                 return;
             }
@@ -160,7 +194,7 @@ class AuthController {
             await useCase.execute(dto, files, token);
             res.status(201).json({
                 success: true,
-                message: 'Doctor registrado exitosamente. Su solicitud está en revisión.',
+                message: "Doctor registrado exitosamente. Su solicitud está en revisión.",
             });
         }
         catch (error) {
@@ -174,12 +208,22 @@ class AuthController {
         try {
             const { email } = req.body;
             if (!email) {
-                res.status(400).json({ success: false, message: 'El correo electrónico es requerido.' });
+                res
+                    .status(400)
+                    .json({
+                    success: false,
+                    message: "El correo electrónico es requerido.",
+                });
                 return;
             }
             const useCase = tsyringe_1.container.resolve(SolicitarCodigoRegistroUseCase_1.SolicitarCodigoRegistroUseCase);
             await useCase.execute(email);
-            res.status(200).json({ success: true, message: 'Código de registro enviado al correo electrónico.' });
+            res
+                .status(200)
+                .json({
+                success: true,
+                message: "Código de registro enviado al correo electrónico.",
+            });
         }
         catch (error) {
             this.manejarError(error, res);
@@ -192,14 +236,16 @@ class AuthController {
         try {
             const { email, codigo } = req.body;
             if (!email || !codigo) {
-                res.status(400).json({ success: false, message: 'Email y código son requeridos.' });
+                res
+                    .status(400)
+                    .json({ success: false, message: "Email y código son requeridos." });
                 return;
             }
             const useCase = tsyringe_1.container.resolve(ValidarCodigoRegistroUseCase_1.ValidarCodigoRegistroUseCase);
             const token = await useCase.execute(email, codigo);
             res.status(200).json({
                 success: true,
-                message: 'Código validado correctamente.',
+                message: "Código validado correctamente.",
                 data: { token },
             });
         }
@@ -218,7 +264,7 @@ class AuthController {
             if (errors.length > 0) {
                 res.status(400).json({
                     success: false,
-                    message: 'Datos de login inválidos',
+                    message: "Datos de login inválidos",
                     errors: flattenValidationErrors(errors),
                 });
                 return;
@@ -243,17 +289,19 @@ class AuthController {
     async loginGoogle(req, res) {
         try {
             const idToken = req.body?.idToken ?? req.body?.id_token;
-            if (!idToken || typeof idToken !== 'string') {
-                res.status(400).json({ success: false, message: 'Se requiere idToken de Google.' });
+            if (!idToken || typeof idToken !== "string") {
+                res
+                    .status(400)
+                    .json({ success: false, message: "Se requiere idToken de Google." });
                 return;
             }
             const loginGoogleUseCase = tsyringe_1.container.resolve(LoginGoogleUseCase_1.LoginGoogleUseCase);
             const result = await loginGoogleUseCase.execute(idToken);
             // Si es login (usuario existente)
-            if (result.estado === 'login') {
+            if (result.estado === "login") {
                 res.status(200).json({
                     success: true,
-                    estado: 'login',
+                    estado: "login",
                     accessToken: result.accessToken,
                     refreshToken: result.refreshToken,
                     usuario: result.user,
@@ -263,8 +311,8 @@ class AuthController {
             // Si es registro (usuario nuevo) - devolver token de registro + email
             res.status(200).json({
                 success: true,
-                estado: 'registro',
-                message: 'Por favor completa tu registro seleccionando tu tipo de usuario',
+                estado: "registro",
+                message: "Por favor completa tu registro seleccionando tu tipo de usuario",
                 registroToken: result.registroToken,
                 email: result.email,
             });
@@ -282,12 +330,22 @@ class AuthController {
         try {
             const { idToken, password } = req.body;
             if (!idToken || !password) {
-                res.status(400).json({ success: false, message: 'idToken y password son requeridos.' });
+                res
+                    .status(400)
+                    .json({
+                    success: false,
+                    message: "idToken y password son requeridos.",
+                });
                 return;
             }
             const useCase = tsyringe_1.container.resolve(AttachPasswordToGoogleAccountUseCase_1.AttachPasswordToGoogleAccountUseCase);
             await useCase.execute(idToken, password);
-            res.status(200).json({ success: true, message: 'Contraseña asociada correctamente. Ya puedes iniciar sesión con email y contraseña.' });
+            res
+                .status(200)
+                .json({
+                success: true,
+                message: "Contraseña asociada correctamente. Ya puedes iniciar sesión con email y contraseña.",
+            });
         }
         catch (error) {
             this.manejarError(error, res);
@@ -301,7 +359,9 @@ class AuthController {
         try {
             const { refreshToken } = req.body;
             if (!refreshToken) {
-                res.status(400).json({ success: false, message: 'refreshToken es requerido.' });
+                res
+                    .status(400)
+                    .json({ success: false, message: "refreshToken es requerido." });
                 return;
             }
             const useCase = tsyringe_1.container.resolve(RefreshTokenUseCase_1.RefreshTokenUseCase);
@@ -324,14 +384,19 @@ class AuthController {
         try {
             const { email } = req.body;
             if (!email) {
-                res.status(400).json({ success: false, message: 'El correo electrónico es requerido.' });
+                res
+                    .status(400)
+                    .json({
+                    success: false,
+                    message: "El correo electrónico es requerido.",
+                });
                 return;
             }
             const useCase = tsyringe_1.container.resolve(SolicitarRecuperacionPasswordUseCase_1.SolicitarRecuperacionPasswordUseCase);
             await useCase.execute(email);
             res.status(200).json({
                 success: true,
-                message: 'Se ha enviado un código de recuperación al correo electrónico.',
+                message: "Se ha enviado un código de recuperación al correo electrónico.",
             });
         }
         catch (error) {
@@ -346,14 +411,16 @@ class AuthController {
         try {
             const { email, codigo } = req.body;
             if (!email || !codigo) {
-                res.status(400).json({ success: false, message: 'Email y código son requeridos.' });
+                res
+                    .status(400)
+                    .json({ success: false, message: "Email y código son requeridos." });
                 return;
             }
             const useCase = tsyringe_1.container.resolve(ValidarCodigoRecuperacionPasswordUseCase_1.ValidarCodigoRecuperacionPasswordUseCase);
             const token = await useCase.execute(email, codigo);
             res.status(200).json({
                 success: true,
-                message: 'Código validado correctamente.',
+                message: "Código validado correctamente.",
                 data: { token },
             });
         }
@@ -372,7 +439,7 @@ class AuthController {
             if (!token || !nuevaPassword || !confirmarPassword) {
                 res.status(400).json({
                     success: false,
-                    message: 'Header X-Recovery-Token, nueva contraseña y confirmación son requeridos.',
+                    message: "Header X-Recovery-Token, nueva contraseña y confirmación son requeridos.",
                 });
                 return;
             }
@@ -380,7 +447,7 @@ class AuthController {
             await useCase.execute(token, nuevaPassword, confirmarPassword);
             res.status(200).json({
                 success: true,
-                message: 'Contraseña actualizada correctamente.',
+                message: "Contraseña actualizada correctamente.",
             });
         }
         catch (error) {
@@ -397,31 +464,41 @@ class AuthController {
         try {
             const usuarioId = req.user?.userId;
             if (!usuarioId) {
-                res.status(401).json({ success: false, message: 'No autorizado. Debe iniciar sesión.' });
+                res
+                    .status(401)
+                    .json({
+                    success: false,
+                    message: "No autorizado. Debe iniciar sesión.",
+                });
                 return;
             }
             const { passwordActual, nuevaPassword, confirmarPassword } = req.body;
             if (!passwordActual || !nuevaPassword || !confirmarPassword) {
                 res.status(400).json({
                     success: false,
-                    message: 'Se requieren: passwordActual, nuevaPassword y confirmarPassword.',
+                    message: "Se requieren: passwordActual, nuevaPassword y confirmarPassword.",
                 });
                 return;
             }
             const useCase = tsyringe_1.container.resolve(CambiarPasswordAutenticadoUseCase_1.CambiarPasswordAutenticadoUseCase);
             await useCase.execute(usuarioId, passwordActual, nuevaPassword, confirmarPassword);
-            res.status(200).json({ success: true, message: 'Contraseña actualizada correctamente.' });
+            res
+                .status(200)
+                .json({
+                success: true,
+                message: "Contraseña actualizada correctamente.",
+            });
         }
         catch (error) {
             if (error instanceof Error) {
-                if (error.message.includes('actual es incorrecta')) {
+                if (error.message.includes("actual es incorrecta")) {
                     res.status(401).json({ success: false, message: error.message });
                     return;
                 }
-                if (error.message.includes('no coinciden') ||
-                    error.message.includes('igual a la contraseña actual') ||
-                    error.message.includes('contraseña local') ||
-                    error.message.includes('política')) {
+                if (error.message.includes("no coinciden") ||
+                    error.message.includes("igual a la contraseña actual") ||
+                    error.message.includes("contraseña local") ||
+                    error.message.includes("política")) {
                     res.status(400).json({ success: false, message: error.message });
                     return;
                 }
@@ -444,7 +521,7 @@ class AuthController {
             if (!refreshToken) {
                 res.status(400).json({
                     success: false,
-                    message: 'El refreshToken es requerido.',
+                    message: "El refreshToken es requerido.",
                 });
                 return;
             }
@@ -471,7 +548,7 @@ class AuthController {
             if (!usuarioId) {
                 res.status(401).json({
                     success: false,
-                    message: 'No autorizado. Debe iniciar sesión.',
+                    message: "No autorizado. Debe iniciar sesión.",
                 });
                 return;
             }
@@ -479,16 +556,16 @@ class AuthController {
             if (!req.file) {
                 res.status(400).json({
                     success: false,
-                    message: 'Debe proporcionar una foto de perfil',
+                    message: "Debe proporcionar una foto de perfil",
                 });
                 return;
             }
             // Validar tipo de archivo
-            const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+            const allowedMimes = ["image/jpeg", "image/png", "image/webp"];
             if (!allowedMimes.includes(req.file.mimetype)) {
                 res.status(400).json({
                     success: false,
-                    message: 'Solo se permiten imágenes (JPEG, PNG, WEBP)',
+                    message: "Solo se permiten imágenes (JPEG, PNG, WEBP)",
                 });
                 return;
             }
@@ -497,7 +574,7 @@ class AuthController {
             if (req.file.size > maxSize) {
                 res.status(400).json({
                     success: false,
-                    message: 'La imagen no puede exceder 5MB',
+                    message: "La imagen no puede exceder 5MB",
                 });
                 return;
             }
@@ -505,7 +582,7 @@ class AuthController {
             const result = await useCase.execute(usuarioId, req.file);
             res.status(200).json({
                 success: true,
-                message: 'Foto de perfil actualizada exitosamente',
+                message: "Foto de perfil actualizada exitosamente",
                 data: result,
             });
         }
@@ -525,26 +602,49 @@ class AuthController {
         try {
             const usuarioId = req.user?.userId;
             if (!usuarioId) {
-                res.status(401).json({ success: false, message: "No autorizado. Debe iniciar sesión." });
+                res
+                    .status(401)
+                    .json({
+                    success: false,
+                    message: "No autorizado. Debe iniciar sesión.",
+                });
                 return;
             }
             if (!req.file) {
-                res.status(400).json({ success: false, message: "Debe proporcionar una imagen de banner" });
+                res
+                    .status(400)
+                    .json({
+                    success: false,
+                    message: "Debe proporcionar una imagen de banner",
+                });
                 return;
             }
             const allowedMimes = ["image/jpeg", "image/png", "image/webp"];
             if (!allowedMimes.includes(req.file.mimetype)) {
-                res.status(400).json({ success: false, message: "Solo se permiten imágenes (JPEG, PNG, WEBP)" });
+                res
+                    .status(400)
+                    .json({
+                    success: false,
+                    message: "Solo se permiten imágenes (JPEG, PNG, WEBP)",
+                });
                 return;
             }
             const maxSize = 5 * 1024 * 1024;
             if (req.file.size > maxSize) {
-                res.status(400).json({ success: false, message: "La imagen no puede exceder 5MB" });
+                res
+                    .status(400)
+                    .json({ success: false, message: "La imagen no puede exceder 5MB" });
                 return;
             }
             const useCase = tsyringe_1.container.resolve(ActualizarBannerUseCase_1.ActualizarBannerUseCase);
             const result = await useCase.execute(usuarioId, req.file);
-            res.status(200).json({ success: true, message: "Banner actualizado exitosamente", data: result });
+            res
+                .status(200)
+                .json({
+                success: true,
+                message: "Banner actualizado exitosamente",
+                data: result,
+            });
         }
         catch (error) {
             this.manejarError(error, res);
@@ -553,27 +653,27 @@ class AuthController {
     async verificarDocumento(req, res) {
         try {
             const { numero } = req.query;
-            if (!numero || typeof numero !== 'string') {
+            if (!numero || typeof numero !== "string") {
                 res.status(400).json({
                     success: false,
-                    message: 'El número de documento es requerido',
+                    message: "El número de documento es requerido",
                 });
                 return;
             }
-            const useCase = tsyringe_1.container.resolve('VerificarDocumentoUseCase');
+            const useCase = tsyringe_1.container.resolve("VerificarDocumentoUseCase");
             const resultado = await useCase.execute(numero);
             if (resultado.disponible) {
                 res.status(200).json({
                     success: true,
                     disponible: true,
-                    message: 'El número de documento está disponible',
+                    message: "El número de documento está disponible",
                 });
             }
             else {
                 res.status(200).json({
                     success: true,
                     disponible: false,
-                    message: 'Este número de documento ya está registrado',
+                    message: "Este número de documento ya está registrado",
                     tipoUsuario: resultado.tipoUsuario,
                 });
             }
@@ -595,12 +695,14 @@ class AuthController {
         try {
             const usuarioId = req.user?.userId;
             if (!usuarioId) {
-                res.status(401).json({ success: false, message: 'No autorizado.' });
+                res.status(401).json({ success: false, message: "No autorizado." });
                 return;
             }
             const { password } = req.body;
             if (!password) {
-                res.status(400).json({ success: false, message: 'La contraseña es requerida.' });
+                res
+                    .status(400)
+                    .json({ success: false, message: "La contraseña es requerida." });
                 return;
             }
             const useCase = tsyringe_1.container.resolve(VerificarIdentidadUseCase_1.VerificarIdentidadUseCase);
@@ -608,11 +710,15 @@ class AuthController {
             res.status(200).json({ success: true, verificado: true });
         }
         catch (error) {
-            if (error instanceof Error && error.message === 'Credenciales inválidas.') {
-                res.status(401).json({ success: false, message: 'Credenciales inválidas.' });
+            if (error instanceof Error &&
+                error.message === "Credenciales inválidas.") {
+                res
+                    .status(401)
+                    .json({ success: false, message: "Credenciales inválidas." });
                 return;
             }
-            if (error instanceof Error && error.message.includes('contraseña local')) {
+            if (error instanceof Error &&
+                error.message.includes("contraseña local")) {
                 res.status(400).json({ success: false, message: error.message });
                 return;
             }
@@ -627,15 +733,16 @@ class AuthController {
         // Si no viene en los headers estándar, intentar con diferentes casos
         if (!authHeader) {
             // Intentar con headers en minúsculas (algunos clientes los envían así)
-            authHeader = req.headers['authorization'] ??
-                req.headers['Authorization'] ??
-                req.headers['x-authorization'] ??
-                req.headers['X-Authorization'];
+            authHeader =
+                req.headers["authorization"] ??
+                    req.headers["Authorization"] ??
+                    req.headers["x-authorization"] ??
+                    req.headers["X-Authorization"];
         }
-        if (typeof authHeader === 'string') {
+        if (typeof authHeader === "string") {
             const trimmedHeader = authHeader.trim();
             // Para endpoints de registro, aceptar token puro sin "Bearer"
-            if (trimmedHeader.startsWith('Bearer ')) {
+            if (trimmedHeader.startsWith("Bearer ")) {
                 return trimmedHeader.substring(7).trim();
             }
             // Para registro, aceptar token puro
@@ -644,46 +751,62 @@ class AuthController {
         return null;
     }
     extraerTokenRecuperacion(req) {
-        const recoveryHeader = req.headers['x-recovery-token'] ?? req.headers['X-Recovery-Token'];
-        if (typeof recoveryHeader === 'string') {
+        const recoveryHeader = req.headers["x-recovery-token"] ?? req.headers["X-Recovery-Token"];
+        if (typeof recoveryHeader === "string") {
             return recoveryHeader.trim();
         }
         return null;
     }
     manejarError(error, res) {
-        console.error('Error Auth:', error);
+        console.error("Error Auth:", error);
         if (error instanceof RedisCacheService_1.RedisNoDisponibleError) {
-            res.status(503).json({ success: false, message: 'Servicio de validación no disponible.' });
+            res
+                .status(503)
+                .json({
+                success: false,
+                message: "Servicio de validación no disponible.",
+            });
             return;
         }
         // Manejo en línea de errores de Prisma (sin utilidades externas)
         const e = error;
-        if (e && typeof e === 'object') {
-            if (e.code === 'P2002') {
+        if (e && typeof e === "object") {
+            if (e.code === "P2002") {
                 const target = e.meta?.target;
-                const fields = Array.isArray(target) ? target.join(', ') : target;
-                res.status(409).json({ success: false, message: `Valor duplicado en campo(s): ${fields}` });
+                const fields = Array.isArray(target) ? target.join(", ") : target;
+                res
+                    .status(409)
+                    .json({
+                    success: false,
+                    message: `Valor duplicado en campo(s): ${fields}`,
+                });
                 return;
             }
-            if (e.code === 'P2025') {
-                res.status(404).json({ success: false, message: 'Registro no encontrado' });
+            if (e.code === "P2025") {
+                res
+                    .status(404)
+                    .json({ success: false, message: "Registro no encontrado" });
                 return;
             }
         }
         if (error instanceof Error) {
             const msg = error.message;
-            if (msg === 'Credenciales inválidas') {
+            if (msg === "Credenciales inválidas") {
                 res.status(401).json({ success: false, message: msg });
                 return;
             }
-            if (msg.includes('Token')) {
-                res.status(401).json({ success: false, message: 'Token inválido o expirado' });
+            if (msg.includes("Token")) {
+                res
+                    .status(401)
+                    .json({ success: false, message: "Token inválido o expirado" });
                 return;
             }
             res.status(400).json({ success: false, message: msg });
             return;
         }
-        res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+        res
+            .status(500)
+            .json({ success: false, message: "Error interno del servidor." });
     }
     /**
      * PATCH /auth/cambiar-email
@@ -697,8 +820,8 @@ class AuthController {
             if (errors.length > 0) {
                 res.status(400).json({
                     success: false,
-                    message: 'Validación fallida',
-                    errors: flattenValidationErrors(errors)
+                    message: "Validación fallida",
+                    errors: flattenValidationErrors(errors),
                 });
                 return;
             }
@@ -706,27 +829,27 @@ class AuthController {
             await useCase.execute(usuarioId, dto);
             res.status(200).json({
                 success: true,
-                message: 'Email actualizado exitosamente'
+                message: "Email actualizado exitosamente",
             });
         }
         catch (error) {
-            console.error('Error en cambiarEmail:', error);
+            console.error("Error en cambiarEmail:", error);
             // Manejo de errores específicos
-            if (error.message.includes('Contraseña incorrecta')) {
+            if (error.message.includes("Contraseña incorrecta")) {
                 res.status(401).json({ success: false, message: error.message });
                 return;
             }
-            if (error.message.includes('ya está registrado')) {
+            if (error.message.includes("ya está registrado")) {
                 res.status(409).json({ success: false, message: error.message });
                 return;
             }
-            if (error.message.includes('establecer una contraseña')) {
+            if (error.message.includes("establecer una contraseña")) {
                 res.status(400).json({ success: false, message: error.message });
                 return;
             }
             res.status(400).json({
                 success: false,
-                message: error.message || 'Error al cambiar el email'
+                message: error.message || "Error al cambiar el email",
             });
         }
     }
@@ -739,14 +862,14 @@ class AuthController {
             // 1. Verificar autenticación
             const usuarioId = req.usuarioId;
             if (!usuarioId) {
-                res.status(401).json({ error: 'No autenticado' });
+                res.status(401).json({ error: "No autenticado" });
                 return;
             }
             // 2. Validar body
             if (!req.body || !req.body.password || !req.body.confirmacion) {
                 res.status(400).json({
-                    error: 'Datos incompletos',
-                    detalles: 'Se requiere password y confirmación',
+                    error: "Datos incompletos",
+                    detalles: "Se requiere password y confirmación",
                 });
                 return;
             }
@@ -759,7 +882,7 @@ class AuthController {
             if (errores.length > 0) {
                 const mensajes = flattenValidationErrors(errores);
                 res.status(400).json({
-                    error: 'Validación fallida',
+                    error: "Validación fallida",
                     detalles: mensajes,
                 });
                 return;
@@ -769,8 +892,8 @@ class AuthController {
             await useCase.execute(usuarioId, dto);
             // 5. Respuesta exitosa
             res.status(200).json({
-                mensaje: 'Cuenta eliminada exitosamente',
-                nota: 'Puedes volver a registrarte con el mismo email si lo deseas',
+                mensaje: "Cuenta eliminada exitosamente",
+                nota: "Puedes volver a registrarte con el mismo email si lo deseas",
             });
         }
         catch (error) {

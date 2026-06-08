@@ -35,6 +35,17 @@ export class RegistrarPacienteUseCase {
       throw new Error('El email ya está registrado');
     }
 
+    // Verificar si el documento ya está registrado y si pertenece a una cuenta Invitado (Shadow Account)
+    const shadowAccount = await this.usuarioRepository.buscarUsuarioInvitadoPorDocumento(dto.numero_documento);
+    
+    if (!shadowAccount) {
+      // Si no es un invitado, verificamos si el documento existe en otra cuenta activa
+      const docExistente = await this.usuarioRepository.verificarDocumentoExistente(dto.numero_documento);
+      if (docExistente.existe) {
+        throw new Error('El documento de identidad ya está registrado en una cuenta activa.');
+      }
+    }
+
     // Hashear contraseña
     const hashedPassword = await this.passwordHasher.hash(dto.password);
 
@@ -60,25 +71,36 @@ export class RegistrarPacienteUseCase {
         );
       }
 
-      // Persistir en base de datos
-      await this.usuarioRepository.savePaciente({
-        email,
-        password: hashedPassword,
-        rol: 'Paciente',
-        paciente: {
-          nombre: dto.nombre,
-          apellido: dto.apellido,
-          numero_documento_identificacion: dto.numero_documento,
-          tipo_documento_identificacion: dto.tipo_documento,
-          foto_documento: fotoDocumentoPath ?? null,
-          foto_perfil: fotoPerfilUrl ?? undefined,
-          fecha_nacimiento: dto.fecha_nacimiento,
-          genero: dto.genero,
-          altura: dto.altura, // Guardar directamente en CM
-          peso: dto.peso,
-          tipo_sangre: dto.tipo_sangre,
-        },
-      });
+      const pacienteData = {
+        nombre: dto.nombre,
+        apellido: dto.apellido,
+        numero_documento_identificacion: dto.numero_documento,
+        tipo_documento_identificacion: dto.tipo_documento,
+        foto_documento: fotoDocumentoPath ?? null,
+        foto_perfil: fotoPerfilUrl ?? undefined,
+        fecha_nacimiento: dto.fecha_nacimiento,
+        genero: dto.genero,
+        altura: dto.altura, // Guardar directamente en CM
+        peso: dto.peso,
+        tipo_sangre: dto.tipo_sangre,
+      };
+
+      if (shadowAccount) {
+        // Reclamar cuenta sombra existente
+        await this.usuarioRepository.reclamarPacienteShadow(shadowAccount.id, {
+          email,
+          password: hashedPassword,
+          paciente: pacienteData
+        });
+      } else {
+        // Persistir en base de datos como nuevo usuario
+        await this.usuarioRepository.savePaciente({
+          email,
+          password: hashedPassword,
+          rol: 'Paciente',
+          paciente: pacienteData,
+        });
+      }
     } catch (error: any) {
       // Manejar errores de overflow de base de datos
       if (error.message && error.message.includes('numeric field overflow')) {

@@ -160,3 +160,37 @@ export interface FiltroPacientesDelDoctorDto {
     ultimaCitaDesde?: string; // Fecha desde (YYYY-MM-DD) — última cita >= esta fecha
     ultimaCitaHasta?: string; // Fecha hasta (YYYY-MM-DD) — última cita <= esta fecha
 }
+
+/** DTO con los datos del paciente que el doctor proporciona al agendar */
+export interface DatosPacienteNuevoDto {
+    nombre: string;
+    apellido: string;
+    /** Número de cédula o pasaporte */
+    numeroDocumento: string;
+    tipoDocumento?: 'Cédula' | 'Pasaporte';
+    /** Fecha de nacimiento en formato YYYY-MM-DD */
+    fechaNacimiento: string;
+    genero: 'M' | 'F' | 'O';
+    // Opcionales
+    telefono?: string;
+    peso?: number;
+    altura?: number;
+    tipoSangre?: string;
+}
+
+/** DTO para que el Doctor agende una cita para un paciente (nuevo o existente) */
+export interface CrearCitaDoctorDto {
+    servicioId: number;
+    horarioId: number;
+    /** Fecha en formato YYYY-MM-DD (ej: "2026-03-10") */
+    fecha: string;
+    /** Hora en formato HH:MM, en zona horaria UTC (ej: "09:00") */
+    hora: string;
+    modalidad: 'Presencial' | 'Virtual' | 'Domicilio';
+    numPacientes?: number;
+    seguroId?: number;
+    tipoSeguroId?: number;
+    motivoConsulta?: string;
+    /** Datos del paciente — si la cédula ya existe, se reutiliza el paciente existente */
+    paciente: DatosPacienteNuevoDto;
+}

@@ -94,6 +94,52 @@ export class CitaController {
         } catch (error) { this.manejarError(error, res); }
     }
 
+    // POST /citas/agendar-doctor — Doctor agenda una cita para un paciente (nuevo o existente)
+    async agendarComoDoctor(req: Request, res: Response): Promise<void> {
+        try {
+            const doctorId = req.user?.userId;
+            if (!doctorId) { res.status(401).json({ success: false, message: 'No autenticado' }); return; }
+
+            const { servicioId, horarioId, fecha, hora, modalidad, paciente } = req.body;
+
+            // Validar campos de la cita
+            if (!servicioId || !horarioId || !fecha || !hora || !modalidad) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Los campos servicioId, horarioId, fecha (YYYY-MM-DD), hora (HH:MM) y modalidad son requeridos.',
+                });
+                return;
+            }
+
+            // Validar datos del paciente
+            if (!paciente || typeof paciente !== 'object') {
+                res.status(400).json({
+                    success: false,
+                    message: 'El objeto "paciente" es requerido con los datos del paciente.',
+                });
+                return;
+            }
+
+            const { nombre, apellido, numeroDocumento, fechaNacimiento, genero } = paciente;
+            if (!nombre?.trim() || !apellido?.trim() || !numeroDocumento?.trim() || !fechaNacimiento || !genero) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Los campos paciente.nombre, paciente.apellido, paciente.numeroDocumento, paciente.fechaNacimiento (YYYY-MM-DD) y paciente.genero (M/F/O) son requeridos.',
+                });
+                return;
+            }
+
+            const data = await this.citasUseCase.agendarCitaComoDoctor(doctorId, req.body);
+            res.status(201).json({
+                success: true,
+                data,
+                message: data.pacienteCreado
+                    ? 'Cita agendada exitosamente. Se creó una cuenta invitado para el paciente.'
+                    : 'Cita agendada exitosamente con paciente existente.',
+            });
+        } catch (error) { this.manejarError(error, res); }
+    }
+
     // GET /citas — Paciente lista sus citas
     async listarMisCitas(req: Request, res: Response): Promise<void> {
         try {
@@ -555,19 +601,20 @@ export class CitaController {
         if (msg.includes('no encontrad') || msg.includes('no existe')) {
             res.status(404).json({ success: false, message: msg }); return;
         }
-        if (msg.includes('No tienes permisos')) {
+        if (msg.includes('No tienes permisos') || msg.includes('no pertenece')) {
             res.status(403).json({ success: false, message: msg }); return;
         }
         if (
             msg.includes('requerido') || msg.includes('inválido') ||
             msg.includes('no está disponible') || msg.includes('no tiene') ||
-            msg.includes('no acepta') || msg.includes('ya tiene una cita') ||
+            msg.includes('no acepta') || msg.includes('No aceptas') || msg.includes('ya tiene una cita') || msg.includes('Ya tienes una cita') ||
             msg.includes('Solo puedes') || msg.includes('Solo se pueden') ||
             msg.includes('cancelado') || msg.includes('día de la semana') ||
             msg.includes('franja horaria') || msg.includes('fuera del horario') ||
-            msg.includes('período de inactividad') || msg.includes('fecha de fin') ||
+            msg.includes('período de inactividad') || msg.includes('periodo de inactividad') || msg.includes('fecha de fin') ||
             msg.includes('ya fue cancelado') || msg.includes('formato') ||
-            msg.includes('YYYY-MM-DD') || msg.includes('HH:MM')
+            msg.includes('YYYY-MM-DD') || msg.includes('HH:MM') ||
+            msg.includes('Ya existe una cuenta') || msg.includes('nacimiento')
         ) {
             res.status(400).json({ success: false, message: msg }); return;
         }

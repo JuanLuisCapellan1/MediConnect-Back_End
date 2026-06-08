@@ -58,6 +58,9 @@ router.get('/servicios', autenticarJWT, requireRole('Paciente', 'Doctor'), (req,
 
 // ── POST /citas ───────────────────────────────────────────────────────
 
+// POST /citas/agendar-doctor — Doctor agenda una cita para un paciente (nuevo o existente)
+router.post('/agendar-doctor', autenticarJWT, requireRole('Doctor'), (req, res) => ctrl().agendarComoDoctor(req, res));
+
 // POST /citas — Paciente agenda una cita
 router.post('/', autenticarJWT, requireRole('Paciente'), (req, res) => ctrl().agendar(req, res));
 
