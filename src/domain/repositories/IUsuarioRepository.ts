@@ -139,6 +139,7 @@ export interface IUsuarioRepository {
   verificarDocumentoExistente(numeroDocumento: string): Promise<{
     existe: boolean;
     tipo?: 'Doctor' | 'Paciente';
+    estado?: string;
   }>;
 
   /**

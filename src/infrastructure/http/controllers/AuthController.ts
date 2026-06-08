@@ -748,6 +748,7 @@ export class AuthController {
           disponible: false,
           message: "Este número de documento ya está registrado",
           tipoUsuario: resultado.tipoUsuario,
+          estado: resultado.estado,
         });
       }
     } catch (error) {

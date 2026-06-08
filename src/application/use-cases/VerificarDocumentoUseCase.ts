@@ -11,6 +11,7 @@ export class VerificarDocumentoUseCase {
     async execute(numeroDocumento: string): Promise<{
         disponible: boolean;
         tipoUsuario?: 'Doctor' | 'Paciente';
+        estado?: string;
     }> {
         // Validar que el número de documento no esté vacío
         if (!numeroDocumento || numeroDocumento.trim() === '') {
@@ -25,6 +26,7 @@ export class VerificarDocumentoUseCase {
         return {
             disponible: !resultado.existe,
             tipoUsuario: resultado.tipo,
+            estado: resultado.estado,
         };
     }
 }

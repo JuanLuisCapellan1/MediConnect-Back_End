@@ -748,17 +748,19 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
   async verificarDocumentoExistente(numeroDocumento: string): Promise<{
     existe: boolean;
     tipo?: 'Doctor' | 'Paciente';
+    estado?: string;
   }> {
     // Buscar en doctores
     const doctor = await prisma.doctor.findFirst({
       where: {
         numeroDocumentoIdentificacion: numeroDocumento,
         estado: { not: 'Eliminado' }
-      }
+      },
+      include: { usuario: true }
     });
 
     if (doctor) {
-      return { existe: true, tipo: 'Doctor' };
+      return { existe: true, tipo: 'Doctor', estado: doctor.usuario?.estado };
     }
 
     // Buscar en pacientes
@@ -766,11 +768,12 @@ export class PrismaUsuarioRepository implements IUsuarioRepository {
       where: {
         numero_documento_identificacion: numeroDocumento,
         estado: { not: 'Eliminado' }
-      }
+      },
+      include: { usuario: true }
     });
 
     if (paciente) {
-      return { existe: true, tipo: 'Paciente' };
+      return { existe: true, tipo: 'Paciente', estado: paciente.usuario?.estado };
     }
 
     return { existe: false };
