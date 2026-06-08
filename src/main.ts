@@ -44,7 +44,7 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet()); // Headers de seguridad
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:8000"],
+    origin: ["http://localhost:5173", "http://127.0.0.1:8000", "https://www.mediconnectrd.com"],
     credentials: true,
   }),
 ); // Permitir peticiones externas
